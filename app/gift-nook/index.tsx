@@ -5,17 +5,40 @@ import { Alert, Text, TextInput, View } from "react-native";
 import { IconBadge, type IconName } from "../../components/icon";
 import { Appear, LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
-import { Banner, Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
+import {
+  Banner,
+  Button,
+  EmptyState,
+  HeaderIcon,
+  NavCard,
+  SectionHeader,
+} from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
-import { friendlyError } from "../../lib/feedback";
-import { countdown, displayName, formatDate, gatheringKindInfo } from "../../lib/gift-nook";
+import { friendlyError, guarded } from "../../lib/feedback";
+import {
+  countdown,
+  displayName,
+  formatDate,
+  gatheringKindInfo,
+} from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
 type BurrowRow = { id: string; name: string };
 type Kid = { id: string; name: string; burrowIds: Set<string> };
-type ReceivedPrompt = { gatheringId: string; title: string; profileId: string; who: string };
-type Upcoming = { id: string; title: string; kind: string; ends_at: string; burrows: { name: string } | null };
+type ReceivedPrompt = {
+  gatheringId: string;
+  title: string;
+  profileId: string;
+  who: string;
+};
+type Upcoming = {
+  id: string;
+  title: string;
+  kind: string;
+  ends_at: string;
+  burrows: { name: string } | null;
+};
 
 // Gift Nook home: your Wishbook and tucks, kids you manage, "did you get
 // these?" prompts after Gatherings, your Burrows, and one box for any code
@@ -38,100 +61,135 @@ export default function GiftNookHome() {
   const [busy, setBusy] = useState<"create" | "code" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!userId) return;
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
-    const [
-      burrowsResult,
-      kidsResult,
-      tucksResult,
-      unreadResult,
-      endedResult,
-      receiptsResult,
-      upcomingResult,
-      profileResult,
-    ] = await Promise.all([
-        supabase.from("burrows").select("id, name").order("name"),
-        supabase
-          .from("profile_managers")
-          .select("profile_id, profiles!profile_managers_profile_id_fkey(display_name, burrow_members(burrow_id))")
-          .eq("manager_id", userId),
-        supabase
-          .from("claims")
-          .select("id", { count: "exact", head: true })
-          .eq("claimed_by", userId)
-          .is("released_at", null)
-          .neq("status", "given"),
-        supabase
-          .from("notifications")
-          .select("id", { count: "exact", head: true })
-          .is("read_at", null),
-        supabase
-          .from("gatherings")
-          .select("id, title, burrow_id, gathering_honorees(profile_id)")
-          .lt("ends_at", new Date().toISOString())
-          .gt("ends_at", thirtyDaysAgo),
-        supabase.from("gathering_receipts").select("gathering_id, profile_id"),
-        supabase
-          .from("gatherings")
-          .select("id, title, kind, ends_at, burrows(name)")
-          .gt("ends_at", new Date().toISOString())
-          .order("ends_at")
-          .limit(3),
-        supabase.from("profiles").select("display_name").eq("id", userId).single(),
-      ]);
+  const load = useCallback(
+    () =>
+      guarded(
+        async () => {
+          if (!userId) return;
+          const thirtyDaysAgo = new Date(
+            Date.now() - 30 * 86400000,
+          ).toISOString();
+          const [
+            burrowsResult,
+            kidsResult,
+            tucksResult,
+            unreadResult,
+            endedResult,
+            receiptsResult,
+            upcomingResult,
+            profileResult,
+          ] = await Promise.all([
+            supabase.from("burrows").select("id, name").order("name"),
+            supabase
+              .from("profile_managers")
+              .select(
+                "profile_id, profiles!profile_managers_profile_id_fkey(display_name, burrow_members(burrow_id))",
+              )
+              .eq("manager_id", userId),
+            supabase
+              .from("claims")
+              .select("id", { count: "exact", head: true })
+              .eq("claimed_by", userId)
+              .is("released_at", null)
+              .neq("status", "given"),
+            supabase
+              .from("notifications")
+              .select("id", { count: "exact", head: true })
+              .is("read_at", null),
+            supabase
+              .from("gatherings")
+              .select("id, title, burrow_id, gathering_honorees(profile_id)")
+              .lt("ends_at", new Date().toISOString())
+              .gt("ends_at", thirtyDaysAgo),
+            supabase
+              .from("gathering_receipts")
+              .select("gathering_id, profile_id"),
+            supabase
+              .from("gatherings")
+              .select("id, title, kind, ends_at, burrows(name)")
+              .gt("ends_at", new Date().toISOString())
+              .order("ends_at")
+              .limit(3),
+            supabase
+              .from("profiles")
+              .select("display_name")
+              .eq("id", userId)
+              .single(),
+          ]);
 
-    if (burrowsResult.error) setError(burrowsResult.error.message);
-    setBurrows(burrowsResult.data ?? []);
-    setOpenTucks(tucksResult.count ?? 0);
-    setUnread(unreadResult.count ?? 0);
-    setUpcoming((upcomingResult.data ?? []) as unknown as Upcoming[]);
-    // New accounts start with their email as their name.
-    const currentName = profileResult.data?.display_name ?? "";
-    setNeedsName(!currentName.trim() || currentName.includes("@"));
+          if (burrowsResult.error) setError(burrowsResult.error.message);
+          setBurrows(burrowsResult.data ?? []);
+          setOpenTucks(tucksResult.count ?? 0);
+          setUnread(unreadResult.count ?? 0);
+          setUpcoming((upcomingResult.data ?? []) as unknown as Upcoming[]);
+          // New accounts start with their email as their name.
+          const currentName = profileResult.data?.display_name ?? "";
+          setNeedsName(!currentName.trim() || currentName.includes("@"));
 
-    const kidList: Kid[] = (kidsResult.data ?? []).map((row) => {
-      const profile = row.profiles as unknown as {
-        display_name: string | null;
-        burrow_members: { burrow_id: string }[];
-      } | null;
-      return {
-        id: row.profile_id,
-        name: displayName(profile),
-        burrowIds: new Set((profile?.burrow_members ?? []).map((m) => m.burrow_id)),
-      };
-    });
-    setKids(kidList);
+          const kidList: Kid[] = (kidsResult.data ?? []).map((row) => {
+            const profile = row.profiles as unknown as {
+              display_name: string | null;
+              burrow_members: { burrow_id: string }[];
+            } | null;
+            return {
+              id: row.profile_id,
+              name: displayName(profile),
+              burrowIds: new Set(
+                (profile?.burrow_members ?? []).map((m) => m.burrow_id),
+              ),
+            };
+          });
+          setKids(kidList);
 
-    // GIFT-026: honorees (or, with none, everyone) of a recently ended
-    // Gathering get asked what they received — for you and kids you manage.
-    const responded = new Set(
-      (receiptsResult.data ?? []).map((r) => `${r.gathering_id}:${r.profile_id}`)
-    );
-    const nextPrompts: ReceivedPrompt[] = [];
-    for (const gathering of endedResult.data ?? []) {
-      const honorees = new Set(
-        ((gathering.gathering_honorees ?? []) as { profile_id: string }[]).map((h) => h.profile_id)
-      );
-      const people = [
-        { id: userId, who: "you", inBurrow: true },
-        ...kidList.map((kid) => ({ id: kid.id, who: kid.name, inBurrow: kid.burrowIds.has(gathering.burrow_id) })),
-      ];
-      for (const person of people) {
-        const applies = honorees.size ? honorees.has(person.id) : person.inBurrow;
-        if (applies && !responded.has(`${gathering.id}:${person.id}`)) {
-          nextPrompts.push({ gatheringId: gathering.id, title: gathering.title, profileId: person.id, who: person.who });
-        }
-      }
-    }
-    setPrompts(nextPrompts);
-    setIsLoading(false);
-  }, [userId]);
+          // GIFT-026: honorees (or, with none, everyone) of a recently ended
+          // Gathering get asked what they received — for you and kids you manage.
+          const responded = new Set(
+            (receiptsResult.data ?? []).map(
+              (r) => `${r.gathering_id}:${r.profile_id}`,
+            ),
+          );
+          const nextPrompts: ReceivedPrompt[] = [];
+          for (const gathering of endedResult.data ?? []) {
+            const honorees = new Set(
+              (
+                (gathering.gathering_honorees ?? []) as { profile_id: string }[]
+              ).map((h) => h.profile_id),
+            );
+            const people = [
+              { id: userId, who: "you", inBurrow: true },
+              ...kidList.map((kid) => ({
+                id: kid.id,
+                who: kid.name,
+                inBurrow: kid.burrowIds.has(gathering.burrow_id),
+              })),
+            ];
+            for (const person of people) {
+              const applies = honorees.size
+                ? honorees.has(person.id)
+                : person.inBurrow;
+              if (applies && !responded.has(`${gathering.id}:${person.id}`)) {
+                nextPrompts.push({
+                  gatheringId: gathering.id,
+                  title: gathering.title,
+                  profileId: person.id,
+                  who: person.who,
+                });
+              }
+            }
+          }
+          setPrompts(nextPrompts);
+          setIsLoading(false);
+        },
+        setError,
+        () => setIsLoading(false),
+      ),
+    [userId],
+  );
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+    }, [load]),
   );
 
   async function createBurrow() {
@@ -161,7 +219,9 @@ export default function GiftNookHome() {
     }
     setBusy("code");
     setError(null);
-    const { data, error: rpcError } = await supabase.rpc("answer_code", { any_code: code.trim() });
+    const { data, error: rpcError } = await supabase.rpc("answer_code", {
+      any_code: code.trim(),
+    });
     setBusy(null);
     if (rpcError) {
       Alert.alert("Couldn't use that code", friendlyError(rpcError));
@@ -171,7 +231,10 @@ export default function GiftNookHome() {
     if (data?.kind === "burrow") {
       router.push(`/gift-nook/burrow/${data.id}`);
     } else {
-      Alert.alert("It's yours now!", "Your Wishbook moved onto your account. Welcome to Nook.");
+      Alert.alert(
+        "It's yours now!",
+        "Your Wishbook moved onto your account. Welcome to Nook.",
+      );
       router.push("/gift-nook/wishbook");
     }
   }
@@ -190,7 +253,11 @@ export default function GiftNookHome() {
                 badge={unread}
                 onPress={() => router.push("/gift-nook/notifications")}
               />
-              <HeaderIcon icon="settings" label="Gift Nook settings" onPress={() => router.push("/gift-nook/settings")} />
+              <HeaderIcon
+                icon="settings"
+                label="Gift Nook settings"
+                onPress={() => router.push("/gift-nook/settings")}
+              />
             </View>
           ),
         }}
@@ -217,7 +284,10 @@ export default function GiftNookHome() {
           onPress={() =>
             router.push({
               pathname: "/gift-nook/received",
-              params: { gatheringId: prompt.gatheringId, profileId: prompt.profileId },
+              params: {
+                gatheringId: prompt.gatheringId,
+                profileId: prompt.profileId,
+              },
             })
           }
         />
@@ -255,7 +325,9 @@ export default function GiftNookHome() {
                 subtitle={`${formatDate(gathering.ends_at)} · ${countdown(gathering.ends_at)}${
                   gathering.burrows?.name ? ` · ${gathering.burrows.name}` : ""
                 }`}
-                onPress={() => router.push(`/gift-nook/gathering/${gathering.id}`)}
+                onPress={() =>
+                  router.push(`/gift-nook/gathering/${gathering.id}`)
+                }
               />
             );
           })}
@@ -310,15 +382,29 @@ export default function GiftNookHome() {
         returnKeyType="done"
         onSubmitEditing={createBurrow}
       />
-      <Button title="Start Burrow" icon="burrow" onPress={createBurrow} loading={busy === "create"} disabled={busy !== null} />
+      <Button
+        title="Start Burrow"
+        icon="burrow"
+        onPress={createBurrow}
+        loading={busy === "create"}
+        disabled={busy !== null}
+      />
 
       <SectionHeader title="Got a code?" icon="door" />
       <Text style={ui.muted}>
-        A Knock from family joins their Burrow. A hand-off code gives you the Wishbook a parent made
-        for you.
+        A Knock from family joins their Burrow. A hand-off code gives you the
+        Wishbook a parent made for you.
       </Text>
       <TextInput
-        style={[ui.input, { fontSize: 22, letterSpacing: 6, textAlign: "center", fontWeight: "600" }]}
+        style={[
+          ui.input,
+          {
+            fontSize: 22,
+            letterSpacing: 6,
+            textAlign: "center",
+            fontWeight: "600",
+          },
+        ]}
         value={code}
         onChangeText={(text) => setCode(text.toUpperCase().replace(/\s/g, ""))}
         placeholder="ABC123"
@@ -357,7 +443,11 @@ function QuickTile({
 }) {
   return (
     <Appear index={index} style={{ flex: 1 }}>
-      <Tap onPress={onPress} style={[ui.card, { gap: 10, flex: 1 }]} accessibilityRole="button">
+      <Tap
+        onPress={onPress}
+        style={[ui.card, { gap: 10, flex: 1 }]}
+        accessibilityRole="button"
+      >
         <IconBadge name={icon} size={44} />
         <View style={{ gap: 2 }}>
           <Text style={ui.cardTitle}>{title}</Text>

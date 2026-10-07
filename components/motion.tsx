@@ -5,7 +5,6 @@ import Animated, {
   Easing,
   FadeIn,
   FadeInDown,
-  FadeOut,
   LinearTransition,
   useAnimatedStyle,
   useReducedMotion,
@@ -61,7 +60,9 @@ export function Tap({
 }
 
 // List items flow in one after another, then glide into place whenever the
-// list changes (filtering, adding, removing).
+// list changes (filtering, adding, removing). No exit animation on purpose:
+// fade-outs inside a screen that's being closed can hold the screen up until
+// the next scroll (a known Reanimated + native-stack hang).
 export function Appear({
   index = 0,
   children,
@@ -77,7 +78,6 @@ export function Appear({
         .springify()
         .damping(20)
         .stiffness(180)}
-      exiting={FadeOut.duration(160)}
       layout={LinearTransition.springify().damping(20).stiffness(180)}
       style={style}
     >
@@ -89,7 +89,7 @@ export function Appear({
 // For content that swaps in place (e.g. a tuck footer changing state).
 export function FadeSwap({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return (
-    <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)} style={style}>
+    <Animated.View entering={FadeIn.duration(220)} style={style}>
       {children}
     </Animated.View>
   );

@@ -4,6 +4,7 @@ import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
 import { tap } from "../../lib/feedback";
+import { guardTouches } from "../../lib/touch-guard";
 import { countdown, displayName, gatheringKindInfo, type TuckStatus } from "../../lib/gift-nook";
 import { deepColor, tilePalette } from "../../lib/hearth-layout";
 import { supabase } from "../../lib/supabase";
@@ -226,7 +227,13 @@ function Reminders({ widget, palette, height, onChange }: BodyProps<"reminders">
     <View style={{ gap: 4 }}>
       {shown.map((item) => (
         <Animated.View key={item.id} layout={LinearTransition.duration(200)}>
-          <Tap onPress={onChange ? () => toggle(item.id) : undefined} disabled={!onChange} style={styles.row} hitSlop={4}>
+          <Tap
+            onPressIn={() => guardTouches()}
+            onPress={onChange ? () => toggle(item.id) : undefined}
+            disabled={!onChange}
+            style={styles.row}
+            hitSlop={4}
+          >
             <View
               style={[
                 styles.check,

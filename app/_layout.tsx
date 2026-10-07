@@ -29,7 +29,7 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="widget/[id]"
-                options={{ ...headerOptions, title: "Widget", presentation: "modal", headerBackTitle: "Back" }}
+                options={{ ...headerOptions, title: "Widget" }}
               />
             </Stack>
           </AuthProvider>

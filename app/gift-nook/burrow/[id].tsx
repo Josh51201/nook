@@ -1,14 +1,24 @@
 import * as Clipboard from "expo-clipboard";
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, Share, Text, TextInput, View } from "react-native";
 
 import { Icon } from "../../../components/icon";
 import { Appear, LoadingScreen, Tap } from "../../../components/motion";
 import { NookScroll } from "../../../components/nook-scroll";
-import { Button, EmptyState, NavCard, SectionHeader } from "../../../components/ui";
+import {
+  Button,
+  EmptyState,
+  NavCard,
+  SectionHeader,
+} from "../../../components/ui";
 import { useAuth } from "../../../lib/auth-context";
-import { tap } from "../../../lib/feedback";
+import { guarded, tap } from "../../../lib/feedback";
 import {
   countdown,
   displayName,
@@ -38,31 +48,43 @@ export default function BurrowScreen() {
   const [renameTo, setRenameTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    const [burrowResult, membersResult, gatheringsResult] = await Promise.all([
-      supabase.from("burrows").select("name").eq("id", id).single(),
-      supabase
-        .from("burrow_members")
-        .select("profile_id, role, profiles(id, display_name, is_managed)")
-        .eq("burrow_id", id),
-      supabase
-        .from("gatherings")
-        .select("id, burrow_id, title, kind, ends_at")
-        .eq("burrow_id", id)
-        .order("ends_at"),
-    ]);
-    const firstError = burrowResult.error ?? membersResult.error ?? gatheringsResult.error;
-    if (firstError) setError(firstError.message);
-    setName(burrowResult.data?.name ?? "");
-    setMembers((membersResult.data ?? []) as unknown as BurrowMember[]);
-    setGatherings((gatheringsResult.data ?? []) as Gathering[]);
-    setIsLoading(false);
-  }, [id]);
+  const load = useCallback(
+    () =>
+      guarded(
+        async () => {
+          const [burrowResult, membersResult, gatheringsResult] =
+            await Promise.all([
+              supabase.from("burrows").select("name").eq("id", id).single(),
+              supabase
+                .from("burrow_members")
+                .select(
+                  "profile_id, role, profiles(id, display_name, is_managed)",
+                )
+                .eq("burrow_id", id),
+              supabase
+                .from("gatherings")
+                .select("id, burrow_id, title, kind, ends_at")
+                .eq("burrow_id", id)
+                .order("ends_at"),
+            ]);
+          const firstError =
+            burrowResult.error ?? membersResult.error ?? gatheringsResult.error;
+          if (firstError) setError(firstError.message);
+          setName(burrowResult.data?.name ?? "");
+          setMembers((membersResult.data ?? []) as unknown as BurrowMember[]);
+          setGatherings((gatheringsResult.data ?? []) as Gathering[]);
+          setIsLoading(false);
+        },
+        setError,
+        () => setIsLoading(false),
+      ),
+    [id],
+  );
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+    }, [load]),
   );
 
   function openWishbook(profileId: string) {
@@ -72,7 +94,9 @@ export default function BurrowScreen() {
 
   async function sendKnock() {
     setIsKnocking(true);
-    const { data: code, error: rpcError } = await supabase.rpc("create_knock", { target_burrow: id });
+    const { data: code, error: rpcError } = await supabase.rpc("create_knock", {
+      target_burrow: id,
+    });
     setIsKnocking(false);
     if (rpcError || !code) {
       Alert.alert("Couldn't make a Knock", rpcError?.message ?? "Try again.");
@@ -82,17 +106,21 @@ export default function BurrowScreen() {
       `Come join our Burrow "${name}" on Nook! 🏡\n\n` +
       `Open Nook → Gift Nook → "Got a code?", and enter:\n\n${code}\n\n` +
       `(It works for 7 days.)`;
-    Alert.alert(`Knock code: ${code}`, "Send it to whoever you're inviting. It works for 7 days.", [
-      {
-        text: "Copy code",
-        onPress: async () => {
-          await Clipboard.setStringAsync(code);
-          tap();
+    Alert.alert(
+      `Knock code: ${code}`,
+      "Send it to whoever you're inviting. It works for 7 days.",
+      [
+        {
+          text: "Copy code",
+          onPress: async () => {
+            await Clipboard.setStringAsync(code);
+            tap();
+          },
         },
-      },
-      { text: "Share…", onPress: () => Share.share({ message }) },
-      { text: "Done", style: "cancel" },
-    ]);
+        { text: "Share…", onPress: () => Share.share({ message }) },
+        { text: "Done", style: "cancel" },
+      ],
+    );
   }
 
   function confirmLeave() {
@@ -114,16 +142,21 @@ export default function BurrowScreen() {
             else router.back();
           },
         },
-      ]
+      ],
     );
   }
 
-  const isAdmin = members.some((m) => m.profile_id === userId && m.role === "admin");
+  const isAdmin = members.some(
+    (m) => m.profile_id === userId && m.role === "admin",
+  );
 
   async function rename() {
     const next = renameTo?.trim();
     if (!next || next === name) return setRenameTo(null);
-    const { error: renameError } = await supabase.from("burrows").update({ name: next }).eq("id", id);
+    const { error: renameError } = await supabase
+      .from("burrows")
+      .update({ name: next })
+      .eq("id", id);
     if (renameError) Alert.alert("Couldn't rename", renameError.message);
     setRenameTo(null);
     load();
@@ -131,13 +164,18 @@ export default function BurrowScreen() {
 
   function memberActions(member: BurrowMember) {
     const who = displayName(member.profiles);
-    const options: { text: string; style?: "destructive" | "cancel"; onPress?: () => void }[] = [
+    const options: {
+      text: string;
+      style?: "destructive" | "cancel";
+      onPress?: () => void;
+    }[] = [
       { text: "View Wishbook", onPress: () => openWishbook(member.profile_id) },
     ];
     if (!member.profiles?.is_managed) {
       const nextRole = member.role === "admin" ? "member" : "admin";
       options.push({
-        text: member.role === "admin" ? "Make a regular member" : "Make an admin",
+        text:
+          member.role === "admin" ? "Make a regular member" : "Make an admin",
         onPress: async () => {
           const { error: roleError } = await supabase
             .from("burrow_members")
@@ -158,7 +196,8 @@ export default function BurrowScreen() {
           .delete()
           .eq("burrow_id", id)
           .eq("profile_id", member.profile_id);
-        if (removeError) Alert.alert("Couldn't remove them", removeError.message);
+        if (removeError)
+          Alert.alert("Couldn't remove them", removeError.message);
         load();
       },
     });
@@ -176,12 +215,16 @@ export default function BurrowScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            const { error: deleteError } = await supabase.from("burrows").delete().eq("id", id);
-            if (deleteError) Alert.alert("Couldn't delete it", deleteError.message);
+            const { error: deleteError } = await supabase
+              .from("burrows")
+              .delete()
+              .eq("id", id);
+            if (deleteError)
+              Alert.alert("Couldn't delete it", deleteError.message);
             else router.navigate("/gift-nook");
           },
         },
-      ]
+      ],
     );
   }
 
@@ -216,7 +259,12 @@ export default function BurrowScreen() {
         title="New Gathering"
         icon="add"
         variant="secondary"
-        onPress={() => router.push({ pathname: "/gift-nook/gathering-form", params: { burrowId: id } })}
+        onPress={() =>
+          router.push({
+            pathname: "/gift-nook/gathering-form",
+            params: { burrowId: id },
+          })
+        }
       />
 
       <SectionHeader title="Who's in the Burrow" icon="group" />
@@ -229,7 +277,9 @@ export default function BurrowScreen() {
             index={i}
             icon={member.profiles?.is_managed ? "kid" : "person"}
             iconColor={member.profiles?.is_managed ? "#4f7fb0" : colors.bark}
-            iconBackground={member.profiles?.is_managed ? colors.sky : colors.barkSoft}
+            iconBackground={
+              member.profiles?.is_managed ? colors.sky : colors.barkSoft
+            }
             title={`${displayName(member.profiles)}${isMe ? " (you)" : ""}`}
             subtitle={`${member.role === "admin" ? "Admin · " : ""}View Wishbook`}
             onPress={() => openWishbook(member.profile_id)}
@@ -249,7 +299,12 @@ export default function BurrowScreen() {
           />
         );
       })}
-      <Button title="Send a Knock (invite)" icon="invite" onPress={sendKnock} loading={isKnocking} />
+      <Button
+        title="Send a Knock (invite)"
+        icon="invite"
+        onPress={sendKnock}
+        loading={isKnocking}
+      />
 
       {archived.length > 0 ? (
         <>
@@ -259,7 +314,9 @@ export default function BurrowScreen() {
               key={gathering.id}
               index={i}
               gathering={gathering}
-              onPress={() => router.push(`/gift-nook/gathering/${gathering.id}`)}
+              onPress={() =>
+                router.push(`/gift-nook/gathering/${gathering.id}`)
+              }
             />
           ))}
         </>
@@ -269,7 +326,12 @@ export default function BurrowScreen() {
         <>
           <SectionHeader title="Admin" icon="settings" />
           {renameTo === null ? (
-            <Button title="Rename Burrow" icon="edit" variant="secondary" onPress={() => setRenameTo(name)} />
+            <Button
+              title="Rename Burrow"
+              icon="edit"
+              variant="secondary"
+              onPress={() => setRenameTo(name)}
+            />
           ) : (
             <Appear>
               <View style={ui.row}>
@@ -285,13 +347,26 @@ export default function BurrowScreen() {
               </View>
             </Appear>
           )}
-          <Text style={ui.muted}>Tap ••• on someone to make them an admin or remove them.</Text>
+          <Text style={ui.muted}>
+            Tap ••• on someone to make them an admin or remove them.
+          </Text>
         </>
       ) : null}
 
-      <Button title="Leave this Burrow" icon="door" variant="danger" onPress={confirmLeave} style={{ marginTop: 12 }} />
+      <Button
+        title="Leave this Burrow"
+        icon="door"
+        variant="danger"
+        onPress={confirmLeave}
+        style={{ marginTop: 12 }}
+      />
       {isAdmin ? (
-        <Button title="Delete this Burrow" icon="trash" variant="danger" onPress={confirmDeleteBurrow} />
+        <Button
+          title="Delete this Burrow"
+          icon="trash"
+          variant="danger"
+          onPress={confirmDeleteBurrow}
+        />
       ) : null}
     </NookScroll>
   );

@@ -31,3 +31,28 @@ export function friendlyError(error: { message?: string; code?: string } | null 
   }
   return message;
 }
+
+// Run a screen's loader so it can never leave the screen spinning forever:
+// a thrown error or a request that never answers (20 s) becomes a message,
+// and `done` (hide the spinner) always runs.
+export async function guarded(
+  run: () => Promise<void>,
+  fail: (message: string) => void,
+  done: () => void,
+  timeoutMs = 20000
+) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      run(),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("Network request failed (timed out)")), timeoutMs);
+      }),
+    ]);
+  } catch (error) {
+    fail(friendlyError(error as { message?: string }));
+  } finally {
+    if (timer) clearTimeout(timer);
+    done();
+  }
+}

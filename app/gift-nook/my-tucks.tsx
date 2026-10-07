@@ -2,11 +2,18 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Text, View } from "react-native";
 
+import { guarded } from "../../lib/feedback";
 import { Icon, type IconName } from "../../components/icon";
 import { NookScroll } from "../../components/nook-scroll";
 import { EmptyState, NavCard, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
-import { displayName, giftChangedSince, tuckStatusIcon, tuckStatusLabel, type Tuck } from "../../lib/gift-nook";
+import {
+  displayName,
+  giftChangedSince,
+  tuckStatusIcon,
+  tuckStatusLabel,
+  type Tuck,
+} from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 import { LoadingScreen, Tap } from "../../components/motion";
@@ -18,7 +25,10 @@ type MyTuck = Tuck & {
     created_at: string;
     updated_at: string;
     removed_at: string | null;
-    wishbooks: { owner_id: string; profiles: { display_name: string | null } | null } | null;
+    wishbooks: {
+      owner_id: string;
+      profiles: { display_name: string | null } | null;
+    } | null;
   } | null;
 };
 
@@ -32,25 +42,35 @@ export default function MyTucks() {
   const [tucks, setTucks] = useState<MyTuck[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    if (!userId) return;
-    const { data } = await supabase
-      .from("claims")
-      .select(
-        "id, claimed_by, released_at, status, note, claimed_at, acknowledged_at, profiles(display_name), " +
-          "gifts(id, title, created_at, updated_at, removed_at, wishbooks(owner_id, profiles(display_name)))"
-      )
-      .eq("claimed_by", userId)
-      .is("released_at", null)
-      .order("claimed_at", { ascending: false });
-    setTucks(((data ?? []) as unknown as MyTuck[]).filter((t) => t.gifts));
-    setIsLoading(false);
-  }, [userId]);
+  const load = useCallback(
+    () =>
+      guarded(
+        async () => {
+          if (!userId) return;
+          const { data } = await supabase
+            .from("claims")
+            .select(
+              "id, claimed_by, released_at, status, note, claimed_at, acknowledged_at, profiles(display_name), " +
+                "gifts(id, title, created_at, updated_at, removed_at, wishbooks(owner_id, profiles(display_name)))",
+            )
+            .eq("claimed_by", userId)
+            .is("released_at", null)
+            .order("claimed_at", { ascending: false });
+          setTucks(
+            ((data ?? []) as unknown as MyTuck[]).filter((t) => t.gifts),
+          );
+          setIsLoading(false);
+        },
+        (message) => console.warn(message),
+        () => setIsLoading(false),
+      ),
+    [userId],
+  );
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+    }, [load]),
   );
 
   if (isLoading) return <LoadingScreen />;
@@ -68,16 +88,28 @@ export default function MyTucks() {
         index={index}
         icon={tuckStatusIcon[tuck.status]}
         iconColor={gift.removed_at ? colors.error : colors.bark}
-        iconBackground={gift.removed_at ? colors.rose : changed ? colors.sun : colors.barkSoft}
+        iconBackground={
+          gift.removed_at ? colors.rose : changed ? colors.sun : colors.barkSoft
+        }
         title={gift.title}
         subtitle={`For ${displayName(owner?.profiles)} · ${tuckStatusLabel[tuck.status]}`}
-        onPress={() => owner && router.push(`/gift-nook/member/${owner.owner_id}`)}
+        onPress={() =>
+          owner && router.push(`/gift-nook/member/${owner.owner_id}`)
+        }
       >
-        {tuck.note ? <Text style={[ui.muted, { fontStyle: "italic", marginTop: 6 }]}>“{tuck.note}”</Text> : null}
+        {tuck.note ? (
+          <Text style={[ui.muted, { fontStyle: "italic", marginTop: 6 }]}>
+            “{tuck.note}”
+          </Text>
+        ) : null}
         {gift.removed_at ? (
-          <Text style={{ color: colors.error, marginTop: 6 }}>Removed from their list — open to release it</Text>
+          <Text style={{ color: colors.error, marginTop: 6 }}>
+            Removed from their list — open to release it
+          </Text>
         ) : changed ? (
-          <Text style={{ color: colors.bark, marginTop: 6 }}>Changed since you tucked it</Text>
+          <Text style={{ color: colors.bark, marginTop: 6 }}>
+            Changed since you tucked it
+          </Text>
         ) : null}
       </NavCard>
     );
@@ -113,12 +145,27 @@ export default function MyTucks() {
   );
 }
 
-function Stat({ label, value, icon }: { label: string; value: number; icon: IconName }) {
+function Stat({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: number;
+  icon: IconName;
+}) {
   return (
-    <View style={[ui.card, { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }]}>
+    <View
+      style={[
+        ui.card,
+        { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+      ]}
+    >
       <Icon name={icon} size={20} />
       <View>
-        <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text }}>{value}</Text>
+        <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text }}>
+          {value}
+        </Text>
         <Text style={ui.muted}>{label}</Text>
       </View>
     </View>

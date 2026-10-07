@@ -76,25 +76,29 @@ export default function WidgetEditor() {
   }
 
   async function saveWidget() {
-    if (!draft || !original) return;
+    if (!draft || !original || isSaving) return;
     setIsSaving(true);
-    let next = draft.widget;
-    if (next.kind === "reminders" && original.widget.kind === "reminders") {
-      const synced = await syncReminders(next.title, next.settings.items, original.widget.settings.items);
-      next = { ...next, settings: { ...next.settings, items: synced } };
-    }
-    let items = updateItem(layout, draft.id, { widget: next, color: draft.color } as Partial<WidgetItem>);
-    if (draft.w !== original.w || draft.h !== original.h) {
-      items = resizeItem({ ...layout, items }, draft.id, draft.w, draft.h);
-    }
     try {
-      await save({ items });
+      let next = draft.widget;
+      // Phone reminders need scheduling first (this may ask permission), so
+      // their notification ids can be saved with the widget.
+      if (next.kind === "reminders" && original.widget.kind === "reminders") {
+        const synced = await syncReminders(next.title, next.settings.items, original.widget.settings.items);
+        next = { ...next, settings: { ...next.settings, items: synced } };
+      }
+      let items = updateItem(layout, draft.id, { widget: next, color: draft.color } as Partial<WidgetItem>);
+      if (draft.w !== original.w || draft.h !== original.h) {
+        items = resizeItem({ ...layout, items }, draft.id, draft.w, draft.h);
+      }
+      // Your Hearth updates instantly; the cloud save finishes in the
+      // background, so closing never waits on the network.
+      const pending = save({ items });
       tap("success");
       router.back();
+      pending.catch((error: Error) => Alert.alert("Couldn't save your widget", error.message));
     } catch (error) {
-      Alert.alert("Couldn't save", (error as Error).message);
-    } finally {
       setIsSaving(false);
+      Alert.alert("Couldn't save", (error as Error).message);
     }
   }
 
@@ -104,10 +108,11 @@ export default function WidgetEditor() {
       {
         text: "Remove",
         style: "destructive",
-        onPress: async () => {
-          if (original?.widget.kind === "reminders") await cancelReminders(original.widget.settings.items);
-          await save({ items: removeItem(layout, id) }).catch(() => {});
+        onPress: () => {
+          if (original?.widget.kind === "reminders") cancelReminders(original.widget.settings.items);
+          const pending = save({ items: removeItem(layout, id) });
           router.back();
+          pending.catch((error: Error) => Alert.alert("Couldn't remove it", error.message));
         },
       },
     ]);

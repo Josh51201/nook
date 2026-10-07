@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, Text, View } from "react-native";
 
+import { guarded } from "../../lib/feedback";
 import { Icon } from "../../components/icon";
 import { LoadingScreen } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
@@ -24,32 +25,40 @@ export default function MyWishbook() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!userId) return;
-    const { data: wishbook, error: wishbookError } = await supabase
-      .from("wishbooks")
-      .select("id")
-      .eq("owner_id", userId)
-      .single();
-    if (wishbookError || !wishbook) {
-      setError(wishbookError?.message ?? "Couldn't find your Wishbook.");
-      setIsLoading(false);
-      return;
-    }
-    const { data, error: giftsError } = await supabase
-      .from("gifts")
-      .select(GIFT_SELECT)
-      .eq("wishbook_id", wishbook.id)
-      .order("created_at", { ascending: false });
-    if (giftsError) setError(giftsError.message);
-    else setGifts(sortGifts((data ?? []) as unknown as Gift[]));
-    setIsLoading(false);
-  }, [userId]);
+  const load = useCallback(
+    () =>
+      guarded(
+        async () => {
+          if (!userId) return;
+          const { data: wishbook, error: wishbookError } = await supabase
+            .from("wishbooks")
+            .select("id")
+            .eq("owner_id", userId)
+            .single();
+          if (wishbookError || !wishbook) {
+            setError(wishbookError?.message ?? "Couldn't find your Wishbook.");
+            setIsLoading(false);
+            return;
+          }
+          const { data, error: giftsError } = await supabase
+            .from("gifts")
+            .select(GIFT_SELECT)
+            .eq("wishbook_id", wishbook.id)
+            .order("created_at", { ascending: false });
+          if (giftsError) setError(giftsError.message);
+          else setGifts(sortGifts((data ?? []) as unknown as Gift[]));
+          setIsLoading(false);
+        },
+        setError,
+        () => setIsLoading(false),
+      ),
+    [userId],
+  );
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+    }, [load]),
   );
 
   // GIFT-026: one-and-done gifts you checked off after a Gathering.
@@ -57,7 +66,9 @@ export default function MyWishbook() {
   const received = gifts.filter((gift) => gift.received_at);
 
   async function putBack(gift: Gift) {
-    const { error: rpcError } = await supabase.rpc("unreceive_gift", { target_gift: gift.id });
+    const { error: rpcError } = await supabase.rpc("unreceive_gift", {
+      target_gift: gift.id,
+    });
     if (rpcError) Alert.alert("Couldn't put it back", rpcError.message);
     load();
   }
@@ -68,7 +79,11 @@ export default function MyWishbook() {
     <NookScroll onRefresh={load}>
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      <Button title="Add a gift" icon="add" onPress={() => router.push("/gift-nook/gift-form")} />
+      <Button
+        title="Add a gift"
+        icon="add"
+        onPress={() => router.push("/gift-nook/gift-form")}
+      />
 
       {active.length === 0 ? (
         <EmptyState
@@ -80,14 +95,21 @@ export default function MyWishbook() {
         <>
           <View style={[ui.row, { gap: 6 }]}>
             <Icon name="hidden" size={14} color={colors.muted} />
-            <Text style={ui.muted}>Tucks stay a surprise — you'll never see them here.</Text>
+            <Text style={ui.muted}>
+              Tucks stay a surprise — you'll never see them here.
+            </Text>
           </View>
           {active.map((gift, i) => (
             <GiftCard
               key={gift.id}
               index={i}
               gift={gift}
-              onPress={() => router.push({ pathname: "/gift-nook/gift-form", params: { giftId: gift.id } })}
+              onPress={() =>
+                router.push({
+                  pathname: "/gift-nook/gift-form",
+                  params: { giftId: gift.id },
+                })
+              }
             />
           ))}
         </>
@@ -96,14 +118,21 @@ export default function MyWishbook() {
       {received.length > 0 ? (
         <>
           <SectionHeader title="Received" icon="given" />
-          <Text style={ui.muted}>Things you checked off after a Gathering. Family doesn't see these.</Text>
+          <Text style={ui.muted}>
+            Things you checked off after a Gathering. Family doesn't see these.
+          </Text>
           {received.map((gift, i) => (
             <GiftCard
               key={gift.id}
               index={i}
               gift={gift}
               footer={
-                <Button title="Put it back on my list" icon="undo" variant="secondary" onPress={() => putBack(gift)} />
+                <Button
+                  title="Put it back on my list"
+                  icon="undo"
+                  variant="secondary"
+                  onPress={() => putBack(gift)}
+                />
               }
             />
           ))}
