@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { useAuth } from "../lib/auth-context";
+import { hearthThemes, useHearthLayout, type HearthThemeKey } from "../lib/hearth";
 import { formatDate } from "../lib/gift-nook";
 import { supabase } from "../lib/supabase";
 import { colors, ui } from "../lib/theme";
 
 // Hearth settings (CORE-013): account-wide things — who you are, your name,
-// signing out. Each Nook has its own settings page for Nook-specific options.
+// how your Hearth looks (CORE-008), signing out. Each Nook has its own
+// settings page for Nook-specific options.
 export default function HearthSettings() {
   const router = useRouter();
   const { session } = useAuth();
@@ -19,6 +21,8 @@ export default function HearthSettings() {
   const [savedName, setSavedName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { layout, save: saveHearth, isLoading: hearthLoading } = useHearthLayout();
+  const [hearthTitle, setHearthTitle] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -48,6 +52,18 @@ export default function HearthSettings() {
     setIsSaving(false);
     if (updateError) setError(updateError.message);
     else setSavedName(name.trim());
+  }
+
+  function saveHearthChanges(changes: Parameters<typeof saveHearth>[0]) {
+    saveHearth(changes).catch((saveError: Error) =>
+      Alert.alert("Couldn't save that", saveError.message)
+    );
+  }
+
+  function commitHearthTitle() {
+    if (hearthTitle === null) return;
+    const next = hearthTitle.trim() || "The Hearth";
+    if (next !== layout.title) saveHearthChanges({ title: next });
   }
 
   function confirmSignOut() {
@@ -86,6 +102,48 @@ export default function HearthSettings() {
         ) : null}
       </View>
       {error ? <Text style={ui.error}>{error}</Text> : null}
+
+      <Text style={ui.sectionTitle}>Your Hearth</Text>
+      {hearthLoading ? (
+        <ActivityIndicator />
+      ) : (
+        <>
+          <Text style={ui.label}>Name</Text>
+          <TextInput
+            style={ui.input}
+            value={hearthTitle ?? layout.title}
+            onChangeText={setHearthTitle}
+            onEndEditing={commitHearthTitle}
+            placeholder="The Hearth"
+            returnKeyType="done"
+          />
+          <Text style={ui.label}>Theme</Text>
+          <View style={ui.chips}>
+            {(Object.keys(hearthThemes) as HearthThemeKey[]).map((key) => {
+              const theme = hearthThemes[key];
+              const selected = layout.theme === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => saveHearthChanges({ theme: key })}
+                  style={[
+                    ui.chip,
+                    { backgroundColor: theme.background, borderColor: theme.accent },
+                    selected && { borderWidth: 3 },
+                  ]}
+                >
+                  <Text style={{ color: theme.text, fontWeight: selected ? "700" : "400" }}>
+                    {theme.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={ui.muted}>
+            To arrange, resize, or recolor your Nooks, tap Edit on the Hearth.
+          </Text>
+        </>
+      )}
 
       <Text style={ui.sectionTitle}>Account</Text>
       <View style={ui.card}>

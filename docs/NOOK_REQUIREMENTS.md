@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 7)_
+_Last updated: 2026-10-07 (rev 8)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -8,15 +8,16 @@ _Last updated: 2026-10-07 (rev 7)_
 - **CORE-003** Nooks can be opened from the homepage and managed (arranged, removed, configured) easily there.
 - **CORE-004** Heavy customization throughout ("to your heart's content").
 - **CORE-005** Consistent cozy "small nook" naming theme for features and terms.
-- **CORE-006** The Hearth (homepage) is fully customizable, with drag-and-drop arranging, so each person can set it up however they like (organized or otherwise). This is the app's headline appeal. (Planned for later; not built yet.)
-- **CORE-007** Hearth tiles can be resized. (Later.)
-- **CORE-008** The Hearth can be restyled with colors and themes. (Later.)
-- **CORE-009** Nooks on the Hearth can be grouped into folders or groups. (Later.)
-- **CORE-010** Users can create widgets on the Hearth that show live info from a Nook (e.g. an upcoming Gathering). (Later.)
+- **CORE-006** The Hearth (homepage) is fully customizable, with drag-and-drop arranging, so each person can set it up however they like (organized or otherwise). This is the app's headline appeal. _(First version built: hold-and-drag tiles within and between sections.)_
+- **CORE-007** Hearth tiles can be resized. _(Built: Small, Wide, Large.)_
+- **CORE-008** The Hearth can be restyled with colors and themes. _(First version built (proposed details): 7 tile colors, 4 Hearth themes (Hearth, Ember, Sage, Dusk), renaming the Hearth and each tile.)_
+- **CORE-009** Nooks on the Hearth can be grouped into folders or groups. _(Built as named sections you can add, rename, reorder and remove; Nooks are dragged between them. Folders are still open.)_
+- **CORE-010** Users can create widgets on the Hearth that show live info from a Nook (e.g. an upcoming Gathering). _(First version built: Wide/Large Gift Nook tiles show upcoming Gatherings, never anything about claims.)_ (Later.)
 - **CORE-011** Users choose what they get notified about and what's shown on their Hearth. (Later.)
 - **CORE-012** Each Nook has its own settings page for customizing that Nook.
 - **CORE-013** The Hearth has a settings page for account-wide things: account info, setting your name, signing out, and anything else important.
 - **CORE-014** Every Nook has a clear way back to the Hearth.
+- **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
 ## 1a. Accounts & Login
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.
@@ -76,6 +77,7 @@ _Last updated: 2026-10-07 (rev 7)_
 - **2026-10-07 — Q-018 answered:** Yes to tile sizes, colors/themes, folders/groups and widgets: "fully customizable and can create widgets and almost set what they want notified or shown on their hearth." For later, not now. → CORE-007–011
 - **2026-10-07 — Hearth customization:** The Hearth will eventually be customizable with drag-and-drop, and that's "the big appeal of the app." → CORE-006, Q-018
 - **2026-10-07 — Settings pages:** "A settings page on each nook for more customization, and also settings on the hearth for account info, name setting, and logout and anything important." Also: the Gift Nook needed a way back to the Hearth. → CORE-012, CORE-013, CORE-014, Q-019
+- **2026-10-07 — Nook shop + Hearth layout:** "Allow the adding of a nook and have the gift nook be one to add. Almost like a shop." Plus the ability to "change the size of the nook" and "drag and drop it into different sections on the hearth," and "anything that you see worth while to make it more customizable." Claude's added picks, for Josh to confirm: tile colors and custom names, Hearth themes and name, live Gift Nook widget, backlog Nooks shown as "coming soon." → CORE-006–010, CORE-015
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -88,6 +90,7 @@ _Last updated: 2026-10-07 (rev 7)_
 | Claiming a gift | Tuck (it's "tucked away") | proposed |
 | An event | Gathering | proposed |
 | Gift categories | Shelves | proposed |
+| The Nook shop | The Market | proposed |
 
 ## 6. Nook Backlog
 - Food tracker Nook

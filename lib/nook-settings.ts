@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import { useAuth } from "./auth-context";
 import { supabase } from "./supabase";
@@ -6,42 +6,84 @@ import { supabase } from "./supabase";
 // Settings for the Hearth or one Nook, saved to the account
 // (public.nook_settings) so they follow you across devices. Saved values
 // are merged over `defaults`, so adding a new setting needs no migration.
-export function useNookSettings<T extends Record<string, unknown>>(nook: string, defaults: T) {
+//
+// All screens share one in-memory copy per (user, nook), so a change made
+// on one screen (e.g. adding a Nook from the Market) shows up immediately on
+// another (the Hearth) without reloading.
+
+type Saved = Record<string, unknown>;
+
+const cache = new Map<string, Saved>();
+const loadErrors = new Map<string, string>();
+const loading = new Set<string>();
+const listeners = new Map<string, Set<() => void>>();
+
+function notify(key: string) {
+  listeners.get(key)?.forEach((listener) => listener());
+}
+
+function load(key: string, userId: string, nook: string) {
+  if (loading.has(key)) return;
+  loading.add(key);
+  loadErrors.delete(key);
+  supabase
+    .from("nook_settings")
+    .select("settings")
+    .eq("profile_id", userId)
+    .eq("nook", nook)
+    .maybeSingle()
+    .then(({ data, error }) => {
+      loading.delete(key);
+      // On error, cache nothing: saving defaults over real settings after a
+      // network blip would wipe someone's Hearth.
+      if (error) loadErrors.set(key, error.message);
+      else cache.set(key, (data?.settings as Saved) ?? {});
+      notify(key);
+    });
+}
+
+export function useNookSettings<T extends Saved>(nook: string, defaults: T) {
   const { session } = useAuth();
   const userId = session?.user.id;
-  const [settings, setSettings] = useState<T>(defaults);
-  const [isLoading, setIsLoading] = useState(true);
+  const key = userId ? `${userId}:${nook}` : null;
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
 
   useEffect(() => {
-    if (!userId) return;
-    supabase
-      .from("nook_settings")
-      .select("settings")
-      .eq("profile_id", userId)
-      .eq("nook", nook)
-      .maybeSingle()
-      .then(({ data }) => {
-        setSettings({ ...defaults, ...(data?.settings ?? {}) });
-        setIsLoading(false);
-      });
-    // `defaults` is a literal at each call site; only reload when the Nook or user changes.
-  }, [nook, userId]);
+    if (!key || !userId) return;
+    const set = listeners.get(key) ?? new Set();
+    listeners.set(key, set);
+    set.add(rerender);
+    if (!cache.has(key)) load(key, userId, nook);
+    return () => {
+      set.delete(rerender);
+    };
+  }, [key, userId, nook]);
+
+  const saved = key ? cache.get(key) : undefined;
+  const error = key ? loadErrors.get(key) ?? null : null;
+  // `defaults` is a literal at each call site; recompute only when saved changes.
+  const settings = useMemo(() => ({ ...defaults, ...saved }) as T, [saved]);
 
   const update = useCallback(
     async (changes: Partial<T>) => {
-      if (!userId) return;
-      const next = { ...settings, ...changes };
-      setSettings(next);
-      const { error } = await supabase.from("nook_settings").upsert(
+      if (!key || !userId || !cache.has(key)) return;
+      const next = { ...cache.get(key), ...changes };
+      cache.set(key, next);
+      notify(key);
+      const { error: saveError } = await supabase.from("nook_settings").upsert(
         { profile_id: userId, nook, settings: next, updated_at: new Date().toISOString() },
         { onConflict: "profile_id,nook" }
       );
-      if (error) throw error;
+      if (saveError) throw saveError;
     },
-    [nook, settings, userId]
+    [key, userId, nook]
   );
 
-  return { settings, update, isLoading };
+  const reload = useCallback(() => {
+    if (key && userId) load(key, userId, nook);
+  }, [key, userId, nook]);
+
+  return { settings, update, reload, isLoading: !saved && !error, error };
 }
 
 // Gift Nook settings and their defaults. Provisional list pending Q-019.
