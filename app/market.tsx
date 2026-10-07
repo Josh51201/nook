@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../components/nook-scroll";
 import { addNook, hasNook, removeNook, useHearthLayout } from "../lib/hearth";
 import { nookCatalog, type NookDefinition } from "../lib/nooks";
 import { colors, ui } from "../lib/theme";
@@ -54,7 +55,7 @@ export default function Market() {
   }
 
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <NookScroll>
       <Text style={ui.muted}>Pick the Nooks you want on your Hearth.</Text>
       {nookCatalog.map((nook) => {
         const added = hasNook(layout, nook.id);
@@ -88,6 +89,6 @@ export default function Market() {
           </View>
         );
       })}
-    </ScrollView>
+    </NookScroll>
   );
 }

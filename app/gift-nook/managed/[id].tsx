@@ -3,7 +3,6 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  ScrollView,
   Share,
   Text,
   TextInput,
@@ -11,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { NookScroll } from "../../../components/nook-scroll";
 import { useAuth } from "../../../lib/auth-context";
 import { displayName, type Profile } from "../../../lib/gift-nook";
 import { supabase } from "../../../lib/supabase";
@@ -126,7 +126,7 @@ export default function ManageProfile() {
   }
 
   return (
-    <ScrollView contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled">
+    <NookScroll>
       <Stack.Screen options={{ title: `Manage ${savedName}` }} />
 
       <Text style={ui.label}>Name</Text>
@@ -203,6 +203,6 @@ export default function ManageProfile() {
       <TouchableOpacity onPress={confirmDelete} style={{ alignItems: "center", marginTop: 24 }}>
         <Text style={{ color: colors.error }}>Delete {savedName}'s profile</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </NookScroll>
   );
 }

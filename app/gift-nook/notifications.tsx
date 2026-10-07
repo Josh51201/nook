@@ -1,7 +1,8 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { formatDate } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
@@ -84,10 +85,7 @@ export default function Notifications() {
   const unread = notices.filter((n) => !n.read_at).length;
 
   return (
-    <ScrollView
-      contentContainerStyle={ui.screen}
-      refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
-    >
+    <NookScroll onRefresh={load}>
       {unread > 0 ? (
         <TouchableOpacity onPress={markAllRead} style={{ alignSelf: "flex-end" }}>
           <Text style={ui.link}>Mark all read</Text>
@@ -114,6 +112,6 @@ export default function Notifications() {
           </TouchableOpacity>
         ))
       )}
-    </ScrollView>
+    </NookScroll>
   );
 }

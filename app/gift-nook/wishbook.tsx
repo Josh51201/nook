@@ -1,15 +1,8 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { GiftCard } from "../../components/gift-card";
 import { useAuth } from "../../lib/auth-context";
 import { GIFT_SELECT, type Gift } from "../../lib/gift-nook";
@@ -75,10 +68,7 @@ export default function MyWishbook() {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={ui.screen}
-      refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
-    >
+    <NookScroll onRefresh={load}>
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
       <TouchableOpacity style={ui.button} onPress={() => router.push("/gift-nook/gift-form")}>
@@ -117,6 +107,6 @@ export default function MyWishbook() {
           ))}
         </>
       ) : null}
-    </ScrollView>
+    </NookScroll>
   );
 }

@@ -1,8 +1,9 @@
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../components/nook-scroll";
 import { useAuth } from "../lib/auth-context";
 import { hearthThemes, useHearthLayout, type HearthThemeKey } from "../lib/hearth";
 import { formatDate } from "../lib/gift-nook";
@@ -81,7 +82,7 @@ export default function HearthSettings() {
   }
 
   return (
-    <ScrollView contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled">
+    <NookScroll>
       <Text style={ui.sectionTitle}>Your name</Text>
       <Text style={ui.muted}>This is what your family sees in every Nook.</Text>
       <View style={ui.row}>
@@ -164,6 +165,6 @@ export default function HearthSettings() {
       <Text style={[ui.muted, { textAlign: "center", marginTop: 24 }]}>
         Nook v{Constants.expoConfig?.version ?? "?"}
       </Text>
-    </ScrollView>
+    </NookScroll>
   );
 }

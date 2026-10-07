@@ -1,5 +1,6 @@
-import { ActivityIndicator, Alert, ScrollView, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Switch, Text, View } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { giftNookSettingDefaults, useNookSettings } from "../../lib/nook-settings";
 import { colors, ui } from "../../lib/theme";
 
@@ -26,7 +27,7 @@ export default function GiftNookSettings() {
   }
 
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <NookScroll>
       <Text style={ui.sectionTitle}>Family Wishbooks</Text>
       <SettingRow
         title="Hide gifts that are already taken"
@@ -65,7 +66,7 @@ export default function GiftNookSettings() {
       <Text style={[ui.muted, { marginTop: 16 }]}>
         Your name and account live in Hearth settings (the ⚙︎ on the Hearth).
       </Text>
-    </ScrollView>
+    </NookScroll>
   );
 }
 

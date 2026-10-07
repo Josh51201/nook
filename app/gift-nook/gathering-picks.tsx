@@ -1,7 +1,8 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Switch, Text, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
 import {
   GIFT_SELECT,
@@ -97,7 +98,7 @@ export default function GatheringPicks() {
   const shownCount = gifts.filter((g) => isGiftShown(g.id, picks)).length;
 
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <NookScroll>
       <Stack.Screen options={{ title: "Your gifts here" }} />
       <Text style={ui.muted}>
         Choose which of your gifts family sees for {title || "this Gathering"}. Your Wishbook itself
@@ -143,6 +144,6 @@ export default function GatheringPicks() {
           trackColor={{ true: colors.bark }}
         />
       </View>
-    </ScrollView>
+    </NookScroll>
   );
 }

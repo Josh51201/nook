@@ -1,16 +1,8 @@
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
 import { displayName } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
@@ -167,11 +159,7 @@ export default function GiftNookHome() {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={ui.screen}
-      keyboardShouldPersistTaps="handled"
-      refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
-    >
+    <NookScroll onRefresh={load}>
       <Stack.Screen
         options={{
           headerRight: () => (
@@ -281,6 +269,6 @@ export default function GiftNookHome() {
       <TouchableOpacity style={ui.secondaryButton} onPress={answerCode} disabled={busy !== null}>
         <Text style={ui.secondaryButtonText}>{busy === "code" ? "Checking…" : "Use code"}</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </NookScroll>
   );
 }

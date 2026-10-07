@@ -1,7 +1,8 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../../components/nook-scroll";
 import { useAuth } from "../../../lib/auth-context";
 import {
   displayName,
@@ -134,7 +135,7 @@ export default function GatheringScreen() {
   const archived = isArchived(gathering);
 
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <NookScroll>
       <Stack.Screen options={{ title: gathering.title }} />
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
@@ -169,6 +170,6 @@ export default function GatheringScreen() {
           <Text style={ui.error}>Delete Gathering</Text>
         </TouchableOpacity>
       ) : null}
-    </ScrollView>
+    </NookScroll>
   );
 }

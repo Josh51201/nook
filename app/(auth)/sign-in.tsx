@@ -2,13 +2,12 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 import { supabase } from "../../lib/supabase";
 
@@ -43,7 +42,7 @@ export default function SignIn() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior="padding"
     >
       <Text style={styles.title}>Welcome to Nook</Text>
       <Text style={styles.subtitle}>Enter your email and we'll send you a one-time code.</Text>

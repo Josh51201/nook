@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  ScrollView,
   Switch,
   Text,
   TextInput,
@@ -12,6 +11,7 @@ import {
   View,
 } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
 import { displayName, repeatableByDefault, shelfFields, type Shelf } from "../../lib/gift-nook";
 import { fetchLinkPreview } from "../../lib/link-preview";
@@ -208,7 +208,7 @@ export default function GiftForm() {
         : "New gift";
 
   return (
-    <ScrollView contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled">
+    <NookScroll>
       <Stack.Screen options={{ title: screenTitle }} />
 
       {isSuggestion ? (
@@ -323,6 +323,6 @@ export default function GiftForm() {
           <Text style={ui.error}>{isSuggestion ? "Remove suggestion" : "Remove gift"}</Text>
         </TouchableOpacity>
       ) : null}
-    </ScrollView>
+    </NookScroll>
   );
 }

@@ -3,8 +3,6 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  RefreshControl,
-  ScrollView,
   Share,
   Text,
   TextInput,
@@ -12,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { NookScroll } from "../../../components/nook-scroll";
 import { useAuth } from "../../../lib/auth-context";
 import {
   displayName,
@@ -191,10 +190,7 @@ export default function BurrowScreen() {
   const archived = gatherings.filter(isArchived).reverse();
 
   return (
-    <ScrollView
-      contentContainerStyle={ui.screen}
-      refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
-    >
+    <NookScroll onRefresh={load}>
       <Stack.Screen options={{ title: name || "Burrow" }} />
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
@@ -294,7 +290,7 @@ export default function BurrowScreen() {
           <Text style={ui.error}>Delete this Burrow</Text>
         </TouchableOpacity>
       ) : null}
-    </ScrollView>
+    </NookScroll>
   );
 }
 

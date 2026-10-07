@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
@@ -52,7 +53,7 @@ export default function ManagedForm() {
   }
 
   return (
-    <ScrollView contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled">
+    <NookScroll>
       <Text style={ui.muted}>
         For kids or anyone without a phone. You'll manage their Wishbook — and since they can't
         peek, you'll see what's been tucked so you can coordinate. When they're older, give them a
@@ -91,6 +92,6 @@ export default function ManagedForm() {
           <Text style={ui.buttonText}>Make their Wishbook</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </NookScroll>
   );
 }

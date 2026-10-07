@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 import { tileColor, tilePalette, tileSizes, type HearthTile } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
@@ -51,7 +50,7 @@ export function TileOptions({
     <Modal visible={Boolean(tile)} transparent animationType="slide" onRequestClose={close}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
       >
         <Pressable style={styles.backdrop} onPress={close} />
         {tile ? (

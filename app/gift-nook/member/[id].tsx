@@ -1,16 +1,8 @@
 import { Redirect, Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../../components/nook-scroll";
 import { GiftCard } from "../../../components/gift-card";
 import { useAuth } from "../../../lib/auth-context";
 import {
@@ -274,10 +266,7 @@ export default function MemberWishbook() {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={ui.screen}
-      refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
-    >
+    <NookScroll onRefresh={load}>
       <Stack.Screen options={{ title: `${name}'s Wishbook` }} />
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
@@ -350,7 +339,7 @@ export default function MemberWishbook() {
           this in Gift Nook settings).
         </Text>
       ) : null}
-    </ScrollView>
+    </NookScroll>
   );
 }
 

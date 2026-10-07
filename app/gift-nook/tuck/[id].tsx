@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../../components/nook-scroll";
 import { tuckStatusLabel, type TuckStatus } from "../../../lib/gift-nook";
 import { supabase } from "../../../lib/supabase";
 import { colors, ui } from "../../../lib/theme";
@@ -62,7 +63,7 @@ export default function TuckScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled">
+    <NookScroll>
       <Text style={ui.sectionTitle}>{giftTitle}</Text>
 
       <Text style={ui.label}>Where are you at?</Text>
@@ -95,6 +96,6 @@ export default function TuckScreen() {
       <TouchableOpacity style={ui.button} onPress={save} disabled={isSaving}>
         {isSaving ? <ActivityIndicator color={colors.white} /> : <Text style={ui.buttonText}>Save</Text>}
       </TouchableOpacity>
-    </ScrollView>
+    </NookScroll>
   );
 }

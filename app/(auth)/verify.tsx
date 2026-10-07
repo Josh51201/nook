@@ -2,13 +2,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 import { supabase } from "../../lib/supabase";
 
@@ -47,7 +46,7 @@ export default function Verify() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior="padding"
     >
       <Text style={styles.title}>Check your email</Text>
       <Text style={styles.subtitle}>Enter the code we sent to {email}.</Text>

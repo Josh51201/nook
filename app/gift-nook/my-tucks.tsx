@@ -1,7 +1,8 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
 import { displayName, giftChangedSince, tuckStatusLabel, type Tuck } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
@@ -85,10 +86,7 @@ export default function MyTucks() {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={ui.screen}
-      refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
-    >
+    <NookScroll onRefresh={load}>
       {open.length === 0 ? (
         <Text style={ui.muted}>
           Nothing tucked away yet. Open someone's Wishbook and tap "Tuck it away" on a gift you'll get.
@@ -108,6 +106,6 @@ export default function MyTucks() {
           {given.map(row)}
         </>
       ) : null}
-    </ScrollView>
+    </NookScroll>
   );
 }

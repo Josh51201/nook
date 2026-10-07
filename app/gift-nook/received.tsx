@@ -1,7 +1,8 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { GIFT_SELECT, isGiftShown, loadGiftPicks, type Gift } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
@@ -76,7 +77,7 @@ export default function ReceivedScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={ui.screen}>
+    <NookScroll>
       <Stack.Screen options={{ title: "What did you get?" }} />
       <Text style={ui.muted}>
         {title} is over! Check off anything you received. One-and-done gifts come off the list;
@@ -106,6 +107,6 @@ export default function ReceivedScreen() {
           </Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </NookScroll>
   );
 }

@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from "react-native";
 
+import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
 import {
   displayName,
@@ -92,7 +93,7 @@ export default function GatheringForm() {
   }
 
   return (
-    <ScrollView contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled">
+    <NookScroll>
       <Text style={ui.label}>What kind?</Text>
       <View style={ui.chips}>
         {gatheringKinds.map((k) => {
@@ -159,7 +160,7 @@ export default function GatheringForm() {
           <Text style={ui.buttonText}>Plan Gathering</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </NookScroll>
   );
 }
 
