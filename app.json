@@ -47,6 +47,13 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "43bfa6a4-4972-434c-bc75-998bbfaabef8"
+      }
+    },
+    "owner": "josh51201s-team"
   }
 }
