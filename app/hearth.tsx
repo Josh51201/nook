@@ -3,14 +3,14 @@ import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
-import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DraggableTile } from "../components/hearth/draggable-tile";
 import { TileFace } from "../components/hearth/tile-face";
 import { TileOptions } from "../components/hearth/tile-options";
 import { Icon, IconBadge } from "../components/icon";
-import { Appear, Skeleton, Tap } from "../components/motion";
+import { Skeleton, Tap } from "../components/motion";
 import { useAuth } from "../lib/auth-context";
 import {
   hearthThemes,
@@ -216,7 +216,7 @@ export default function Hearth() {
         </View>
 
         {editing ? (
-          <Animated.View entering={FadeInDown.springify().damping(18)} exiting={FadeOut.duration(150)} style={[styles.hint, { backgroundColor: `${theme.accent}18` }]}>
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={[styles.hint, { backgroundColor: `${theme.accent}18` }]}>
             <Icon name="drag" size={18} color={theme.accent} />
             <Text style={{ color: theme.text, flex: 1 }}>
               Hold and drag a Nook to move it. Tap one to resize, recolor, or rename it.
@@ -240,7 +240,7 @@ export default function Hearth() {
         ) : (
           <View onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)} style={{ gap: 24 }}>
             {isEmpty && !editing ? (
-              <Appear>
+              <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
                 <View style={[styles.emptyCard, { borderColor: theme.muted }]}>
                   <IconBadge name="hearth" size={72} color={theme.accent} background={`${theme.accent}1f`} />
                   <Text style={[styles.emptyTitle, { color: theme.text }]}>Your Hearth is empty</Text>
@@ -248,13 +248,13 @@ export default function Hearth() {
                     Visit the Market to add your first Nook.
                   </Text>
                 </View>
-              </Appear>
+              </Animated.View>
             ) : (
               layout.sections.map((section, sectionIndex) => (
                 <Animated.View
                   key={section.id}
-                  entering={FadeInDown.delay(sectionIndex * 70).springify().damping(18)}
-                  layout={LinearTransition.springify().damping(18)}
+                  entering={FadeIn.delay(sectionIndex * 60).duration(280)}
+                  layout={LinearTransition.duration(260).easing(Easing.out(Easing.cubic))}
                   ref={(view: View | null) => {
                     if (view) sectionViews.current.set(section.id, view);
                     else sectionViews.current.delete(section.id);
@@ -338,12 +338,12 @@ export default function Hearth() {
             )}
 
             {editing ? (
-              <Appear>
+              <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
                 <Tap style={[styles.outlineButton, { borderColor: theme.accent }]} onPress={addSection}>
                   <Icon name="add" size={18} color={theme.accent} />
                   <Text style={{ color: theme.accent, fontWeight: "600" }}>New section</Text>
                 </Tap>
-              </Appear>
+              </Animated.View>
             ) : null}
 
             <Tap style={[styles.addButton, { backgroundColor: theme.accent }]} onPress={() => router.push("/market")}>

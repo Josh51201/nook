@@ -129,7 +129,7 @@ export const repeatableByDefault = new Set(["clothes", "money_gift_card"]);
 export type GatheringKind = "christmas" | "birthday" | "anniversary" | "baby_shower" | "other";
 
 export const gatheringKinds: { key: GatheringKind; label: string; icon: IconName; color: string }[] = [
-  { key: "christmas", label: "Christmas", icon: "christmas", color: "#3f7a4f" },
+  { key: "christmas", label: "Christmas", icon: "christmas", color: "#b8323e" },
   { key: "birthday", label: "Birthday", icon: "birthday", color: "#c2415a" },
   { key: "anniversary", label: "Anniversary", icon: "anniversary", color: "#b4507a" },
   { key: "baby_shower", label: "Baby shower", icon: "baby_shower", color: "#4f7fb0" },

@@ -130,20 +130,21 @@ export function LoadingScreen({ cards = 3 }: { cards?: number }) {
   );
 }
 
-// The iPhone-style wiggle for things you can rearrange (Hearth edit mode).
+// A gentle sway for things you can rearrange (Hearth edit mode) — small
+// and slow so the Hearth feels calm rather than jittery.
 export function useWiggle(active: boolean, seed = 0) {
   const rotation = useSharedValue(0);
   const reduceMotion = useReducedMotion();
   useEffect(() => {
     if (active && !reduceMotion) {
-      const amount = 1.1 + (seed % 3) * 0.15;
+      const amount = 0.55 + (seed % 3) * 0.08;
       rotation.value = withSequence(
-        withTiming(-amount, { duration: 70 + (seed % 4) * 10 }),
-        withRepeat(withTiming(amount, { duration: 130, easing: Easing.inOut(Easing.sin) }), -1, true)
+        withTiming(-amount, { duration: 160 + (seed % 4) * 25, easing: Easing.out(Easing.sin) }),
+        withRepeat(withTiming(amount, { duration: 320, easing: Easing.inOut(Easing.sin) }), -1, true)
       );
     } else {
       cancelAnimation(rotation);
-      rotation.value = withTiming(0, { duration: 120 });
+      rotation.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.quad) });
     }
   }, [active, reduceMotion, rotation, seed]);
   return useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }));

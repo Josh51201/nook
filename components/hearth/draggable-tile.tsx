@@ -2,11 +2,12 @@ import { useCallback, useMemo, useRef, type ReactNode } from "react";
 import type { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  Easing,
   FadeIn,
   LinearTransition,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
@@ -23,8 +24,9 @@ export type DragHandlers = {
 // A Hearth tile that can be tapped, long-pressed, and — in edit mode —
 // held and dragged. The drag itself runs on the UI thread (Reanimated), so
 // the tile tracks your finger smoothly; React only hears about the start,
-// the section you're hovering, and the drop. While editing, tiles wiggle
-// like iPhone home-screen icons; other tiles glide when the order changes.
+// the section you're hovering, and the drop. Motion here is eased, not
+// springy (Josh: the Hearth felt too bouncy): tiles sway gently while
+// editing, lift and settle smoothly, and glide when the order changes.
 export function DraggableTile({
   editing,
   isDragging,
@@ -69,7 +71,7 @@ export function DraggableTile({
     const pan = Gesture.Pan()
       .activateAfterLongPress(180)
       .onStart(() => {
-        lifted.value = withSpring(1, { damping: 14, stiffness: 260 });
+        lifted.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.cubic) });
         scheduleOnRN(dragStart);
       })
       .onUpdate((event) => {
@@ -85,7 +87,7 @@ export function DraggableTile({
         // the layout transition below glides the tile into its new spot.
         translateX.value = 0;
         translateY.value = 0;
-        lifted.value = withSpring(0, { damping: 16, stiffness: 220 });
+        lifted.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
       });
     return Gesture.Exclusive(pan, tap);
   }, [editing, press, longPress, dragStart, dragMove, drop, translateX, translateY, lifted]);
@@ -94,7 +96,7 @@ export function DraggableTile({
     transform: [
       { translateX: translateX.value },
       { translateY: translateY.value },
-      { scale: 1 + lifted.value * 0.06 },
+      { scale: 1 + lifted.value * 0.04 },
     ],
     shadowOpacity: lifted.value * 0.25,
   }));
@@ -105,7 +107,7 @@ export function DraggableTile({
         ref={viewRef}
         collapsable={false}
         entering={FadeIn.duration(250)}
-        layout={LinearTransition.springify().damping(18).stiffness(170)}
+        layout={LinearTransition.duration(260).easing(Easing.out(Easing.cubic))}
         style={[
           {
             zIndex: isDragging ? 100 : 0,

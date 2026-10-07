@@ -36,7 +36,7 @@ const icons = {
   bought: { ios: "shippingbox.fill", android: "local_shipping" },
   given: { ios: "party.popper.fill", android: "celebration" },
   // Gathering kinds
-  christmas: { ios: "tree.fill", android: "park" },
+  christmas: { ios: "snowflake", android: "ac_unit" },
   birthday: { ios: "birthday.cake.fill", android: "cake" },
   anniversary: { ios: "heart.circle.fill", android: "favorite" },
   baby_shower: { ios: "stroller.fill", android: "stroller" },
