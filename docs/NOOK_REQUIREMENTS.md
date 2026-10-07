@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 13)_
+_Last updated: 2026-10-07 (rev 14)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -25,6 +25,7 @@ _Last updated: 2026-10-07 (rev 13)_
 
 ## 1a. Accounts & Login
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.
+- **AUTH-002** While developing in Expo Go, there is an extra email + password "Developer sign-in" so test accounts (made in the Supabase dashboard) can be used without waiting for an emailed code. It never ships: it does not exist in a real release build.
 
 ## 2. Gift Nook (first Nook)
 - **GIFT-001** Users create families and invite others to join.
@@ -69,6 +70,8 @@ _Last updated: 2026-10-07 (rev 13)_
   - _Built so far:_ "Hide gifts that are already taken" *(proposed)*, plus the four notification switches (GIFT-029). Saved to the account, so they follow you to a new phone.
 - **Q-020** Deleting an account: Apple's App Store requires apps with sign-up to offer in-app account deletion. When someone deletes their account, what happens to Burrows they started, gifts they've tucked for others, and their Wishbook? (Needed before an App Store release, not before.)
 
+- **Q-023** Emailed sign-in codes: Resend without a verified domain only delivers to its owner's own address, so family members can't receive codes. Which domain should Nook send email from (a domain must be bought, about $10–15/year, then verified in Resend and set as the sender in Supabase)? Needed before anyone besides Josh uses the app.
+
 ## 4. Decision Log
 - **2026-10-06 — Q-001 answered:** A person can be in several families. Their list is created outside any family and shows in all of them, with claims visible to all families except the list owner. → GIFT-011, GIFT-012, GIFT-013
 - **2026-10-06 — Events:** Families can have multiple events (Christmas, birthdays, anniversary, baby shower, other) with end dates; ended events get archived and eventually go away. → GIFT-014–016
@@ -97,6 +100,7 @@ _Last updated: 2026-10-07 (rev 13)_
 - **2026-10-07 — Mobile polish:** "There are some parts where the typing keyboard will cover what I am trying to type, like the entering a knock code section. So lets do some mobile improvements and just improvements over the gift nook in general... Add any other details you think would be good." Claude's picks (proposed, for Josh to confirm): Most wanted, price + budget filter, editable Gatherings with a date picker and countdowns, a "Coming up" list, Copy/Share for codes, a "set your name" nudge, haptics, plain-English errors. → CORE-016, GIFT-032–034
 - **2026-10-07 — UI overhaul:** "It looks and feels great but very static. Is there a way to add any animations... AI loves to use emojis but didn't know if there was anything better like mui symbols. I just want it to feel nice and flow nice." → CORE-017
 - **2026-10-07 — Widgets + design-your-own Hearth:** "Allow the user to create widgets of different kinds on their hearth that is completely customizable on how it's shown and what is shown, so if it's the food one they can set different reminders for uploading their food, or events coming up for holidays, like ones for reminders for events, stuff to buy etc... will let you make the judge of what all." And: "I want the user to be able to design what it looks like, everyone's hearth will look different because they can change it all." → CORE-018, CORE-019
+- **2026-10-07 — Developer sign-in:** Signing in as a second test person with "+test" email failed ("error sending confirmation email") because emails only reach the account owner's address. Josh: "sure" to a dev-only password sign-in for testing. → AUTH-002, Q-023
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |

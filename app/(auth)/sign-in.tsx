@@ -4,6 +4,7 @@ import { StyleSheet, Text, TextInput } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 
+import { DevSignIn } from "../../components/dev-sign-in";
 import { IconBadge } from "../../components/icon";
 import { Button } from "../../components/ui";
 import { supabase } from "../../lib/supabase";
@@ -62,6 +63,8 @@ export default function SignIn() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Button title="Send code" onPress={sendCode} loading={isSending} style={{ marginTop: 8 }} />
+
+      <DevSignIn />
     </KeyboardAvoidingView>
   );
 }
