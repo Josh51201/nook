@@ -5,6 +5,7 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -15,8 +16,12 @@ import { useAuth } from "../../../lib/auth-context";
 import {
   displayName,
   GIFT_SELECT,
+  giftChangedSince,
+  isActiveTuck,
   isGiftShown,
   loadGiftPicks,
+  TUCK_SELECT,
+  tuckStatusLabel,
   type Gift,
   type Tuck,
 } from "../../../lib/gift-nook";
@@ -27,10 +32,16 @@ import { colors, ui } from "../../../lib/theme";
 type FamilyGift = Gift & { claims: Tuck[] };
 
 // Someone else's Wishbook, seen by family (GIFT-005/006/008/009/013). This is
-// the only screen that reads claims ("Tucks"). It redirects away if you open
-// your own — and RLS returns no claims to the owner regardless (GIFT-007).
-// Opened from a Gathering (?gatheringId=...), it shows only the gifts the
-// owner picked for that Gathering (GIFT-017).
+// the only place a Wishbook is shown with its tucks. It redirects away if
+// you open your own — and RLS returns no claims to an owner regardless
+// (GIFT-007).
+//
+//   ?gatheringId=...  only the gifts the owner picked for that Gathering
+//                     (GIFT-017); tucks made here are tied to it (GIFT-026).
+//
+// Managers of a kid's profile (GIFT-020) see this same view — including
+// tucks, by Josh's choice — plus add/edit buttons. Everyone else can leave
+// suggestions, hidden from the owner (GIFT-022).
 export default function MemberWishbook() {
   const router = useRouter();
   const { id: profileId, gatheringId } = useLocalSearchParams<{
@@ -39,22 +50,32 @@ export default function MemberWishbook() {
   }>();
   const { session } = useAuth();
   const userId = session?.user.id;
+  const { settings } = useNookSettings("gift-nook", giftNookSettingDefaults);
 
   const [name, setName] = useState("");
-  const { settings } = useNookSettings("gift-nook", giftNookSettingDefaults);
+  const [isManaged, setIsManaged] = useState(false);
+  const [isManager, setIsManager] = useState(false);
   const [gifts, setGifts] = useState<FamilyGift[]>([]);
   const [gatheringTitle, setGatheringTitle] = useState<string | null>(null);
-  const [hiddenCount, setHiddenCount] = useState(0);
+  const [hiddenByPicks, setHiddenByPicks] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [busyGiftId, setBusyGiftId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [profileResult, wishbookResult] = await Promise.all([
-      supabase.from("profiles").select("id, display_name").eq("id", profileId).single(),
+    if (!userId) return;
+    const [profileResult, wishbookResult, managerResult] = await Promise.all([
+      supabase.from("profiles").select("id, display_name, is_managed").eq("id", profileId).single(),
       supabase.from("wishbooks").select("id").eq("owner_id", profileId).single(),
+      supabase
+        .from("profile_managers")
+        .select("profile_id")
+        .eq("profile_id", profileId)
+        .eq("manager_id", userId),
     ]);
     setName(displayName(profileResult.data));
+    setIsManaged(Boolean(profileResult.data?.is_managed));
+    setIsManager(Boolean(managerResult.data?.length));
     if (wishbookResult.error || !wishbookResult.data) {
       setError("You can only see Wishbooks of people who share a Burrow with you.");
       setIsLoading(false);
@@ -64,8 +85,9 @@ export default function MemberWishbook() {
     const [giftsResult, picks, gatheringResult] = await Promise.all([
       supabase
         .from("gifts")
-        .select(`${GIFT_SELECT}, claims(id, claimed_by, released_at)`)
+        .select(`${GIFT_SELECT}, claims(${TUCK_SELECT})`)
         .eq("wishbook_id", wishbookId)
+        .is("received_at", null)
         .order("created_at", { ascending: false }),
       gatheringId ? loadGiftPicks(gatheringId, wishbookId) : null,
       gatheringId
@@ -76,13 +98,15 @@ export default function MemberWishbook() {
       setError(giftsResult.error.message);
     } else {
       const all = (giftsResult.data ?? []) as unknown as FamilyGift[];
-      const shown = picks ? all.filter((gift) => isGiftShown(gift.id, picks)) : all;
+      const shown = picks
+        ? all.filter((gift) => gift.removed_at || isGiftShown(gift.id, picks))
+        : all;
       setGifts(shown);
-      setHiddenCount(all.length - shown.length);
+      setHiddenByPicks(all.length - shown.length);
     }
     setGatheringTitle(gatheringResult?.data?.title ?? null);
     setIsLoading(false);
-  }, [profileId, gatheringId]);
+  }, [profileId, gatheringId, userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -94,64 +118,130 @@ export default function MemberWishbook() {
     return <Redirect href="/gift-nook/wishbook" />;
   }
 
-  async function tuck(gift: FamilyGift) {
-    setBusyGiftId(gift.id);
-    const { error: tuckError } = await supabase
-      .from("claims")
-      .insert({ gift_id: gift.id, claimed_by: userId });
-    setBusyGiftId(null);
-    if (tuckError) Alert.alert("Couldn't tuck it away", tuckError.message);
+  async function run(id: string, action: () => PromiseLike<{ error: { message: string } | null }>) {
+    setBusyId(id);
+    const { error: actionError } = await action();
+    setBusyId(null);
+    if (actionError) Alert.alert("Something went wrong", actionError.message);
     load();
   }
 
-  async function release(tuckId: string) {
-    setBusyGiftId(tuckId);
-    const { error: releaseError } = await supabase.rpc("release_tuck", { claim_id: tuckId });
-    setBusyGiftId(null);
-    if (releaseError) Alert.alert("Couldn't release it", releaseError.message);
-    load();
-  }
+  const tuck = (gift: FamilyGift) =>
+    run(gift.id, () =>
+      supabase
+        .from("claims")
+        .insert({ gift_id: gift.id, claimed_by: userId, gathering_id: gatheringId ?? null })
+    );
 
-  function confirmRelease(tuckId: string) {
+  const setStatus = (mine: Tuck, status: "planning" | "bought") =>
+    run(mine.id, () =>
+      supabase.rpc("update_tuck", { claim_id: mine.id, new_status: status, new_note: mine.note })
+    );
+
+  const acknowledge = (mine: Tuck) =>
+    run(mine.id, () => supabase.rpc("acknowledge_tuck", { claim_id: mine.id }));
+
+  function confirmRelease(mine: Tuck) {
     Alert.alert("Release this gift?", "Someone else will be able to tuck it away instead.", [
       { text: "Keep it", style: "cancel" },
-      { text: "Release", style: "destructive", onPress: () => release(tuckId) },
+      {
+        text: "Release",
+        style: "destructive",
+        onPress: () => run(mine.id, () => supabase.rpc("release_tuck", { claim_id: mine.id })),
+      },
     ]);
   }
 
-  function tuckFooter(gift: FamilyGift) {
-    const active = gift.claims.filter((c) => !c.released_at);
-    const mine = active.find((c) => c.claimed_by === userId);
-    const othersCount = active.length - (mine ? 1 : 0);
-    const isBusy = busyGiftId === gift.id || busyGiftId === mine?.id;
+  function canEdit(gift: FamilyGift) {
+    return isManager || gift.suggested_by === userId;
+  }
 
-    // Who tucked it is hidden for now — Q-005/Q-016 are still open.
-    const othersNote =
-      othersCount > 0
-        ? `${othersCount} other${othersCount === 1 ? " is" : "s are"} giving this too`
-        : null;
+  function tuckFooter(gift: FamilyGift) {
+    const active = gift.claims.filter(isActiveTuck);
+    const mine = active.find((c) => c.claimed_by === userId);
+    const others = active.filter((c) => c.claimed_by !== userId);
+    const isBusy = busyId === gift.id || busyId === mine?.id;
+
+    // GIFT-024: co-givers by name, with their status and notes.
+    const giverList =
+      others.length > 0 ? (
+        <View style={styles.givers}>
+          {others.map((other) => (
+            <Text key={other.id} style={styles.giver}>
+              <Text style={{ fontWeight: "600" }}>{displayName(other.profiles)}</Text> ·{" "}
+              {tuckStatusLabel[other.status]}
+              {other.note ? <Text style={styles.note}> — “{other.note}”</Text> : null}
+            </Text>
+          ))}
+        </View>
+      ) : null;
+
+    if (gift.removed_at) {
+      return mine ? (
+        <View style={[styles.banner, { backgroundColor: "#fdecea" }]}>
+          <Text style={styles.bannerText}>
+            {name} removed this from their list. You'd tucked it ({tuckStatusLabel[mine.status].toLowerCase()}).
+          </Text>
+          <Text style={ui.link} onPress={() => run(mine.id, () => supabase.rpc("release_tuck", { claim_id: mine.id }))}>
+            Release it
+          </Text>
+        </View>
+      ) : null;
+    }
 
     if (mine) {
       return (
-        <View style={{ marginTop: 8, gap: 4 }}>
-          <Text style={{ color: colors.bark, fontWeight: "600" }}>✓ You tucked this away</Text>
-          {othersNote ? <Text style={ui.muted}>{othersNote}</Text> : null}
-          <Text style={ui.link} onPress={() => !isBusy && confirmRelease(mine.id)}>
-            Release it
+        <View style={{ marginTop: 8, gap: 6 }}>
+          {giftChangedSince(gift, mine) ? (
+            <View style={[styles.banner, { backgroundColor: "#fff4d6" }]}>
+              <Text style={styles.bannerText}>✏️ {name}'s list changed this gift since you tucked it.</Text>
+              <Text style={ui.link} onPress={() => acknowledge(mine)}>
+                Got it
+              </Text>
+            </View>
+          ) : null}
+          <Text style={{ color: colors.bark, fontWeight: "700" }}>
+            ✓ You tucked this · {tuckStatusLabel[mine.status]}
           </Text>
+          {mine.note ? <Text style={styles.note}>Your note: “{mine.note}”</Text> : null}
+          {giverList}
+          <View style={[ui.row, { flexWrap: "wrap" }]}>
+            <TouchableOpacity
+              style={[ui.chip, mine.status === "bought" && ui.chipSelected]}
+              disabled={isBusy}
+              onPress={() => setStatus(mine, mine.status === "bought" ? "planning" : "bought")}
+            >
+              <Text style={[ui.chipText, mine.status === "bought" && ui.chipTextSelected]}>
+                {mine.status === "bought" ? "Bought ✓" : "Mark bought"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={ui.chip}
+              onPress={() => router.push(`/gift-nook/tuck/${mine.id}`)}
+            >
+              <Text style={ui.chipText}>{mine.note ? "Edit note" : "Add note"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={ui.chip} disabled={isBusy} onPress={() => confirmRelease(mine)}>
+              <Text style={ui.chipText}>Release</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
 
     if (!gift.is_repeatable && active.length > 0) {
       return (
-        <Text style={[ui.muted, { marginTop: 8 }]}>🤫 Already tucked away by someone</Text>
+        <View style={{ marginTop: 8 }}>
+          <Text style={ui.muted}>🤫 Already tucked away</Text>
+          {giverList}
+        </View>
       );
     }
 
     return (
       <View style={{ marginTop: 8, gap: 6 }}>
-        {othersNote ? <Text style={ui.muted}>{othersNote}</Text> : null}
+        {others.length > 0 ? <Text style={ui.muted}>Also giving this:</Text> : null}
+        {giverList}
         <TouchableOpacity style={ui.button} onPress={() => tuck(gift)} disabled={isBusy}>
           {isBusy ? (
             <ActivityIndicator color={colors.white} />
@@ -164,12 +254,13 @@ export default function MemberWishbook() {
   }
 
   // Gift Nook setting: hide one-and-done gifts someone else already tucked
-  // away. Gifts you tucked yourself always stay, so you can release them.
+  // away. Gifts you tucked yourself always stay, so you can manage them.
   const visibleGifts = settings.hideTakenGifts
     ? gifts.filter(
         (gift) =>
           gift.is_repeatable ||
-          !gift.claims.some((c) => !c.released_at && c.claimed_by !== userId)
+          gift.claims.some((c) => isActiveTuck(c) && c.claimed_by === userId) ||
+          !gift.claims.some(isActiveTuck)
       )
     : gifts;
   const hiddenTakenCount = gifts.length - visibleGifts.length;
@@ -189,27 +280,68 @@ export default function MemberWishbook() {
     >
       <Stack.Screen options={{ title: `${name}'s Wishbook` }} />
       {error ? <Text style={ui.error}>{error}</Text> : null}
+
       <Text style={ui.muted}>
-        🤫 {name} can't see anything you tuck away — it stays a surprise.
+        {isManaged && isManager
+          ? `👶 You help manage ${name}'s list, so you can see what's been tucked away to coordinate.`
+          : `🤫 ${name} can't see anything you tuck away or suggest — it stays a surprise.`}
       </Text>
+
       {gatheringTitle ? (
         <Text style={ui.muted}>
           Showing what {name} picked for {gatheringTitle}.
-          {hiddenCount > 0 ? (
-            <Text
-              style={ui.link}
-              onPress={() => router.push(`/gift-nook/member/${profileId}`)}
-            >
-              {" "}See full Wishbook ({hiddenCount} more)
+          {hiddenByPicks > 0 ? (
+            <Text style={ui.link} onPress={() => router.push(`/gift-nook/member/${profileId}`)}>
+              {" "}See full Wishbook ({hiddenByPicks} more)
             </Text>
           ) : null}
         </Text>
       ) : null}
-      {gifts.length === 0 && !error ? (
+
+      <View style={ui.row}>
+        {isManager ? (
+          <>
+            <TouchableOpacity
+              style={[ui.button, { flex: 1 }]}
+              onPress={() =>
+                router.push({ pathname: "/gift-nook/gift-form", params: { forProfileId: profileId } })
+              }
+            >
+              <Text style={ui.buttonText}>+ Add a gift</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[ui.secondaryButton, { flex: 1 }]}
+              onPress={() => router.push(`/gift-nook/managed/${profileId}`)}
+            >
+              <Text style={ui.secondaryButtonText}>Manage {name}</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity
+            style={[ui.secondaryButton, { flex: 1 }]}
+            onPress={() =>
+              router.push({ pathname: "/gift-nook/gift-form", params: { forProfileId: profileId } })
+            }
+          >
+            <Text style={ui.secondaryButtonText}>💡 Suggest a gift (hidden from {name})</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {visibleGifts.length === 0 && !error ? (
         <Text style={ui.muted}>{name} hasn't added any gifts yet.</Text>
       ) : (
         visibleGifts.map((gift) => (
-          <GiftCard key={gift.id} gift={gift} footer={tuckFooter(gift)} />
+          <GiftCard
+            key={gift.id}
+            gift={gift}
+            onPress={
+              canEdit(gift) && !gift.removed_at
+                ? () => router.push({ pathname: "/gift-nook/gift-form", params: { giftId: gift.id } })
+                : undefined
+            }
+            footer={tuckFooter(gift)}
+          />
         ))
       )}
       {hiddenTakenCount > 0 ? (
@@ -221,3 +353,11 @@ export default function MemberWishbook() {
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  givers: { gap: 2 },
+  giver: { fontSize: 14, color: colors.text },
+  note: { fontSize: 14, color: colors.muted, fontStyle: "italic" },
+  banner: { borderRadius: 10, padding: 10, gap: 4, marginTop: 8 },
+  bannerText: { fontSize: 14, color: colors.text },
+});

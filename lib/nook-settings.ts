@@ -87,6 +87,12 @@ export function useNookSettings<T extends Saved>(nook: string, defaults: T) {
 }
 
 // Gift Nook settings and their defaults. Provisional list pending Q-019.
+// The notify* keys are also read by the database (public.wants_notification)
+// — rename them in both places or not at all.
 export const giftNookSettingDefaults = {
   hideTakenGifts: false,
+  notifyGatheringSoon: true, // GIFT-029
+  notifyNewGifts: true,
+  notifyTuckChanged: true,
+  notifyMemberJoined: true,
 };

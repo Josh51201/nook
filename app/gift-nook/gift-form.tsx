@@ -1,8 +1,9 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   Switch,
   Text,
@@ -12,31 +13,40 @@ import {
 } from "react-native";
 
 import { useAuth } from "../../lib/auth-context";
-import { repeatableByDefault, shelfFields, type Shelf } from "../../lib/gift-nook";
+import { displayName, repeatableByDefault, shelfFields, type Shelf } from "../../lib/gift-nook";
+import { fetchLinkPreview } from "../../lib/link-preview";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
-// Add or edit a gift on your own Wishbook (GIFT-002/003/004/009). Pass
-// ?giftId=... to edit.
+// Add or edit a gift (GIFT-002/003/004/009/030).
+//   ?giftId=...        edit an existing gift (yours, your kid's, or your suggestion)
+//   ?forProfileId=...  add to someone else's list: a kid you manage gets a
+//                      normal gift (GIFT-020); anyone else gets a suggestion,
+//                      hidden from them (GIFT-022).
 export default function GiftForm() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id;
-  const { giftId } = useLocalSearchParams<{ giftId?: string }>();
+  const { giftId, forProfileId } = useLocalSearchParams<{ giftId?: string; forProfileId?: string }>();
   const isEditing = Boolean(giftId);
 
   const [shelves, setShelves] = useState<Shelf[]>([]);
   const [shelfId, setShelfId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [isRepeatable, setIsRepeatable] = useState(false);
   const [details, setDetails] = useState<Record<string, string>>({});
+  const [isSuggestion, setIsSuggestion] = useState(false);
+  const [forName, setForName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFetchingPreview, setIsFetchingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!userId) return;
     (async () => {
       const { data: shelfRows } = await supabase.from("shelves").select("*").order("sort_order");
       setShelves(shelfRows ?? []);
@@ -53,17 +63,33 @@ export default function GiftForm() {
           setShelfId(gift.shelf_id);
           setTitle(gift.title);
           setUrl(gift.url ?? "");
+          setImageUrl(gift.image_url);
           setNotes(gift.notes ?? "");
           setIsRepeatable(gift.is_repeatable);
           setDetails(gift.details ?? {});
+          setIsSuggestion(Boolean(gift.suggested_by));
         }
-      } else if (shelfRows?.length) {
-        setShelfId(shelfRows[0].id);
-        setIsRepeatable(repeatableByDefault.has(shelfRows[0].key));
+      } else {
+        if (shelfRows?.length) {
+          setShelfId(shelfRows[0].id);
+          setIsRepeatable(repeatableByDefault.has(shelfRows[0].key));
+        }
+        if (forProfileId && forProfileId !== userId) {
+          const [profileResult, managerResult] = await Promise.all([
+            supabase.from("profiles").select("id, display_name").eq("id", forProfileId).single(),
+            supabase
+              .from("profile_managers")
+              .select("profile_id")
+              .eq("profile_id", forProfileId)
+              .eq("manager_id", userId),
+          ]);
+          setForName(displayName(profileResult.data));
+          setIsSuggestion(!managerResult.data?.length);
+        }
       }
       setIsLoading(false);
     })();
-  }, [giftId]);
+  }, [giftId, forProfileId, userId]);
 
   const shelf = shelves.find((s) => s.id === shelfId);
   const fields = shelfFields[shelf?.key ?? ""] ?? [];
@@ -71,6 +97,28 @@ export default function GiftForm() {
   function pickShelf(next: Shelf) {
     setShelfId(next.id);
     if (!isEditing) setIsRepeatable(repeatableByDefault.has(next.key));
+  }
+
+  async function fillFromLink() {
+    if (!url.trim()) return;
+    setIsFetchingPreview(true);
+    const preview = await fetchLinkPreview(url.trim());
+    setIsFetchingPreview(false);
+    if (!preview) {
+      Alert.alert(
+        "Couldn't read that link",
+        "Some shops (Amazon especially) don't always share details. Just type the name in — the link still works."
+      );
+      return;
+    }
+    if (preview.title && !title.trim()) setTitle(preview.title);
+    else if (preview.title && preview.title !== title) {
+      Alert.alert("Use this name?", preview.title, [
+        { text: "Keep mine", style: "cancel" },
+        { text: "Use it", onPress: () => setTitle(preview.title!) },
+      ]);
+    }
+    if (preview.imageUrl) setImageUrl(preview.imageUrl);
   }
 
   async function save() {
@@ -93,6 +141,7 @@ export default function GiftForm() {
       shelf_id: shelfId,
       title: title.trim(),
       url: url.trim() || null,
+      image_url: imageUrl,
       notes: notes.trim() || null,
       is_repeatable: isRepeatable,
       details: cleanDetails,
@@ -100,19 +149,18 @@ export default function GiftForm() {
 
     let saveError;
     if (giftId) {
-      ({ error: saveError } = await supabase
-        .from("gifts")
-        .update({ ...values, updated_at: new Date().toISOString() })
-        .eq("id", giftId));
+      ({ error: saveError } = await supabase.from("gifts").update(values).eq("id", giftId));
     } else {
       const { data: wishbook } = await supabase
         .from("wishbooks")
         .select("id")
-        .eq("owner_id", userId)
+        .eq("owner_id", forProfileId ?? userId)
         .single();
-      ({ error: saveError } = await supabase
-        .from("gifts")
-        .insert({ ...values, wishbook_id: wishbook?.id }));
+      ({ error: saveError } = await supabase.from("gifts").insert({
+        ...values,
+        wishbook_id: wishbook?.id,
+        suggested_by: isSuggestion ? userId : null,
+      }));
     }
 
     setIsSaving(false);
@@ -121,20 +169,24 @@ export default function GiftForm() {
   }
 
   function confirmDelete() {
-    // Q-009 is still open: claimers aren't told yet when a gift they tucked
-    // is deleted. The owner gets no hint either way (GIFT-007).
-    Alert.alert("Remove this gift?", "It will disappear from your Wishbook in every Burrow.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: async () => {
-          const { error: deleteError } = await supabase.from("gifts").delete().eq("id", giftId!);
-          if (deleteError) setError(deleteError.message);
-          else router.back();
+    // If someone tucked it, they get a heads-up; you're never told either way
+    // (GIFT-025, GIFT-007).
+    Alert.alert(
+      isSuggestion ? "Remove this suggestion?" : "Remove this gift?",
+      isSuggestion ? undefined : "It will disappear from the Wishbook in every Burrow.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            const { error: deleteError } = await supabase.rpc("remove_gift", { target_gift: giftId });
+            if (deleteError) setError(deleteError.message);
+            else router.back();
+          },
         },
-      },
-    ]);
+      ]
+    );
   }
 
   if (isLoading) {
@@ -145,8 +197,61 @@ export default function GiftForm() {
     );
   }
 
+  const screenTitle = isEditing
+    ? isSuggestion
+      ? "Your suggestion"
+      : "Gift"
+    : isSuggestion
+      ? `Suggest for ${forName ?? "them"}`
+      : forName
+        ? `Gift for ${forName}`
+        : "New gift";
+
   return (
     <ScrollView contentContainerStyle={ui.screen} keyboardShouldPersistTaps="handled">
+      <Stack.Screen options={{ title: screenTitle }} />
+
+      {isSuggestion ? (
+        <View style={[ui.card, { backgroundColor: "#fff7e6" }]}>
+          <Text style={ui.cardTitle}>🤫 This is a suggestion</Text>
+          <Text style={ui.muted}>
+            {forName ?? "They"} won't see it. Everyone else can, and can tuck it away.
+          </Text>
+        </View>
+      ) : null}
+
+      <Text style={ui.label}>Link (Amazon or anywhere)</Text>
+      <View style={ui.row}>
+        <TextInput
+          style={[ui.input, { flex: 1 }]}
+          value={url}
+          onChangeText={setUrl}
+          onEndEditing={() => !title.trim() && url.trim() && fillFromLink()}
+          placeholder="https://www.amazon.com/..."
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+        />
+        {url.trim() ? (
+          <TouchableOpacity style={ui.secondaryButton} onPress={fillFromLink} disabled={isFetchingPreview}>
+            {isFetchingPreview ? (
+              <ActivityIndicator color={colors.bark} />
+            ) : (
+              <Text style={ui.secondaryButtonText}>✨ Fill in</Text>
+            )}
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      {imageUrl ? (
+        <View style={[ui.row, { gap: 12 }]}>
+          <Image source={{ uri: imageUrl }} style={{ width: 80, height: 80, borderRadius: 10 }} resizeMode="contain" />
+          <TouchableOpacity onPress={() => setImageUrl(null)}>
+            <Text style={ui.error}>Remove picture</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <Text style={ui.label}>What is it?</Text>
       <TextInput style={ui.input} value={title} onChangeText={setTitle} placeholder="e.g. Cozy wool socks" />
 
@@ -178,17 +283,6 @@ export default function GiftForm() {
         </View>
       ))}
 
-      <Text style={ui.label}>Link (Amazon or anywhere)</Text>
-      <TextInput
-        style={ui.input}
-        value={url}
-        onChangeText={setUrl}
-        placeholder="https://www.amazon.com/..."
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="url"
-      />
-
       <Text style={ui.label}>Notes</Text>
       <TextInput
         style={[ui.input, { minHeight: 80, textAlignVertical: "top" }]}
@@ -218,13 +312,15 @@ export default function GiftForm() {
         {isSaving ? (
           <ActivityIndicator color={colors.white} />
         ) : (
-          <Text style={ui.buttonText}>{isEditing ? "Save changes" : "Add to Wishbook"}</Text>
+          <Text style={ui.buttonText}>
+            {isEditing ? "Save changes" : isSuggestion ? "Add suggestion" : "Add to Wishbook"}
+          </Text>
         )}
       </TouchableOpacity>
 
       {isEditing ? (
         <TouchableOpacity onPress={confirmDelete} style={{ alignItems: "center" }}>
-          <Text style={ui.error}>Remove gift</Text>
+          <Text style={ui.error}>{isSuggestion ? "Remove suggestion" : "Remove gift"}</Text>
         </TouchableOpacity>
       ) : null}
     </ScrollView>

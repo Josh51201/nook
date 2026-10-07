@@ -15,8 +15,9 @@ import { colors, ui } from "../../lib/theme";
 
 // GIFT-017: pick which of your gifts show for one Gathering — e.g. only
 // money for your birthday, everything for Christmas. Saves on every toggle.
+// ?profileId=... picks for a kid you manage instead (GIFT-020).
 export default function GatheringPicks() {
-  const { gatheringId } = useLocalSearchParams<{ gatheringId: string }>();
+  const { gatheringId, profileId } = useLocalSearchParams<{ gatheringId: string; profileId?: string }>();
   const { session } = useAuth();
   const userId = session?.user.id;
 
@@ -32,7 +33,7 @@ export default function GatheringPicks() {
     (async () => {
       const [gatheringResult, wishbookResult] = await Promise.all([
         supabase.from("gatherings").select("title").eq("id", gatheringId).single(),
-        supabase.from("wishbooks").select("id").eq("owner_id", userId).single(),
+        supabase.from("wishbooks").select("id").eq("owner_id", profileId ?? userId).single(),
       ]);
       setTitle(gatheringResult.data?.title ?? "");
       const wishbook = wishbookResult.data;
@@ -47,6 +48,8 @@ export default function GatheringPicks() {
           .from("gifts")
           .select(GIFT_SELECT)
           .eq("wishbook_id", wishbook.id)
+          .is("received_at", null)
+          .is("suggested_by", null)
           .order("created_at", { ascending: false }),
         loadGiftPicks(gatheringId, wishbook.id),
       ]);
@@ -54,7 +57,7 @@ export default function GatheringPicks() {
       setPicks(loadedPicks);
       setIsLoading(false);
     })();
-  }, [gatheringId, userId]);
+  }, [gatheringId, profileId, userId]);
 
   async function setGiftsIncluded(giftIds: string[], included: boolean) {
     const next = new Map(picks.picks);

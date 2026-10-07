@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 8)_
+_Last updated: 2026-10-07 (rev 9)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -12,8 +12,8 @@ _Last updated: 2026-10-07 (rev 8)_
 - **CORE-007** Hearth tiles can be resized. _(Built: Small, Wide, Large.)_
 - **CORE-008** The Hearth can be restyled with colors and themes. _(First version built (proposed details): 7 tile colors, 4 Hearth themes (Hearth, Ember, Sage, Dusk), renaming the Hearth and each tile.)_
 - **CORE-009** Nooks on the Hearth can be grouped into folders or groups. _(Built as named sections you can add, rename, reorder and remove; Nooks are dragged between them. Folders are still open.)_
-- **CORE-010** Users can create widgets on the Hearth that show live info from a Nook (e.g. an upcoming Gathering). _(First version built: Wide/Large Gift Nook tiles show upcoming Gatherings, never anything about claims.)_ (Later.)
-- **CORE-011** Users choose what they get notified about and what's shown on their Hearth. (Later.)
+- **CORE-010** Users can create widgets on the Hearth that show live info from a Nook (e.g. an upcoming Gathering). _(First version built: Wide/Large Gift Nook tiles show upcoming Gatherings, never anything about claims.)_
+- **CORE-011** Users choose what they get notified about and what's shown on their Hearth. _(Gift Nook notifications are now chosen per person — GIFT-029. Hearth-level choices still later.)_
 - **CORE-012** Each Nook has its own settings page for customizing that Nook.
 - **CORE-013** The Hearth has a settings page for account-wide things: account info, setting your name, signing out, and anything else important.
 - **CORE-014** Every Nook has a clear way back to the Hearth.
@@ -29,7 +29,7 @@ _Last updated: 2026-10-07 (rev 8)_
 - **GIFT-004** Gifts can include an Amazon link; direct Amazon integration if feasible.
 - **GIFT-005** Family members can see each other's gift lists.
 - **GIFT-006** Family members can claim a gift on someone else's list.
-- **GIFT-007** The list owner can NEVER see claims on their own gifts.
+- **GIFT-007** The list owner can NEVER see claims on their own gifts. (A kid's managers aren't its owner, so they can see claims on the kid's list — GIFT-020. Once the kid takes the list over, GIFT-021, they're the owner and see nothing.)
 - **GIFT-008** Everyone else can see what's been claimed on other people's lists.
 - **GIFT-009** Gifts are either repeatable (many givers, e.g. money, clothes) or one-and-done (single claim).
 - **GIFT-010** Supports many event types, not just Christmas.
@@ -38,33 +38,30 @@ _Last updated: 2026-10-07 (rev 8)_
 - **GIFT-013** Claims on a gift are shared across all families: if someone in one family claims it, members of every other family the owner belongs to see it as claimed too (the owner still never sees it, per GIFT-007).
 - **GIFT-014** A family can have several events at once, e.g. Christmas, a specific person's birthday, an anniversary, a baby shower, or Other.
 - **GIFT-015** Each event has an end date.
-- **GIFT-016** After an event ends, it is archived and then removed after some period of time.
+- **GIFT-016** After an event ends, it is archived and then removed after some period of time (see GIFT-027).
 - **GIFT-017** Every event shows a person's whole wish list by default, but the person can include or exclude specific gifts per event (e.g. only money for their birthday, their full list for Christmas).
 - **GIFT-018** Any member of a family can invite others by sending them a code (not just admins).
+- **GIFT-019** Kids and people without phones get a managed profile: a parent creates it with just a name (no email). It has its own wish list and joins families like anyone else.
+- **GIFT-020** A managed profile's creator is its manager and can add other managers (e.g. the other parent). Managers add and edit its gifts. Because the kid can't see anything, managers *can* see what's been claimed on the kid's list, to coordinate. Everyone else just views and claims.
+- **GIFT-021** When a kid is older, a manager sends them a hand-off code. The kid signs up with their own email, enters the code, and the whole list moves onto their account. From then on they're the owner (GIFT-007 applies to them) and nobody manages it.
+- **GIFT-022** Anyone in a family can suggest a gift on someone else's list. Suggestions are hidden from the list's owner; everyone else sees them and can claim them. A kid's managers see suggestions on the kid's list.
+- **GIFT-023** A claim has a status: Planning → Bought. Other givers see it.
+- **GIFT-024** Givers see who else is giving a gift and can leave notes ("got the blue one", "arriving 12/20"), across every family the owner is in. The owner never sees any of it.
+- **GIFT-025** If the owner edits or removes a gift someone already claimed, the giver gets a heads-up (removed: "Mom removed this from their list" until they dismiss it; edited: "changed since you tucked it"). The owner is never told whether it was claimed.
+- **GIFT-026** After an event ends, its honorees (or, with none, everyone; managers answer for kids) are asked "Did you receive any of these?" and check items off themselves. Received one-and-done gifts leave the list; repeatable ones stay. Nothing about who gave what is revealed. Claims made for that event that are still unsettled 30 days after it ends are released.
+- **GIFT-027** An event is archived at its end date and deleted 90 days later.
+- **GIFT-028** Family admins can remove a member, rename or delete the family, make others admins, and delete any event. Other members can only delete events they created. A family always keeps at least one admin.
+- **GIFT-029** Notifications, each turned on or off per person in Gift Nook settings: an event coming up, new gifts added, a gift you claimed changed, and someone joined your family. These start as an in-app inbox; phone push notifications come later (Q-021).
+- **GIFT-030** Pasting a link can fill in the gift's name and picture automatically where the shop allows it (Q-011).
 
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
   - _Built for now (proposed):_ honorees are optional when creating a Gathering. If any are picked, the Gathering links to their Wishbooks; if none, to everyone in the Burrow. Anniversaries can pick both people.
-- **Q-004** What categories at launch? (Clothes, Money/Gift card, Books, Toys, Experiences, Generic "Other"?) Which fields does each need?
-  - _Built for now (proposed):_ the six placeholder Shelves, asking Clothes → size + color; Money/Gift Card → store + amount; Books → author; Toys → age range; Experiences → where. Clothes and Money default to "many can give" (GIFT-009). All changeable without a migration.
-- **Q-005** Can claimers see who else claimed a repeatable gift, and can they leave notes ("got the blue one", "bought, arriving 12/20")?
-  - _Built for now (proposed):_ claimers see a count ("2 others are giving this too") but not names; no notes yet.
-- **Q-006** Can someone add a gift to another person's list as a suggestion (e.g. for kids)? Should it be hidden from that person?
-- **Q-007** Kids / people without phones: can a parent manage a list on someone's behalf?
-- **Q-008** Can a claim be released, and is there a "purchased" vs "planning to buy" state?
-  - _Built for now (proposed):_ whoever tucked a gift can release it, freeing it for someone else. No "purchased" state yet.
-- **Q-009** What happens when the owner edits or deletes a gift that's already claimed? (Claimers must be notified without the owner learning it was claimed.)
-  - _Built for now (proposed):_ the owner can edit or delete any gift. Deleting silently removes its tucks; claimers are not notified yet.
-- **Q-011** Amazon: links + auto-preview (title/image/price) is easy; deeper integration is limited by Amazon's APIs. Is link-with-preview good enough for v1?
-- **Q-013** After an event ends, what happens to its claims? Are claimed one-and-done gifts removed from the owner's list automatically, and does the owner ever get to see who gave what?
-- **Q-014** How long after an event ends before it's archived, and how long before it's deleted? Fixed, or set per family?
-  - _Built for now (proposed):_ a Gathering shows as Archived once its end date passes. Nothing is auto-deleted until this is answered.
-- **Q-017** What, if anything, can family admins do that members can't (remove someone, rename or delete the family)? Whoever starts a family is its admin today, with no extra powers.
-- **Q-019** What should the Gift Nook's settings include?
-  - _Built for now (proposed):_ one setting, "Hide gifts that are already taken" (hides one-and-done gifts someone else tucked away, on family Wishbooks). Settings are saved to the account, so they follow you to a new phone.
+- **Q-019** What else should the Gift Nook's settings include?
+  - _Built so far:_ "Hide gifts that are already taken" *(proposed)*, plus the four notification switches (GIFT-029). Saved to the account, so they follow you to a new phone.
 - **Q-020** Deleting an account: Apple's App Store requires apps with sign-up to offer in-app account deletion. When someone deletes their account, what happens to Burrows they started, gifts they've tucked for others, and their Wishbook? (Needed before an App Store release, not before.)
-- **Q-016** Since claims are shared across families (GIFT-013), can members of one family see *who* in another family claimed something, or just that it's claimed?
-  - _Built for now (proposed):_ names of who tucked a gift aren't shown to anyone, in any Burrow, until this is answered.
+- **Q-021** Phone push notifications (GIFT-029) need a "development build" of the app instead of Expo Go, plus Apple/Google notification setup. When should we take that step?
+- **Q-022** Detail Claude picked for GIFT-026, to confirm: 30 days after an event, "planning" claims are released but "bought" ones are marked as given (on the assumption the gift was given). OK?
 
 ## 4. Decision Log
 - **2026-10-06 — Q-001 answered:** A person can be in several families. Their list is created outside any family and shows in all of them, with claims visible to all families except the list owner. → GIFT-011, GIFT-012, GIFT-013
@@ -78,6 +75,17 @@ _Last updated: 2026-10-07 (rev 8)_
 - **2026-10-07 — Hearth customization:** The Hearth will eventually be customizable with drag-and-drop, and that's "the big appeal of the app." → CORE-006, Q-018
 - **2026-10-07 — Settings pages:** "A settings page on each nook for more customization, and also settings on the hearth for account info, name setting, and logout and anything important." Also: the Gift Nook needed a way back to the Hearth. → CORE-012, CORE-013, CORE-014, Q-019
 - **2026-10-07 — Nook shop + Hearth layout:** "Allow the adding of a nook and have the gift nook be one to add. Almost like a shop." Plus the ability to "change the size of the nook" and "drag and drop it into different sections on the hearth," and "anything that you see worth while to make it more customizable." Claude's added picks, for Josh to confirm: tile colors and custom names, Hearth themes and name, live Gift Nook widget, backlog Nooks shown as "coming soon." → CORE-006–010, CORE-015
+- **2026-10-07 — Q-007 answered:** Managed profiles for kids, with hand-off to the kid later; managers are whoever creates it plus people they add; managers see claims on the kid's list. → GIFT-019, GIFT-020, GIFT-021
+- **2026-10-07 — Q-006 answered:** Suggestions are allowed on anyone's list and hidden from the owner. → GIFT-022
+- **2026-10-07 — Q-008 answered:** Claims can be released (already built) and have Planning → Bought statuses. → GIFT-023
+- **2026-10-07 — Q-005 and Q-016 answered:** Givers see each other's names and notes, everywhere (across families). → GIFT-024
+- **2026-10-07 — Q-009 answered:** The giver gets a heads-up when a claimed gift is edited or removed. → GIFT-025
+- **2026-10-07 — Q-013 answered:** After an event the owner confirms what they got; nothing is revealed; unchecked claims are released after a while. → GIFT-026, Q-022
+- **2026-10-07 — Q-014 answered:** Archive at the end date, delete after 90 days. → GIFT-027
+- **2026-10-07 — Q-017 answered:** Admins can remove members, rename or delete the family, make others admins, and delete any event. → GIFT-028
+- **2026-10-07 — Notifications:** Notify for events coming up, new gifts, changes to a claimed gift, and someone joining; it "should be customizable for gift nook so they can choose what they see." → GIFT-029
+- **2026-10-07 — Q-004 answered:** The starter Shelves (Clothes, Money/Gift Card, Books, Toys, Experiences, Other) and their questions are "good for now." → GIFT-003
+- **2026-10-07 — Q-011 answered:** Josh liked the suggested link auto-preview; deeper Amazon integration isn't needed for now. → GIFT-030
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |

@@ -15,16 +15,53 @@ export type Gift = {
   notes: string | null;
   is_repeatable: boolean;
   details: Record<string, string>;
+  image_url: string | null; // GIFT-030
+  suggested_by: string | null; // GIFT-022: hidden from the owner by RLS
   created_at: string;
+  updated_at: string;
+  removed_at: string | null; // GIFT-025: only givers who tucked it see these
+  received_at: string | null; // GIFT-026
   shelves: { key: string; label: string } | null;
+  suggester: { display_name: string | null } | null;
 };
 
 // A claim, called a "Tuck" in the UI. GIFT-007: never fetched on the owner's
 // own Wishbook screen — RLS would return nothing anyway, but the owner's
 // screens don't even ask.
-export type Tuck = { id: string; claimed_by: string; released_at: string | null };
+export type TuckStatus = "planning" | "bought" | "given";
 
-export type Profile = { id: string; display_name: string | null };
+export type Tuck = {
+  id: string;
+  claimed_by: string;
+  released_at: string | null;
+  status: TuckStatus;
+  note: string | null;
+  claimed_at: string;
+  acknowledged_at: string | null;
+  profiles: { display_name: string | null } | null; // the giver (GIFT-024)
+};
+
+export const TUCK_SELECT =
+  "id, claimed_by, released_at, status, note, claimed_at, acknowledged_at, profiles(display_name)";
+
+// Still counts against the gift: not released and not already given.
+export function isActiveTuck(tuck: Pick<Tuck, "released_at" | "status">) {
+  return !tuck.released_at && tuck.status !== "given";
+}
+
+// GIFT-025: the gift was edited after this giver last looked at it.
+export function giftChangedSince(gift: Pick<Gift, "updated_at" | "created_at">, tuck: Tuck) {
+  const seen = new Date(tuck.acknowledged_at ?? tuck.claimed_at).getTime();
+  return gift.updated_at !== gift.created_at && new Date(gift.updated_at).getTime() > seen;
+}
+
+export const tuckStatusLabel: Record<TuckStatus, string> = {
+  planning: "Planning to get it",
+  bought: "Bought ✓",
+  given: "Given 🎉",
+};
+
+export type Profile = { id: string; display_name: string | null; is_managed?: boolean };
 
 export type BurrowMember = {
   profile_id: string;
@@ -38,9 +75,13 @@ export type Gathering = {
   title: string;
   kind: GatheringKind;
   ends_at: string;
+  created_by?: string | null;
 };
 
-export const GIFT_SELECT = "id, wishbook_id, shelf_id, title, url, notes, is_repeatable, details, created_at, shelves(key, label)";
+export const GIFT_SELECT =
+  "id, wishbook_id, shelf_id, title, url, notes, is_repeatable, details, image_url, suggested_by, " +
+  "created_at, updated_at, removed_at, received_at, shelves(key, label), " +
+  "suggester:profiles!gifts_suggested_by_fkey(display_name)";
 
 // GIFT-003: each Shelf asks its own questions; answers go in gifts.details.
 // Provisional field list pending Q-004 — add/rename freely, no migration needed.
@@ -85,7 +126,7 @@ export function isArchived(gathering: Pick<Gathering, "ends_at">) {
   return new Date(gathering.ends_at).getTime() < Date.now();
 }
 
-export function displayName(profile: Profile | null | undefined) {
+export function displayName(profile: { display_name: string | null } | null | undefined) {
   return profile?.display_name?.trim() || "Someone";
 }
 

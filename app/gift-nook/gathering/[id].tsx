@@ -26,13 +26,15 @@ export default function GatheringScreen() {
   const [gathering, setGathering] = useState<Gathering | null>(null);
   const [people, setPeople] = useState<Profile[]>([]);
   const [hasHonorees, setHasHonorees] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
+  const [managedIds, setManagedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data: row, error: gatheringError } = await supabase
       .from("gatherings")
-      .select("id, burrow_id, title, kind, ends_at")
+      .select("id, burrow_id, title, kind, ends_at, created_by")
       .eq("id", id)
       .single();
     if (gatheringError || !row) {
@@ -41,6 +43,19 @@ export default function GatheringScreen() {
       return;
     }
     setGathering(row as Gathering);
+
+    // GIFT-028: only Burrow admins or whoever made it can delete it.
+    const [myRole, managed] = await Promise.all([
+      supabase
+        .from("burrow_members")
+        .select("role")
+        .eq("burrow_id", row.burrow_id)
+        .eq("profile_id", userId!)
+        .maybeSingle(),
+      supabase.from("profile_managers").select("profile_id").eq("manager_id", userId!),
+    ]);
+    setCanDelete(myRole.data?.role === "admin" || row.created_by === userId);
+    setManagedIds(new Set((managed.data ?? []).map((m) => m.profile_id)));
 
     const { data: honorees } = await supabase
       .from("gathering_honorees")
@@ -66,7 +81,7 @@ export default function GatheringScreen() {
       );
     }
     setIsLoading(false);
-  }, [id]);
+  }, [id, userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,6 +92,8 @@ export default function GatheringScreen() {
   function openWishbook(profileId: string) {
     if (profileId === userId) {
       router.push({ pathname: "/gift-nook/gathering-picks", params: { gatheringId: id } });
+    } else if (managedIds.has(profileId)) {
+      router.push({ pathname: "/gift-nook/gathering-picks", params: { gatheringId: id, profileId } });
     } else {
       router.push({ pathname: "/gift-nook/member/[id]", params: { id: profileId, gatheringId: id } });
     }
@@ -138,14 +155,20 @@ export default function GatheringScreen() {
             {person.id === userId ? " (you)" : ""}
           </Text>
           <Text style={ui.muted}>
-            {person.id === userId ? "Pick which of your gifts show here →" : "View their gifts →"}
+            {person.id === userId
+              ? "Pick which of your gifts show here →"
+              : managedIds.has(person.id)
+                ? "Pick which of their gifts show here →"
+                : "View their gifts →"}
           </Text>
         </TouchableOpacity>
       ))}
 
-      <TouchableOpacity onPress={confirmDelete} style={{ alignItems: "center", marginTop: 16 }}>
-        <Text style={ui.error}>Delete Gathering</Text>
-      </TouchableOpacity>
+      {canDelete ? (
+        <TouchableOpacity onPress={confirmDelete} style={{ alignItems: "center", marginTop: 16 }}>
+          <Text style={ui.error}>Delete Gathering</Text>
+        </TouchableOpacity>
+      ) : null}
     </ScrollView>
   );
 }

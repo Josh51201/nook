@@ -35,6 +35,33 @@ export default function GiftNookSettings() {
         onChange={(hideTakenGifts) => change({ hideTakenGifts })}
       />
 
+      <Text style={ui.sectionTitle}>Notifications</Text>
+      <Text style={ui.muted}>Pick what shows up in your Gift Nook inbox (🔔).</Text>
+      <SettingRow
+        title="Gatherings coming up"
+        description="A week before, and the day before."
+        value={settings.notifyGatheringSoon}
+        onChange={(notifyGatheringSoon) => change({ notifyGatheringSoon })}
+      />
+      <SettingRow
+        title="New gifts added"
+        description="When someone in your Burrows adds to their Wishbook (bundled, not one per gift)."
+        value={settings.notifyNewGifts}
+        onChange={(notifyNewGifts) => change({ notifyNewGifts })}
+      />
+      <SettingRow
+        title="A gift you tucked changed"
+        description="If its owner edits or removes something you're getting them."
+        value={settings.notifyTuckChanged}
+        onChange={(notifyTuckChanged) => change({ notifyTuckChanged })}
+      />
+      <SettingRow
+        title="Someone joined your Burrow"
+        description="When a Knock is answered."
+        value={settings.notifyMemberJoined}
+        onChange={(notifyMemberJoined) => change({ notifyMemberJoined })}
+      />
+
       <Text style={[ui.muted, { marginTop: 16 }]}>
         Your name and account live in Hearth settings (the ⚙︎ on the Hearth).
       </Text>

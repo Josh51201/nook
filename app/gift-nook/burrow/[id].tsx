@@ -7,6 +7,7 @@ import {
   ScrollView,
   Share,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -24,7 +25,8 @@ import { supabase } from "../../../lib/supabase";
 import { ui } from "../../../lib/theme";
 
 // One Burrow (GIFT-001/005): who's in it, inviting more people (Knocks),
-// and its Gatherings (GIFT-014/015/016).
+// and its Gatherings (GIFT-014/015/016). Admins can rename or delete it,
+// remove people, and make others admins (GIFT-028).
 export default function BurrowScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,6 +38,7 @@ export default function BurrowScreen() {
   const [gatherings, setGatherings] = useState<Gathering[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isKnocking, setIsKnocking] = useState(false);
+  const [renameTo, setRenameTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -43,7 +46,7 @@ export default function BurrowScreen() {
       supabase.from("burrows").select("name").eq("id", id).single(),
       supabase
         .from("burrow_members")
-        .select("profile_id, role, profiles(id, display_name)")
+        .select("profile_id, role, profiles(id, display_name, is_managed)")
         .eq("burrow_id", id),
       supabase
         .from("gatherings")
@@ -81,7 +84,7 @@ export default function BurrowScreen() {
     await Share.share({
       message:
         `Come join our Burrow "${name}" on Nook! 🏡\n\n` +
-        `Open Nook → Gift Nook → Answer a Knock, and enter this code:\n\n${code}\n\n` +
+        `Open Nook → Gift Nook → "Got a code?", and enter:\n\n${code}\n\n` +
         `(It works for 7 days.)`,
     });
   }
@@ -103,6 +106,73 @@ export default function BurrowScreen() {
               .eq("profile_id", userId!);
             if (leaveError) setError(leaveError.message);
             else router.back();
+          },
+        },
+      ]
+    );
+  }
+
+  const isAdmin = members.some((m) => m.profile_id === userId && m.role === "admin");
+
+  async function rename() {
+    const next = renameTo?.trim();
+    if (!next || next === name) return setRenameTo(null);
+    const { error: renameError } = await supabase.from("burrows").update({ name: next }).eq("id", id);
+    if (renameError) Alert.alert("Couldn't rename", renameError.message);
+    setRenameTo(null);
+    load();
+  }
+
+  function memberActions(member: BurrowMember) {
+    const who = displayName(member.profiles);
+    const options: { text: string; style?: "destructive" | "cancel"; onPress?: () => void }[] = [
+      { text: "View Wishbook", onPress: () => openWishbook(member.profile_id) },
+    ];
+    if (!member.profiles?.is_managed) {
+      const nextRole = member.role === "admin" ? "member" : "admin";
+      options.push({
+        text: member.role === "admin" ? "Make a regular member" : "Make an admin",
+        onPress: async () => {
+          const { error: roleError } = await supabase
+            .from("burrow_members")
+            .update({ role: nextRole })
+            .eq("burrow_id", id)
+            .eq("profile_id", member.profile_id);
+          if (roleError) Alert.alert("Couldn't change that", roleError.message);
+          load();
+        },
+      });
+    }
+    options.push({
+      text: `Remove ${who}`,
+      style: "destructive",
+      onPress: async () => {
+        const { error: removeError } = await supabase
+          .from("burrow_members")
+          .delete()
+          .eq("burrow_id", id)
+          .eq("profile_id", member.profile_id);
+        if (removeError) Alert.alert("Couldn't remove them", removeError.message);
+        load();
+      },
+    });
+    options.push({ text: "Cancel", style: "cancel" });
+    Alert.alert(who, undefined, options);
+  }
+
+  function confirmDeleteBurrow() {
+    Alert.alert(
+      `Delete ${name}?`,
+      "Its Gatherings are deleted for everyone. Wishbooks and tucks aren't affected — they belong to people, not Burrows.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const { error: deleteError } = await supabase.from("burrows").delete().eq("id", id);
+            if (deleteError) Alert.alert("Couldn't delete it", deleteError.message);
+            else router.navigate("/gift-nook");
           },
         },
       ]
@@ -155,11 +225,20 @@ export default function BurrowScreen() {
           key={member.profile_id}
           style={ui.card}
           onPress={() => openWishbook(member.profile_id)}
+          onLongPress={isAdmin && member.profile_id !== userId ? () => memberActions(member) : undefined}
         >
-          <Text style={ui.cardTitle}>
-            {displayName(member.profiles)}
-            {member.profile_id === userId ? " (you)" : ""}
-          </Text>
+          <View style={ui.row}>
+            <Text style={[ui.cardTitle, { flex: 1 }]}>
+              {member.profiles?.is_managed ? "👶 " : ""}
+              {displayName(member.profiles)}
+              {member.profile_id === userId ? " (you)" : ""}
+            </Text>
+            {isAdmin && member.profile_id !== userId ? (
+              <TouchableOpacity onPress={() => memberActions(member)} hitSlop={10}>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#777" }}>•••</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
           <Text style={ui.muted}>
             {member.role === "admin" ? "Admin · " : ""}View Wishbook →
           </Text>
@@ -182,9 +261,39 @@ export default function BurrowScreen() {
         </>
       ) : null}
 
+      {isAdmin ? (
+        <>
+          <Text style={ui.sectionTitle}>Admin</Text>
+          {renameTo === null ? (
+            <TouchableOpacity style={ui.secondaryButton} onPress={() => setRenameTo(name)}>
+              <Text style={ui.secondaryButtonText}>Rename Burrow</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={ui.row}>
+              <TextInput
+                style={[ui.input, { flex: 1 }]}
+                value={renameTo}
+                onChangeText={setRenameTo}
+                autoFocus
+                onSubmitEditing={rename}
+              />
+              <TouchableOpacity style={ui.button} onPress={rename}>
+                <Text style={ui.buttonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <Text style={ui.muted}>Tap ••• on someone to make them an admin or remove them.</Text>
+        </>
+      ) : null}
+
       <TouchableOpacity onPress={confirmLeave} style={{ alignItems: "center", marginTop: 16 }}>
         <Text style={ui.error}>Leave this Burrow</Text>
       </TouchableOpacity>
+      {isAdmin ? (
+        <TouchableOpacity onPress={confirmDeleteBurrow} style={{ alignItems: "center" }}>
+          <Text style={ui.error}>Delete this Burrow</Text>
+        </TouchableOpacity>
+      ) : null}
     </ScrollView>
   );
 }
