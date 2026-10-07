@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Platform, Text, TextInput, View } from "react-native";
 
 import { Icon } from "../../components/icon";
+import { Appear } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
@@ -202,13 +203,18 @@ export default function GatheringForm() {
         <Text style={ui.muted}>{countdown(date.toISOString())}</Text>
       </Tap>
       {Platform.OS === "ios" && showIosPicker ? (
-        <DateTimePicker
-          value={date}
-          mode="date"
-          display="inline"
-          accentColor={colors.bark}
-          onChange={(_event, picked) => picked && setDate(picked)}
-        />
+        // The app is light-only; without themeVariant the calendar follows the
+        // phone's dark mode and draws light text on our light card.
+        <Appear style={[ui.card, { padding: 8 }]}>
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display="inline"
+            themeVariant="light"
+            accentColor={colors.bark}
+            onChange={(_event, picked) => picked && setDate(picked)}
+          />
+        </Appear>
       ) : null}
       <Text style={ui.muted}>After this day it moves to Archived.</Text>
 
