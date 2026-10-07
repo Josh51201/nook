@@ -34,6 +34,9 @@ describe.runIf(canRun)("GIFT-007: owner never sees claims on their own gifts", (
   let familyClient: SupabaseClient;
   let outsiderClient: SupabaseClient;
   let giftId: string;
+  let unclaimedGiftId: string;
+  let claimId: string;
+  let burrowId: string;
 
   async function createConfirmedUser(email: string, password: string) {
     const { data, error } = await admin.auth.admin.createUser({
@@ -70,23 +73,22 @@ describe.runIf(canRun)("GIFT-007: owner never sees claims on their own gifts", (
     familyClient = await signIn(testUsers.familyMember.email, testUsers.familyMember.password);
     outsiderClient = await signIn(testUsers.outsider.email, testUsers.outsider.password);
 
-    // Owner creates a Burrow and joins it; family member joins too. The
-    // outsider never joins any shared Burrow with the owner.
-    const { data: burrow, error: burrowError } = await ownerClient
-      .from("burrows")
-      .insert({ name: `RLS test burrow ${runId}`, created_by: ownerId })
-      .select("id")
-      .single();
-    if (burrowError || !burrow) throw burrowError;
+    // Owner starts a Burrow (becoming its admin) and sends a Knock; the
+    // family member answers it. The outsider never joins any shared Burrow.
+    const { data: newBurrowId, error: burrowError } = await ownerClient.rpc("create_burrow", {
+      burrow_name: `RLS test burrow ${runId}`,
+    });
+    if (burrowError || !newBurrowId) throw burrowError;
+    burrowId = newBurrowId;
 
-    const { error: ownerJoinError } = await ownerClient
-      .from("burrow_members")
-      .insert({ burrow_id: burrow.id, profile_id: ownerId, role: "admin" });
-    if (ownerJoinError) throw ownerJoinError;
+    const { data: knockCode, error: knockError } = await ownerClient.rpc("create_knock", {
+      target_burrow: burrowId,
+    });
+    if (knockError || !knockCode) throw knockError;
 
-    const { error: familyJoinError } = await familyClient
-      .from("burrow_members")
-      .insert({ burrow_id: burrow.id, profile_id: familyMemberId });
+    const { error: familyJoinError } = await familyClient.rpc("answer_knock", {
+      knock_code: knockCode,
+    });
     if (familyJoinError) throw familyJoinError;
 
     // Owner adds a gift to their own (auto-created) Wishbook.
@@ -112,11 +114,23 @@ describe.runIf(canRun)("GIFT-007: owner never sees claims on their own gifts", (
     if (giftError || !gift) throw giftError;
     giftId = gift.id;
 
+    // A second, never-claimed gift, to compare the owner's errors against.
+    const { data: unclaimedGift, error: unclaimedError } = await ownerClient
+      .from("gifts")
+      .insert({ wishbook_id: wishbook.id, shelf_id: shelf.id, title: "RLS untouched gift" })
+      .select("id")
+      .single();
+    if (unclaimedError || !unclaimedGift) throw unclaimedError;
+    unclaimedGiftId = unclaimedGift.id;
+
     // Family member claims it.
-    const { error: claimError } = await familyClient
+    const { data: claim, error: claimError } = await familyClient
       .from("claims")
-      .insert({ gift_id: giftId, claimed_by: familyMemberId });
-    if (claimError) throw claimError;
+      .insert({ gift_id: giftId, claimed_by: familyMemberId })
+      .select("id")
+      .single();
+    if (claimError || !claim) throw claimError;
+    claimId = claim.id;
   });
 
   afterAll(async () => {
@@ -147,11 +161,65 @@ describe.runIf(canRun)("GIFT-007: owner never sees claims on their own gifts", (
     expect(error).not.toBeNull();
   });
 
+  it("the owner's error claiming a claimed gift is identical to an unclaimed one (no oracle)", async () => {
+    const onClaimed = await ownerClient
+      .from("claims")
+      .insert({ gift_id: giftId, claimed_by: ownerId });
+    const onUnclaimed = await ownerClient
+      .from("claims")
+      .insert({ gift_id: unclaimedGiftId, claimed_by: ownerId });
+    expect(onClaimed.error).not.toBeNull();
+    expect(onClaimed.error?.code).toBe(onUnclaimed.error?.code);
+    expect(onClaimed.error?.message).toBe(onUnclaimed.error?.message);
+  });
+
+  it("the owner sees no claims when embedding them through their own gifts", async () => {
+    const { data, error } = await ownerClient
+      .from("gifts")
+      .select("id, claims(id)")
+      .in("id", [giftId, unclaimedGiftId]);
+    expect(error).toBeNull();
+    expect(data).toHaveLength(2);
+    for (const gift of data ?? []) expect(gift.claims).toEqual([]);
+  });
+
+  it("the owner's view of their gift is identical before and after the claim (no updated_at hint)", async () => {
+    const { data } = await ownerClient
+      .from("gifts")
+      .select("created_at, updated_at")
+      .eq("id", giftId)
+      .single();
+    expect(data?.updated_at).toBe(data?.created_at);
+  });
+
   it("a family member (shares a Burrow with the owner) sees the claim", async () => {
     const { data, error } = await familyClient.from("claims").select("*").eq("gift_id", giftId);
     expect(error).toBeNull();
     expect(data).toHaveLength(1);
     expect(data?.[0]?.claimed_by).toBe(familyMemberId);
+  });
+
+  it("a claimant can't repoint their claim at another gift", async () => {
+    const { data } = await familyClient
+      .from("claims")
+      .update({ gift_id: unclaimedGiftId })
+      .eq("id", claimId)
+      .select("id");
+    expect(data ?? []).toEqual([]);
+  });
+
+  it("an outsider can't join the Burrow without a Knock", async () => {
+    const { error } = await outsiderClient
+      .from("burrow_members")
+      .insert({ burrow_id: burrowId, profile_id: outsiderId });
+    expect(error).not.toBeNull();
+  });
+
+  it("an outsider can't claim the gift (same error as the owner gets)", async () => {
+    const { error } = await outsiderClient
+      .from("claims")
+      .insert({ gift_id: giftId, claimed_by: outsiderId });
+    expect(error?.code).toBe("42501");
   });
 
   it("an outsider who shares no Burrow with the owner sees nothing", async () => {
