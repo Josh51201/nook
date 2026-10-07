@@ -3,7 +3,6 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../lib/auth-context";
-import { supabase } from "../lib/supabase";
 
 // CORE-002/003: the Hearth is the homepage — Nooks live here as tiles, opened and
 // managed from this screen. Gift Nook is the only real tile so far; more Nooks (see
@@ -20,18 +19,13 @@ export default function Hearth() {
     return <Redirect href="/sign-in" />;
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    router.replace("/sign-in");
-  }
-
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>The Hearth</Text>
-          <TouchableOpacity onPress={signOut}>
-            <Text style={styles.signOut}>Sign out</Text>
+          <TouchableOpacity onPress={() => router.push("/settings")} hitSlop={12}>
+            <Text style={styles.settings}>⚙︎ Settings</Text>
           </TouchableOpacity>
         </View>
 
@@ -63,7 +57,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   title: { fontSize: 28, fontWeight: "700" },
-  signOut: { color: "#8a5a3b", fontSize: 15 },
+  settings: { color: "#8a5a3b", fontSize: 15 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
   tile: {
     width: 150,

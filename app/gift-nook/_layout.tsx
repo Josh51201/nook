@@ -1,9 +1,11 @@
-import { Redirect, Stack } from "expo-router";
+import { Redirect, Stack, useRouter } from "expo-router";
+import { Text, TouchableOpacity } from "react-native";
 
 import { useAuth } from "../../lib/auth-context";
 import { colors } from "../../lib/theme";
 
 export default function GiftNookLayout() {
+  const router = useRouter();
   const { session, isLoading } = useAuth();
 
   if (!isLoading && !session) {
@@ -19,7 +21,25 @@ export default function GiftNookLayout() {
         contentStyle: { backgroundColor: colors.white },
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Gift Nook" }} />
+      <Stack.Screen
+        name="index"
+        options={{
+          title: "Gift Nook",
+          // This is the first screen of the Gift Nook's own stack, so there's
+          // no automatic back button — add one that leaves the Nook.
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.navigate("/hearth")} hitSlop={12}>
+              <Text style={{ color: colors.bark, fontSize: 17 }}>‹ Hearth</Text>
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <TouchableOpacity onPress={() => router.push("/gift-nook/settings")} hitSlop={12}>
+              <Text style={{ color: colors.bark, fontSize: 20 }}>⚙︎</Text>
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <Stack.Screen name="settings" options={{ title: "Gift Nook Settings" }} />
       <Stack.Screen name="wishbook" options={{ title: "My Wishbook" }} />
       <Stack.Screen name="gift-form" options={{ title: "Gift", presentation: "modal" }} />
       <Stack.Screen name="gathering-form" options={{ title: "New Gathering", presentation: "modal" }} />

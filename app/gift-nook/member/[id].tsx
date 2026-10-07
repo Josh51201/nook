@@ -20,6 +20,7 @@ import {
   type Gift,
   type Tuck,
 } from "../../../lib/gift-nook";
+import { giftNookSettingDefaults, useNookSettings } from "../../../lib/nook-settings";
 import { supabase } from "../../../lib/supabase";
 import { colors, ui } from "../../../lib/theme";
 
@@ -40,6 +41,7 @@ export default function MemberWishbook() {
   const userId = session?.user.id;
 
   const [name, setName] = useState("");
+  const { settings } = useNookSettings("gift-nook", giftNookSettingDefaults);
   const [gifts, setGifts] = useState<FamilyGift[]>([]);
   const [gatheringTitle, setGatheringTitle] = useState<string | null>(null);
   const [hiddenCount, setHiddenCount] = useState(0);
@@ -161,6 +163,17 @@ export default function MemberWishbook() {
     );
   }
 
+  // Gift Nook setting: hide one-and-done gifts someone else already tucked
+  // away. Gifts you tucked yourself always stay, so you can release them.
+  const visibleGifts = settings.hideTakenGifts
+    ? gifts.filter(
+        (gift) =>
+          gift.is_repeatable ||
+          !gift.claims.some((c) => !c.released_at && c.claimed_by !== userId)
+      )
+    : gifts;
+  const hiddenTakenCount = gifts.length - visibleGifts.length;
+
   if (isLoading) {
     return (
       <View style={ui.center}>
@@ -195,8 +208,16 @@ export default function MemberWishbook() {
       {gifts.length === 0 && !error ? (
         <Text style={ui.muted}>{name} hasn't added any gifts yet.</Text>
       ) : (
-        gifts.map((gift) => <GiftCard key={gift.id} gift={gift} footer={tuckFooter(gift)} />)
+        visibleGifts.map((gift) => (
+          <GiftCard key={gift.id} gift={gift} footer={tuckFooter(gift)} />
+        ))
       )}
+      {hiddenTakenCount > 0 ? (
+        <Text style={ui.muted}>
+          {hiddenTakenCount} already-taken gift{hiddenTakenCount === 1 ? "" : "s"} hidden (change
+          this in Gift Nook settings).
+        </Text>
+      ) : null}
     </ScrollView>
   );
 }

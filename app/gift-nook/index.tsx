@@ -17,7 +17,7 @@ import { colors, ui } from "../../lib/theme";
 
 type BurrowRow = { id: string; name: string };
 
-// Gift Nook home: your name, your Wishbook, your Burrows, and ways to start
+// Gift Nook home: your Wishbook, your Burrows, and ways to start
 // or join one (GIFT-001, GIFT-011).
 export default function GiftNookHome() {
   const router = useRouter();
@@ -25,25 +25,20 @@ export default function GiftNookHome() {
   const userId = session?.user.id;
 
   const [burrows, setBurrows] = useState<BurrowRow[]>([]);
-  const [name, setName] = useState("");
-  const [savedName, setSavedName] = useState("");
   const [newBurrowName, setNewBurrowName] = useState("");
   const [knockCode, setKnockCode] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [busy, setBusy] = useState<"create" | "join" | "name" | null>(null);
+  const [busy, setBusy] = useState<"create" | "join" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
-    const [burrowsResult, profileResult] = await Promise.all([
-      supabase.from("burrows").select("id, name").order("name"),
-      supabase.from("profiles").select("display_name").eq("id", userId).single(),
-    ]);
-    if (burrowsResult.error) setError(burrowsResult.error.message);
-    else setBurrows(burrowsResult.data ?? []);
-    const currentName = profileResult.data?.display_name ?? "";
-    setName(currentName);
-    setSavedName(currentName);
+    const { data, error: burrowsError } = await supabase
+      .from("burrows")
+      .select("id, name")
+      .order("name");
+    if (burrowsError) setError(burrowsError.message);
+    else setBurrows(data ?? []);
     setIsLoading(false);
   }, [userId]);
 
@@ -52,18 +47,6 @@ export default function GiftNookHome() {
       load();
     }, [load])
   );
-
-  async function saveName() {
-    if (!userId || !name.trim()) return;
-    setBusy("name");
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ display_name: name.trim() })
-      .eq("id", userId);
-    setBusy(null);
-    if (updateError) setError(updateError.message);
-    else setSavedName(name.trim());
-  }
 
   async function createBurrow() {
     if (!newBurrowName.trim()) {
@@ -118,21 +101,6 @@ export default function GiftNookHome() {
       refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
     >
       {error ? <Text style={ui.error}>{error}</Text> : null}
-
-      <Text style={ui.label}>Your name (what family sees)</Text>
-      <View style={ui.row}>
-        <TextInput
-          style={[ui.input, { flex: 1 }]}
-          value={name}
-          onChangeText={setName}
-          placeholder="e.g. Josh"
-        />
-        {name.trim() !== savedName ? (
-          <TouchableOpacity style={ui.secondaryButton} onPress={saveName} disabled={busy !== null}>
-            <Text style={ui.secondaryButtonText}>{busy === "name" ? "…" : "Save"}</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
 
       <TouchableOpacity style={ui.card} onPress={() => router.push("/gift-nook/wishbook")}>
         <Text style={ui.cardTitle}>📖 My Wishbook</Text>
