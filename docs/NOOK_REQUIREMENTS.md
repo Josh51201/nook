@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 9)_
+_Last updated: 2026-10-07 (rev 10)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -48,10 +48,11 @@ _Last updated: 2026-10-07 (rev 9)_
 - **GIFT-023** A claim has a status: Planning → Bought. Other givers see it.
 - **GIFT-024** Givers see who else is giving a gift and can leave notes ("got the blue one", "arriving 12/20"), across every family the owner is in. The owner never sees any of it.
 - **GIFT-025** If the owner edits or removes a gift someone already claimed, the giver gets a heads-up (removed: "Mom removed this from their list" until they dismiss it; edited: "changed since you tucked it"). The owner is never told whether it was claimed.
-- **GIFT-026** After an event ends, its honorees (or, with none, everyone; managers answer for kids) are asked "Did you receive any of these?" and check items off themselves. Received one-and-done gifts leave the list; repeatable ones stay. Nothing about who gave what is revealed. Claims made for that event that are still unsettled 30 days after it ends are released.
+- **GIFT-026** After an event ends, its honorees (or, with none, everyone; managers answer for kids) are asked "Did you receive any of these?" and check items off themselves. Received one-and-done gifts leave the list; repeatable ones stay. Nothing about who gave what is revealed. Only the owner checking a gift off removes it from their list. A claim made for that event keeps its status (e.g. still shows as Bought to other givers) for 30 days after the event, then is released if the owner didn't check that gift off.
 - **GIFT-027** An event is archived at its end date and deleted 90 days later.
 - **GIFT-028** Family admins can remove a member, rename or delete the family, make others admins, and delete any event. Other members can only delete events they created. A family always keeps at least one admin.
-- **GIFT-029** Notifications, each turned on or off per person in Gift Nook settings: an event coming up, new gifts added, a gift you claimed changed, and someone joined your family. These start as an in-app inbox; phone push notifications come later (Q-021).
+- **GIFT-029** Notifications, each turned on or off per person in Gift Nook settings: an event coming up, new gifts added, a gift you claimed changed, and someone joined your family. These start as an in-app inbox; phone push notifications come later (GIFT-031).
+- **GIFT-031** Notifications are also sent as phone push notifications. (Later — not built yet.)
 - **GIFT-030** Pasting a link can fill in the gift's name and picture automatically where the shop allows it (Q-011).
 
 ## 3. Open Questions
@@ -60,8 +61,6 @@ _Last updated: 2026-10-07 (rev 9)_
 - **Q-019** What else should the Gift Nook's settings include?
   - _Built so far:_ "Hide gifts that are already taken" *(proposed)*, plus the four notification switches (GIFT-029). Saved to the account, so they follow you to a new phone.
 - **Q-020** Deleting an account: Apple's App Store requires apps with sign-up to offer in-app account deletion. When someone deletes their account, what happens to Burrows they started, gifts they've tucked for others, and their Wishbook? (Needed before an App Store release, not before.)
-- **Q-021** Phone push notifications (GIFT-029) need a "development build" of the app instead of Expo Go, plus Apple/Google notification setup. When should we take that step?
-- **Q-022** Detail Claude picked for GIFT-026, to confirm: 30 days after an event, "planning" claims are released but "bought" ones are marked as given (on the assumption the gift was given). OK?
 
 ## 4. Decision Log
 - **2026-10-06 — Q-001 answered:** A person can be in several families. Their list is created outside any family and shows in all of them, with claims visible to all families except the list owner. → GIFT-011, GIFT-012, GIFT-013
@@ -86,6 +85,8 @@ _Last updated: 2026-10-07 (rev 9)_
 - **2026-10-07 — Notifications:** Notify for events coming up, new gifts, changes to a claimed gift, and someone joining; it "should be customizable for gift nook so they can choose what they see." → GIFT-029
 - **2026-10-07 — Q-004 answered:** The starter Shelves (Clothes, Money/Gift Card, Books, Toys, Experiences, Other) and their questions are "good for now." → GIFT-003
 - **2026-10-07 — Q-011 answered:** Josh liked the suggested link auto-preview; deeper Amazon integration isn't needed for now. → GIFT-030
+- **2026-10-07 — Q-022 answered:** Don't assume a bought gift was given: "still rely on the user to select they received them after the event to then remove from their list rather than rely on the bought, but may still show as bought on their list for like 30 days and then release." → GIFT-026
+- **2026-10-07 — Q-021 answered:** "I would want them eventually to push notifications, but we don't have to just yet." Push needs a development build instead of Expo Go plus Apple/Google setup; that step is deferred. → GIFT-031
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
