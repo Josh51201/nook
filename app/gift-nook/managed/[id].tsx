@@ -7,7 +7,8 @@ import {
 import { useCallback, useState } from "react";
 import { Alert, Share, Text, TextInput, View } from "react-native";
 
-import { Button } from "../../../components/ui";
+import { Avatar } from "../../../components/avatar";
+import { Button, NavCard } from "../../../components/ui";
 import { NookScroll } from "../../../components/nook-scroll";
 import * as Clipboard from "expo-clipboard";
 
@@ -30,6 +31,7 @@ export default function ManageProfile() {
 
   const [name, setName] = useState("");
   const [savedName, setSavedName] = useState("");
+  const [kid, setKid] = useState<Profile | null>(null);
   const [myBurrows, setMyBurrows] = useState<Burrow[]>([]);
   const [theirBurrows, setTheirBurrows] = useState<Set<string>>(new Set());
   const [managers, setManagers] = useState<Profile[]>([]);
@@ -50,7 +52,7 @@ export default function ManageProfile() {
           ] = await Promise.all([
             supabase
               .from("profiles")
-              .select("display_name")
+              .select("display_name, avatar_icon, avatar_color, bio")
               .eq("id", id)
               .single(),
             supabase.from("burrows").select("id, name").order("name"),
@@ -71,6 +73,7 @@ export default function ManageProfile() {
           const currentName = profileResult.data?.display_name ?? "";
           setName(currentName);
           setSavedName(currentName);
+          setKid((profileResult.data as Profile | null) ?? null);
           setMyBurrows(burrowsResult.data ?? []);
           setTheirBurrows(
             new Set((theirResult.data ?? []).map((row) => row.burrow_id)),
@@ -188,6 +191,16 @@ export default function ManageProfile() {
           <Button title="Save" onPress={saveName} />
         ) : null}
       </View>
+
+      <NavCard
+        icon="kid"
+        title="Picture, birthday & about"
+        subtitle={kid?.bio?.trim() || "Make their profile feel like them"}
+        leading={
+          kid ? <Avatar name={kid.display_name} icon={kid.avatar_icon} color={kid.avatar_color} size={44} /> : undefined
+        }
+        onPress={() => router.push(`/gift-nook/managed-profile/${id}`)}
+      />
 
       <Text style={ui.sectionTitle}>Burrows</Text>
       <Text style={ui.muted}>

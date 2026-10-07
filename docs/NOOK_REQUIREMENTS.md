@@ -32,6 +32,7 @@ _Last updated: 2026-10-07 (rev 16)_
 ## 1b. Profile
 - **PROF-001** Each person has a customizable profile: their name, a picture (a chosen icon or their initials on a chosen color), an optional birthday, and a short "about me". Family in their Burrows can see it; nobody else. They can edit it any time (Settings → Your profile). _(Built; the specific options — 16 icons, 8 colors, bio up to 160 characters, birthday shown as day only — are proposed.)_
 - **PROF-002** A brand-new person is asked to set up their profile (name required, the rest optional) before they enter the Hearth, instead of showing their email as their name. New accounts start with no name rather than their email.
+- **PROF-003** A kid's managers can set up the kid's profile too — picture, birthday and "about me" — from Manage. Only their managers can (and their family sees it, like anyone's).
 
 ## 2. Gift Nook (first Nook)
 - **GIFT-001** Users create families and invite others to join.
