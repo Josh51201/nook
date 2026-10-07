@@ -1,3 +1,5 @@
+import { supabase } from "./supabase";
+
 // Shared types and config for the Gift Nook screens (app/gift-nook/*).
 // Table shapes mirror supabase/migrations — keep them in sync by hand until
 // we generate types from the database.
@@ -98,4 +100,33 @@ export function formatDate(iso: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+// GIFT-017: which of a Wishbook's gifts show in a given Gathering. An
+// explicit per-gift choice wins; otherwise includeNew decides (default true,
+// i.e. the whole Wishbook).
+export type GiftPicks = { picks: Map<string, boolean>; includeNew: boolean };
+
+export async function loadGiftPicks(gatheringId: string, wishbookId: string): Promise<GiftPicks> {
+  const [picksResult, settingsResult] = await Promise.all([
+    supabase
+      .from("gathering_gifts")
+      .select("gift_id, included, gifts!inner(wishbook_id)")
+      .eq("gathering_id", gatheringId)
+      .eq("gifts.wishbook_id", wishbookId),
+    supabase
+      .from("gathering_wishbook_settings")
+      .select("include_new")
+      .eq("gathering_id", gatheringId)
+      .eq("wishbook_id", wishbookId)
+      .maybeSingle(),
+  ]);
+  return {
+    picks: new Map((picksResult.data ?? []).map((row) => [row.gift_id, row.included])),
+    includeNew: settingsResult.data?.include_new ?? true,
+  };
+}
+
+export function isGiftShown(giftId: string, { picks, includeNew }: GiftPicks) {
+  return picks.get(giftId) ?? includeNew;
 }

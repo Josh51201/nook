@@ -1,4 +1,4 @@
-import { Redirect, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { Redirect, Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,7 +12,14 @@ import {
 
 import { GiftCard } from "../../../components/gift-card";
 import { useAuth } from "../../../lib/auth-context";
-import { displayName, GIFT_SELECT, type Gift, type Tuck } from "../../../lib/gift-nook";
+import {
+  displayName,
+  GIFT_SELECT,
+  isGiftShown,
+  loadGiftPicks,
+  type Gift,
+  type Tuck,
+} from "../../../lib/gift-nook";
 import { supabase } from "../../../lib/supabase";
 import { colors, ui } from "../../../lib/theme";
 
@@ -21,13 +28,21 @@ type FamilyGift = Gift & { claims: Tuck[] };
 // Someone else's Wishbook, seen by family (GIFT-005/006/008/009/013). This is
 // the only screen that reads claims ("Tucks"). It redirects away if you open
 // your own — and RLS returns no claims to the owner regardless (GIFT-007).
+// Opened from a Gathering (?gatheringId=...), it shows only the gifts the
+// owner picked for that Gathering (GIFT-017).
 export default function MemberWishbook() {
-  const { id: profileId } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { id: profileId, gatheringId } = useLocalSearchParams<{
+    id: string;
+    gatheringId?: string;
+  }>();
   const { session } = useAuth();
   const userId = session?.user.id;
 
   const [name, setName] = useState("");
   const [gifts, setGifts] = useState<FamilyGift[]>([]);
+  const [gatheringTitle, setGatheringTitle] = useState<string | null>(null);
+  const [hiddenCount, setHiddenCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [busyGiftId, setBusyGiftId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,15 +58,29 @@ export default function MemberWishbook() {
       setIsLoading(false);
       return;
     }
-    const { data, error: giftsError } = await supabase
-      .from("gifts")
-      .select(`${GIFT_SELECT}, claims(id, claimed_by, released_at)`)
-      .eq("wishbook_id", wishbookResult.data.id)
-      .order("created_at", { ascending: false });
-    if (giftsError) setError(giftsError.message);
-    else setGifts((data ?? []) as unknown as FamilyGift[]);
+    const wishbookId = wishbookResult.data.id;
+    const [giftsResult, picks, gatheringResult] = await Promise.all([
+      supabase
+        .from("gifts")
+        .select(`${GIFT_SELECT}, claims(id, claimed_by, released_at)`)
+        .eq("wishbook_id", wishbookId)
+        .order("created_at", { ascending: false }),
+      gatheringId ? loadGiftPicks(gatheringId, wishbookId) : null,
+      gatheringId
+        ? supabase.from("gatherings").select("title").eq("id", gatheringId).single()
+        : null,
+    ]);
+    if (giftsResult.error) {
+      setError(giftsResult.error.message);
+    } else {
+      const all = (giftsResult.data ?? []) as unknown as FamilyGift[];
+      const shown = picks ? all.filter((gift) => isGiftShown(gift.id, picks)) : all;
+      setGifts(shown);
+      setHiddenCount(all.length - shown.length);
+    }
+    setGatheringTitle(gatheringResult?.data?.title ?? null);
     setIsLoading(false);
-  }, [profileId]);
+  }, [profileId, gatheringId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -150,6 +179,19 @@ export default function MemberWishbook() {
       <Text style={ui.muted}>
         🤫 {name} can't see anything you tuck away — it stays a surprise.
       </Text>
+      {gatheringTitle ? (
+        <Text style={ui.muted}>
+          Showing what {name} picked for {gatheringTitle}.
+          {hiddenCount > 0 ? (
+            <Text
+              style={ui.link}
+              onPress={() => router.push(`/gift-nook/member/${profileId}`)}
+            >
+              {" "}See full Wishbook ({hiddenCount} more)
+            </Text>
+          ) : null}
+        </Text>
+      ) : null}
       {gifts.length === 0 && !error ? (
         <Text style={ui.muted}>{name} hasn't added any gifts yet.</Text>
       ) : (

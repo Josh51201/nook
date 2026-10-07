@@ -14,9 +14,9 @@ import {
 import { supabase } from "../../../lib/supabase";
 import { ui } from "../../../lib/theme";
 
-// One Gathering. Whose Wishbooks it points to is provisional pending
-// Q-002/Q-003: its honorees if it has any, otherwise everyone in the Burrow;
-// each shows their whole Wishbook.
+// One Gathering. Whose Wishbooks it points to is provisional pending Q-003:
+// its honorees if it has any, otherwise everyone in the Burrow. Each person's
+// list is filtered to the gifts they picked for this Gathering (GIFT-017).
 export default function GatheringScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -75,8 +75,11 @@ export default function GatheringScreen() {
   );
 
   function openWishbook(profileId: string) {
-    if (profileId === userId) router.push("/gift-nook/wishbook");
-    else router.push(`/gift-nook/member/${profileId}`);
+    if (profileId === userId) {
+      router.push({ pathname: "/gift-nook/gathering-picks", params: { gatheringId: id } });
+    } else {
+      router.push({ pathname: "/gift-nook/member/[id]", params: { id: profileId, gatheringId: id } });
+    }
   }
 
   function confirmDelete() {
@@ -134,7 +137,9 @@ export default function GatheringScreen() {
             {displayName(person)}
             {person.id === userId ? " (you)" : ""}
           </Text>
-          <Text style={ui.muted}>View Wishbook →</Text>
+          <Text style={ui.muted}>
+            {person.id === userId ? "Pick which of your gifts show here →" : "View their gifts →"}
+          </Text>
         </TouchableOpacity>
       ))}
 

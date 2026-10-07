@@ -23,6 +23,7 @@ export default function GiftNookLayout() {
       <Stack.Screen name="wishbook" options={{ title: "My Wishbook" }} />
       <Stack.Screen name="gift-form" options={{ title: "Gift", presentation: "modal" }} />
       <Stack.Screen name="gathering-form" options={{ title: "New Gathering", presentation: "modal" }} />
+      <Stack.Screen name="gathering-picks" options={{ title: "Your gifts here" }} />
       <Stack.Screen name="burrow/[id]" options={{ title: "Burrow" }} />
       <Stack.Screen name="member/[id]" options={{ title: "Wishbook" }} />
       <Stack.Screen name="gathering/[id]" options={{ title: "Gathering" }} />
