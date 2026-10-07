@@ -46,7 +46,7 @@ export const hearthThemes: Record<
   HearthThemeKey,
   { label: string; background: string; text: string; muted: string; accent: string }
 > = {
-  hearth: { label: "Hearth", background: "#ffffff", text: "#222222", muted: "#777777", accent: "#8a5a3b" },
+  hearth: { label: "Hearth", background: "#fbf7f2", text: "#222222", muted: "#777777", accent: "#8a5a3b" },
   ember: { label: "Ember", background: "#fbefe4", text: "#3a2418", muted: "#8a6a58", accent: "#b0552d" },
   sage: { label: "Sage", background: "#eef3ea", text: "#23301f", muted: "#6b7a64", accent: "#4f6b45" },
   dusk: { label: "Dusk", background: "#2a2330", text: "#f4ece6", muted: "#b9adb4", accent: "#f0b98d" },

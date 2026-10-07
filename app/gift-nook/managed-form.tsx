@@ -1,10 +1,12 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
 
 import { NookScroll } from "../../components/nook-scroll";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
+import { Button, Chip } from "../../components/ui";
+import { Tap } from "../../components/motion";
 
 // GIFT-019: make a Wishbook for a kid (or anyone without a phone). You
 // become its manager; add the other parent from its Manage screen.
@@ -71,13 +73,7 @@ export default function ManagedForm() {
           {burrows.map((burrow) => {
             const selected = picked.has(burrow.id);
             return (
-              <TouchableOpacity
-                key={burrow.id}
-                style={[ui.chip, selected && ui.chipSelected]}
-                onPress={() => toggle(burrow.id)}
-              >
-                <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{burrow.name}</Text>
-              </TouchableOpacity>
+              <Chip key={burrow.id} icon="burrow" selected={selected} onPress={() => toggle(burrow.id)}>{burrow.name}</Chip>
             );
           })}
         </View>
@@ -85,13 +81,7 @@ export default function ManagedForm() {
 
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      <TouchableOpacity style={ui.button} onPress={create} disabled={isSaving}>
-        {isSaving ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={ui.buttonText}>Make their Wishbook</Text>
-        )}
-      </TouchableOpacity>
+      <Button title="Make their Wishbook" icon="kid" onPress={create} loading={isSaving} />
     </NookScroll>
   );
 }

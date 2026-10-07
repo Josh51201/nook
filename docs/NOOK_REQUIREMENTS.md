@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 11)_
+_Last updated: 2026-10-07 (rev 12)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -18,6 +18,7 @@ _Last updated: 2026-10-07 (rev 11)_
 - **CORE-013** The Hearth has a settings page for account-wide things: account info, setting your name, signing out, and anything else important.
 - **CORE-014** Every Nook has a clear way back to the Hearth.
 - **CORE-016** Whatever you're typing in is never hidden behind the phone's keyboard, and every keyboard has a way to close it.
+- **CORE-017** The app should feel alive and flow nicely — motion and animation, not static screens — and use a proper icon set instead of emoji. _(Built (proposed details): SF Symbols on iPhone / Material Symbols on Android via expo-symbols; press-in springs on everything tappable; lists that flow in and glide when they change; placeholder cards while loading; wiggling Hearth tiles in edit mode with smoother drag; iPhone large titles; respects the phone's Reduce Motion setting.)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
 ## 1a. Accounts & Login
@@ -92,6 +93,7 @@ _Last updated: 2026-10-07 (rev 11)_
 - **2026-10-07 — Q-022 answered:** Don't assume a bought gift was given: "still rely on the user to select they received them after the event to then remove from their list rather than rely on the bought, but may still show as bought on their list for like 30 days and then release." → GIFT-026
 - **2026-10-07 — Q-021 answered:** "I would want them eventually to push notifications, but we don't have to just yet." Push needs a development build instead of Expo Go plus Apple/Google setup; that step is deferred. → GIFT-031
 - **2026-10-07 — Mobile polish:** "There are some parts where the typing keyboard will cover what I am trying to type, like the entering a knock code section. So lets do some mobile improvements and just improvements over the gift nook in general... Add any other details you think would be good." Claude's picks (proposed, for Josh to confirm): Most wanted, price + budget filter, editable Gatherings with a date picker and countdowns, a "Coming up" list, Copy/Share for codes, a "set your name" nudge, haptics, plain-English errors. → CORE-016, GIFT-032–034
+- **2026-10-07 — UI overhaul:** "It looks and feels great but very static. Is there a way to add any animations... AI loves to use emojis but didn't know if there was anything better like mui symbols. I just want it to feel nice and flow nice." → CORE-017
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |

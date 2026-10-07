@@ -1,7 +1,8 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Switch, Text, View } from "react-native";
 
+import { Button } from "../../components/ui";
 import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
 import {
@@ -13,6 +14,7 @@ import {
 } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
+import { LoadingScreen, Tap } from "../../components/motion";
 
 // GIFT-017: pick which of your gifts show for one Gathering — e.g. only
 // money for your birthday, everything for Christmas. Saves on every toggle.
@@ -87,13 +89,7 @@ export default function GatheringPicks() {
     if (gifts.length) await setGiftsIncluded(gifts.map((g) => g.id), included);
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   const shownCount = gifts.filter((g) => isGiftShown(g.id, picks)).length;
 
@@ -107,12 +103,8 @@ export default function GatheringPicks() {
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
       <View style={ui.row}>
-        <TouchableOpacity style={[ui.secondaryButton, { flex: 1 }]} onPress={() => setAll(true)}>
-          <Text style={ui.secondaryButtonText}>Show all</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[ui.secondaryButton, { flex: 1 }]} onPress={() => setAll(false)}>
-          <Text style={ui.secondaryButtonText}>Hide all</Text>
-        </TouchableOpacity>
+        <Button title="Show all" icon="check" variant="secondary" style={{ flex: 1 }} onPress={() => setAll(true)} />
+        <Button title="Hide all" icon="hidden" variant="secondary" style={{ flex: 1 }} onPress={() => setAll(false)} />
       </View>
 
       <Text style={ui.muted}>

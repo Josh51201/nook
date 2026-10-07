@@ -1,11 +1,13 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TextInput, View } from "react-native";
 
 import { NookScroll } from "../../../components/nook-scroll";
-import { tuckStatusLabel, type TuckStatus } from "../../../lib/gift-nook";
+import { Button, Chip } from "../../../components/ui";
+import { tuckStatusIcon, tuckStatusLabel, type TuckStatus } from "../../../lib/gift-nook";
 import { supabase } from "../../../lib/supabase";
 import { colors, ui } from "../../../lib/theme";
+import { LoadingScreen, Tap } from "../../../components/motion";
 
 // Edit one of your tucks: planning/bought and a note other givers can see
 // (GIFT-023/024). The gift's owner never sees any of it (GIFT-007).
@@ -45,13 +47,7 @@ export default function TuckScreen() {
     else router.back();
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   if (status === "given") {
     return (
@@ -71,13 +67,7 @@ export default function TuckScreen() {
         {(["planning", "bought"] as const).map((option) => {
           const selected = status === option;
           return (
-            <TouchableOpacity
-              key={option}
-              style={[ui.chip, selected && ui.chipSelected]}
-              onPress={() => setStatus(option)}
-            >
-              <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{tuckStatusLabel[option]}</Text>
-            </TouchableOpacity>
+            <Chip key={option} icon={tuckStatusIcon[option]} selected={selected} onPress={() => setStatus(option)}>{tuckStatusLabel[option]}</Chip>
           );
         })}
       </View>
@@ -93,9 +83,7 @@ export default function TuckScreen() {
       />
       <Text style={ui.muted}>Everyone giving to them can see this. They never can.</Text>
 
-      <TouchableOpacity style={ui.button} onPress={save} disabled={isSaving}>
-        {isSaving ? <ActivityIndicator color={colors.white} /> : <Text style={ui.buttonText}>Save</Text>}
-      </TouchableOpacity>
+      <Button title="Save" icon="check" onPress={save} loading={isSaving} />
     </NookScroll>
   );
 }

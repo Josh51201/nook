@@ -1,18 +1,12 @@
+import * as Clipboard from "expo-clipboard";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Share,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, Share, Text, TextInput, View } from "react-native";
 
+import { Icon } from "../../../components/icon";
+import { Appear, LoadingScreen, Tap } from "../../../components/motion";
 import { NookScroll } from "../../../components/nook-scroll";
-import * as Clipboard from "expo-clipboard";
-
+import { Button, EmptyState, NavCard, SectionHeader } from "../../../components/ui";
 import { useAuth } from "../../../lib/auth-context";
 import { tap } from "../../../lib/feedback";
 import {
@@ -25,7 +19,7 @@ import {
   type Gathering,
 } from "../../../lib/gift-nook";
 import { supabase } from "../../../lib/supabase";
-import { ui } from "../../../lib/theme";
+import { colors, ui } from "../../../lib/theme";
 
 // One Burrow (GIFT-001/005): who's in it, inviting more people (Knocks),
 // and its Gatherings (GIFT-014/015/016). Admins can rename or delete it,
@@ -191,13 +185,7 @@ export default function BurrowScreen() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   const upcoming = gatherings.filter((g) => !isArchived(g));
   const archived = gatherings.filter(isArchived).reverse();
@@ -207,66 +195,69 @@ export default function BurrowScreen() {
       <Stack.Screen options={{ title: name || "Burrow" }} />
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      <Text style={ui.sectionTitle}>Gatherings</Text>
+      <SectionHeader title="Gatherings" icon="calendar" />
       {upcoming.length === 0 ? (
-        <Text style={ui.muted}>Nothing coming up. Plan a birthday, Christmas, or anything else.</Text>
+        <EmptyState
+          icon="celebration"
+          title="Nothing coming up"
+          body="Plan a birthday, Christmas, or anything else worth celebrating."
+        />
       ) : (
-        upcoming.map((gathering) => (
+        upcoming.map((gathering, i) => (
           <GatheringRow
             key={gathering.id}
+            index={i}
             gathering={gathering}
             onPress={() => router.push(`/gift-nook/gathering/${gathering.id}`)}
           />
         ))
       )}
-      <TouchableOpacity
-        style={ui.secondaryButton}
-        onPress={() =>
-          router.push({ pathname: "/gift-nook/gathering-form", params: { burrowId: id } })
-        }
-      >
-        <Text style={ui.secondaryButtonText}>+ New Gathering</Text>
-      </TouchableOpacity>
+      <Button
+        title="New Gathering"
+        icon="add"
+        variant="secondary"
+        onPress={() => router.push({ pathname: "/gift-nook/gathering-form", params: { burrowId: id } })}
+      />
 
-      <Text style={ui.sectionTitle}>Who's in the Burrow</Text>
-      {members.map((member) => (
-        <TouchableOpacity
-          key={member.profile_id}
-          style={ui.card}
-          onPress={() => openWishbook(member.profile_id)}
-          onLongPress={isAdmin && member.profile_id !== userId ? () => memberActions(member) : undefined}
-        >
-          <View style={ui.row}>
-            <Text style={[ui.cardTitle, { flex: 1 }]}>
-              {member.profiles?.is_managed ? "👶 " : ""}
-              {displayName(member.profiles)}
-              {member.profile_id === userId ? " (you)" : ""}
-            </Text>
-            {isAdmin && member.profile_id !== userId ? (
-              <TouchableOpacity
-                onPress={() => memberActions(member)}
-                hitSlop={10}
-                accessibilityLabel={`Options for ${displayName(member.profiles)}`}
-              >
-                <Text style={{ fontSize: 18, fontWeight: "900", color: "#777" }}>•••</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-          <Text style={ui.muted}>
-            {member.role === "admin" ? "Admin · " : ""}View Wishbook →
-          </Text>
-        </TouchableOpacity>
-      ))}
-      <TouchableOpacity style={ui.button} onPress={sendKnock} disabled={isKnocking}>
-        <Text style={ui.buttonText}>{isKnocking ? "Making a code…" : "🚪 Send a Knock (invite)"}</Text>
-      </TouchableOpacity>
+      <SectionHeader title="Who's in the Burrow" icon="group" />
+      {members.map((member, i) => {
+        const isMe = member.profile_id === userId;
+        const canManage = isAdmin && !isMe;
+        return (
+          <NavCard
+            key={member.profile_id}
+            index={i}
+            icon={member.profiles?.is_managed ? "kid" : "person"}
+            iconColor={member.profiles?.is_managed ? "#4f7fb0" : colors.bark}
+            iconBackground={member.profiles?.is_managed ? colors.sky : colors.barkSoft}
+            title={`${displayName(member.profiles)}${isMe ? " (you)" : ""}`}
+            subtitle={`${member.role === "admin" ? "Admin · " : ""}View Wishbook`}
+            onPress={() => openWishbook(member.profile_id)}
+            onLongPress={canManage ? () => memberActions(member) : undefined}
+            right={
+              canManage ? (
+                <Tap
+                  onPress={() => memberActions(member)}
+                  hitSlop={12}
+                  pressedScale={0.85}
+                  accessibilityLabel={`Options for ${displayName(member.profiles)}`}
+                >
+                  <Icon name="more" size={20} color={colors.muted} />
+                </Tap>
+              ) : undefined
+            }
+          />
+        );
+      })}
+      <Button title="Send a Knock (invite)" icon="invite" onPress={sendKnock} loading={isKnocking} />
 
       {archived.length > 0 ? (
         <>
-          <Text style={ui.sectionTitle}>Archived Gatherings</Text>
-          {archived.map((gathering) => (
+          <SectionHeader title="Archived Gatherings" icon="given" />
+          {archived.map((gathering, i) => (
             <GatheringRow
               key={gathering.id}
+              index={i}
               gathering={gathering}
               onPress={() => router.push(`/gift-nook/gathering/${gathering.id}`)}
             />
@@ -276,51 +267,54 @@ export default function BurrowScreen() {
 
       {isAdmin ? (
         <>
-          <Text style={ui.sectionTitle}>Admin</Text>
+          <SectionHeader title="Admin" icon="settings" />
           {renameTo === null ? (
-            <TouchableOpacity style={ui.secondaryButton} onPress={() => setRenameTo(name)}>
-              <Text style={ui.secondaryButtonText}>Rename Burrow</Text>
-            </TouchableOpacity>
+            <Button title="Rename Burrow" icon="edit" variant="secondary" onPress={() => setRenameTo(name)} />
           ) : (
-            <View style={ui.row}>
-              <TextInput
-                style={[ui.input, { flex: 1 }]}
-                value={renameTo}
-                onChangeText={setRenameTo}
-                autoFocus
-                onSubmitEditing={rename}
-              />
-              <TouchableOpacity style={ui.button} onPress={rename}>
-                <Text style={ui.buttonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
+            <Appear>
+              <View style={ui.row}>
+                <TextInput
+                  style={[ui.input, { flex: 1 }]}
+                  value={renameTo}
+                  onChangeText={setRenameTo}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={rename}
+                />
+                <Button title="Save" onPress={rename} />
+              </View>
+            </Appear>
           )}
           <Text style={ui.muted}>Tap ••• on someone to make them an admin or remove them.</Text>
         </>
       ) : null}
 
-      <TouchableOpacity onPress={confirmLeave} style={{ alignItems: "center", marginTop: 16 }}>
-        <Text style={ui.error}>Leave this Burrow</Text>
-      </TouchableOpacity>
+      <Button title="Leave this Burrow" icon="door" variant="danger" onPress={confirmLeave} style={{ marginTop: 12 }} />
       {isAdmin ? (
-        <TouchableOpacity onPress={confirmDeleteBurrow} style={{ alignItems: "center" }}>
-          <Text style={ui.error}>Delete this Burrow</Text>
-        </TouchableOpacity>
+        <Button title="Delete this Burrow" icon="trash" variant="danger" onPress={confirmDeleteBurrow} />
       ) : null}
     </NookScroll>
   );
 }
 
-function GatheringRow({ gathering, onPress }: { gathering: Gathering; onPress: () => void }) {
+function GatheringRow({
+  gathering,
+  onPress,
+  index,
+}: {
+  gathering: Gathering;
+  onPress: () => void;
+  index: number;
+}) {
   const kind = gatheringKindInfo(gathering.kind);
   return (
-    <TouchableOpacity style={ui.card} onPress={onPress}>
-      <Text style={ui.cardTitle}>
-        {kind.emoji} {gathering.title}
-      </Text>
-      <Text style={ui.muted}>
-        {kind.label} · {formatDate(gathering.ends_at)} · {countdown(gathering.ends_at)}
-      </Text>
-    </TouchableOpacity>
+    <NavCard
+      index={index}
+      icon={kind.icon}
+      iconColor={kind.color}
+      title={gathering.title}
+      subtitle={`${kind.label} · ${formatDate(gathering.ends_at)} · ${countdown(gathering.ends_at)}`}
+      onPress={onPress}
+    />
   );
 }

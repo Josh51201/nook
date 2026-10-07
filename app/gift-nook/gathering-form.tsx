@@ -1,8 +1,9 @@
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Platform, Text, TextInput, View } from "react-native";
 
+import { Icon } from "../../components/icon";
 import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
@@ -15,6 +16,8 @@ import {
 } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
+import { LoadingScreen, Tap } from "../../components/motion";
+import { Button, Chip } from "../../components/ui";
 
 // Plan or edit a Gathering in a Burrow (GIFT-010/014/015). Honorees are
 // optional: none means it's for everyone (e.g. Christmas); one or two people
@@ -158,13 +161,7 @@ export default function GatheringForm() {
     setError(friendlyError(failure) ?? "Couldn't save that Gathering.");
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   return (
     <NookScroll>
@@ -175,15 +172,7 @@ export default function GatheringForm() {
         {gatheringKinds.map((k) => {
           const selected = k.key === kind;
           return (
-            <TouchableOpacity
-              key={k.key}
-              style={[ui.chip, selected && ui.chipSelected]}
-              onPress={() => pickKind(k.key)}
-            >
-              <Text style={[ui.chipText, selected && ui.chipTextSelected]}>
-                {k.emoji} {k.label}
-              </Text>
-            </TouchableOpacity>
+            <Chip key={k.key} icon={k.icon} selected={selected} onPress={() => pickKind(k.key)}>{k.label}</Chip>
           );
         })}
       </View>
@@ -194,32 +183,24 @@ export default function GatheringForm() {
         {members.map((member) => {
           const selected = honorees.has(member.profile_id);
           return (
-            <TouchableOpacity
-              key={member.profile_id}
-              style={[ui.chip, selected && ui.chipSelected]}
-              onPress={() => toggleHonoree(member.profile_id)}
-            >
-              <Text style={[ui.chipText, selected && ui.chipTextSelected]}>
-                {displayName(member.profiles)}
-                {member.profile_id === userId ? " (you)" : ""}
-              </Text>
-            </TouchableOpacity>
+            <Chip key={member.profile_id} selected={selected} onPress={() => toggleHonoree(member.profile_id)}>{displayName(member.profiles)}
+                {member.profile_id === userId ? " (you)" : ""}</Chip>
           );
         })}
       </View>
 
       <Text style={ui.label}>Date</Text>
-      <TouchableOpacity
+      <Tap
         style={[ui.input, ui.row, { justifyContent: "space-between" }]}
         onPress={openDatePicker}
         accessibilityLabel="Pick the date"
       >
-        <Text style={{ fontSize: 16, color: colors.text }}>
-          📅{" "}
+        <Icon name="calendar" size={18} />
+        <Text style={{ fontSize: 16, color: colors.text, flex: 1 }}>
           {date.toLocaleDateString(undefined, { weekday: "short", month: "long", day: "numeric", year: "numeric" })}
         </Text>
         <Text style={ui.muted}>{countdown(date.toISOString())}</Text>
-      </TouchableOpacity>
+      </Tap>
       {Platform.OS === "ios" && showIosPicker ? (
         <DateTimePicker
           value={date}
@@ -241,13 +222,7 @@ export default function GatheringForm() {
 
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      <TouchableOpacity style={ui.button} onPress={save} disabled={isSaving}>
-        {isSaving ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={ui.buttonText}>{gatheringId ? "Save changes" : "Plan Gathering"}</Text>
-        )}
-      </TouchableOpacity>
+      <Button title={gatheringId ? "Save changes" : "Plan Gathering"} icon="calendar" onPress={save} loading={isSaving} />
     </NookScroll>
   );
 }

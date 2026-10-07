@@ -1,7 +1,12 @@
 import { useRouter } from "expo-router";
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, View } from "react-native";
+import Animated, { ZoomIn } from "react-native-reanimated";
 
+import { Icon, IconBadge } from "../components/icon";
+import { Appear, LoadingScreen } from "../components/motion";
 import { NookScroll } from "../components/nook-scroll";
+import { Button } from "../components/ui";
+import { tap } from "../lib/feedback";
 import { addNook, hasNook, removeNook, useHearthLayout } from "../lib/hearth";
 import { nookCatalog, type NookDefinition } from "../lib/nooks";
 import { colors, ui } from "../lib/theme";
@@ -39,54 +44,56 @@ export default function Market() {
     return (
       <View style={ui.center}>
         <Text style={ui.error}>{error}</Text>
-        <TouchableOpacity onPress={reload}>
-          <Text style={ui.link}>Try again</Text>
-        </TouchableOpacity>
+        <Button title="Try again" icon="undo" variant="secondary" onPress={reload} />
       </View>
     );
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   return (
     <NookScroll>
       <Text style={ui.muted}>Pick the Nooks you want on your Hearth.</Text>
-      {nookCatalog.map((nook) => {
+      {nookCatalog.map((nook, i) => {
         const added = hasNook(layout, nook.id);
         return (
-          <View key={nook.id} style={[ui.card, { backgroundColor: nook.color, gap: 8 }]}>
-            <View style={ui.row}>
-              <Text style={{ fontSize: 36 }}>{nook.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[ui.cardTitle, { fontSize: 18 }]}>{nook.title}</Text>
-                <Text style={ui.muted}>{nook.tagline}</Text>
+          <Appear key={nook.id} index={i}>
+            <View style={[ui.card, { gap: 12, opacity: nook.available ? 1 : 0.75 }]}>
+              <View style={[ui.row, { gap: 14 }]}>
+                <IconBadge name={nook.icon} size={56} color={nook.iconColor} background={nook.color} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[ui.cardTitle, { fontSize: 18 }]}>{nook.title}</Text>
+                  <Text style={ui.muted}>{nook.tagline}</Text>
+                </View>
+                {added ? (
+                  <Animated.View entering={ZoomIn.springify().damping(12)}>
+                    <Icon name="check" size={24} color="#3f7a4f" />
+                  </Animated.View>
+                ) : null}
               </View>
-            </View>
-            <Text style={{ fontSize: 14, color: colors.text }}>{nook.description}</Text>
+              <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20 }}>{nook.description}</Text>
 
-            {!nook.available ? (
-              <Text style={[ui.muted, { fontStyle: "italic" }]}>Coming soon</Text>
-            ) : added ? (
-              <View style={[ui.row, { justifyContent: "space-between" }]}>
-                <TouchableOpacity onPress={() => router.push(nook.route!)}>
-                  <Text style={[ui.link, { fontWeight: "600" }]}>✓ On your Hearth · Open</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => confirmRemove(nook)}>
-                  <Text style={ui.error}>Remove</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={ui.button} onPress={() => add(nook)}>
-                <Text style={ui.buttonText}>Add to Hearth</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              {!nook.available ? (
+                <View style={[ui.secondaryButton, { opacity: 0.8 }]}>
+                  <Text style={ui.secondaryButtonText}>Coming soon</Text>
+                </View>
+              ) : added ? (
+                <View style={[ui.row, { gap: 10 }]}>
+                  <Button title="Open" icon="chevron" variant="secondary" style={{ flex: 1 }} onPress={() => router.push(nook.route!)} />
+                  <Button title="Remove" icon="trash" variant="danger" onPress={() => confirmRemove(nook)} />
+                </View>
+              ) : (
+                <Button
+                  title="Add to Hearth"
+                  icon="add"
+                  onPress={() => {
+                    tap("success");
+                    add(nook);
+                  }}
+                />
+              )}
+            </View>
+          </Appear>
         );
       })}
     </NookScroll>

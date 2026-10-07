@@ -1,12 +1,14 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Switch, Text, View } from "react-native";
 
+import { Button } from "../../components/ui";
 import { NookScroll } from "../../components/nook-scroll";
 import { friendlyError, tap } from "../../lib/feedback";
 import { GIFT_SELECT, isGiftShown, loadGiftPicks, type Gift } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
+import { LoadingScreen, Tap } from "../../components/motion";
 
 // GIFT-026: after a Gathering ends, the honoree (or a kid's manager) checks
 // off what they received. Lists every gift that was shown for the Gathering
@@ -72,13 +74,7 @@ export default function ReceivedScreen() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   return (
     <NookScroll>
@@ -102,15 +98,7 @@ export default function ReceivedScreen() {
         </View>
       ))}
 
-      <TouchableOpacity style={ui.button} onPress={submit} disabled={isSaving}>
-        {isSaving ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={ui.buttonText}>
-            {checked.size ? `Mark ${checked.size} received` : "I didn't get any of these"}
-          </Text>
-        )}
-      </TouchableOpacity>
+      <Button title={checked.size ? `Mark ${checked.size} received` : "I didn't get any of these"} icon="given" onPress={submit} loading={isSaving} />
     </NookScroll>
   );
 }

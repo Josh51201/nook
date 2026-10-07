@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import Animated, { SlideInDown, ZoomIn } from "react-native-reanimated";
 
 import { tileColor, tilePalette, tileSizes, type HearthTile } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
+import { tap } from "../../lib/feedback";
 import { colors, ui } from "../../lib/theme";
+import { Icon, IconBadge } from "../icon";
+import { Button, Chip } from "../ui";
+import { Tap } from "../motion";
 
 // Bottom sheet for one Hearth tile: name, size, color, open, remove.
 export function TileOptions({
@@ -47,17 +44,19 @@ export function TileOptions({
   }
 
   return (
-    <Modal visible={Boolean(tile)} transparent animationType="slide" onRequestClose={close}>
+    <Modal visible={Boolean(tile)} transparent animationType="fade" onRequestClose={close}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior="padding"
       >
         <Pressable style={styles.backdrop} onPress={close} />
         {tile ? (
-          <View style={styles.sheet}>
-            <Text style={[ui.sectionTitle, { marginTop: 0 }]}>
-              {nook?.emoji} {nook?.title}
-            </Text>
+          <Animated.View entering={SlideInDown.springify().damping(20).stiffness(180)} style={styles.sheet}>
+            <View style={styles.grabber} />
+            <View style={[ui.row, { gap: 12 }]}>
+              {nook ? <IconBadge name={nook.icon} color={nook.iconColor} background={nook.color} size={44} /> : null}
+              <Text style={[ui.sectionTitle, { marginTop: 0 }]}>{nook?.title}</Text>
+            </View>
 
             <Text style={ui.label}>Name on your Hearth</Text>
             <TextInput
@@ -74,44 +73,51 @@ export function TileOptions({
               {tileSizes.map((size) => {
                 const selected = tile.size === size.key;
                 return (
-                  <TouchableOpacity
+                  <Chip
                     key={size.key}
-                    style={[ui.chip, selected && ui.chipSelected]}
-                    onPress={() => onChange({ size: size.key })}
+                    selected={selected}
+                    onPress={() => {
+                      tap();
+                      onChange({ size: size.key });
+                    }}
                   >
-                    <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{size.label}</Text>
-                  </TouchableOpacity>
+                    {size.label}
+                  </Chip>
                 );
               })}
             </View>
 
             <Text style={ui.label}>Color</Text>
             <View style={ui.chips}>
-              {tilePalette.map((color) => (
-                <TouchableOpacity
-                  key={color}
-                  onPress={() => onChange({ color })}
-                  style={[
-                    styles.swatch,
-                    { backgroundColor: color },
-                    tileColor(tile) === color && styles.swatchSelected,
-                  ]}
-                />
-              ))}
+              {tilePalette.map((color) => {
+                const selected = tileColor(tile) === color;
+                return (
+                  <Tap
+                    key={color}
+                    pressedScale={0.85}
+                    onPress={() => {
+                      tap();
+                      onChange({ color });
+                    }}
+                    style={[styles.swatch, { backgroundColor: color }, selected && styles.swatchSelected]}
+                    accessibilityLabel={selected ? "Selected color" : "Pick this color"}
+                  >
+                    {selected ? (
+                      <Animated.View entering={ZoomIn.springify().damping(12)}>
+                        <Icon name="check" size={18} color={colors.bark} />
+                      </Animated.View>
+                    ) : null}
+                  </Tap>
+                );
+              })}
             </View>
 
             <View style={[ui.row, { marginTop: 8 }]}>
-              <TouchableOpacity style={[ui.secondaryButton, { flex: 1 }]} onPress={onOpen}>
-                <Text style={ui.secondaryButtonText}>Open</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[ui.button, { flex: 1 }]} onPress={close}>
-                <Text style={ui.buttonText}>Done</Text>
-              </TouchableOpacity>
+              <Button title="Open" icon="chevron" variant="secondary" style={{ flex: 1 }} onPress={onOpen} />
+              <Button title="Done" icon="check" style={{ flex: 1 }} onPress={close} />
             </View>
-            <TouchableOpacity onPress={onRemove} style={{ alignItems: "center", padding: 8 }}>
-              <Text style={ui.error}>Remove from Hearth</Text>
-            </TouchableOpacity>
-          </View>
+            <Button title="Remove from Hearth" icon="trash" variant="danger" onPress={onRemove} />
+          </Animated.View>
         ) : null}
       </KeyboardAvoidingView>
     </Modal>
@@ -121,13 +127,30 @@ export function TileOptions({
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.3)" },
   sheet: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 20,
+    paddingTop: 10,
     paddingBottom: 36,
     gap: 16,
   },
-  swatch: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: "#ccc" },
-  swatchSelected: { borderWidth: 3, borderColor: colors.bark },
+  grabber: {
+    alignSelf: "center",
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.border,
+    marginBottom: 4,
+  },
+  swatch: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  swatchSelected: { borderWidth: 2.5, borderColor: colors.bark },
 });

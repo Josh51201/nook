@@ -1,8 +1,11 @@
 import { Redirect, Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 
+import { Icon } from "../../../components/icon";
+import { FadeSwap, LoadingScreen, Tap } from "../../../components/motion";
 import { NookScroll } from "../../../components/nook-scroll";
+import { Banner, Button, Chip, EmptyState } from "../../../components/ui";
 import { GiftCard } from "../../../components/gift-card";
 import { useAuth } from "../../../lib/auth-context";
 import {
@@ -12,8 +15,10 @@ import {
   isActiveTuck,
   isGiftShown,
   loadGiftPicks,
+  shelfIcons,
   sortGifts,
   TUCK_SELECT,
+  tuckStatusIcon,
   tuckStatusLabel,
   type Gift,
   type Tuck,
@@ -178,89 +183,93 @@ export default function MemberWishbook() {
       others.length > 0 ? (
         <View style={styles.givers}>
           {others.map((other) => (
-            <Text key={other.id} style={styles.giver}>
-              <Text style={{ fontWeight: "600" }}>{displayName(other.profiles)}</Text> ·{" "}
-              {tuckStatusLabel[other.status]}
-              {other.note ? <Text style={styles.note}> — “{other.note}”</Text> : null}
-            </Text>
+            <View key={other.id} style={[ui.row, { gap: 6, alignItems: "flex-start" }]}>
+              <Icon name={tuckStatusIcon[other.status]} size={14} color={colors.muted} style={{ marginTop: 2 }} />
+              <Text style={styles.giver}>
+                <Text style={{ fontWeight: "600" }}>{displayName(other.profiles)}</Text> ·{" "}
+                {tuckStatusLabel[other.status]}
+                {other.note ? <Text style={styles.note}> — “{other.note}”</Text> : null}
+              </Text>
+            </View>
           ))}
         </View>
       ) : null;
 
     if (gift.removed_at) {
       return mine ? (
-        <View style={[styles.banner, { backgroundColor: "#fdecea" }]}>
+        <FadeSwap style={[styles.banner, { backgroundColor: colors.rose }]}>
           <Text style={styles.bannerText}>
             {name} removed this from their list. You'd tucked it ({tuckStatusLabel[mine.status].toLowerCase()}).
           </Text>
-          <Text style={ui.link} onPress={() => run(mine.id, () => supabase.rpc("release_tuck", { claim_id: mine.id }))}>
-            Release it
-          </Text>
-        </View>
+          <Button
+            title="Release it"
+            icon="undo"
+            variant="secondary"
+            onPress={() => run(mine.id, () => supabase.rpc("release_tuck", { claim_id: mine.id }))}
+          />
+        </FadeSwap>
       ) : null;
     }
 
     if (mine) {
       return (
-        <View style={{ marginTop: 8, gap: 6 }}>
+        <FadeSwap key="mine" style={styles.footer}>
           {giftChangedSince(gift, mine) ? (
-            <View style={[styles.banner, { backgroundColor: "#fff4d6" }]}>
-              <Text style={styles.bannerText}>✏️ {name}'s list changed this gift since you tucked it.</Text>
-              <Text style={ui.link} onPress={() => acknowledge(mine)}>
-                Got it
-              </Text>
+            <View style={[styles.banner, { backgroundColor: colors.sun }]}>
+              <View style={[ui.row, { gap: 6 }]}>
+                <Icon name="edit" size={14} />
+                <Text style={[styles.bannerText, { flex: 1 }]}>{name}'s list changed this gift since you tucked it.</Text>
+              </View>
+              <Tap onPress={() => acknowledge(mine)} hitSlop={8} style={{ alignSelf: "flex-start" }}>
+                <Text style={ui.link}>Got it</Text>
+              </Tap>
             </View>
           ) : null}
-          <Text style={{ color: colors.bark, fontWeight: "700" }}>
-            ✓ You tucked this · {tuckStatusLabel[mine.status]}
-          </Text>
+          <View style={[ui.row, { gap: 6 }]}>
+            <Icon name="check" size={18} bounce={mine.status} />
+            <Text style={{ color: colors.bark, fontWeight: "700", fontSize: 15 }}>
+              You tucked this · {tuckStatusLabel[mine.status]}
+            </Text>
+          </View>
           {mine.note ? <Text style={styles.note}>Your note: “{mine.note}”</Text> : null}
           {giverList}
           <View style={[ui.row, { flexWrap: "wrap" }]}>
-            <TouchableOpacity
-              style={[ui.chip, mine.status === "bought" && ui.chipSelected]}
-              disabled={isBusy}
-              onPress={() => setStatus(mine, mine.status === "bought" ? "planning" : "bought")}
+            <Chip
+              icon="bought"
+              selected={mine.status === "bought"}
+              onPress={() => !isBusy && setStatus(mine, mine.status === "bought" ? "planning" : "bought")}
             >
-              <Text style={[ui.chipText, mine.status === "bought" && ui.chipTextSelected]}>
-                {mine.status === "bought" ? "Bought ✓" : "Mark bought"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={ui.chip}
-              onPress={() => router.push(`/gift-nook/tuck/${mine.id}`)}
-            >
-              <Text style={ui.chipText}>{mine.note ? "Edit note" : "Add note"}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={ui.chip} disabled={isBusy} onPress={() => confirmRelease(mine)}>
-              <Text style={ui.chipText}>Release</Text>
-            </TouchableOpacity>
+              {mine.status === "bought" ? "Bought" : "Mark bought"}
+            </Chip>
+            <Chip icon="edit" onPress={() => router.push(`/gift-nook/tuck/${mine.id}`)}>
+              {mine.note ? "Edit note" : "Add note"}
+            </Chip>
+            <Chip icon="undo" onPress={() => !isBusy && confirmRelease(mine)}>
+              Release
+            </Chip>
           </View>
-        </View>
+        </FadeSwap>
       );
     }
 
     if (!gift.is_repeatable && active.length > 0) {
       return (
-        <View style={{ marginTop: 8 }}>
-          <Text style={ui.muted}>🤫 Already tucked away</Text>
+        <FadeSwap key="taken" style={styles.footer}>
+          <View style={[ui.row, { gap: 6 }]}>
+            <Icon name="hidden" size={14} color={colors.muted} />
+            <Text style={ui.muted}>Already tucked away</Text>
+          </View>
           {giverList}
-        </View>
+        </FadeSwap>
       );
     }
 
     return (
-      <View style={{ marginTop: 8, gap: 6 }}>
+      <FadeSwap key="open" style={styles.footer}>
         {others.length > 0 ? <Text style={ui.muted}>Also giving this:</Text> : null}
         {giverList}
-        <TouchableOpacity style={ui.button} onPress={() => tuck(gift)} disabled={isBusy}>
-          {isBusy ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={ui.buttonText}>Tuck it away (I'll get this)</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+        <Button title="Tuck it away — I'll get this" icon="tucks" onPress={() => tuck(gift)} loading={isBusy} />
+      </FadeSwap>
     );
   }
 
@@ -284,107 +293,104 @@ export default function MemberWishbook() {
     ...new Map(gifts.filter((g) => g.shelves).map((g) => [g.shelves!.key, g.shelves!.label])),
   ];
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   return (
     <NookScroll onRefresh={load}>
       <Stack.Screen options={{ title: `${name}'s Wishbook` }} />
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      <Text style={ui.muted}>
-        {isManaged && isManager
-          ? `👶 You help manage ${name}'s list, so you can see what's been tucked away to coordinate.`
-          : `🤫 ${name} can't see anything you tuck away or suggest — it stays a surprise.`}
-      </Text>
+      <Banner
+        icon={isManaged && isManager ? "kid" : "hidden"}
+        tone={isManaged && isManager ? "sky" : "bark"}
+        body={
+          isManaged && isManager
+            ? `You help manage ${name}'s list, so you can see what's been tucked away to coordinate.`
+            : `${name} can't see anything you tuck away or suggest — it stays a surprise.`
+        }
+      />
 
       {gatheringTitle ? (
-        <Text style={ui.muted}>
-          Showing what {name} picked for {gatheringTitle}.
-          {hiddenByPicks > 0 ? (
-            <Text style={ui.link} onPress={() => router.push(`/gift-nook/member/${profileId}`)}>
-              {" "}See full Wishbook ({hiddenByPicks} more)
-            </Text>
-          ) : null}
-        </Text>
+        <Banner
+          icon="calendar"
+          tone="sun"
+          body={`Showing what ${name} picked for ${gatheringTitle}.${
+            hiddenByPicks > 0 ? ` Tap to see their full Wishbook (${hiddenByPicks} more).` : ""
+          }`}
+          onPress={hiddenByPicks > 0 ? () => router.push(`/gift-nook/member/${profileId}`) : undefined}
+        />
       ) : null}
 
       <View style={ui.row}>
         {isManager ? (
           <>
-            <TouchableOpacity
-              style={[ui.button, { flex: 1 }]}
+            <Button
+              title="Add a gift"
+              icon="add"
+              style={{ flex: 1 }}
               onPress={() =>
                 router.push({ pathname: "/gift-nook/gift-form", params: { forProfileId: profileId } })
               }
-            >
-              <Text style={ui.buttonText}>+ Add a gift</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[ui.secondaryButton, { flex: 1 }]}
+            />
+            <Button
+              title="Manage"
+              icon="settings"
+              variant="secondary"
+              style={{ flex: 1 }}
               onPress={() => router.push(`/gift-nook/managed/${profileId}`)}
-            >
-              <Text style={ui.secondaryButtonText}>Manage {name}</Text>
-            </TouchableOpacity>
+            />
           </>
         ) : (
-          <TouchableOpacity
-            style={[ui.secondaryButton, { flex: 1 }]}
+          <Button
+            title={`Suggest a gift for ${name}`}
+            icon="suggest"
+            variant="secondary"
+            style={{ flex: 1 }}
             onPress={() =>
               router.push({ pathname: "/gift-nook/gift-form", params: { forProfileId: profileId } })
             }
-          >
-            <Text style={ui.secondaryButtonText}>💡 Suggest a gift (hidden from {name})</Text>
-          </TouchableOpacity>
+          />
         )}
       </View>
 
       {gifts.length > 4 ? (
         <View style={{ gap: 8 }}>
           <View style={ui.chips}>
-            {[[null, "All"] as const, ...shelvesHere].map(([key, label]) => {
-              const selected = shelfFilter === key;
-              return (
-                <TouchableOpacity
-                  key={key ?? "all"}
-                  style={[ui.chip, selected && ui.chipSelected]}
-                  onPress={() => setShelfFilter(key)}
-                >
-                  <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{label}</Text>
-                </TouchableOpacity>
-              );
-            })}
+            {[[null, "All"] as const, ...shelvesHere].map(([key, label]) => (
+              <Chip
+                key={key ?? "all"}
+                icon={key ? shelfIcons[key] ?? "category" : undefined}
+                selected={shelfFilter === key}
+                onPress={() => setShelfFilter(key)}
+              >
+                {label}
+              </Chip>
+            ))}
           </View>
           <View style={ui.chips}>
-            {budgets.map((option) => {
-              const selected = budget === option.max;
-              return (
-                <TouchableOpacity
-                  key={option.label}
-                  style={[ui.chip, selected && ui.chipSelected]}
-                  onPress={() => setBudget(option.max)}
-                >
-                  <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{option.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
+            {budgets.map((option) => (
+              <Chip
+                key={option.label}
+                icon={option.max ? "price" : undefined}
+                selected={budget === option.max}
+                onPress={() => setBudget(option.max)}
+              >
+                {option.label}
+              </Chip>
+            ))}
           </View>
         </View>
       ) : null}
 
       {gifts.length === 0 && !error ? (
-        <Text style={ui.muted}>{name} hasn't added any gifts yet.</Text>
+        <EmptyState icon="wishbook" title={`${name} hasn't added any gifts yet`} body="You can still suggest something." />
       ) : visibleGifts.length === 0 ? (
-        <Text style={ui.muted}>Nothing matches those filters.</Text>
+        <EmptyState icon="filter" title="Nothing matches those filters" />
       ) : (
-        visibleGifts.map((gift) => (
+        visibleGifts.map((gift, i) => (
           <GiftCard
             key={gift.id}
+            index={i}
             gift={gift}
             onPress={
               canEdit(gift) && !gift.removed_at
@@ -396,7 +402,7 @@ export default function MemberWishbook() {
         ))
       )}
       {hiddenTakenCount > 0 ? (
-        <Text style={ui.muted}>
+        <Text style={[ui.muted, { textAlign: "center" }]}>
           {hiddenTakenCount} already-taken gift{hiddenTakenCount === 1 ? "" : "s"} hidden (change
           this in Gift Nook settings).
         </Text>
@@ -406,9 +412,16 @@ export default function MemberWishbook() {
 }
 
 const styles = StyleSheet.create({
-  givers: { gap: 2 },
-  giver: { fontSize: 14, color: colors.text },
+  footer: {
+    marginTop: 6,
+    paddingTop: 12,
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  givers: { gap: 4 },
+  giver: { fontSize: 14, color: colors.text, flex: 1 },
   note: { fontSize: 14, color: colors.muted, fontStyle: "italic" },
-  banner: { borderRadius: 10, padding: 10, gap: 4, marginTop: 8 },
+  banner: { borderRadius: 12, padding: 10, gap: 8 },
   bannerText: { fontSize: 14, color: colors.text },
 });

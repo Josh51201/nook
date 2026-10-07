@@ -1,13 +1,16 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 
+import { Icon } from "../../components/icon";
+import { LoadingScreen } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { Button, EmptyState, SectionHeader } from "../../components/ui";
 import { GiftCard } from "../../components/gift-card";
 import { useAuth } from "../../lib/auth-context";
 import { GIFT_SELECT, sortGifts, type Gift } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
-import { ui } from "../../lib/theme";
+import { colors, ui } from "../../lib/theme";
 
 // The owner's own Wishbook (GIFT-002, GIFT-012). GIFT-007: this screen never
 // queries claims, and sorts only by Most wanted and creation date, so nothing
@@ -59,49 +62,48 @@ export default function MyWishbook() {
     load();
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   return (
     <NookScroll onRefresh={load}>
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      <TouchableOpacity style={ui.button} onPress={() => router.push("/gift-nook/gift-form")}>
-        <Text style={ui.buttonText}>+ Add a gift</Text>
-      </TouchableOpacity>
+      <Button title="Add a gift" icon="add" onPress={() => router.push("/gift-nook/gift-form")} />
 
       {active.length === 0 ? (
-        <Text style={ui.muted}>
-          Your Wishbook is empty. Add things you'd love — your family will see them in every Burrow
-          you share. You'll never see who tucked what away; that stays a surprise.
-        </Text>
+        <EmptyState
+          icon="wishbook"
+          title="Your Wishbook is empty"
+          body="Add things you'd love — your family sees them in every Burrow you share. You'll never see who tucked what away; that stays a surprise."
+        />
       ) : (
-        active.map((gift) => (
-          <GiftCard
-            key={gift.id}
-            gift={gift}
-            onPress={() => router.push({ pathname: "/gift-nook/gift-form", params: { giftId: gift.id } })}
-          />
-        ))
+        <>
+          <View style={[ui.row, { gap: 6 }]}>
+            <Icon name="hidden" size={14} color={colors.muted} />
+            <Text style={ui.muted}>Tucks stay a surprise — you'll never see them here.</Text>
+          </View>
+          {active.map((gift, i) => (
+            <GiftCard
+              key={gift.id}
+              index={i}
+              gift={gift}
+              onPress={() => router.push({ pathname: "/gift-nook/gift-form", params: { giftId: gift.id } })}
+            />
+          ))}
+        </>
       )}
 
       {received.length > 0 ? (
         <>
-          <Text style={ui.sectionTitle}>Received 🎉</Text>
+          <SectionHeader title="Received" icon="given" />
           <Text style={ui.muted}>Things you checked off after a Gathering. Family doesn't see these.</Text>
-          {received.map((gift) => (
+          {received.map((gift, i) => (
             <GiftCard
               key={gift.id}
+              index={i}
               gift={gift}
               footer={
-                <Text style={[ui.link, { marginTop: 6 }]} onPress={() => putBack(gift)}>
-                  Put it back on my list
-                </Text>
+                <Button title="Put it back on my list" icon="undo" variant="secondary" onPress={() => putBack(gift)} />
               }
             />
           ))}

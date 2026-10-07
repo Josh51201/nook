@@ -1,15 +1,13 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-} from "react-native";
+import { StyleSheet, Text, TextInput } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 
+import { IconBadge } from "../../components/icon";
+import { Button } from "../../components/ui";
 import { supabase } from "../../lib/supabase";
+import { colors } from "../../lib/theme";
 
 export default function Verify() {
   const router = useRouter();
@@ -48,7 +46,10 @@ export default function Verify() {
       style={styles.container}
       behavior="padding"
     >
-      <Text style={styles.title}>Check your email</Text>
+      <Animated.View entering={ZoomIn.springify().damping(14)} style={{ alignSelf: "center", marginBottom: 8 }}>
+        <IconBadge name="wave" size={76} />
+      </Animated.View>
+      <Animated.Text entering={FadeInDown.delay(80).springify()} style={styles.title}>Check your email</Animated.Text>
       <Text style={styles.subtitle}>Enter the code we sent to {email}.</Text>
 
       <TextInput
@@ -63,37 +64,25 @@ export default function Verify() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <TouchableOpacity style={styles.button} onPress={verifyCode} disabled={isVerifying}>
-        {isVerifying ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Verify</Text>
-        )}
-      </TouchableOpacity>
+      <Button title="Verify" onPress={verifyCode} loading={isVerifying} style={{ marginTop: 8 }} />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 24, gap: 12 },
-  title: { fontSize: 26, fontWeight: "700", textAlign: "center" },
-  subtitle: { fontSize: 15, color: "#555", textAlign: "center", marginBottom: 12 },
+  container: { flex: 1, justifyContent: "center", padding: 24, gap: 12, backgroundColor: colors.background },
+  title: { fontSize: 28, fontWeight: "800", textAlign: "center", color: colors.text, letterSpacing: -0.4 },
+  subtitle: { fontSize: 15, color: colors.muted, textAlign: "center", marginBottom: 12, lineHeight: 21 },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    color: colors.text,
+    borderRadius: 14,
     padding: 14,
     fontSize: 20,
     textAlign: "center",
     letterSpacing: 4,
   },
-  button: {
-    backgroundColor: "#8a5a3b",
-    borderRadius: 10,
-    padding: 14,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   error: { color: "#c0392b", textAlign: "center" },
 });

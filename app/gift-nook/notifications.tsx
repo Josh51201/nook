@@ -1,11 +1,14 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { Icon, type IconName } from "../../components/icon";
 import { NookScroll } from "../../components/nook-scroll";
+import { EmptyState, NavCard } from "../../components/ui";
 import { formatDate } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
+import { LoadingScreen, Tap } from "../../components/motion";
 
 type Notice = {
   id: string;
@@ -17,11 +20,11 @@ type Notice = {
   read_at: string | null;
 };
 
-const kindEmoji: Record<Notice["kind"], string> = {
-  gathering_soon: "📅",
-  new_gifts: "🎁",
-  tuck_changed: "✏️",
-  member_joined: "🚪",
+const kindIcon: Record<Notice["kind"], IconName> = {
+  gathering_soon: "calendar",
+  new_gifts: "gift",
+  tuck_changed: "edit",
+  member_joined: "invite",
 };
 
 // GIFT-029: the Gift Nook inbox. What shows up here is chosen in Gift Nook
@@ -74,44 +77,44 @@ export default function Notifications() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   const unread = notices.filter((n) => !n.read_at).length;
 
   return (
     <NookScroll onRefresh={load}>
       {unread > 0 ? (
-        <TouchableOpacity onPress={markAllRead} style={{ alignSelf: "flex-end" }}>
+        <Tap onPress={markAllRead} style={[ui.row, { alignSelf: "flex-end", gap: 6 }]} hitSlop={8}>
+          <Icon name="check" size={16} />
           <Text style={ui.link}>Mark all read</Text>
-        </TouchableOpacity>
+        </Tap>
       ) : null}
       {notices.length === 0 ? (
-        <Text style={ui.muted}>
-          Nothing yet. You'll see upcoming Gatherings, new gifts, changes to gifts you tucked, and new
-          Burrow members here — choose which in Gift Nook settings.
-        </Text>
+        <EmptyState
+          icon="inbox"
+          title="All quiet"
+          body="Upcoming Gatherings, new gifts, changes to gifts you tucked, and new Burrow members land here — choose which in Gift Nook settings."
+        />
       ) : (
-        notices.map((notice) => (
-          <TouchableOpacity
+        notices.map((notice, i) => (
+          <NavCard
             key={notice.id}
-            style={[ui.card, ui.row, !notice.read_at && { borderLeftWidth: 4, borderLeftColor: colors.bark }]}
+            index={i}
+            icon={kindIcon[notice.kind] ?? "bell"}
+            iconBackground={notice.read_at ? colors.barkSoft : colors.sun}
+            title={
+              <Text style={notice.read_at ? { fontWeight: "400" } : null}>{notice.title}</Text>
+            }
+            subtitle={`${notice.body ? `${notice.body} · ` : ""}${formatDate(notice.created_at)}`}
             onPress={() => open(notice)}
-          >
-            <Text style={{ fontSize: 24 }}>{kindEmoji[notice.kind] ?? "🔔"}</Text>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[ui.cardTitle, notice.read_at ? { fontWeight: "400" } : null]}>{notice.title}</Text>
-              {notice.body ? <Text style={ui.muted}>{notice.body}</Text> : null}
-              <Text style={[ui.muted, { fontSize: 12 }]}>{formatDate(notice.created_at)}</Text>
-            </View>
-          </TouchableOpacity>
+            right={!notice.read_at ? <View style={styles.dot} /> : undefined}
+          />
         ))
       )}
     </NookScroll>
   );
 }
+
+const styles = StyleSheet.create({
+  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.heart },
+});

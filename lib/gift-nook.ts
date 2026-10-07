@@ -1,3 +1,4 @@
+import type { IconName } from "../components/icon";
 import { supabase } from "./supabase";
 
 // Shared types and config for the Gift Nook screens (app/gift-nook/*).
@@ -57,10 +58,26 @@ export function giftChangedSince(gift: Pick<Gift, "updated_at" | "created_at">, 
   return gift.updated_at !== gift.created_at && new Date(gift.updated_at).getTime() > seen;
 }
 
+export const tuckStatusIcon: Record<TuckStatus, IconName> = {
+  planning: "tucks",
+  bought: "bought",
+  given: "given",
+};
+
+// Each Shelf's icon (GIFT-003); unknown Shelves fall back to "category".
+export const shelfIcons: Record<string, IconName> = {
+  clothes: "clothes",
+  money_gift_card: "money",
+  books: "books",
+  toys: "toys",
+  experiences: "experiences",
+  other: "category",
+};
+
 export const tuckStatusLabel: Record<TuckStatus, string> = {
   planning: "Planning to get it",
-  bought: "Bought ✓",
-  given: "Given 🎉",
+  bought: "Bought",
+  given: "Given",
 };
 
 export type Profile = { id: string; display_name: string | null; is_managed?: boolean };
@@ -111,12 +128,12 @@ export const repeatableByDefault = new Set(["clothes", "money_gift_card"]);
 // GIFT-010/014.
 export type GatheringKind = "christmas" | "birthday" | "anniversary" | "baby_shower" | "other";
 
-export const gatheringKinds: { key: GatheringKind; label: string; emoji: string }[] = [
-  { key: "christmas", label: "Christmas", emoji: "🎄" },
-  { key: "birthday", label: "Birthday", emoji: "🎂" },
-  { key: "anniversary", label: "Anniversary", emoji: "💞" },
-  { key: "baby_shower", label: "Baby shower", emoji: "🍼" },
-  { key: "other", label: "Other", emoji: "✨" },
+export const gatheringKinds: { key: GatheringKind; label: string; icon: IconName; color: string }[] = [
+  { key: "christmas", label: "Christmas", icon: "christmas", color: "#3f7a4f" },
+  { key: "birthday", label: "Birthday", icon: "birthday", color: "#c2415a" },
+  { key: "anniversary", label: "Anniversary", icon: "anniversary", color: "#b4507a" },
+  { key: "baby_shower", label: "Baby shower", icon: "baby_shower", color: "#4f7fb0" },
+  { key: "other", label: "Other", icon: "celebration", color: "#8a5a3b" },
 ];
 
 export function gatheringKindInfo(kind: string) {

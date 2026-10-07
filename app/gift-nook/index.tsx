@@ -1,8 +1,11 @@
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TextInput, View } from "react-native";
 
+import { IconBadge, type IconName } from "../../components/icon";
+import { Appear, LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { Banner, Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError } from "../../lib/feedback";
 import { countdown, displayName, formatDate, gatheringKindInfo } from "../../lib/gift-nook";
@@ -168,41 +171,26 @@ export default function GiftNookHome() {
     if (data?.kind === "burrow") {
       router.push(`/gift-nook/burrow/${data.id}`);
     } else {
-      Alert.alert("It's yours now! 🎉", "Your Wishbook moved onto your account. Welcome to Nook.");
+      Alert.alert("It's yours now!", "Your Wishbook moved onto your account. Welcome to Nook.");
       router.push("/gift-nook/wishbook");
     }
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen cards={4} />;
 
   return (
     <NookScroll onRefresh={load}>
       <Stack.Screen
         options={{
           headerRight: () => (
-            <View style={[ui.row, { gap: 18 }]}>
-              <TouchableOpacity
+            <View style={[ui.row, { gap: 22 }]}>
+              <HeaderIcon
+                icon="bell"
+                label={unread ? `Inbox, ${unread} unread` : "Inbox"}
+                badge={unread}
                 onPress={() => router.push("/gift-nook/notifications")}
-                hitSlop={10}
-                accessibilityLabel={unread ? `Inbox, ${unread} unread` : "Inbox"}
-              >
-                <Text style={{ color: colors.bark, fontSize: 18 }}>
-                  🔔{unread > 0 ? <Text style={{ fontSize: 14, fontWeight: "700" }}> {unread}</Text> : null}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push("/gift-nook/settings")}
-                hitSlop={10}
-                accessibilityLabel="Gift Nook settings"
-              >
-                <Text style={{ color: colors.bark, fontSize: 20 }}>⚙︎</Text>
-              </TouchableOpacity>
+              />
+              <HeaderIcon icon="settings" label="Gift Nook settings" onPress={() => router.push("/gift-nook/settings")} />
             </View>
           ),
         }}
@@ -210,127 +198,172 @@ export default function GiftNookHome() {
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
       {needsName ? (
-        <TouchableOpacity
-          style={[ui.card, { backgroundColor: "#e9f1fb" }]}
+        <Banner
+          icon="wave"
+          tone="sky"
+          title="Tell your family who you are"
+          body="Right now they see your email. Tap to set your name."
           onPress={() => router.push("/settings")}
-        >
-          <Text style={ui.cardTitle}>👋 Tell your family who you are</Text>
-          <Text style={ui.muted}>Right now they see your email. Tap to set your name.</Text>
-        </TouchableOpacity>
+        />
       ) : null}
 
-      {prompts.map((prompt) => (
-        <TouchableOpacity
+      {prompts.map((prompt, i) => (
+        <Banner
           key={`${prompt.gatheringId}:${prompt.profileId}`}
-          style={[ui.card, { backgroundColor: "#fff4d6" }]}
+          index={i}
+          icon="given"
+          title={`${prompt.title} is over`}
+          body={`Did ${prompt.who === "you" ? "you" : prompt.who} get anything off the list? Tap to check things off.`}
           onPress={() =>
             router.push({
               pathname: "/gift-nook/received",
               params: { gatheringId: prompt.gatheringId, profileId: prompt.profileId },
             })
           }
-        >
-          <Text style={ui.cardTitle}>🎉 {prompt.title} is over</Text>
-          <Text style={ui.muted}>
-            Did {prompt.who === "you" ? "you" : prompt.who} get anything off the list? Tap to check things off.
-          </Text>
-        </TouchableOpacity>
+        />
       ))}
 
-      <TouchableOpacity style={ui.card} onPress={() => router.push("/gift-nook/wishbook")}>
-        <Text style={ui.cardTitle}>📖 My Wishbook</Text>
-        <Text style={ui.muted}>The gifts you'd love. Every Burrow you're in can see it.</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={ui.card} onPress={() => router.push("/gift-nook/my-tucks")}>
-        <Text style={ui.cardTitle}>🛍️ Your tucks</Text>
-        <Text style={ui.muted}>
-          {openTucks
-            ? `${openTucks} gift${openTucks === 1 ? "" : "s"} you're getting for others`
-            : "Gifts you've promised to get show up here"}
-        </Text>
-      </TouchableOpacity>
+      <View style={[ui.row, { gap: 12, alignItems: "stretch" }]}>
+        <QuickTile
+          icon="wishbook"
+          title="My Wishbook"
+          subtitle="What you'd love"
+          onPress={() => router.push("/gift-nook/wishbook")}
+          index={0}
+        />
+        <QuickTile
+          icon="tucks"
+          title="Your tucks"
+          subtitle={openTucks ? `${openTucks} to get` : "Nothing yet"}
+          onPress={() => router.push("/gift-nook/my-tucks")}
+          index={1}
+        />
+      </View>
 
       {upcoming.length > 0 ? (
         <>
-          <Text style={ui.sectionTitle}>Coming up</Text>
-          {upcoming.map((gathering) => (
-            <TouchableOpacity
-              key={gathering.id}
-              style={ui.card}
-              onPress={() => router.push(`/gift-nook/gathering/${gathering.id}`)}
-            >
-              <Text style={ui.cardTitle}>
-                {gatheringKindInfo(gathering.kind).emoji} {gathering.title}
-              </Text>
-              <Text style={ui.muted}>
-                {formatDate(gathering.ends_at)} · {countdown(gathering.ends_at)}
-                {gathering.burrows?.name ? ` · ${gathering.burrows.name}` : ""}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <SectionHeader title="Coming up" icon="calendar" />
+          {upcoming.map((gathering, i) => {
+            const kind = gatheringKindInfo(gathering.kind);
+            return (
+              <NavCard
+                key={gathering.id}
+                index={i}
+                icon={kind.icon}
+                iconColor={kind.color}
+                title={gathering.title}
+                subtitle={`${formatDate(gathering.ends_at)} · ${countdown(gathering.ends_at)}${
+                  gathering.burrows?.name ? ` · ${gathering.burrows.name}` : ""
+                }`}
+                onPress={() => router.push(`/gift-nook/gathering/${gathering.id}`)}
+              />
+            );
+          })}
         </>
       ) : null}
 
-      <Text style={ui.sectionTitle}>Little ones you manage</Text>
-      {kids.map((kid) => (
-        <TouchableOpacity key={kid.id} style={ui.card} onPress={() => router.push(`/gift-nook/member/${kid.id}`)}>
-          <Text style={ui.cardTitle}>👶 {kid.name}'s Wishbook</Text>
-        </TouchableOpacity>
-      ))}
-      <TouchableOpacity style={ui.secondaryButton} onPress={() => router.push("/gift-nook/managed-form")}>
-        <Text style={ui.secondaryButtonText}>+ Make a Wishbook for a kid</Text>
-      </TouchableOpacity>
-
-      <Text style={ui.sectionTitle}>Your Burrows</Text>
+      <SectionHeader title="Your Burrows" icon="burrow" />
       {burrows.length === 0 ? (
-        <Text style={ui.muted}>
-          You're not in any Burrows yet. Start one for your family, or join one with a Knock code.
-        </Text>
+        <EmptyState
+          icon="burrow"
+          title="No Burrows yet"
+          body="Start one for your family below, or join one with a Knock code."
+        />
       ) : (
-        burrows.map((burrow) => (
-          <TouchableOpacity
+        burrows.map((burrow, i) => (
+          <NavCard
             key={burrow.id}
-            style={ui.card}
+            index={i}
+            icon="burrow"
+            title={burrow.name}
             onPress={() => router.push(`/gift-nook/burrow/${burrow.id}`)}
-          >
-            <Text style={ui.cardTitle}>🏡 {burrow.name}</Text>
-          </TouchableOpacity>
+          />
         ))
       )}
 
-      <Text style={ui.sectionTitle}>Start a Burrow</Text>
+      <SectionHeader title="Little ones you manage" icon="kid" />
+      {kids.map((kid, i) => (
+        <NavCard
+          key={kid.id}
+          index={i}
+          icon="kid"
+          iconColor="#4f7fb0"
+          iconBackground={colors.sky}
+          title={`${kid.name}'s Wishbook`}
+          onPress={() => router.push(`/gift-nook/member/${kid.id}`)}
+        />
+      ))}
+      <Button
+        title="Make a Wishbook for a kid"
+        icon="add"
+        variant="secondary"
+        onPress={() => router.push("/gift-nook/managed-form")}
+      />
+
+      <SectionHeader title="Start a Burrow" icon="add" />
       <TextInput
         style={ui.input}
         value={newBurrowName}
         onChangeText={setNewBurrowName}
         placeholder="e.g. The Collinses"
+        placeholderTextColor={colors.muted}
+        returnKeyType="done"
+        onSubmitEditing={createBurrow}
       />
-      <TouchableOpacity style={ui.button} onPress={createBurrow} disabled={busy !== null}>
-        {busy === "create" ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={ui.buttonText}>Start Burrow</Text>
-        )}
-      </TouchableOpacity>
+      <Button title="Start Burrow" icon="burrow" onPress={createBurrow} loading={busy === "create"} disabled={busy !== null} />
 
-      <Text style={ui.sectionTitle}>Got a code?</Text>
+      <SectionHeader title="Got a code?" icon="door" />
       <Text style={ui.muted}>
         A Knock from family joins their Burrow. A hand-off code gives you the Wishbook a parent made
         for you.
       </Text>
       <TextInput
-        style={ui.input}
+        style={[ui.input, { fontSize: 22, letterSpacing: 6, textAlign: "center", fontWeight: "600" }]}
         value={code}
-        onChangeText={(text) => setCode(text.toUpperCase())}
+        onChangeText={(text) => setCode(text.toUpperCase().replace(/\s/g, ""))}
         placeholder="ABC123"
+        placeholderTextColor={colors.border}
         autoCapitalize="characters"
         autoCorrect={false}
         maxLength={6}
+        returnKeyType="go"
+        onSubmitEditing={answerCode}
       />
-      <TouchableOpacity style={ui.secondaryButton} onPress={answerCode} disabled={busy !== null}>
-        <Text style={ui.secondaryButtonText}>{busy === "code" ? "Checking…" : "Use code"}</Text>
-      </TouchableOpacity>
+      <Button
+        title="Use code"
+        icon="door"
+        variant="secondary"
+        onPress={answerCode}
+        loading={busy === "code"}
+        disabled={busy !== null || code.trim().length < 6}
+      />
     </NookScroll>
+  );
+}
+
+// One of the two big shortcuts at the top of the Gift Nook.
+function QuickTile({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  index,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  index: number;
+}) {
+  return (
+    <Appear index={index} style={{ flex: 1 }}>
+      <Tap onPress={onPress} style={[ui.card, { gap: 10, flex: 1 }]} accessibilityRole="button">
+        <IconBadge name={icon} size={44} />
+        <View style={{ gap: 2 }}>
+          <Text style={ui.cardTitle}>{title}</Text>
+          <Text style={ui.muted}>{subtitle}</Text>
+        </View>
+      </Tap>
+    </Appear>
   );
 }

@@ -35,6 +35,7 @@ export function NookScroll({
         bottomOffset={32}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[ui.screen, contentContainerStyle]}
         refreshControl={
           onRefresh ? (

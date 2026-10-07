@@ -1,14 +1,16 @@
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 
+import { Button } from "../components/ui";
 import { NookScroll } from "../components/nook-scroll";
 import { useAuth } from "../lib/auth-context";
 import { hearthThemes, useHearthLayout, type HearthThemeKey } from "../lib/hearth";
 import { formatDate } from "../lib/gift-nook";
 import { supabase } from "../lib/supabase";
 import { colors, ui } from "../lib/theme";
+import { Tap } from "../components/motion";
 
 // Hearth settings (CORE-013): account-wide things — who you are, your name,
 // how your Hearth looks (CORE-008), signing out. Each Nook has its own
@@ -93,13 +95,7 @@ export default function HearthSettings() {
           placeholder="e.g. Josh"
         />
         {name.trim() !== savedName ? (
-          <TouchableOpacity style={ui.button} onPress={saveName} disabled={isSaving}>
-            {isSaving ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={ui.buttonText}>Save</Text>
-            )}
-          </TouchableOpacity>
+          <Button title="Save" onPress={saveName} loading={isSaving} />
         ) : null}
       </View>
       {error ? <Text style={ui.error}>{error}</Text> : null}
@@ -124,7 +120,7 @@ export default function HearthSettings() {
               const theme = hearthThemes[key];
               const selected = layout.theme === key;
               return (
-                <TouchableOpacity
+                <Tap
                   key={key}
                   onPress={() => saveHearthChanges({ theme: key })}
                   style={[
@@ -136,7 +132,7 @@ export default function HearthSettings() {
                   <Text style={{ color: theme.text, fontWeight: selected ? "700" : "400" }}>
                     {theme.label}
                   </Text>
-                </TouchableOpacity>
+                </Tap>
               );
             })}
           </View>
@@ -158,9 +154,7 @@ export default function HearthSettings() {
         ) : null}
       </View>
 
-      <TouchableOpacity style={ui.secondaryButton} onPress={confirmSignOut}>
-        <Text style={ui.secondaryButtonText}>Sign out</Text>
-      </TouchableOpacity>
+      <Button title="Sign out" icon="logout" variant="secondary" onPress={confirmSignOut} />
 
       <Text style={[ui.muted, { textAlign: "center", marginTop: 24 }]}>
         Nook v{Constants.expoConfig?.version ?? "?"}

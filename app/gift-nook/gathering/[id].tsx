@@ -1,8 +1,11 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 
+import { IconBadge } from "../../../components/icon";
+import { Appear, LoadingScreen } from "../../../components/motion";
 import { NookScroll } from "../../../components/nook-scroll";
+import { Button, EmptyState, NavCard, SectionHeader } from "../../../components/ui";
 import { useAuth } from "../../../lib/auth-context";
 import {
   countdown,
@@ -14,7 +17,7 @@ import {
   type Profile,
 } from "../../../lib/gift-nook";
 import { supabase } from "../../../lib/supabase";
-import { ui } from "../../../lib/theme";
+import { colors, ui } from "../../../lib/theme";
 
 // One Gathering. Whose Wishbooks it points to is provisional pending Q-003:
 // its honorees if it has any, otherwise everyone in the Burrow. Each person's
@@ -116,20 +119,10 @@ export default function GatheringScreen() {
     ]);
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   if (!gathering) {
-    return (
-      <View style={ui.center}>
-        <Text style={ui.error}>{error}</Text>
-      </View>
-    );
+    return <EmptyState icon="calendar" title="Couldn't find that Gathering" body={error ?? undefined} />;
   }
 
   const kind = gatheringKindInfo(gathering.kind);
@@ -140,46 +133,56 @@ export default function GatheringScreen() {
       <Stack.Screen options={{ title: gathering.title }} />
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      <View style={ui.card}>
-        <Text style={{ fontSize: 40 }}>{kind.emoji}</Text>
-        <Text style={[ui.cardTitle, { fontSize: 20 }]}>{gathering.title}</Text>
-        <Text style={ui.muted}>
-          {kind.label} · {formatDate(gathering.ends_at)} · {countdown(gathering.ends_at)}
-          {archived ? " · Archived" : ""}
-        </Text>
-        {!archived ? (
-          <Text
-            style={[ui.link, { marginTop: 6 }]}
-            onPress={() =>
-              router.push({ pathname: "/gift-nook/gathering-form", params: { gatheringId: id } })
-            }
-          >
-            Edit date, name, or who it's for
+      <Appear>
+        <View style={[ui.card, { alignItems: "center", gap: 8, paddingVertical: 24 }]}>
+          <IconBadge name={kind.icon} size={72} color={kind.color} background={`${kind.color}1f`} />
+          <Text style={{ fontSize: 22, fontWeight: "700", color: colors.text, textAlign: "center" }}>
+            {gathering.title}
           </Text>
-        ) : null}
-      </View>
-
-      <Text style={ui.sectionTitle}>{hasHonorees ? "Celebrating" : "Everyone's Wishbooks"}</Text>
-      {people.map((person) => (
-        <TouchableOpacity key={person.id} style={ui.card} onPress={() => openWishbook(person.id)}>
-          <Text style={ui.cardTitle}>
-            {displayName(person)}
-            {person.id === userId ? " (you)" : ""}
+          <Text style={{ fontSize: 17, fontWeight: "600", color: kind.color }}>
+            {archived ? "Archived" : countdown(gathering.ends_at)}
           </Text>
           <Text style={ui.muted}>
-            {person.id === userId
-              ? "Pick which of your gifts show here →"
-              : managedIds.has(person.id)
-                ? "Pick which of their gifts show here →"
-                : "View their gifts →"}
+            {kind.label} · {formatDate(gathering.ends_at)}
           </Text>
-        </TouchableOpacity>
-      ))}
+          {!archived ? (
+            <Button
+              title="Edit"
+              icon="edit"
+              variant="secondary"
+              style={{ marginTop: 6, paddingVertical: 9 }}
+              onPress={() =>
+                router.push({ pathname: "/gift-nook/gathering-form", params: { gatheringId: id } })
+              }
+            />
+          ) : null}
+        </View>
+      </Appear>
+
+      <SectionHeader title={hasHonorees ? "Celebrating" : "Everyone's Wishbooks"} icon="group" />
+      {people.map((person, i) => {
+        const isMe = person.id === userId;
+        const manages = managedIds.has(person.id);
+        return (
+          <NavCard
+            key={person.id}
+            index={i}
+            icon={isMe || manages ? "heart" : "wishbook"}
+            title={`${displayName(person)}${isMe ? " (you)" : ""}`}
+            subtitle={
+              isMe
+                ? "Pick which of your gifts show here"
+                : manages
+                  ? "Pick which of their gifts show here"
+                  : "View their gifts"
+            }
+            onPress={() => openWishbook(person.id)}
+          />
+        );
+      })}
 
       {canDelete ? (
-        <TouchableOpacity onPress={confirmDelete} style={{ alignItems: "center", marginTop: 16 }}>
-          <Text style={ui.error}>Delete Gathering</Text>
-        </TouchableOpacity>
+        <Button title="Delete Gathering" icon="trash" variant="danger" onPress={confirmDelete} style={{ marginTop: 12 }} />
       ) : null}
     </NookScroll>
   );

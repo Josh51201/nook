@@ -4,13 +4,9 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "../lib/auth-context";
-import { colors } from "../lib/theme";
+import { stackScreenOptions } from "../lib/theme";
 
-const headerOptions = {
-  headerShown: true,
-  headerTintColor: colors.bark,
-  headerBackTitle: "Hearth",
-};
+const headerOptions = { ...stackScreenOptions, headerShown: true, headerBackTitle: "Hearth" };
 
 export default function RootLayout() {
   return (
@@ -18,7 +14,7 @@ export default function RootLayout() {
       <KeyboardProvider>
         <SafeAreaProvider>
           <AuthProvider>
-            <Stack screenOptions={{ headerShown: false }}>
+            <Stack screenOptions={{ headerShown: false, animation: "ios_from_right" }}>
               <Stack.Screen
                 name="settings"
                 options={{ ...headerOptions, title: "Settings" }}

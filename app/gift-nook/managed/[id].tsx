@@ -1,15 +1,8 @@
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Share,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, Share, Text, TextInput, View } from "react-native";
 
+import { Button } from "../../../components/ui";
 import { NookScroll } from "../../../components/nook-scroll";
 import * as Clipboard from "expo-clipboard";
 
@@ -18,6 +11,7 @@ import { tap } from "../../../lib/feedback";
 import { displayName, type Profile } from "../../../lib/gift-nook";
 import { supabase } from "../../../lib/supabase";
 import { colors, ui } from "../../../lib/theme";
+import { LoadingScreen, Tap } from "../../../components/motion";
 
 type Burrow = { id: string; name: string };
 
@@ -129,13 +123,7 @@ export default function ManageProfile() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   return (
     <NookScroll>
@@ -145,9 +133,7 @@ export default function ManageProfile() {
       <View style={ui.row}>
         <TextInput style={[ui.input, { flex: 1 }]} value={name} onChangeText={setName} />
         {name.trim() && name.trim() !== savedName ? (
-          <TouchableOpacity style={ui.button} onPress={saveName}>
-            <Text style={ui.buttonText}>Save</Text>
-          </TouchableOpacity>
+          <Button title="Save" onPress={saveName} />
         ) : null}
       </View>
 
@@ -157,7 +143,7 @@ export default function ManageProfile() {
         {myBurrows.map((burrow) => {
           const selected = theirBurrows.has(burrow.id);
           return (
-            <TouchableOpacity
+            <Tap
               key={burrow.id}
               style={[ui.chip, selected && ui.chipSelected]}
               onPress={() =>
@@ -165,7 +151,7 @@ export default function ManageProfile() {
               }
             >
               <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{burrow.name}</Text>
-            </TouchableOpacity>
+            </Tap>
           );
         })}
       </View>
@@ -178,11 +164,11 @@ export default function ManageProfile() {
             {manager.id === userId ? " (you)" : ""}
           </Text>
           {managers.length > 1 ? (
-            <TouchableOpacity
+            <Tap
               onPress={() => call("remove_profile_manager", { target_profile: id, old_manager: manager.id })}
             >
               <Text style={ui.error}>Remove</Text>
-            </TouchableOpacity>
+            </Tap>
           ) : null}
         </View>
       ))}
@@ -191,13 +177,13 @@ export default function ManageProfile() {
           <Text style={ui.muted}>Add a manager (e.g. the other parent):</Text>
           <View style={ui.chips}>
             {candidates.map((person) => (
-              <TouchableOpacity
+              <Tap
                 key={person.id}
                 style={ui.chip}
                 onPress={() => call("add_profile_manager", { target_profile: id, new_manager: person.id })}
               >
                 <Text style={ui.chipText}>+ {displayName(person)}</Text>
-              </TouchableOpacity>
+              </Tap>
             ))}
           </View>
         </>
@@ -208,13 +194,11 @@ export default function ManageProfile() {
         When {savedName} gets their own phone, send them a code. Once they enter it, the list is
         theirs — and like everyone else, they won't see what's been tucked. You'll stop managing it.
       </Text>
-      <TouchableOpacity style={ui.secondaryButton} onPress={sendHandoff}>
-        <Text style={ui.secondaryButtonText}>Send {savedName} a hand-off code</Text>
-      </TouchableOpacity>
+      <Button title={`Send ${savedName} a hand-off code`} icon="share" variant="secondary" onPress={sendHandoff} />
 
-      <TouchableOpacity onPress={confirmDelete} style={{ alignItems: "center", marginTop: 24 }}>
+      <Tap onPress={confirmDelete} style={{ alignItems: "center", marginTop: 24 }}>
         <Text style={{ color: colors.error }}>Delete {savedName}'s profile</Text>
-      </TouchableOpacity>
+      </Tap>
     </NookScroll>
   );
 }

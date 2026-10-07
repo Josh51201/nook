@@ -1,23 +1,17 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, Image, Switch, Text, TextInput, View } from "react-native";
 
+import { Icon } from "../../components/icon";
 import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
-import { displayName, repeatableByDefault, shelfFields, type Shelf } from "../../lib/gift-nook";
+import { displayName, repeatableByDefault, shelfFields, shelfIcons, type Shelf } from "../../lib/gift-nook";
 import { friendlyError, tap } from "../../lib/feedback";
 import { fetchLinkPreview } from "../../lib/link-preview";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
+import { LoadingScreen, Tap } from "../../components/motion";
+import { Button, Chip } from "../../components/ui";
 
 // Add or edit a gift (GIFT-002/003/004/009/030).
 //   ?giftId=...        edit an existing gift (yours, your kid's, or your suggestion)
@@ -207,13 +201,7 @@ export default function GiftForm() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  if (isLoading) return <LoadingScreen />;
 
   const screenTitle = isEditing
     ? isSuggestion
@@ -231,7 +219,10 @@ export default function GiftForm() {
 
       {isSuggestion ? (
         <View style={[ui.card, { backgroundColor: "#fff7e6" }]}>
-          <Text style={ui.cardTitle}>🤫 This is a suggestion</Text>
+          <View style={[ui.row, { gap: 6 }]}>
+            <Icon name="hidden" size={16} />
+            <Text style={ui.cardTitle}>This is a suggestion</Text>
+          </View>
           <Text style={ui.muted}>
             {forName ?? "They"} won't see it. Everyone else can, and can tuck it away.
           </Text>
@@ -251,22 +242,22 @@ export default function GiftForm() {
           keyboardType="url"
         />
         {url.trim() ? (
-          <TouchableOpacity style={ui.secondaryButton} onPress={fillFromLink} disabled={isFetchingPreview}>
-            {isFetchingPreview ? (
-              <ActivityIndicator color={colors.bark} />
-            ) : (
-              <Text style={ui.secondaryButtonText}>✨ Fill in</Text>
-            )}
-          </TouchableOpacity>
+          <Button
+            title="Fill in"
+            icon="sparkles"
+            variant="secondary"
+            onPress={fillFromLink}
+            loading={isFetchingPreview}
+          />
         ) : null}
       </View>
 
       {imageUrl ? (
         <View style={[ui.row, { gap: 12 }]}>
           <Image source={{ uri: imageUrl }} style={{ width: 80, height: 80, borderRadius: 10 }} resizeMode="contain" />
-          <TouchableOpacity onPress={() => setImageUrl(null)}>
+          <Tap onPress={() => setImageUrl(null)}>
             <Text style={ui.error}>Remove picture</Text>
-          </TouchableOpacity>
+          </Tap>
         </View>
       ) : null}
 
@@ -278,13 +269,7 @@ export default function GiftForm() {
         {shelves.map((s) => {
           const selected = s.id === shelfId;
           return (
-            <TouchableOpacity
-              key={s.id}
-              style={[ui.chip, selected && ui.chipSelected]}
-              onPress={() => pickShelf(s)}
-            >
-              <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{s.label}</Text>
-            </TouchableOpacity>
+            <Chip key={s.id} icon={shelfIcons[s.key] ?? "category"} selected={selected} onPress={() => pickShelf(s)}>{s.label}</Chip>
           );
         })}
       </View>
@@ -336,7 +321,10 @@ export default function GiftForm() {
       {!isSuggestion ? (
         <View style={[ui.row, { justifyContent: "space-between" }]}>
           <View style={{ flex: 1 }}>
-            <Text style={ui.cardTitle}>❤️ Most wanted</Text>
+            <View style={[ui.row, { gap: 6 }]}>
+              <Icon name="heart" size={16} color={colors.heart} />
+              <Text style={ui.cardTitle}>Most wanted</Text>
+            </View>
             <Text style={ui.muted}>Shows at the top of the list so family knows it's a favorite.</Text>
           </View>
           <Switch value={isMostWanted} onValueChange={setIsMostWanted} trackColor={{ true: colors.bark }} />
@@ -345,20 +333,12 @@ export default function GiftForm() {
 
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      <TouchableOpacity style={ui.button} onPress={save} disabled={isSaving}>
-        {isSaving ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={ui.buttonText}>
-            {isEditing ? "Save changes" : isSuggestion ? "Add suggestion" : "Add to Wishbook"}
-          </Text>
-        )}
-      </TouchableOpacity>
+      <Button title={isEditing ? "Save changes" : isSuggestion ? "Add suggestion" : "Add to Wishbook"} icon="check" onPress={save} loading={isSaving} />
 
       {isEditing ? (
-        <TouchableOpacity onPress={confirmDelete} style={{ alignItems: "center" }}>
+        <Tap onPress={confirmDelete} style={{ alignItems: "center" }}>
           <Text style={ui.error}>{isSuggestion ? "Remove suggestion" : "Remove gift"}</Text>
-        </TouchableOpacity>
+        </Tap>
       ) : null}
     </NookScroll>
   );

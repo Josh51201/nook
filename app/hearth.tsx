@@ -1,21 +1,16 @@
 import { StatusBar } from "expo-status-bar";
 import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
+import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DraggableTile } from "../components/hearth/draggable-tile";
 import { TileFace } from "../components/hearth/tile-face";
 import { TileOptions } from "../components/hearth/tile-options";
+import { Icon, IconBadge } from "../components/icon";
+import { Appear, Skeleton, Tap } from "../components/motion";
 import { useAuth } from "../lib/auth-context";
 import {
   hearthThemes,
@@ -196,52 +191,71 @@ export default function Hearth() {
           </Text>
           <View style={styles.headerButtons}>
             {!isEmpty ? (
-              <TouchableOpacity onPress={() => setEditing((e) => !e)} hitSlop={10}>
-                <Text style={[styles.headerButton, { color: theme.accent }]}>
+              <Tap
+                onPress={() => {
+                  tap();
+                  setEditing((e) => !e);
+                }}
+                hitSlop={10}
+                style={[styles.editButton, { backgroundColor: editing ? theme.accent : "transparent", borderColor: theme.accent }]}
+              >
+                <Text style={[styles.headerButton, { color: editing ? theme.background : theme.accent }]}>
                   {editing ? "Done" : "Edit"}
                 </Text>
-              </TouchableOpacity>
+              </Tap>
             ) : null}
-            <TouchableOpacity
+            <Tap
               onPress={() => router.push("/settings")}
               hitSlop={10}
+              pressedScale={0.85}
               accessibilityLabel="Settings"
             >
-              <Text style={[styles.headerButton, { color: theme.accent, fontSize: 20 }]}>⚙︎</Text>
-            </TouchableOpacity>
+              <Icon name="settings" size={24} color={theme.accent} />
+            </Tap>
           </View>
         </View>
 
         {editing ? (
-          <Text style={{ color: theme.muted }}>
-            Hold and drag a Nook to move it. Tap one to resize, recolor, or rename it.
-          </Text>
+          <Animated.View entering={FadeInDown.springify().damping(18)} exiting={FadeOut.duration(150)} style={[styles.hint, { backgroundColor: `${theme.accent}18` }]}>
+            <Icon name="drag" size={18} color={theme.accent} />
+            <Text style={{ color: theme.text, flex: 1 }}>
+              Hold and drag a Nook to move it. Tap one to resize, recolor, or rename it.
+            </Text>
+          </Animated.View>
         ) : null}
 
         {error ? (
           <View style={{ gap: 8 }}>
             <Text style={{ color: "#c0392b" }}>Couldn't load your Hearth: {error}</Text>
-            <TouchableOpacity onPress={reload}>
-              <Text style={{ color: theme.accent }}>Try again</Text>
-            </TouchableOpacity>
+            <Tap onPress={reload} style={[styles.outlineButton, { borderColor: theme.accent }]}>
+              <Text style={{ color: theme.accent, fontWeight: "600" }}>Try again</Text>
+            </Tap>
           </View>
         ) : isLoading ? (
-          <ActivityIndicator color={theme.accent} />
+          <View style={styles.grid}>
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} height={gridWidth ? ((gridWidth - GAP) / 2) * 0.8 : 120} width="48%" radius={24} />
+            ))}
+          </View>
         ) : (
           <View onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)} style={{ gap: 24 }}>
             {isEmpty && !editing ? (
-              <View style={[styles.emptyCard, { borderColor: theme.muted }]}>
-                <Text style={{ fontSize: 40 }}>🏡</Text>
-                <Text style={[styles.emptyTitle, { color: theme.text }]}>Your Hearth is empty</Text>
-                <Text style={{ color: theme.muted, textAlign: "center" }}>
-                  Visit the Market to add your first Nook.
-                </Text>
-              </View>
+              <Appear>
+                <View style={[styles.emptyCard, { borderColor: theme.muted }]}>
+                  <IconBadge name="hearth" size={72} color={theme.accent} background={`${theme.accent}1f`} />
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>Your Hearth is empty</Text>
+                  <Text style={{ color: theme.muted, textAlign: "center" }}>
+                    Visit the Market to add your first Nook.
+                  </Text>
+                </View>
+              </Appear>
             ) : (
               layout.sections.map((section, sectionIndex) => (
-                <View
+                <Animated.View
                   key={section.id}
-                  ref={(view) => {
+                  entering={FadeInDown.delay(sectionIndex * 70).springify().damping(18)}
+                  layout={LinearTransition.springify().damping(18)}
+                  ref={(view: View | null) => {
                     if (view) sectionViews.current.set(section.id, view);
                     else sectionViews.current.delete(section.id);
                   }}
@@ -266,15 +280,16 @@ export default function Hearth() {
                       onDelete={() => deleteSection(section.id)}
                     />
                   ) : section.title ? (
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>{section.title}</Text>
+                    <Text style={[styles.sectionTitle, { color: theme.muted }]}>{section.title}</Text>
                   ) : null}
 
                   <View style={styles.grid}>
-                    {section.tiles.map((tile) => {
+                    {section.tiles.map((tile, tileIndex) => {
                       const { width, height } = tileSize(tile);
                       return (
                         <DraggableTile
                           key={tile.nookId}
+                          seed={sectionIndex * 7 + tileIndex}
                           editing={editing}
                           isDragging={draggingId === tile.nookId}
                           viewRef={(view) => {
@@ -318,25 +333,23 @@ export default function Hearth() {
                       </View>
                     ) : null}
                   </View>
-                </View>
+                </Animated.View>
               ))
             )}
 
             {editing ? (
-              <TouchableOpacity
-                style={[styles.outlineButton, { borderColor: theme.accent }]}
-                onPress={addSection}
-              >
-                <Text style={{ color: theme.accent, fontWeight: "600" }}>+ New section</Text>
-              </TouchableOpacity>
+              <Appear>
+                <Tap style={[styles.outlineButton, { borderColor: theme.accent }]} onPress={addSection}>
+                  <Icon name="add" size={18} color={theme.accent} />
+                  <Text style={{ color: theme.accent, fontWeight: "600" }}>New section</Text>
+                </Tap>
+              </Appear>
             ) : null}
 
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: theme.accent }]}
-              onPress={() => router.push("/market")}
-            >
-              <Text style={styles.addButtonText}>+ Add a Nook</Text>
-            </TouchableOpacity>
+            <Tap style={[styles.addButton, { backgroundColor: theme.accent }]} onPress={() => router.push("/market")}>
+              <Icon name="market" size={18} color={theme.background} />
+              <Text style={[styles.addButtonText, { color: theme.background }]}>Add a Nook</Text>
+            </Tap>
           </View>
         )}
       </ScrollView>
@@ -394,16 +407,16 @@ function SectionHeaderEditor({
         placeholderTextColor="#999"
         returnKeyType="done"
       />
-      <TouchableOpacity onPress={() => onMove(-1)} disabled={!canMoveUp} hitSlop={6}>
-        <Text style={[styles.sectionAction, { color: accent, opacity: canMoveUp ? 1 : 0.3 }]}>↑</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => onMove(1)} disabled={!canMoveDown} hitSlop={6}>
-        <Text style={[styles.sectionAction, { color: accent, opacity: canMoveDown ? 1 : 0.3 }]}>↓</Text>
-      </TouchableOpacity>
+      <Tap onPress={() => onMove(-1)} disabled={!canMoveUp} hitSlop={6} pressedScale={0.8} accessibilityLabel="Move section up">
+        <Icon name="arrowUp" size={20} color={accent} />
+      </Tap>
+      <Tap onPress={() => onMove(1)} disabled={!canMoveDown} hitSlop={6} pressedScale={0.8} accessibilityLabel="Move section down">
+        <Icon name="arrowDown" size={20} color={accent} />
+      </Tap>
       {canDelete ? (
-        <TouchableOpacity onPress={onDelete} hitSlop={6}>
-          <Text style={[styles.sectionAction, { color: "#c0392b" }]}>✕</Text>
-        </TouchableOpacity>
+        <Tap onPress={onDelete} hitSlop={6} pressedScale={0.8} accessibilityLabel="Remove section">
+          <Icon name="trash" size={19} color="#c0392b" />
+        </Tap>
       ) : null}
     </View>
   );
@@ -419,10 +432,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
     gap: 12,
   },
-  title: { fontSize: 28, fontWeight: "700", flexShrink: 1 },
+  title: { fontSize: 32, fontWeight: "800", flexShrink: 1, letterSpacing: -0.5 },
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 18 },
-  headerButton: { fontSize: 16, fontWeight: "600" },
-  sectionTitle: { fontSize: 18, fontWeight: "700" },
+  headerButton: { fontSize: 15, fontWeight: "700" },
+  editButton: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 5 },
+  hint: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 16 },
+  sectionTitle: { fontSize: 13, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.8 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: GAP },
   editingSection: {
     borderWidth: 1,
@@ -458,7 +473,23 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   emptyTitle: { fontSize: 18, fontWeight: "700" },
-  outlineButton: { borderWidth: 1, borderRadius: 12, padding: 12, alignItems: "center" },
-  addButton: { borderRadius: 12, padding: 14, alignItems: "center" },
+  outlineButton: {
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderRadius: 16,
+    padding: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  addButton: {
+    borderRadius: 16,
+    padding: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
   addButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 });

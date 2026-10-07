@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
+import Animated, { FadeInRight } from "react-native-reanimated";
 
-import { formatDate, gatheringKindInfo } from "../../lib/gift-nook";
+import { countdown, gatheringKindInfo } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
+import { Icon } from "../icon";
 
 // Live info a Nook can show on its Hearth tile when it's big enough
 // (CORE-010). Keyed by Nook id; Nooks without a widget just show their
@@ -33,13 +35,23 @@ function GiftNookWidget({ size, refreshKey, textColor, mutedColor }: WidgetProps
 
   const shown = size === "large" ? upcoming : upcoming.slice(0, 1);
   return (
-    <View style={{ gap: 4 }}>
-      {shown.map((gathering) => (
-        <Text key={gathering.id} style={{ color: textColor, fontSize: 13 }} numberOfLines={1}>
-          {gatheringKindInfo(gathering.kind).emoji} {gathering.title}
-          <Text style={{ color: mutedColor }}> · {formatDate(gathering.ends_at)}</Text>
-        </Text>
-      ))}
+    <View style={{ gap: 6 }}>
+      {shown.map((gathering, i) => {
+        const kind = gatheringKindInfo(gathering.kind);
+        return (
+          <Animated.View
+            key={gathering.id}
+            entering={FadeInRight.delay(i * 60).springify().damping(18)}
+            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+          >
+            <Icon name={kind.icon} size={14} color={kind.color} />
+            <Text style={{ color: textColor, fontSize: 13, flex: 1 }} numberOfLines={1}>
+              {gathering.title}
+              <Text style={{ color: mutedColor }}> · {countdown(gathering.ends_at)}</Text>
+            </Text>
+          </Animated.View>
+        );
+      })}
     </View>
   );
 }
