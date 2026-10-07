@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 17)_
+_Last updated: 2026-10-07 (rev 18)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -22,6 +22,9 @@ _Last updated: 2026-10-07 (rev 17)_
 - **CORE-018** Users can add widgets of different kinds to the Hearth, each completely customizable in what it shows and how it looks — e.g. reminders to log food, countdowns to holidays and events, things to buy. _(Built (proposed details): Countdown, Coming up, Reminders (checklists with phone reminders once/daily/weekly — work in Expo Go), Gifts to buy, Sticky note, Inbox, Greeting; each with title, Soft/Bold/Outline style, color, size, and its own settings, edited with a live preview. Ready-made ideas: Food log reminders, Holiday shopping list, Christmas countdown, Event reminders.)_
 - **CORE-020** Tapping a Hearth widget opens its own settings, except those that are a window onto your own stuff: the Inbox widget opens the inbox and Gifts to buy opens your shopping list. Every Gift Nook screen opened straight from the Hearth has a way back to it.
 - **CORE-021** Nook ships as its own app with its own icon (not inside Expo Go). _(Prepared: icon set drawn (a cozy fireplace in an arch, proposed), app.json and eas.json set up, build guide in docs/BUILDING_THE_APP.md. Needs Josh's Expo and Apple Developer accounts to build — see Q-025.)_
+- **CORE-022** The Hearth gets built-out organization so it doesn't become one very long list as widgets pile up (a 4-column grid fills fast). Users can place houses or stumps on the Hearth; tapping one **enters** it — with a door-opening animation or similar — into its own user-organized screen. _(Not built yet — Josh's next priority, see section 7.)_
+- **CORE-023** What's inside a house is as customizable as the Hearth itself: Nook tiles, widgets and text laid out however the person likes, with their own drag-and-drop design. _(Not built yet.)_
+- **CORE-024** Each house/stump can be customized — its name, its look (house, stump, …), its color — and putting things in or taking them out should be easy and friendly, e.g. dragging a tile or widget onto it. _(Not built yet; the specifics are proposed.)_
 - **CORE-019** Users design their own Hearth layout — everyone's looks different. _(Built (proposed details): a 4-column grid where Nooks, widgets and text can go anywhere, gaps allowed; hold to drag (an outline shows where it'll land), drag a corner to resize, and anything in the way slides down. Older section-based Hearths convert automatically.)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
@@ -71,6 +74,7 @@ _Last updated: 2026-10-07 (rev 17)_
 - **GIFT-030** Pasting a link can fill in the gift's name and picture automatically where the shop allows it (Q-011).
 
 - **GIFT-035** Each family automatically gets a Birthday Gathering for every member (kids included) who has set a birthday on their profile, created 30 days ahead, once a year, with that person as its honoree. It's created by whichever family phone opens Nook first, so nothing runs in the background. If an admin deletes one, it doesn't come back that year. _(Built; the 30-day lead time and "created by whoever opens Nook first" are proposed.)_
+- **GIFT-036** Idea Stash: a person can keep private notes about other people — things they mentioned liking, gift ideas, sizes — that only they can ever see, and turn an idea into a gift (e.g. a suggestion on that person's list) when ready. _(Not built yet; details proposed.)_
 
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
@@ -82,6 +86,7 @@ _Last updated: 2026-10-07 (rev 17)_
 - **Q-023** Emailed sign-in codes: Resend without a verified domain only delivers to its owner's own address, so family members can't receive codes. Which domain should Nook send email from (a domain must be bought, about $10–15/year, then verified in Resend and set as the sender in Supabase)? Needed before anyone besides Josh uses the app.
 
 - **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
+- **Q-026** For the Hearth houses/stumps (CORE-022..024): what are they called, and what looks should there be (house, stump, cottage, treehouse…)? Can a house hold another house, or just one level? And what should the door animation feel like — a door swinging open, a zoom-in, something else?
 - **Q-025** The app ID (bundle identifier) is currently `com.josh51201.nook`. It is permanent once the app is published. Should it use the domain Josh buys for email (Q-023) instead?
 
 ## 4. Decision Log
@@ -115,6 +120,8 @@ _Last updated: 2026-10-07 (rev 17)_
 - **2026-10-07 — Developer sign-in:** Signing in as a second test person with "+test" email failed ("error sending confirmation email") because emails only reach the account owner's address. Josh: "sure" to a dev-only password sign-in for testing. → AUTH-002, Q-023
 - **2026-10-07 — Profile + widget fixes:** The Inbox widget opened a screen with no way back, and tapping the Countdown widget jumped into the Gift Nook (not wanted). "If it's a user's first time entering Nook, so a new user, it should prompt for their name rather than show their email as their name. A create profile type thing where they can edit things there before entering the hearth. So more profile customization!" → PROF-001, PROF-002, CORE-020
 - **2026-10-07 — Next steps chosen:** "How about the nook icon and real app build, the kid profile pictures and the birthday one." → CORE-021, PROF-003, GIFT-035
+- **2026-10-07 — More Nooks for the backlog:** After asking for ideas that are "very useful ones that not many people have apps for," Josh picked: potluck, card/contact list, pet care, lent out, yearly rhythms, house binder, sitter sheet, idea stash, quote jar, and fridge door. Idea Stash became a Gift Nook requirement. → Nook Backlog (section 6), GIFT-036
+- **2026-10-07 — Hearth organization is next:** "I want to add to the requirements to do next about adding more organization to the hearth, cause right now with all the widgets we add and 4 slots per row, can easily become a very long list of things. So I want to somehow build into this Nook theme and create like houses or stumps to enter that has these user customized/organized screens within with a door animation or something along the lines, so just more built out organization that is user friendly!" → CORE-022, CORE-023, CORE-024, Q-026, section 7
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -128,7 +135,25 @@ _Last updated: 2026-10-07 (rev 17)_
 | An event | Gathering | proposed |
 | Gift categories | Shelves | proposed |
 | The Nook shop | The Market | proposed |
+| A house/stump on the Hearth you enter to reach its own organized screen | Hollow (Josh said "houses or stumps") | proposed |
 
 ## 6. Nook Backlog
-- Food tracker Nook
-- To-do list Nook
+Josh's picks, in no particular order. Names and details are proposed until he confirms them; each will get proper requirement IDs when it's about to be built.
+- **Potluck** — who's bringing what to a Gathering, with allergies and dietary needs pulled from each person's profile. Builds on Gatherings.
+- **Card & Contact List** — the holiday card list with addresses, who you've sent to and who sent you one each year; doubles as a contact list for family and friends.
+- **Pet Care** — shared pet profiles with "fed the dog?" check-offs so nobody feeds twice, plus vet, vaccine and medication dates with reminders; a Hearth widget shows the latest.
+- **Lent Out** — track things you've lent or borrowed (the drill, the casserole dish), to or from whom, with gentle reminders to ask for them back.
+- **Yearly Rhythms** — recurring annual and seasonal home chores (furnace filter, smoke-detector batteries, flu shots, gutters, car registration) with reminders and a log of who did what.
+- **House Binder** — home info in one place: paint colors, appliance models, warranty dates, filter sizes, trusted contacts like the plumber, and service history.
+- **Sitter Sheet** — one page for babysitters, grandparents or house-sitters: allergies, bedtime, house rules, emergency numbers and the doctor. Shareable by link without them needing the app.
+- **Quote Jar** — save funny things people say, with the date and who said it; a Hearth widget shows a random one each day.
+- **Fridge Door** — family sticky notes and doodles, shown as a Hearth widget.
+- **Idea Stash** — part of the Gift Nook (GIFT-036), not a separate Nook.
+
+Earlier faint, very broad ideas (lower priority, may be dropped): Food tracker, To-do list.
+
+Other ideas Claude mentioned that Josh hasn't picked: Surprise Planner (plan a surprise with a hidden to-do list, hidden from the guest of honor), Keepsakes (letters sealed until a date, e.g. a kid's 18th birthday).
+
+## 7. Up next
+Josh's stated priority, in order:
+1. **Hearth organization (CORE-022..024):** houses/stumps you enter, with a door animation, each holding its own organized, user-designed screen. Needs Q-026 answered or sensible defaults agreed.
