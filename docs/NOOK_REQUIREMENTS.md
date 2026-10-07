@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 5)_
+_Last updated: 2026-10-07 (rev 6)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -9,6 +9,11 @@ _Last updated: 2026-10-07 (rev 5)_
 - **CORE-004** Heavy customization throughout ("to your heart's content").
 - **CORE-005** Consistent cozy "small nook" naming theme for features and terms.
 - **CORE-006** The Hearth (homepage) is fully customizable, with drag-and-drop arranging, so each person can set it up however they like (organized or otherwise). This is the app's headline appeal. (Planned for later; not built yet.)
+- **CORE-007** Hearth tiles can be resized. (Later.)
+- **CORE-008** The Hearth can be restyled with colors and themes. (Later.)
+- **CORE-009** Nooks on the Hearth can be grouped into folders or groups. (Later.)
+- **CORE-010** Users can create widgets on the Hearth that show live info from a Nook (e.g. an upcoming Gathering). (Later.)
+- **CORE-011** Users choose what they get notified about and what's shown on their Hearth. (Later.)
 
 ## 1a. Accounts & Login
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.
@@ -51,7 +56,6 @@ _Last updated: 2026-10-07 (rev 5)_
 - **Q-014** How long after an event ends before it's archived, and how long before it's deleted? Fixed, or set per family?
   - _Built for now (proposed):_ a Gathering shows as Archived once its end date passes. Nothing is auto-deleted until this is answered.
 - **Q-017** What, if anything, can family admins do that members can't (remove someone, rename or delete the family)? Whoever starts a family is its admin today, with no extra powers.
-- **Q-018** What does Hearth customization include (CORE-006)? E.g. tile sizes, colors/themes, folders or groups of Nooks, widgets showing info from a Nook (like an upcoming Gathering)?
 - **Q-016** Since claims are shared across families (GIFT-013), can members of one family see *who* in another family claimed something, or just that it's claimed?
   - _Built for now (proposed):_ names of who tucked a gift aren't shown to anyone, in any Burrow, until this is answered.
 
@@ -63,6 +67,7 @@ _Last updated: 2026-10-07 (rev 5)_
 - **2026-10-06 — Q-015 answered:** Email login via one-time code (OTP), no passwords. Chosen over magic links because magic links need deep-link/universal-link config that's extra setup and flakier in Expo Go during development; a typed code works the same in dev and production. Social sign-in (Apple/Google) deferred, not built this session. → AUTH-001, Q-015
 - **2026-10-07 — Q-002 answered:** "A wishbook should be for the whole thing for every event but allow a user to exclude or include certain gifts so that way if they just want money for their bday they can do that and their full list for christmas." → GIFT-017
 - **2026-10-07 — Q-010 answered:** Invites are codes, and "being able to send the code out from anyone is fine." Codes expiring after 7 days is still *(proposed)*. The admin-roles part of Q-010 split out as Q-017. → GIFT-018, Q-017
+- **2026-10-07 — Q-018 answered:** Yes to tile sizes, colors/themes, folders/groups and widgets: "fully customizable and can create widgets and almost set what they want notified or shown on their hearth." For later, not now. → CORE-007–011
 - **2026-10-07 — Hearth customization:** The Hearth will eventually be customizable with drag-and-drop, and that's "the big appeal of the app." → CORE-006, Q-018
 
 ## 5. Glossary (naming theme)
