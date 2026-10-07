@@ -16,12 +16,17 @@ import {
   COLUMNS,
   deepColor,
   hearthThemes,
+  hollowsOf,
+  inScope,
+  locate,
+  moveToScope,
   removeItem,
   resizeItem,
   sizePresets,
   tilePalette,
   updateItem,
   useHearthLayout,
+  type Scope,
   type WidgetItem,
 } from "../../lib/hearth";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
@@ -45,7 +50,11 @@ export default function WidgetEditor() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { layout, save, isLoading } = useHearthLayout();
   const { width: screenWidth } = useWindowDimensions();
-  const original = layout.items.find((item) => item.id === id && item.kind === "widget") as WidgetItem | undefined;
+  // The widget may live on the Hearth or inside a Hollow (CORE-022).
+  const found = locate(layout, id);
+  const original = found?.item.kind === "widget" ? (found.item as WidgetItem) : undefined;
+  const home: Scope = found?.scope ?? null;
+  const [livesIn, setLivesIn] = useState<Scope | undefined>(undefined);
 
   const [draft, setDraft] = useState<WidgetItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -86,9 +95,15 @@ export default function WidgetEditor() {
         const synced = await syncReminders(next.title, next.settings.items, original.widget.settings.items);
         next = { ...next, settings: { ...next.settings, items: synced } };
       }
-      let items = updateItem(layout, draft.id, { widget: next, color: draft.color } as Partial<WidgetItem>);
+      let items = inScope(layout, home, (inner) =>
+        updateItem(inner, draft.id, { widget: next, color: draft.color } as Partial<WidgetItem>)
+      );
       if (draft.w !== original.w || draft.h !== original.h) {
-        items = resizeItem({ ...layout, items }, draft.id, draft.w, draft.h);
+        items = inScope({ ...layout, items }, home, (inner) => resizeItem(inner, draft.id, draft.w, draft.h));
+      }
+      // Moving it to the Hearth or another Hollow.
+      if (livesIn !== undefined && livesIn !== home) {
+        items = moveToScope({ ...layout, items }, draft.id, livesIn);
       }
       // Your Hearth updates instantly; the cloud save finishes in the
       // background, so closing never waits on the network.
@@ -110,7 +125,7 @@ export default function WidgetEditor() {
         style: "destructive",
         onPress: () => {
           if (original?.widget.kind === "reminders") cancelReminders(original.widget.settings.items);
-          const pending = save({ items: removeItem(layout, id) });
+          const pending = save({ items: inScope(layout, home, (inner) => removeItem(inner, id)) });
           router.back();
           pending.catch((error: Error) => Alert.alert("Couldn't remove it", error.message));
         },
@@ -149,6 +164,27 @@ export default function WidgetEditor() {
 
       <SectionHeader title="What it shows" icon={info.icon} />
       <KindSettings widget={widget} setSettings={setSettings} />
+
+      {hollowsOf(layout).length ? (
+        <>
+          <SectionHeader title="Where it lives" icon="burrow" />
+          <View style={ui.chips}>
+            <Chip icon="hearth" selected={(livesIn ?? home) === null} onPress={() => setLivesIn(null)}>
+              The Hearth
+            </Chip>
+            {hollowsOf(layout).map((hollowItem) => (
+              <Chip
+                key={hollowItem.id}
+                icon="burrow"
+                selected={(livesIn ?? home) === hollowItem.id}
+                onPress={() => setLivesIn(hollowItem.id)}
+              >
+                {hollowItem.name}
+              </Chip>
+            ))}
+          </View>
+        </>
+      ) : null}
 
       <SectionHeader title="How it looks" icon="palette" />
       <Text style={ui.label}>Title</Text>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
@@ -11,7 +11,7 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 
 import { tap } from "../../lib/feedback";
-import { COLUMNS, minSize, rowsUsed, type GridRect, type HearthItem } from "../../lib/hearth-layout";
+import { COLUMNS, minSize, rowsUsed, type GridRect, type HearthItem, type HollowItem } from "../../lib/hearth-layout";
 import { Icon } from "../icon";
 import { useWiggle } from "../motion";
 
@@ -33,6 +33,7 @@ export function HearthGrid({
   onPressItem,
   onLongPress,
   onDraggingChange,
+  onDropIntoHollow,
   renderItem,
 }: {
   items: HearthItem[];
@@ -44,12 +45,17 @@ export function HearthGrid({
   onPressItem: (item: HearthItem) => void;
   onLongPress: () => void;
   onDraggingChange: (dragging: boolean) => void;
+  // Dropping a tile onto a Hollow puts it inside (CORE-024). Only on the
+  // Hearth itself, since Hollows never hold Hollows.
+  onDropIntoHollow?: (id: string, hollowId: string) => void;
   renderItem: (item: HearthItem, size: { width: number; height: number }) => ReactNode;
 }) {
   const cell = (width - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
   const stride = cell + GRID_GAP;
   const [ghost, setGhost] = useState<GridRect | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [dropHollow, setDropHollow] = useState<HollowItem | null>(null);
+  const dropHollowRef = useRef<HollowItem | null>(null);
 
   const rows = rowsUsed(items) + (editing ? EXTRA_EDIT_ROWS : 0);
   const height = Math.max(0, rows * stride - GRID_GAP);
@@ -63,6 +69,8 @@ export function HearthGrid({
   );
   const finish = useCallback(() => {
     setGhost(null);
+    setDropHollow(null);
+    dropHollowRef.current = null;
     setActiveId(null);
     onDraggingChange(false);
   }, [onDraggingChange]);
@@ -91,7 +99,28 @@ export function HearthGrid({
         </Animated.View>
       ) : null}
 
-      {ghost ? (
+      {dropHollow ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.dropTarget,
+            {
+              left: dropHollow.x * stride - 6,
+              top: dropHollow.y * stride - 6,
+              width: dropHollow.w * stride - GRID_GAP + 12,
+              height: dropHollow.h * stride - GRID_GAP + 12,
+              borderColor: accent,
+              backgroundColor: accent + "22",
+            },
+          ]}
+        >
+          <View style={[styles.dropLabel, { backgroundColor: accent }]}>
+            <Text style={styles.dropLabelText} numberOfLines={1}>
+              Put in {dropHollow.name}
+            </Text>
+          </View>
+        </View>
+      ) : ghost ? (
         <View
           pointerEvents="none"
           style={[
@@ -120,10 +149,30 @@ export function HearthGrid({
           onPress={() => onPressItem(item)}
           onLongPress={onLongPress}
           onBegin={() => begin(item.id)}
-          onGhost={setGhost}
+          onGhost={(rect, finger) => {
+            // Is the finger over a Hollow? (Not for Hollows themselves.)
+            const target =
+              onDropIntoHollow && finger && item.kind !== "hollow"
+                ? ((items.find(
+                    (other) =>
+                      other.kind === "hollow" &&
+                      other.id !== item.id &&
+                      finger.x >= other.x &&
+                      finger.x < other.x + other.w &&
+                      finger.y >= other.y &&
+                      finger.y < other.y + other.h
+                  ) as HollowItem | undefined) ?? null)
+                : null;
+            if (target && target.id !== dropHollowRef.current?.id) tap();
+            dropHollowRef.current = target;
+            setDropHollow(target);
+            setGhost(rect);
+          }}
           onDrop={(x, y) => {
+            const into = dropHollowRef.current;
             finish();
-            if (x !== item.x || y !== item.y) onMove(item.id, x, y);
+            if (into && onDropIntoHollow) onDropIntoHollow(item.id, into.id);
+            else if (x !== item.x || y !== item.y) onMove(item.id, x, y);
           }}
           onResizeEnd={(w, h) => {
             finish();
@@ -161,7 +210,7 @@ function GridItem({
   onPress: () => void;
   onLongPress: () => void;
   onBegin: () => void;
-  onGhost: (rect: GridRect) => void;
+  onGhost: (rect: GridRect, finger: { x: number; y: number } | null) => void;
   onDrop: (x: number, y: number) => void;
   onResizeEnd: (w: number, h: number) => void;
   children: ReactNode;
@@ -177,6 +226,11 @@ function GridItem({
   const targetY = useSharedValue(item.y);
   const targetW = useSharedValue(item.w);
   const targetH = useSharedValue(item.h);
+  // Where in the tile the finger grabbed it, and which grid cell it's over.
+  const grabX = useSharedValue(0);
+  const grabY = useSharedValue(0);
+  const fingerX = useSharedValue(-1);
+  const fingerY = useSharedValue(-1);
   const wiggle = useWiggle(editing && !active, seed);
 
   // New position from the layout: glide there. If this is the tile that was
@@ -210,12 +264,12 @@ function GridItem({
     tap();
     handlers.current.onBegin();
   }, []);
-  const ghost = useCallback((x: number, y: number, w: number, h: number) => {
-    handlers.current.onGhost({ x, y, w, h });
+  const ghost = useCallback((x: number, y: number, w: number, h: number, fx?: number, fy?: number) => {
+    handlers.current.onGhost({ x, y, w, h }, fx === undefined || fy === undefined ? null : { x: fx, y: fy });
   }, []);
   const sizeTick = useCallback((x: number, y: number, w: number, h: number) => {
     tap();
-    handlers.current.onGhost({ x, y, w, h });
+    handlers.current.onGhost({ x, y, w, h }, null);
   }, []);
   const drop = useCallback((x: number, y: number) => handlers.current.onDrop(x, y), []);
   const resizeEnd = useCallback((w: number, h: number) => handlers.current.onResizeEnd(w, h), []);
@@ -233,22 +287,30 @@ function GridItem({
     }
     const pan = Gesture.Pan()
       .activateAfterLongPress(150)
-      .onStart(() => {
+      .onStart((event) => {
         targetX.value = x;
         targetY.value = y;
+        grabX.value = event.x;
+        grabY.value = event.y;
+        fingerX.value = Math.floor((x * stride + event.x) / stride);
+        fingerY.value = Math.floor((y * stride + event.y) / stride);
         lifted.value = withTiming(1, { duration: 160 });
         scheduleOnRN(begin);
-        scheduleOnRN(ghost, x, y, w, h);
+        scheduleOnRN(ghost, x, y, w, h, fingerX.value, fingerY.value);
       })
       .onUpdate((event) => {
         dragX.value = event.translationX;
         dragY.value = event.translationY;
         const nextX = Math.min(COLUMNS - w, Math.max(0, Math.round(x + event.translationX / stride)));
         const nextY = Math.max(0, Math.round(y + event.translationY / stride));
-        if (nextX !== targetX.value || nextY !== targetY.value) {
+        const fx = Math.floor((x * stride + grabX.value + event.translationX) / stride);
+        const fy = Math.floor((y * stride + grabY.value + event.translationY) / stride);
+        if (nextX !== targetX.value || nextY !== targetY.value || fx !== fingerX.value || fy !== fingerY.value) {
           targetX.value = nextX;
           targetY.value = nextY;
-          scheduleOnRN(ghost, nextX, nextY, w, h);
+          fingerX.value = fx;
+          fingerY.value = fy;
+          scheduleOnRN(ghost, nextX, nextY, w, h, fx, fy);
         }
       })
       .onEnd(() => {
@@ -264,7 +326,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, dragX, dragY, lifted, dropping, targetX, targetY]);
+  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, dragX, dragY, lifted, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY]);
 
   const resizeGesture = useMemo(
     () =>
@@ -322,6 +384,9 @@ function GridItem({
 const styles = StyleSheet.create({
   cell: { position: "absolute", borderRadius: 18, borderWidth: 1, borderStyle: "dashed" },
   ghost: { position: "absolute", borderRadius: 24, borderWidth: 2, borderStyle: "dashed" },
+  dropTarget: { position: "absolute", borderRadius: 28, borderWidth: 3, zIndex: 50, alignItems: "center" },
+  dropLabel: { position: "absolute", top: -14, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, maxWidth: "100%" },
+  dropLabelText: { color: "#ffffff", fontSize: 12, fontWeight: "800" },
   item: {
     position: "absolute",
     shadowColor: "#3a2414",

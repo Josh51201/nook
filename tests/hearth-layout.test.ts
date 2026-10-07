@@ -167,3 +167,70 @@ describe("Hearth widgets", () => {
     expect(describeSchedule(undefined)).toBeNull();
   });
 });
+
+describe("Hollows (CORE-022..024)", () => {
+  const hollow = (id: string, items: HearthItem[], x = 0, y = 0): HearthItem => ({
+    id,
+    kind: "hollow",
+    name: id,
+    look: "house",
+    items,
+    x,
+    y,
+    w: 2,
+    h: 2,
+  });
+  const where = async () => await import("../lib/hearth-layout");
+
+  it("finds items wherever they live", async () => {
+    const { locate, allItems } = await where();
+    const layout = layoutOf([nook("a", 0, 0), hollow("h", [nook("inside", 0, 0)], 2, 0)]);
+    expect(locate(layout, "inside")).toMatchObject({ scope: "h" });
+    expect(locate(layout, "a")).toMatchObject({ scope: null });
+    expect(locate(layout, "nope")).toBeNull();
+    expect(allItems(layout).map((i) => i.id)).toEqual(["a", "h", "inside"]);
+  });
+
+  it("edits a Hollow's inside without touching the Hearth", async () => {
+    const { inScope } = await where();
+    const layout = layoutOf([nook("a", 0, 0), hollow("h", [nook("b", 0, 0), nook("c", 0, 2)], 2, 0)]);
+    const items = inScope(layout, "h", (inner) => moveItem(inner, "c", 0, 0));
+    expect(at(items, "a")).toEqual({ x: 0, y: 0, w: 2, h: 2 });
+    const inside = (items.find((i) => i.id === "h") as { items: HearthItem[] }).items;
+    expect(at(inside, "c")).toMatchObject({ x: 0, y: 0 });
+    expect(at(inside, "b")).toMatchObject({ x: 0, y: 2 }); // pushed down inside the Hollow
+  });
+
+  it("moves items into a Hollow and back out again", async () => {
+    const { moveToScope, scopeItems, locate } = await where();
+    let layout = layoutOf([nook("a", 0, 0, 4, 2), hollow("h", [], 0, 2)]);
+    layout = { ...layout, items: moveToScope(layout, "a", "h") };
+    expect(layout.items.map((i) => i.id)).toEqual(["h"]);
+    expect(scopeItems(layout, "h").map((i) => [i.id, i.x, i.y, i.w, i.h])).toEqual([["a", 0, 0, 4, 2]]);
+    layout = { ...layout, items: moveToScope(layout, "a", null) };
+    expect(locate(layout, "a")).toMatchObject({ scope: null });
+    expect(scopeItems(layout, "h")).toEqual([]);
+  });
+
+  it("never puts a Hollow inside a Hollow", async () => {
+    const { moveToScope } = await where();
+    const layout = layoutOf([hollow("h1", []), hollow("h2", [], 2, 0)]);
+    expect(moveToScope(layout, "h1", "h2")).toBe(layout.items);
+  });
+
+  it("removing a Hollow moves everything inside back onto the Hearth", async () => {
+    const { removeHollow } = await where();
+    const layout = layoutOf([nook("a", 0, 0), hollow("h", [nook("b", 0, 0), nook("c", 2, 0)], 2, 0)]);
+    const items = removeHollow(layout, "h");
+    expect(items.map((i) => i.id).sort()).toEqual(["a", "b", "c"]);
+    expect(noOverlaps(items)).toBe(true);
+  });
+
+  it("knows a Nook is added even when it's tucked in a Hollow, and removes it from there", async () => {
+    const { hasNook, removeNook } = await where();
+    const layout = layoutOf([hollow("h", [nook("gift-nook", 0, 0)])]);
+    expect(hasNook(layout, "gift-nook")).toBe(true);
+    const items = removeNook(layout, "gift-nook");
+    expect((items[0] as { items: HearthItem[] }).items).toEqual([]);
+  });
+});

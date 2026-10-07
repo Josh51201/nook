@@ -24,7 +24,17 @@ export type LabelItem = ItemBase & {
   size: "title" | "heading" | "caption";
   align: "left" | "center" | "right";
 };
-export type HearthItem = NookItem | WidgetItem | LabelItem;
+// A Hollow (CORE-022..024): a house or stump on the Hearth that you step
+// into. It holds its own grid of items. One level only: a Hollow never
+// holds another Hollow.
+export type HollowLook = "house" | "stump";
+export type HollowItem = ItemBase & {
+  kind: "hollow";
+  name: string;
+  look: HollowLook;
+  items: HearthItem[];
+};
+export type HearthItem = NookItem | WidgetItem | LabelItem | HollowItem;
 
 export type HearthLayout = {
   version: 2;
@@ -88,6 +98,12 @@ export const sizePresets: Record<HearthItem["kind"], { label: string; w: number;
   label: [
     { label: "Full", w: 4, h: 1 },
     { label: "Half", w: 2, h: 1 },
+  ],
+  hollow: [
+    { label: "Icon", w: 1, h: 1 },
+    { label: "Small", w: 2, h: 2 },
+    { label: "Wide", w: 4, h: 2 },
+    { label: "Large", w: 4, h: 3 },
   ],
 };
 
@@ -182,7 +198,11 @@ export function removeItem(layout: HearthLayout, id: string): HearthItem[] {
 // Adds at the first free spot of its size.
 export function addItem(
   layout: HearthLayout,
-  item: Omit<NookItem, "x" | "y"> | Omit<WidgetItem, "x" | "y"> | Omit<LabelItem, "x" | "y">
+  item:
+    | Omit<NookItem, "x" | "y">
+    | Omit<WidgetItem, "x" | "y">
+    | Omit<LabelItem, "x" | "y">
+    | Omit<HollowItem, "x" | "y">
 ): HearthItem[] {
   const spot = findFreeSpot(layout.items, item.w, item.h);
   return [...layout.items, { ...item, ...spot } as HearthItem];
@@ -190,8 +210,9 @@ export function addItem(
 
 // --- Nooks -------------------------------------------------------------------------
 
+// Looks inside Hollows too, so a Nook tucked into one still counts as added.
 export function hasNook(layout: HearthLayout, nookId: string) {
-  return layout.items.some((item) => item.kind === "nook" && item.nookId === nookId);
+  return allItems(layout).some((item) => item.kind === "nook" && item.nookId === nookId);
 }
 
 export function addNook(layout: HearthLayout, nookId: string): HearthItem[] {
@@ -200,7 +221,10 @@ export function addNook(layout: HearthLayout, nookId: string): HearthItem[] {
 }
 
 export function removeNook(layout: HearthLayout, nookId: string): HearthItem[] {
-  return layout.items.filter((item) => !(item.kind === "nook" && item.nookId === nookId));
+  const isIt = (item: HearthItem) => item.kind === "nook" && item.nookId === nookId;
+  return layout.items
+    .filter((item) => !isIt(item))
+    .map((item) => (item.kind === "hollow" ? { ...item, items: item.items.filter((inner) => !isIt(inner)) } : item));
 }
 
 export function nookLabel(item: NookItem) {
@@ -209,6 +233,7 @@ export function nookLabel(item: NookItem) {
 
 export function itemColor(item: HearthItem) {
   if (item.color) return item.color;
+  if (item.kind === "hollow") return item.look === "stump" ? "#dfe8d6" : "#f6d9c4";
   if (item.kind === "nook") return findNook(item.nookId)?.color ?? tilePalette[0];
   return tilePalette[0];
 }
@@ -252,4 +277,75 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
     y += rowHeight;
   }
   return { ...base, items };
+}
+
+// --- Hollows (CORE-022..024) -------------------------------------------------
+//
+// A "scope" is where an item lives: null = the Hearth itself, or a Hollow's
+// id. Every editing helper above works on a layout's `items`; inScope() runs
+// one of them against a Hollow's inside instead, and returns the Hearth's
+// updated top-level items either way.
+
+export type Scope = string | null;
+
+export function hollowsOf(layout: HearthLayout): HollowItem[] {
+  return layout.items.filter((item): item is HollowItem => item.kind === "hollow");
+}
+
+export function findHollow(layout: HearthLayout, hollowId: string) {
+  return hollowsOf(layout).find((hollow) => hollow.id === hollowId) ?? null;
+}
+
+// Everything, wherever it lives.
+export function allItems(layout: HearthLayout): HearthItem[] {
+  return layout.items.flatMap((item) => (item.kind === "hollow" ? [item, ...item.items] : [item]));
+}
+
+export function scopeItems(layout: HearthLayout, scope: Scope): HearthItem[] {
+  return scope ? findHollow(layout, scope)?.items ?? [] : layout.items;
+}
+
+export function inScope(layout: HearthLayout, scope: Scope, edit: (inner: HearthLayout) => HearthItem[]): HearthItem[] {
+  if (!scope) return edit(layout);
+  return layout.items.map((item) =>
+    item.kind === "hollow" && item.id === scope ? { ...item, items: edit({ ...layout, items: item.items }) } : item
+  );
+}
+
+// Where an item lives, and the item itself.
+export function locate(layout: HearthLayout, id: string): { item: HearthItem; scope: Scope } | null {
+  for (const item of layout.items) {
+    if (item.id === id) return { item, scope: null };
+    if (item.kind === "hollow") {
+      const inner = item.items.find((i) => i.id === id);
+      if (inner) return { item: inner, scope: item.id };
+    }
+  }
+  return null;
+}
+
+// Move an item to the Hearth (null) or into a Hollow, at the first free spot
+// there, keeping its size. Hollows can't go inside Hollows.
+export function moveToScope(layout: HearthLayout, id: string, to: Scope): HearthItem[] {
+  const found = locate(layout, id);
+  if (!found || found.scope === to) return layout.items;
+  if (to && found.item.kind === "hollow") return layout.items;
+  if (to && !findHollow(layout, to)) return layout.items;
+
+  const removed = { ...layout, items: inScope(layout, found.scope, (inner) => removeItem(inner, id)) };
+  const { x: _x, y: _y, ...rest } = found.item;
+  return inScope(removed, to, (inner) => addItem(inner, rest as Omit<HearthItem, "x" | "y"> as never));
+}
+
+// Taking a Hollow away never deletes what's in it: everything inside moves
+// back onto the Hearth, in free spots.
+export function removeHollow(layout: HearthLayout, hollowId: string): HearthItem[] {
+  const hollow = findHollow(layout, hollowId);
+  if (!hollow) return layout.items;
+  let next: HearthLayout = { ...layout, items: removeItem(layout, hollowId) };
+  for (const inner of hollow.items) {
+    const { x: _x, y: _y, ...rest } = inner;
+    next = { ...next, items: addItem(next, rest as never) };
+  }
+  return next.items;
 }

@@ -10,8 +10,10 @@ import {
   sizePresets,
   tilePalette,
   type HearthItem,
+  type HollowItem,
   type LabelItem,
   type NookItem,
+  type Scope,
 } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
 import { colors, ui } from "../../lib/theme";
@@ -20,11 +22,14 @@ import { Icon, IconBadge } from "../icon";
 import { Tap } from "../motion";
 import { Button, Chip } from "../ui";
 
-type Editable = NookItem | LabelItem;
+type Editable = NookItem | LabelItem | HollowItem;
 
-// Bottom sheet for a Nook tile or a text label on the Hearth: what it says,
-// how big it is, and its color. (Widgets have their own full editor.) Drag
-// the grabber or title down to close.
+export type MoveTarget = { scope: Scope; label: string };
+
+// Bottom sheet for a Nook tile, a text label or a Hollow: what it says or is
+// called, how big it is, its color (and a Hollow's look), and where it lives
+// — on the Hearth or inside a Hollow. (Widgets have their own full editor.)
+// Drag the grabber or title down to close.
 export function ItemOptions({
   item,
   onChange,
@@ -32,6 +37,8 @@ export function ItemOptions({
   onOpen,
   onRemove,
   onClose,
+  moveTargets = [],
+  onMoveTo,
 }: {
   item: Editable | null;
   onChange: (changes: Partial<HearthItem>) => void;
@@ -39,6 +46,9 @@ export function ItemOptions({
   onOpen?: () => void;
   onRemove: () => void;
   onClose: () => void;
+  // Places this item could move to (the Hearth, or other Hollows).
+  moveTargets?: MoveTarget[];
+  onMoveTo?: (scope: Scope) => void;
 }) {
   const [text, setText] = useState("");
 
@@ -49,7 +59,7 @@ export function ItemOptions({
 
   useEffect(() => {
     if (!item) return;
-    setText(item.kind === "nook" ? item.label ?? "" : item.text);
+    setText(item.kind === "nook" ? item.label ?? "" : item.kind === "hollow" ? item.name : item.text);
   }, [item?.id]);
 
   function commitText() {
@@ -57,6 +67,8 @@ export function ItemOptions({
     if (item.kind === "nook") {
       const trimmed = text.trim();
       if (trimmed !== (item.label ?? "")) onChange({ label: trimmed || undefined } as Partial<NookItem>);
+    } else if (item.kind === "hollow") {
+      if (text.trim() && text.trim() !== item.name) onChange({ name: text.trim() } as Partial<HollowItem>);
     } else if (text.trim() && text.trim() !== item.text) {
       onChange({ text: text.trim() } as Partial<LabelItem>);
     }
@@ -78,11 +90,13 @@ export function ItemOptions({
           <View style={[ui.row, { gap: 12 }]}>
             {nook ? (
               <IconBadge name={nook.icon} color={nook.iconColor} background={nook.color} size={44} />
+            ) : shown.kind === "hollow" ? (
+              <IconBadge name={shown.look === "stump" ? "leaf" : "burrow"} size={44} background={itemColor(shown)} />
             ) : (
               <IconBadge name="text" size={44} />
             )}
             <Text style={[ui.sectionTitle, { marginTop: 0, flex: 1 }]} numberOfLines={1}>
-              {shown.kind === "nook" ? nookLabel(shown) : "Text"}
+              {shown.kind === "nook" ? nookLabel(shown) : shown.kind === "hollow" ? shown.name : "Text"}
             </Text>
           </View>
         ) : null
@@ -94,16 +108,36 @@ export function ItemOptions({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={ui.label}>{shown.kind === "nook" ? "Name on your Hearth" : "Words"}</Text>
+          <Text style={ui.label}>
+            {shown.kind === "nook" ? "Name on your Hearth" : shown.kind === "hollow" ? "Name" : "Words"}
+          </Text>
           <TextInput
             style={ui.input}
             value={text}
             onChangeText={setText}
             onEndEditing={commitText}
-            placeholder={nook?.title ?? "e.g. Family"}
+            placeholder={nook?.title ?? (shown.kind === "hollow" ? "e.g. Family stuff" : "e.g. Family")}
             placeholderTextColor={colors.muted}
             returnKeyType="done"
           />
+
+          {shown.kind === "hollow" ? (
+            <>
+              <Text style={ui.label}>Looks like</Text>
+              <View style={ui.chips}>
+                {(["house", "stump"] as const).map((look) => (
+                  <Chip
+                    key={look}
+                    icon={look === "house" ? "burrow" : "leaf"}
+                    selected={shown.look === look}
+                    onPress={() => onChange({ look } as Partial<HollowItem>)}
+                  >
+                    {look === "house" ? "A little house" : "A tree stump"}
+                  </Chip>
+                ))}
+              </View>
+            </>
+          ) : null}
 
           {shown.kind === "label" ? (
             <>
@@ -169,6 +203,26 @@ export function ItemOptions({
             })}
           </View>
 
+          {moveTargets.length && onMoveTo && shown.kind !== "hollow" ? (
+            <>
+              <Text style={ui.label}>Move to</Text>
+              <View style={ui.chips}>
+                {moveTargets.map((target) => (
+                  <Chip
+                    key={target.scope ?? "hearth"}
+                    icon={target.scope ? "burrow" : "hearth"}
+                    onPress={() => {
+                      tap("success");
+                      onMoveTo(target.scope);
+                    }}
+                  >
+                    {target.label}
+                  </Chip>
+                ))}
+              </View>
+            </>
+          ) : null}
+
           <View style={[ui.row, { marginTop: 8 }]}>
             {onOpen ? (
               <Button title="Open" icon="chevron" variant="secondary" style={{ flex: 1 }} onPress={onOpen} />
@@ -176,11 +230,16 @@ export function ItemOptions({
             <Button title="Done" icon="check" style={{ flex: 1 }} onPress={close} />
           </View>
           <Button
-            title={shown.kind === "nook" ? "Remove from Hearth" : "Remove text"}
+            title={shown.kind === "nook" ? "Remove from Hearth" : shown.kind === "hollow" ? "Remove this Hollow" : "Remove text"}
             icon="trash"
             variant="danger"
             onPress={onRemove}
           />
+          {shown.kind === "hollow" ? (
+            <Text style={[ui.muted, { textAlign: "center" }]}>
+              Nothing inside is deleted — it all moves back onto your Hearth.
+            </Text>
+          ) : null}
         </ScrollView>
       ) : null}
     </BottomSheet>

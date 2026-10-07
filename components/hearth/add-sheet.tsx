@@ -8,31 +8,59 @@ import { IconBadge, type IconName } from "../icon";
 import { Tap } from "../motion";
 import { SectionHeader } from "../ui";
 
-// "Add to your Hearth": widgets (CORE-018), ready-made ideas, a text
-// label for designing your layout, or a trip to the Market for Nooks.
-// Drag the grabber down to close.
+// "Add to your Hearth": widgets (CORE-018), ready-made ideas, a text label
+// for designing your layout, a Hollow to organize things into (CORE-022),
+// or a trip to the Market for Nooks. Inside a Hollow it offers widgets and
+// text, and says how to bring a Nook in. Drag the grabber down to close.
 export function AddSheet({
   visible,
   onClose,
   onAddWidget,
   onAddLabel,
   onOpenMarket,
+  onAddHollow,
+  hollowName,
 }: {
   visible: boolean;
   onClose: () => void;
   onAddWidget: (widget: WidgetConfig) => void;
   onAddLabel: () => void;
   onOpenMarket: () => void;
+  // Only on the Hearth itself.
+  onAddHollow?: () => void;
+  // Set when adding inside a Hollow.
+  hollowName?: string;
 }) {
   return (
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      header={<Text style={[ui.sectionTitle, { marginTop: 0 }]}>Add to your Hearth</Text>}
+      header={
+        <Text style={[ui.sectionTitle, { marginTop: 0 }]} numberOfLines={1}>
+          {hollowName ? `Add to ${hollowName}` : "Add to your Hearth"}
+        </Text>
+      }
     >
       <ScrollView contentContainerStyle={{ gap: 10, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-        <Row icon="market" title="A Nook" subtitle="Browse the Market for Gift Nook and more" onPress={onOpenMarket} index={0} />
-        <Row icon="text" title="Text" subtitle="A title or heading to label part of your Hearth" onPress={onAddLabel} index={1} />
+        {hollowName ? (
+          <Text style={ui.muted}>
+            To bring a Nook in here, drag it onto this Hollow on your Hearth — or tap it in edit mode and choose
+            Move to.
+          </Text>
+        ) : (
+          <Row icon="market" title="A Nook" subtitle="Browse the Market for Gift Nook and more" onPress={onOpenMarket} index={0} />
+        )}
+        {onAddHollow ? (
+          <Row
+            icon="burrow"
+            title="A Hollow"
+            subtitle="A little house or stump you step into — its own space to organize Nooks and widgets"
+            onPress={onAddHollow}
+            index={1}
+            tint={colors.sky}
+          />
+        ) : null}
+        <Row icon="text" title="Text" subtitle="A title or heading to label part of this space" onPress={onAddLabel} index={2} />
 
         <SectionHeader title="Widgets" icon="widgets" />
         {widgetKinds.map((kind, i) => (

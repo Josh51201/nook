@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 18)_
+_Last updated: 2026-10-07 (rev 19)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -22,9 +22,9 @@ _Last updated: 2026-10-07 (rev 18)_
 - **CORE-018** Users can add widgets of different kinds to the Hearth, each completely customizable in what it shows and how it looks — e.g. reminders to log food, countdowns to holidays and events, things to buy. _(Built (proposed details): Countdown, Coming up, Reminders (checklists with phone reminders once/daily/weekly — work in Expo Go), Gifts to buy, Sticky note, Inbox, Greeting; each with title, Soft/Bold/Outline style, color, size, and its own settings, edited with a live preview. Ready-made ideas: Food log reminders, Holiday shopping list, Christmas countdown, Event reminders.)_
 - **CORE-020** Tapping a Hearth widget opens its own settings, except those that are a window onto your own stuff: the Inbox widget opens the inbox and Gifts to buy opens your shopping list. Every Gift Nook screen opened straight from the Hearth has a way back to it.
 - **CORE-021** Nook ships as its own app with its own icon (not inside Expo Go). _(Prepared: icon set drawn (a cozy fireplace in an arch, proposed), app.json and eas.json set up, build guide in docs/BUILDING_THE_APP.md. Needs Josh's Expo and Apple Developer accounts to build — see Q-025.)_
-- **CORE-022** The Hearth gets built-out organization so it doesn't become one very long list as widgets pile up (a 4-column grid fills fast). Users can place houses or stumps on the Hearth; tapping one **enters** it — with a door-opening animation or similar — into its own user-organized screen. _(Not built yet — Josh's next priority, see section 7.)_
-- **CORE-023** What's inside a house is as customizable as the Hearth itself: Nook tiles, widgets and text laid out however the person likes, with their own drag-and-drop design. _(Not built yet.)_
-- **CORE-024** Each house/stump can be customized — its name, its look (house, stump, …), its color — and putting things in or taking them out should be easy and friendly, e.g. dragging a tile or widget onto it. _(Not built yet; the specifics are proposed.)_
+- **CORE-022** The Hearth gets built-out organization so it doesn't become one very long list as widgets pile up (a 4-column grid fills fast). Users can place houses or stumps on the Hearth; tapping one **enters** it — with a door-opening animation or similar — into its own user-organized screen. These are called **Hollows**. _(Built: tap a Hollow and its door swings open on its hinge, then you step inside as the screen grows into view. One level deep — a Hollow never holds another Hollow.)_
+- **CORE-023** What's inside a house is as customizable as the Hearth itself: Nook tiles, widgets and text laid out however the person likes, with their own drag-and-drop design. _(Built: the inside of a Hollow is the same designable grid as the Hearth — Nooks, widgets, text; add, drag, resize.)_
+- **CORE-024** Each house/stump can be customized — its name, its look (house, stump, …), its color — and putting things in or taking them out should be easy and friendly, e.g. dragging a tile or widget onto it. _(Built: name; look — a little house or a tree stump; color; size. Drag anything onto a Hollow on the Hearth and it lights up "Put in …"; let go and it's inside. Every tile and widget also has "Move to" (the Hearth or any Hollow). Removing a Hollow never deletes what's in it — everything moves back onto the Hearth. A ⚙︎ inside a Hollow edits the Hollow itself.)_
 - **CORE-019** Users design their own Hearth layout — everyone's looks different. _(Built (proposed details): a 4-column grid where Nooks, widgets and text can go anywhere, gaps allowed; hold to drag (an outline shows where it'll land), drag a corner to resize, and anything in the way slides down. Older section-based Hearths convert automatically.)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
@@ -86,7 +86,6 @@ _Last updated: 2026-10-07 (rev 18)_
 - **Q-023** Emailed sign-in codes: Resend without a verified domain only delivers to its owner's own address, so family members can't receive codes. Which domain should Nook send email from (a domain must be bought, about $10–15/year, then verified in Resend and set as the sender in Supabase)? Needed before anyone besides Josh uses the app.
 
 - **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
-- **Q-026** For the Hearth houses/stumps (CORE-022..024): what are they called, and what looks should there be (house, stump, cottage, treehouse…)? Can a house hold another house, or just one level? And what should the door animation feel like — a door swinging open, a zoom-in, something else?
 - **Q-025** The app ID (bundle identifier) is currently `com.josh51201.nook`. It is permanent once the app is published. Should it use the domain Josh buys for email (Q-023) instead?
 
 ## 4. Decision Log
@@ -122,6 +121,7 @@ _Last updated: 2026-10-07 (rev 18)_
 - **2026-10-07 — Next steps chosen:** "How about the nook icon and real app build, the kid profile pictures and the birthday one." → CORE-021, PROF-003, GIFT-035
 - **2026-10-07 — More Nooks for the backlog:** After asking for ideas that are "very useful ones that not many people have apps for," Josh picked: potluck, card/contact list, pet care, lent out, yearly rhythms, house binder, sitter sheet, idea stash, quote jar, and fridge door. Idea Stash became a Gift Nook requirement. → Nook Backlog (section 6), GIFT-036
 - **2026-10-07 — Hearth organization is next:** "I want to add to the requirements to do next about adding more organization to the hearth, cause right now with all the widgets we add and 4 slots per row, can easily become a very long list of things. So I want to somehow build into this Nook theme and create like houses or stumps to enter that has these user customized/organized screens within with a door animation or something along the lines, so just more built out organization that is user friendly!" → CORE-022, CORE-023, CORE-024, Q-026, section 7
+- **2026-10-07 — Q-026 answered:** "I love that! Hollow is a great name for it. But yes I want those to be built out." — approving the name Hollow and Claude's suggested defaults: one level deep (a Hollow holds Nooks, widgets and text but not other Hollows), a house and a stump to start, and a door that swings open as the screen zooms in. → CORE-022, CORE-023, CORE-024
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -135,7 +135,7 @@ _Last updated: 2026-10-07 (rev 18)_
 | An event | Gathering | proposed |
 | Gift categories | Shelves | proposed |
 | The Nook shop | The Market | proposed |
-| A house/stump on the Hearth you enter to reach its own organized screen | Hollow (Josh said "houses or stumps") | proposed |
+| A house/stump on the Hearth you enter to reach its own organized screen | Hollow | approved |
 
 ## 6. Nook Backlog
 Josh's picks, in no particular order. Names and details are proposed until he confirms them; each will get proper requirement IDs when it's about to be built.
@@ -156,4 +156,4 @@ Other ideas Claude mentioned that Josh hasn't picked: Surprise Planner (plan a s
 
 ## 7. Up next
 Josh's stated priority, in order:
-1. **Hearth organization (CORE-022..024):** houses/stumps you enter, with a door animation, each holding its own organized, user-designed screen. Needs Q-026 answered or sensible defaults agreed.
+1. ~~**Hearth organization (CORE-022..024)**~~ — built 2026-10-07 as Hollows.

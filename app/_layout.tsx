@@ -23,6 +23,7 @@ export default function RootLayout() {
                 name="settings"
                 options={{ ...headerOptions, title: "Settings" }}
               />
+              <Stack.Screen name="hollow/[id]" options={{ animation: "fade", animationDuration: 250 }} />
               <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: "fade" }} />
               <Stack.Screen name="profile" options={{ ...headerOptions, title: "Your profile" }} />
               <Stack.Screen
