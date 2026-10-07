@@ -249,6 +249,17 @@ otp_expiry = 3600
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
 
+# AUTH-001/Q-015: email OTP sign-in. These templates show {{ .Token }} so the
+# code can be typed into the app instead of tapping a link (Expo Go can't
+# follow a custom-scheme deep link the way a production build could).
+[auth.email.template.confirmation]
+subject = "{{ .Token }} is your Nook code"
+content_path = "./supabase/templates/confirm-signup.html"
+
+[auth.email.template.magic_link]
+subject = "{{ .Token }} is your Nook sign-in code"
+content_path = "./supabase/templates/magic-link.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true

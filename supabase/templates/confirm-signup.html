@@ -1,0 +1,31 @@
+<!--
+  Supabase email template: Confirm signup
+  Paste the body below into Authentication -> Email Templates -> Confirm signup
+  (after custom SMTP is set up, see docs/NOOK_REQUIREMENTS.md AUTH-001 / Q-015).
+  Kept here only for reference/version history — Supabase doesn't read this file.
+-->
+<div style="background-color:#f6ede2;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" style="max-width:420px;margin:0 auto;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #ecdfd0;">
+    <tr>
+      <td style="padding:32px 32px 8px 32px;text-align:center;">
+        <div style="font-size:32px;line-height:1;">🏡</div>
+        <h1 style="margin:12px 0 4px 0;font-size:20px;color:#3a2c1f;">Welcome to Nook</h1>
+        <p style="margin:0;font-size:14px;color:#8a7a68;">Enter this code to finish signing up</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 32px;text-align:center;">
+        <div style="display:inline-block;background-color:#f6ede2;border-radius:12px;padding:16px 28px;">
+          <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#8a5a3b;">{{ .Token }}</span>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:8px 32px 32px 32px;text-align:center;">
+        <p style="margin:0;font-size:13px;color:#a89a89;">
+          This code expires shortly. If you didn't try to sign up for Nook, you can ignore this email.
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
