@@ -31,7 +31,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "vitest run",
-    "test:rls": "vitest run tests/gift-nook-rls.test.ts"
+    "test:rls": "vitest run tests/gift-nook-rls.test.ts tests/gift-nook-round-three-rls.test.ts"
   },
   "private": true
 }
