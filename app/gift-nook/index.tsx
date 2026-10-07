@@ -54,7 +54,6 @@ export default function GiftNookHome() {
   const [openTucks, setOpenTucks] = useState(0);
   const [unread, setUnread] = useState(0);
   const [upcoming, setUpcoming] = useState<Upcoming[]>([]);
-  const [needsName, setNeedsName] = useState(false);
   const [newBurrowName, setNewBurrowName] = useState("");
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +76,6 @@ export default function GiftNookHome() {
             endedResult,
             receiptsResult,
             upcomingResult,
-            profileResult,
           ] = await Promise.all([
             supabase.from("burrows").select("id, name").order("name"),
             supabase
@@ -110,11 +108,6 @@ export default function GiftNookHome() {
               .gt("ends_at", new Date().toISOString())
               .order("ends_at")
               .limit(3),
-            supabase
-              .from("profiles")
-              .select("display_name")
-              .eq("id", userId)
-              .single(),
           ]);
 
           if (burrowsResult.error) setError(burrowsResult.error.message);
@@ -122,9 +115,6 @@ export default function GiftNookHome() {
           setOpenTucks(tucksResult.count ?? 0);
           setUnread(unreadResult.count ?? 0);
           setUpcoming((upcomingResult.data ?? []) as unknown as Upcoming[]);
-          // New accounts start with their email as their name.
-          const currentName = profileResult.data?.display_name ?? "";
-          setNeedsName(!currentName.trim() || currentName.includes("@"));
 
           const kidList: Kid[] = (kidsResult.data ?? []).map((row) => {
             const profile = row.profiles as unknown as {
@@ -264,15 +254,6 @@ export default function GiftNookHome() {
       />
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      {needsName ? (
-        <Banner
-          icon="wave"
-          tone="sky"
-          title="Tell your family who you are"
-          body="Right now they see your email. Tap to set your name."
-          onPress={() => router.push("/settings")}
-        />
-      ) : null}
 
       {prompts.map((prompt, i) => (
         <Banner

@@ -96,6 +96,7 @@ export function NavCard({
   icon,
   iconColor,
   iconBackground,
+  leading,
   title,
   subtitle,
   onPress,
@@ -106,6 +107,8 @@ export function NavCard({
   children,
 }: {
   icon: IconName;
+  // Replaces the icon badge, e.g. with a person's Avatar.
+  leading?: ReactNode;
   iconColor?: string;
   iconBackground?: string;
   title: ReactNode;
@@ -127,7 +130,7 @@ export function NavCard({
         accessibilityRole={onPress ? "button" : undefined}
       >
         <View style={[ui.row, { gap: 12 }]}>
-          <IconBadge name={icon} color={iconColor} background={iconBackground} />
+          {leading ?? <IconBadge name={icon} color={iconColor} background={iconBackground} />}
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={ui.cardTitle} numberOfLines={2}>
               {title}

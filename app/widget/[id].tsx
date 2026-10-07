@@ -1,7 +1,6 @@
-import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Platform, Switch, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Alert, Switch, Text, TextInput, useWindowDimensions, View } from "react-native";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
@@ -9,6 +8,7 @@ import { WidgetView } from "../../components/hearth/widgets";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { DateField } from "../../components/date-field";
 import { Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
 import { tap } from "../../lib/feedback";
 import { formatDate, gatheringKinds, type GatheringKind } from "../../lib/gift-nook";
@@ -559,65 +559,6 @@ function withTime(schedule: ReminderSchedule, date: Date): ReminderSchedule {
 }
 
 // --- Small inputs ----------------------------------------------------------------
-
-// A date/time field that's readable in dark mode and works the same way on
-// Android (tap → system dialog) as iOS (compact inline picker).
-function DateField({
-  mode,
-  value,
-  onChange,
-}: {
-  mode: "date" | "time" | "datetime";
-  value: Date;
-  onChange: (date: Date) => void;
-}) {
-  if (Platform.OS === "ios") {
-    return (
-      <View style={{ alignItems: "flex-start" }}>
-        <DateTimePicker
-          value={value}
-          mode={mode}
-          display="compact"
-          themeVariant="light"
-          accentColor={colors.bark}
-          onChange={(_e, picked) => picked && onChange(picked)}
-        />
-      </View>
-    );
-  }
-  const label =
-    mode === "time"
-      ? value.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-      : mode === "date"
-        ? formatDate(value.toISOString())
-        : value.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  function open() {
-    const pickTime = (base: Date) =>
-      DateTimePickerAndroid.open({
-        value: base,
-        mode: "time",
-        onChange: (_e, picked) => picked && onChange(picked),
-      });
-    if (mode === "time") return pickTime(value);
-    DateTimePickerAndroid.open({
-      value,
-      mode: "date",
-      onChange: (_e, picked) => {
-        if (!picked) return;
-        if (mode === "datetime") {
-          picked.setHours(value.getHours(), value.getMinutes());
-          pickTime(picked);
-        } else onChange(picked);
-      },
-    });
-  }
-  return (
-    <Tap onPress={open} style={[ui.input, ui.row]}>
-      <Icon name="calendar" size={16} />
-      <Text style={{ color: colors.text, fontSize: 16 }}>{label}</Text>
-    </Tap>
-  );
-}
 
 function Stepper({
   label,

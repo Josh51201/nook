@@ -80,7 +80,18 @@ export const tuckStatusLabel: Record<TuckStatus, string> = {
   given: "Given",
 };
 
-export type Profile = { id: string; display_name: string | null; is_managed?: boolean };
+export type Profile = {
+  id: string;
+  display_name: string | null;
+  is_managed?: boolean;
+  avatar_icon?: string | null;
+  avatar_color?: string | null;
+  birthday?: string | null;
+  bio?: string | null;
+};
+
+// Profile columns family can see (PROF-001); use inside a `profiles(...)` embed.
+export const PROFILE_FIELDS = "id, display_name, is_managed, avatar_icon, avatar_color";
 
 export type BurrowMember = {
   profile_id: string;

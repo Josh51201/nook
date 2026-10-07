@@ -8,6 +8,7 @@ import {
 import { useCallback, useState } from "react";
 import { Alert, Share, Text, TextInput, View } from "react-native";
 
+import { Avatar } from "../../../components/avatar";
 import { Icon } from "../../../components/icon";
 import { Appear, LoadingScreen, Tap } from "../../../components/motion";
 import { NookScroll } from "../../../components/nook-scroll";
@@ -25,6 +26,7 @@ import {
   formatDate,
   gatheringKindInfo,
   isArchived,
+  PROFILE_FIELDS,
   type BurrowMember,
   type Gathering,
 } from "../../../lib/gift-nook";
@@ -58,7 +60,7 @@ export default function BurrowScreen() {
               supabase
                 .from("burrow_members")
                 .select(
-                  "profile_id, role, profiles(id, display_name, is_managed)",
+                  `profile_id, role, profiles(${PROFILE_FIELDS})`,
                 )
                 .eq("burrow_id", id),
               supabase
@@ -275,6 +277,13 @@ export default function BurrowScreen() {
           <NavCard
             key={member.profile_id}
             index={i}
+            leading={
+              <Avatar
+                name={member.profiles?.display_name}
+                icon={member.profiles?.avatar_icon}
+                color={member.profiles?.avatar_color}
+              />
+            }
             icon={member.profiles?.is_managed ? "kid" : "person"}
             iconColor={member.profiles?.is_managed ? "#4f7fb0" : colors.bark}
             iconBackground={

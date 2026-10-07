@@ -6,8 +6,26 @@ import { Tap } from "../../components/motion";
 import { useAuth } from "../../lib/auth-context";
 import { colors, largeTitle, stackScreenOptions, ui } from "../../lib/theme";
 
-export default function GiftNookLayout() {
+// "Back to the Hearth" for any Gift Nook screen opened straight from the Hearth
+// (a widget, say), where it's the first screen in the stack and so has no
+// back button of its own.
+function HearthBack() {
   const router = useRouter();
+  return (
+    <Tap
+      onPress={() => (router.canGoBack() ? router.back() : router.replace("/hearth"))}
+      hitSlop={12}
+      pressedScale={0.9}
+      style={[ui.row, { gap: 5 }]}
+      accessibilityLabel="Back to the Hearth"
+    >
+      <Icon name="hearth" size={18} />
+      <Text style={{ color: colors.bark, fontSize: 17, fontWeight: "500" }}>Hearth</Text>
+    </Tap>
+  );
+}
+
+export default function GiftNookLayout() {
   const { session, isLoading } = useAuth();
 
   if (!isLoading && !session) {
@@ -15,26 +33,18 @@ export default function GiftNookLayout() {
   }
 
   return (
-    <Stack screenOptions={stackScreenOptions}>
+    <Stack
+      screenOptions={({ navigation }) => ({
+        ...stackScreenOptions,
+        // First screen in this stack? Offer the way back to the Hearth.
+        headerLeft: navigation.getState().routes.length <= 1 ? () => <HearthBack /> : undefined,
+      })}
+    >
       <Stack.Screen
         name="index"
         options={{
           title: "Gift Nook",
           ...largeTitle,
-          // This is the first screen of the Gift Nook's own stack, so there's
-          // no automatic back button — add one that leaves the Nook.
-          headerLeft: () => (
-            <Tap
-              onPress={() => router.navigate("/hearth")}
-              hitSlop={12}
-              pressedScale={0.9}
-              style={[ui.row, { gap: 5 }]}
-              accessibilityLabel="Back to the Hearth"
-            >
-              <Icon name="hearth" size={18} />
-              <Text style={{ color: colors.bark, fontSize: 17, fontWeight: "500" }}>Hearth</Text>
-            </Tap>
-          ),
         }}
       />
       <Stack.Screen name="settings" options={{ title: "Gift Nook Settings" }} />

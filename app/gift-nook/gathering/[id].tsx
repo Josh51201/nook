@@ -8,6 +8,7 @@ import { useCallback, useState } from "react";
 import { Alert, Text, View } from "react-native";
 
 import { guarded } from "../../../lib/feedback";
+import { Avatar } from "../../../components/avatar";
 import { IconBadge } from "../../../components/icon";
 import { Appear, LoadingScreen } from "../../../components/motion";
 import { NookScroll } from "../../../components/nook-scroll";
@@ -24,6 +25,7 @@ import {
   formatDate,
   gatheringKindInfo,
   isArchived,
+  PROFILE_FIELDS,
   type Gathering,
   type Profile,
 } from "../../../lib/gift-nook";
@@ -85,7 +87,7 @@ export default function GatheringScreen() {
 
           const { data: honorees } = await supabase
             .from("gathering_honorees")
-            .select("profiles(id, display_name)")
+            .select(`profiles(${PROFILE_FIELDS})`)
             .eq("gathering_id", id);
           const honoreeProfiles = (honorees ?? [])
             .map((h) => h.profiles as unknown as Profile | null)
@@ -98,7 +100,7 @@ export default function GatheringScreen() {
             setHasHonorees(false);
             const { data: members } = await supabase
               .from("burrow_members")
-              .select("profiles(id, display_name)")
+              .select(`profiles(${PROFILE_FIELDS})`)
               .eq("burrow_id", row.burrow_id);
             setPeople(
               (members ?? [])
@@ -238,6 +240,7 @@ export default function GatheringScreen() {
           <NavCard
             key={person.id}
             index={i}
+            leading={<Avatar name={person.display_name} icon={person.avatar_icon} color={person.avatar_color} />}
             icon={isMe || manages ? "heart" : "wishbook"}
             title={`${displayName(person)}${isMe ? " (you)" : ""}`}
             subtitle={

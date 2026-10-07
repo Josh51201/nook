@@ -1,13 +1,19 @@
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 
-import { Button } from "../components/ui";
+import { Avatar } from "../components/avatar";
+import { Button, NavCard, SectionHeader } from "../components/ui";
 import { NookScroll } from "../components/nook-scroll";
 import { useAuth } from "../lib/auth-context";
-import { hearthThemes, useHearthLayout, type HearthThemeKey } from "../lib/hearth";
+import {
+  hearthThemes,
+  useHearthLayout,
+  type HearthThemeKey,
+} from "../lib/hearth";
 import { formatDate } from "../lib/gift-nook";
+import { hasRealName, useMyProfile } from "../lib/profile";
 import { supabase } from "../lib/supabase";
 import { colors, ui } from "../lib/theme";
 import { Tap } from "../components/motion";
@@ -20,46 +26,17 @@ export default function HearthSettings() {
   const { session } = useAuth();
   const user = session?.user;
 
-  const [name, setName] = useState("");
-  const [savedName, setSavedName] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { layout, save: saveHearth, isLoading: hearthLoading } = useHearthLayout();
+  const { profile } = useMyProfile();
+  const {
+    layout,
+    save: saveHearth,
+    isLoading: hearthLoading,
+  } = useHearthLayout();
   const [hearthTitle, setHearthTitle] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        setName(data?.display_name ?? "");
-        setSavedName(data?.display_name ?? "");
-      });
-  }, [user]);
-
-  async function saveName() {
-    if (!user) return;
-    if (!name.trim()) {
-      setError("Your name can't be blank.");
-      return;
-    }
-    setIsSaving(true);
-    setError(null);
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ display_name: name.trim() })
-      .eq("id", user.id);
-    setIsSaving(false);
-    if (updateError) setError(updateError.message);
-    else setSavedName(name.trim());
-  }
 
   function saveHearthChanges(changes: Parameters<typeof saveHearth>[0]) {
     saveHearth(changes).catch((saveError: Error) =>
-      Alert.alert("Couldn't save that", saveError.message)
+      Alert.alert("Couldn't save that", saveError.message),
     );
   }
 
@@ -70,35 +47,55 @@ export default function HearthSettings() {
   }
 
   function confirmSignOut() {
-    Alert.alert("Sign out?", "You can sign back in any time with a code sent to your email.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          await supabase.auth.signOut();
-          router.replace("/sign-in");
+    Alert.alert(
+      "Sign out?",
+      "You can sign back in any time with a code sent to your email.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: async () => {
+            await supabase.auth.signOut();
+            router.replace("/sign-in");
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   return (
     <NookScroll>
-      <Text style={ui.sectionTitle}>Your name</Text>
-      <Text style={ui.muted}>This is what your family sees in every Nook.</Text>
-      <View style={ui.row}>
-        <TextInput
-          style={[ui.input, { flex: 1 }]}
-          value={name}
-          onChangeText={setName}
-          placeholder="e.g. Josh"
-        />
-        {name.trim() !== savedName ? (
-          <Button title="Save" onPress={saveName} loading={isSaving} />
-        ) : null}
-      </View>
-      {error ? <Text style={ui.error}>{error}</Text> : null}
+      <SectionHeader title="You" icon="person" />
+      <NavCard
+        icon="person"
+        title={
+          profile ? (
+            <Text>
+              {hasRealName(profile.display_name)
+                ? profile.display_name
+                : "Add your name"}
+            </Text>
+          ) : (
+            "Your profile"
+          )
+        }
+        subtitle={
+          profile?.bio?.trim() ||
+          "Name, picture, birthday and bio — what your family sees"
+        }
+        leading={
+          profile ? (
+            <Avatar
+              name={profile.display_name}
+              icon={profile.avatar_icon}
+              color={profile.avatar_color}
+              size={44}
+            />
+          ) : undefined
+        }
+        onPress={() => router.push("/profile")}
+      />
 
       <Text style={ui.sectionTitle}>Your Hearth</Text>
       {hearthLoading ? (
@@ -125,11 +122,19 @@ export default function HearthSettings() {
                   onPress={() => saveHearthChanges({ theme: key })}
                   style={[
                     ui.chip,
-                    { backgroundColor: theme.background, borderColor: theme.accent },
+                    {
+                      backgroundColor: theme.background,
+                      borderColor: theme.accent,
+                    },
                     selected && { borderWidth: 3 },
                   ]}
                 >
-                  <Text style={{ color: theme.text, fontWeight: selected ? "700" : "400" }}>
+                  <Text
+                    style={{
+                      color: theme.text,
+                      fontWeight: selected ? "700" : "400",
+                    }}
+                  >
                     {theme.label}
                   </Text>
                 </Tap>
@@ -154,7 +159,12 @@ export default function HearthSettings() {
         ) : null}
       </View>
 
-      <Button title="Sign out" icon="logout" variant="secondary" onPress={confirmSignOut} />
+      <Button
+        title="Sign out"
+        icon="logout"
+        variant="secondary"
+        onPress={confirmSignOut}
+      />
 
       <Text style={[ui.muted, { textAlign: "center", marginTop: 24 }]}>
         Nook v{Constants.expoConfig?.version ?? "?"}

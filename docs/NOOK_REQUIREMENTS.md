@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 14)_
+_Last updated: 2026-10-07 (rev 15)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -20,12 +20,17 @@ _Last updated: 2026-10-07 (rev 14)_
 - **CORE-016** Whatever you're typing in is never hidden behind the phone's keyboard, and every keyboard has a way to close it.
 - **CORE-017** The app should feel alive and flow nicely — motion and animation, not static screens — and use a proper icon set instead of emoji. _(Built (proposed details): SF Symbols on iPhone / Material Symbols on Android via expo-symbols; press-in springs on everything tappable; lists that flow in and glide when they change; placeholder cards while loading; wiggling Hearth tiles in edit mode with smoother drag; iPhone large titles; respects the phone's Reduce Motion setting.)_
 - **CORE-018** Users can add widgets of different kinds to the Hearth, each completely customizable in what it shows and how it looks — e.g. reminders to log food, countdowns to holidays and events, things to buy. _(Built (proposed details): Countdown, Coming up, Reminders (checklists with phone reminders once/daily/weekly — work in Expo Go), Gifts to buy, Sticky note, Inbox, Greeting; each with title, Soft/Bold/Outline style, color, size, and its own settings, edited with a live preview. Ready-made ideas: Food log reminders, Holiday shopping list, Christmas countdown, Event reminders.)_
+- **CORE-020** Tapping a Hearth widget opens its own settings, except those that are a window onto your own stuff: the Inbox widget opens the inbox and Gifts to buy opens your shopping list. Every Gift Nook screen opened straight from the Hearth has a way back to it.
 - **CORE-019** Users design their own Hearth layout — everyone's looks different. _(Built (proposed details): a 4-column grid where Nooks, widgets and text can go anywhere, gaps allowed; hold to drag (an outline shows where it'll land), drag a corner to resize, and anything in the way slides down. Older section-based Hearths convert automatically.)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
 ## 1a. Accounts & Login
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.
 - **AUTH-002** While developing in Expo Go, there is an extra email + password "Developer sign-in" so test accounts (made in the Supabase dashboard) can be used without waiting for an emailed code. It never ships: it does not exist in a real release build.
+
+## 1b. Profile
+- **PROF-001** Each person has a customizable profile: their name, a picture (a chosen icon or their initials on a chosen color), an optional birthday, and a short "about me". Family in their Burrows can see it; nobody else. They can edit it any time (Settings → Your profile). _(Built; the specific options — 16 icons, 8 colors, bio up to 160 characters, birthday shown as day only — are proposed.)_
+- **PROF-002** A brand-new person is asked to set up their profile (name required, the rest optional) before they enter the Hearth, instead of showing their email as their name. New accounts start with no name rather than their email.
 
 ## 2. Gift Nook (first Nook)
 - **GIFT-001** Users create families and invite others to join.
@@ -101,6 +106,7 @@ _Last updated: 2026-10-07 (rev 14)_
 - **2026-10-07 — UI overhaul:** "It looks and feels great but very static. Is there a way to add any animations... AI loves to use emojis but didn't know if there was anything better like mui symbols. I just want it to feel nice and flow nice." → CORE-017
 - **2026-10-07 — Widgets + design-your-own Hearth:** "Allow the user to create widgets of different kinds on their hearth that is completely customizable on how it's shown and what is shown, so if it's the food one they can set different reminders for uploading their food, or events coming up for holidays, like ones for reminders for events, stuff to buy etc... will let you make the judge of what all." And: "I want the user to be able to design what it looks like, everyone's hearth will look different because they can change it all." → CORE-018, CORE-019
 - **2026-10-07 — Developer sign-in:** Signing in as a second test person with "+test" email failed ("error sending confirmation email") because emails only reach the account owner's address. Josh: "sure" to a dev-only password sign-in for testing. → AUTH-002, Q-023
+- **2026-10-07 — Profile + widget fixes:** The Inbox widget opened a screen with no way back, and tapping the Countdown widget jumped into the Gift Nook (not wanted). "If it's a user's first time entering Nook, so a new user, it should prompt for their name rather than show their email as their name. A create profile type thing where they can edit things there before entering the hearth. So more profile customization!" → PROF-001, PROF-002, CORE-020
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |

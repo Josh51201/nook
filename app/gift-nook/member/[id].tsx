@@ -8,8 +8,9 @@ import {
 import { useCallback, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 
+import { Avatar } from "../../../components/avatar";
 import { Icon } from "../../../components/icon";
-import { FadeSwap, LoadingScreen, Tap } from "../../../components/motion";
+import { Appear, FadeSwap, LoadingScreen, Tap } from "../../../components/motion";
 import { NookScroll } from "../../../components/nook-scroll";
 import { Banner, Button, Chip, EmptyState } from "../../../components/ui";
 import { GiftCard } from "../../../components/gift-card";
@@ -27,6 +28,7 @@ import {
   tuckStatusIcon,
   tuckStatusLabel,
   type Gift,
+  type Profile,
   type Tuck,
 } from "../../../lib/gift-nook";
 import { friendlyError, guarded, tap } from "../../../lib/feedback";
@@ -34,6 +36,7 @@ import {
   giftNookSettingDefaults,
   useNookSettings,
 } from "../../../lib/nook-settings";
+import { formatBirthday } from "../../../lib/profile";
 import { supabase } from "../../../lib/supabase";
 import { colors, ui } from "../../../lib/theme";
 
@@ -69,6 +72,7 @@ export default function MemberWishbook() {
   const { settings } = useNookSettings("gift-nook", giftNookSettingDefaults);
 
   const [name, setName] = useState("");
+  const [person, setPerson] = useState<Profile | null>(null);
   const [isManaged, setIsManaged] = useState(false);
   const [isManager, setIsManager] = useState(false);
   const [gifts, setGifts] = useState<FamilyGift[]>([]);
@@ -89,7 +93,7 @@ export default function MemberWishbook() {
             await Promise.all([
               supabase
                 .from("profiles")
-                .select("id, display_name, is_managed")
+                .select("id, display_name, is_managed, avatar_icon, avatar_color, birthday, bio")
                 .eq("id", profileId)
                 .single(),
               supabase
@@ -104,6 +108,7 @@ export default function MemberWishbook() {
                 .eq("manager_id", userId),
             ]);
           setName(displayName(profileResult.data));
+          setPerson((profileResult.data as Profile | null) ?? null);
           setIsManaged(Boolean(profileResult.data?.is_managed));
           setIsManager(Boolean(managerResult.data?.length));
           if (wishbookResult.error || !wishbookResult.data) {
@@ -402,6 +407,26 @@ export default function MemberWishbook() {
     <NookScroll onRefresh={load}>
       <Stack.Screen options={{ title: `${name}'s Wishbook` }} />
       {error ? <Text style={ui.error}>{error}</Text> : null}
+
+      {person ? (
+        <Appear>
+          <View style={[ui.card, ui.row, { gap: 14, alignItems: "flex-start" }]}>
+            <Avatar name={person.display_name} icon={person.avatar_icon} color={person.avatar_color} size={64} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text }} numberOfLines={1}>
+                {name}
+              </Text>
+              {person.bio ? <Text style={[ui.muted, { color: colors.text }]}>{person.bio}</Text> : null}
+              {person.birthday ? (
+                <View style={[ui.row, { gap: 6 }]}>
+                  <Icon name="birthday" size={14} />
+                  <Text style={ui.muted}>Birthday: {formatBirthday(person.birthday)}</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </Appear>
+      ) : null}
 
       <Banner
         icon={isManaged && isManager ? "kid" : "hidden"}

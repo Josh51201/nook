@@ -31,6 +31,7 @@ import {
 } from "../lib/hearth";
 import { findNook } from "../lib/nooks";
 import { cancelReminders, syncReminders } from "../lib/reminders";
+import { useMyProfile } from "../lib/profile";
 import { touchesGuarded } from "../lib/touch-guard";
 import { widgetKindInfo, type WidgetConfig } from "../lib/widgets";
 
@@ -44,6 +45,7 @@ export default function Hearth() {
   const router = useRouter();
   const { session, isLoading: authLoading } = useAuth();
   const { layout, save, isLoading, error, reload } = useHearthLayout();
+  const { needsOnboarding, isLoading: profileLoading } = useMyProfile();
   const theme = hearthThemes[layout.theme] ?? hearthThemes.hearth;
 
   const [editing, setEditing] = useState(false);
@@ -60,6 +62,16 @@ export default function Hearth() {
     return <Redirect href="/sign-in" />;
   }
 
+  // New here? Set up your profile before entering the Hearth.
+  if (needsOnboarding) {
+    return <Redirect href="/onboarding" />;
+  }
+  // Wait for the profile (instant after the first time) so the Hearth never
+  // flashes before a new person is sent to the welcome screen.
+  if (session && profileLoading) {
+    return <View style={[styles.safeArea, { backgroundColor: theme.background }]} />;
+  }
+
   function persist(items: HearthItem[]) {
     save({ items }).catch((saveError: Error) =>
       Alert.alert("Couldn't save your Hearth", saveError.message),
@@ -71,19 +83,18 @@ export default function Hearth() {
     if (route) router.push(route);
   }
 
-  // Tapping a widget outside edit mode jumps somewhere useful.
+  // Tapping a widget outside edit mode: widgets that are a window onto your
+  // own stuff (Inbox, Gifts to buy) open that list; every other widget opens
+  // its own settings — never somewhere you didn't ask to go.
   function openWidget(item: HearthItem & { kind: "widget" }) {
     switch (item.widget.kind) {
-      case "countdown":
-      case "gatherings":
-        return router.push("/gift-nook");
       case "tucks":
         return router.push("/gift-nook/my-tucks");
       case "inbox":
         return router.push("/gift-nook/notifications");
       case "greeting":
         return;
-      default: // note, reminders: open the editor
+      default:
         return router.push(`/widget/${item.id}`);
     }
   }
