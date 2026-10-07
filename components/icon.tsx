@@ -67,6 +67,9 @@ const icons = {
   arrowUp: { ios: "arrow.up", android: "arrow_upward" },
   arrowDown: { ios: "arrow.down", android: "arrow_downward" },
   drag: { ios: "hand.draw.fill", android: "drag_indicator" },
+  resize: { ios: "arrow.up.left.and.arrow.down.right", android: "open_in_full" },
+  text: { ios: "textformat", android: "title" },
+  widgets: { ios: "square.grid.2x2.fill", android: "widgets" },
 } satisfies Record<string, { ios: SymbolViewProps["name"] & string; android: AndroidName }>;
 
 type AndroidName = Exclude<Extract<SymbolViewProps["name"], object>["android"], undefined>;

@@ -1,35 +1,40 @@
 import { findNook } from "./nooks";
+import { widgetKindInfo, type WidgetConfig } from "./widgets";
 
-// Pure Hearth layout logic (no React/Supabase, so it's unit-testable). The
-// Hearth's layout (CORE-002/003/006-009), saved in nook_settings under
-// nook = 'hearth'. Each added Nook is one tile in one section; removing the
-// tile takes the Nook off the Hearth but keeps its data (re-adding it from
-// the Market brings everything back).
+// Pure Hearth layout logic (no React/Supabase, so it's unit-testable).
+//
+// The Hearth is a free-form grid you design yourself (CORE-006/019): every
+// item — a Nook tile, a widget (CORE-018) or a text label — sits at a grid
+// position with a size, gaps allowed. Dropping an item on top of others
+// slides those others down out of the way. Saved in nook_settings under
+// nook = 'hearth'. Removing a Nook tile keeps the Nook's data (re-adding it
+// from the Market brings everything back).
 
-export type TileSize = "small" | "wide" | "large";
+export const COLUMNS = 4;
 
-export type HearthTile = {
-  nookId: string;
-  size: TileSize;
-  color?: string; // falls back to the Nook's own color
-  label?: string; // custom name; falls back to the Nook's title
+export type GridRect = { x: number; y: number; w: number; h: number };
+
+type ItemBase = GridRect & { id: string; color?: string };
+
+export type NookItem = ItemBase & { kind: "nook"; nookId: string; label?: string };
+export type WidgetItem = ItemBase & { kind: "widget"; widget: WidgetConfig };
+export type LabelItem = ItemBase & {
+  kind: "label";
+  text: string;
+  size: "title" | "heading" | "caption";
+  align: "left" | "center" | "right";
 };
-
-export type HearthSection = { id: string; title: string; tiles: HearthTile[] };
+export type HearthItem = NookItem | WidgetItem | LabelItem;
 
 export type HearthLayout = {
+  version: 2;
   title: string;
   theme: HearthThemeKey;
-  sections: HearthSection[];
+  items: HearthItem[];
 };
 
-export const tileSizes: { key: TileSize; label: string }[] = [
-  { key: "small", label: "Small" },
-  { key: "wide", label: "Wide" },
-  { key: "large", label: "Large" },
-];
-
-// Soft tile colors that all work with dark text.
+// Soft tile colors that all work with dark text, each with a deep partner
+// for "bold" widgets and outlines.
 export const tilePalette = [
   "#f5ece3", // cream
   "#f6d9c4", // peach
@@ -39,6 +44,12 @@ export const tilePalette = [
   "#e9e1f2", // lavender
   "#efd9e4", // rose
 ];
+const deepPalette = ["#8a5a3b", "#b0552d", "#9a7a1c", "#4f6b45", "#3f6a96", "#6a4f96", "#a3425f"];
+
+export function deepColor(soft: string | undefined) {
+  const index = tilePalette.indexOf(soft ?? "");
+  return deepPalette[index >= 0 ? index : 0];
+}
 
 export type HearthThemeKey = "hearth" | "ember" | "sage" | "dusk";
 
@@ -53,56 +64,192 @@ export const hearthThemes: Record<
 };
 
 export const defaultHearthLayout: HearthLayout = {
+  version: 2,
   title: "The Hearth",
   theme: "hearth",
-  sections: [{ id: "main", title: "My Nooks", tiles: [] }],
+  items: [],
 };
 
-export function newSectionId() {
-  return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+// --- Sizes ------------------------------------------------------------------
+
+export const sizePresets: Record<HearthItem["kind"], { label: string; w: number; h: number }[]> = {
+  nook: [
+    { label: "Icon", w: 1, h: 1 },
+    { label: "Small", w: 2, h: 2 },
+    { label: "Wide", w: 4, h: 2 },
+    { label: "Large", w: 4, h: 3 },
+  ],
+  widget: [
+    { label: "Small", w: 2, h: 2 },
+    { label: "Tall", w: 2, h: 4 },
+    { label: "Wide", w: 4, h: 2 },
+    { label: "Large", w: 4, h: 4 },
+  ],
+  label: [
+    { label: "Full", w: 4, h: 1 },
+    { label: "Half", w: 2, h: 1 },
+  ],
+};
+
+export function minSize(item: HearthItem): { w: number; h: number } {
+  if (item.kind === "widget") return widgetKindInfo(item.widget.kind).minSize;
+  return { w: 1, h: 1 };
 }
+
+// --- Grid geometry ------------------------------------------------------------
+
+export function overlaps(a: GridRect, b: GridRect) {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+export function rowsUsed(items: GridRect[]) {
+  return items.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+}
+
+function clampRect<T extends HearthItem>(item: T): T {
+  const min = minSize(item);
+  const w = Math.max(min.w, Math.min(COLUMNS, Math.round(item.w)));
+  const h = Math.max(min.h, Math.min(8, Math.round(item.h)));
+  const x = Math.max(0, Math.min(COLUMNS - w, Math.round(item.x)));
+  const y = Math.max(0, Math.round(item.y));
+  return { ...item, x, y, w, h };
+}
+
+// Slide anything overlapping the item that just moved (or grew) downward,
+// cascading, until nothing overlaps. Items only ever move down, so this
+// always finishes; gaps elsewhere are left exactly as the person made them.
+export function settle(items: HearthItem[], fixedId: string): HearthItem[] {
+  const result = items.map((item) => ({ ...item }));
+  const fixed = result.find((item) => item.id === fixedId);
+  if (!fixed) return result;
+  const order = () =>
+    [...result].sort((a, b) =>
+      a.id === fixedId ? -1 : b.id === fixedId ? 1 : a.y - b.y || a.x - b.x
+    );
+
+  for (let guard = 0; guard < 500; guard++) {
+    let moved = false;
+    const sorted = order();
+    for (let i = 1; i < sorted.length; i++) {
+      const item = sorted[i];
+      for (let j = 0; j < i; j++) {
+        const above = sorted[j];
+        if (overlaps(item, above)) {
+          item.y = above.y + above.h;
+          moved = true;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+  return result;
+}
+
+// First spot (top to bottom, left to right) where a w×h item fits.
+export function findFreeSpot(items: GridRect[], w: number, h: number): { x: number; y: number } {
+  for (let y = 0; ; y++) {
+    for (let x = 0; x + w <= COLUMNS; x++) {
+      const candidate = { x, y, w, h };
+      if (!items.some((item) => overlaps(item, candidate))) return { x, y };
+    }
+  }
+}
+
+export function newItemId(prefix = "i") {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+// --- Editing ----------------------------------------------------------------------
+
+export function moveItem(layout: HearthLayout, id: string, x: number, y: number): HearthItem[] {
+  const items = layout.items.map((item) => (item.id === id ? clampRect({ ...item, x, y }) : item));
+  return settle(items, id);
+}
+
+export function resizeItem(layout: HearthLayout, id: string, w: number, h: number): HearthItem[] {
+  const items = layout.items.map((item) => (item.id === id ? clampRect({ ...item, w, h }) : item));
+  return settle(items, id);
+}
+
+export function updateItem(layout: HearthLayout, id: string, changes: Partial<HearthItem>): HearthItem[] {
+  return layout.items.map((item) => (item.id === id ? ({ ...item, ...changes } as HearthItem) : item));
+}
+
+export function removeItem(layout: HearthLayout, id: string): HearthItem[] {
+  return layout.items.filter((item) => item.id !== id);
+}
+
+// Adds at the first free spot of its size.
+export function addItem(
+  layout: HearthLayout,
+  item: Omit<NookItem, "x" | "y"> | Omit<WidgetItem, "x" | "y"> | Omit<LabelItem, "x" | "y">
+): HearthItem[] {
+  const spot = findFreeSpot(layout.items, item.w, item.h);
+  return [...layout.items, { ...item, ...spot } as HearthItem];
+}
+
+// --- Nooks -------------------------------------------------------------------------
 
 export function hasNook(layout: HearthLayout, nookId: string) {
-  return layout.sections.some((section) => section.tiles.some((tile) => tile.nookId === nookId));
+  return layout.items.some((item) => item.kind === "nook" && item.nookId === nookId);
 }
 
-export function addNook(layout: HearthLayout, nookId: string): HearthSection[] {
-  if (hasNook(layout, nookId)) return layout.sections;
-  const [first, ...rest] = layout.sections;
-  const tile: HearthTile = { nookId, size: "small" };
-  return first ? [{ ...first, tiles: [...first.tiles, tile] }, ...rest] : [{ id: newSectionId(), title: "My Nooks", tiles: [tile] }];
+export function addNook(layout: HearthLayout, nookId: string): HearthItem[] {
+  if (hasNook(layout, nookId)) return layout.items;
+  return addItem(layout, { id: newItemId("n"), kind: "nook", nookId, w: 2, h: 2 });
 }
 
-export function removeNook(layout: HearthLayout, nookId: string): HearthSection[] {
-  return layout.sections.map((section) => ({
-    ...section,
-    tiles: section.tiles.filter((tile) => tile.nookId !== nookId),
-  }));
+export function removeNook(layout: HearthLayout, nookId: string): HearthItem[] {
+  return layout.items.filter((item) => !(item.kind === "nook" && item.nookId === nookId));
 }
 
-export function updateTile(layout: HearthLayout, nookId: string, changes: Partial<HearthTile>) {
-  return layout.sections.map((section) => ({
-    ...section,
-    tiles: section.tiles.map((tile) => (tile.nookId === nookId ? { ...tile, ...changes } : tile)),
-  }));
+export function nookLabel(item: NookItem) {
+  return item.label?.trim() || findNook(item.nookId)?.title || "Nook";
 }
 
-// Move a tile to `index` within `sectionId` (index counts tiles other than
-// the one being moved).
-export function moveTile(layout: HearthLayout, nookId: string, sectionId: string, index: number) {
-  const tile = layout.sections.flatMap((s) => s.tiles).find((t) => t.nookId === nookId);
-  if (!tile) return layout.sections;
-  return layout.sections.map((section) => {
-    const tiles = section.tiles.filter((t) => t.nookId !== nookId);
-    if (section.id === sectionId) tiles.splice(Math.min(index, tiles.length), 0, tile);
-    return { ...section, tiles };
-  });
+export function itemColor(item: HearthItem) {
+  if (item.color) return item.color;
+  if (item.kind === "nook") return findNook(item.nookId)?.color ?? tilePalette[0];
+  return tilePalette[0];
 }
 
-export function tileLabel(tile: HearthTile) {
-  return tile.label?.trim() || findNook(tile.nookId)?.title || "Nook";
-}
+// --- Older Hearths -------------------------------------------------------------------
 
-export function tileColor(tile: HearthTile) {
-  return tile.color ?? findNook(tile.nookId)?.color ?? tilePalette[0];
+type V1Tile = { nookId: string; size: "small" | "wide" | "large"; color?: string; label?: string };
+type V1Section = { id: string; title: string; tiles: V1Tile[] };
+
+// The first Hearth stored named sections of tiles. Turn that into the grid:
+// each section title becomes a heading label, its tiles flow underneath.
+export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Section[] }): HearthLayout {
+  const base = { ...defaultHearthLayout, title: saved.title ?? defaultHearthLayout.title, theme: saved.theme ?? defaultHearthLayout.theme };
+  // Saved settings are merged over defaults (items: []), so an old Hearth
+  // shows up as "sections present, no items".
+  const hasItems = Array.isArray(saved.items) && saved.items.length > 0;
+  if (hasItems || !Array.isArray(saved.sections)) return { ...base, items: saved.items ?? [] };
+
+  const sizes = { small: { w: 2, h: 2 }, wide: { w: 4, h: 2 }, large: { w: 4, h: 3 } };
+  const items: HearthItem[] = [];
+  let y = 0;
+  for (const section of saved.sections) {
+    if (section.title?.trim() && section.tiles.length) {
+      // Stable ids (not random) so every screen converts to the same items.
+      items.push({ id: `l-${section.id}`, kind: "label", text: section.title, size: "heading", align: "left", x: 0, y, w: 4, h: 1 });
+      y += 1;
+    }
+    let x = 0;
+    let rowHeight = 0;
+    for (const tile of section.tiles) {
+      const { w, h } = sizes[tile.size] ?? sizes.small;
+      if (x + w > COLUMNS) {
+        y += rowHeight;
+        x = 0;
+        rowHeight = 0;
+      }
+      items.push({ id: `n-${tile.nookId}`, kind: "nook", nookId: tile.nookId, color: tile.color, label: tile.label, x, y, w, h });
+      x += w;
+      rowHeight = Math.max(rowHeight, h);
+    }
+    y += rowHeight;
+  }
+  return { ...base, items };
 }

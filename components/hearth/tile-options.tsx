@@ -1,96 +1,143 @@
 import { useEffect, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import Animated, { SlideInDown, ZoomIn } from "react-native-reanimated";
+import Animated, { Easing, SlideInDown, ZoomIn } from "react-native-reanimated";
 
-import { tileColor, tilePalette, tileSizes, type HearthTile } from "../../lib/hearth";
-import { findNook } from "../../lib/nooks";
 import { tap } from "../../lib/feedback";
+import {
+  deepColor,
+  itemColor,
+  nookLabel,
+  sizePresets,
+  tilePalette,
+  type HearthItem,
+  type LabelItem,
+  type NookItem,
+} from "../../lib/hearth";
+import { findNook } from "../../lib/nooks";
 import { colors, ui } from "../../lib/theme";
 import { Icon, IconBadge } from "../icon";
-import { Button, Chip } from "../ui";
 import { Tap } from "../motion";
+import { Button, Chip } from "../ui";
 
-// Bottom sheet for one Hearth tile: name, size, color, open, remove.
-export function TileOptions({
-  tile,
+type Editable = NookItem | LabelItem;
+
+// Bottom sheet for a Nook tile or a text label on the Hearth: what it says,
+// how big it is, and its color. (Widgets have their own full editor.)
+export function ItemOptions({
+  item,
   onChange,
+  onResize,
   onOpen,
   onRemove,
   onClose,
 }: {
-  tile: HearthTile | null;
-  onChange: (changes: Partial<HearthTile>) => void;
-  onOpen: () => void;
+  item: Editable | null;
+  onChange: (changes: Partial<HearthItem>) => void;
+  onResize: (w: number, h: number) => void;
+  onOpen?: () => void;
   onRemove: () => void;
   onClose: () => void;
 }) {
-  const nook = tile ? findNook(tile.nookId) : undefined;
-  const [label, setLabel] = useState("");
+  const [text, setText] = useState("");
 
   useEffect(() => {
-    setLabel(tile?.label ?? "");
-  }, [tile?.nookId]);
+    if (!item) return;
+    setText(item.kind === "nook" ? item.label ?? "" : item.text);
+  }, [item?.id]);
 
-  function commitLabel() {
-    if (!tile) return;
-    const trimmed = label.trim();
-    if (trimmed !== (tile.label ?? "")) onChange({ label: trimmed || undefined });
+  function commitText() {
+    if (!item) return;
+    if (item.kind === "nook") {
+      const trimmed = text.trim();
+      if (trimmed !== (item.label ?? "")) onChange({ label: trimmed || undefined } as Partial<NookItem>);
+    } else if (text.trim() && text.trim() !== item.text) {
+      onChange({ text: text.trim() } as Partial<LabelItem>);
+    }
   }
 
   function close() {
-    commitLabel();
+    commitText();
     onClose();
   }
 
+  const nook = item?.kind === "nook" ? findNook(item.nookId) : undefined;
+
   return (
-    <Modal visible={Boolean(tile)} transparent animationType="fade" onRequestClose={close}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-      >
+    <Modal visible={Boolean(item)} transparent animationType="fade" onRequestClose={close}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <Pressable style={styles.backdrop} onPress={close} />
-        {tile ? (
-          <Animated.View entering={SlideInDown.springify().damping(20).stiffness(180)} style={styles.sheet}>
+        {item ? (
+          <Animated.View
+            entering={SlideInDown.duration(280).easing(Easing.out(Easing.cubic))}
+            style={styles.sheet}
+          >
             <View style={styles.grabber} />
             <View style={[ui.row, { gap: 12 }]}>
-              {nook ? <IconBadge name={nook.icon} color={nook.iconColor} background={nook.color} size={44} /> : null}
-              <Text style={[ui.sectionTitle, { marginTop: 0 }]}>{nook?.title}</Text>
+              {nook ? (
+                <IconBadge name={nook.icon} color={nook.iconColor} background={nook.color} size={44} />
+              ) : (
+                <IconBadge name="text" size={44} />
+              )}
+              <Text style={[ui.sectionTitle, { marginTop: 0, flex: 1 }]} numberOfLines={1}>
+                {item.kind === "nook" ? nookLabel(item) : "Text"}
+              </Text>
             </View>
 
-            <Text style={ui.label}>Name on your Hearth</Text>
+            <Text style={ui.label}>{item.kind === "nook" ? "Name on your Hearth" : "Words"}</Text>
             <TextInput
               style={ui.input}
-              value={label}
-              onChangeText={setLabel}
-              onEndEditing={commitLabel}
-              placeholder={nook?.title}
+              value={text}
+              onChangeText={setText}
+              onEndEditing={commitText}
+              placeholder={nook?.title ?? "e.g. Family"}
+              placeholderTextColor={colors.muted}
               returnKeyType="done"
             />
 
+            {item.kind === "label" ? (
+              <>
+                <Text style={ui.label}>Style</Text>
+                <View style={ui.chips}>
+                  {(["title", "heading", "caption"] as const).map((size) => (
+                    <Chip key={size} selected={item.size === size} onPress={() => onChange({ size } as Partial<LabelItem>)}>
+                      {size === "title" ? "Title" : size === "heading" ? "Heading" : "Caption"}
+                    </Chip>
+                  ))}
+                </View>
+                <Text style={ui.label}>Line up</Text>
+                <View style={ui.chips}>
+                  {(["left", "center", "right"] as const).map((align) => (
+                    <Chip key={align} selected={item.align === align} onPress={() => onChange({ align } as Partial<LabelItem>)}>
+                      {align[0].toUpperCase() + align.slice(1)}
+                    </Chip>
+                  ))}
+                </View>
+              </>
+            ) : null}
+
             <Text style={ui.label}>Size</Text>
             <View style={ui.chips}>
-              {tileSizes.map((size) => {
-                const selected = tile.size === size.key;
-                return (
-                  <Chip
-                    key={size.key}
-                    selected={selected}
-                    onPress={() => {
-                      tap();
-                      onChange({ size: size.key });
-                    }}
-                  >
-                    {size.label}
-                  </Chip>
-                );
-              })}
+              {sizePresets[item.kind].map((preset) => (
+                <Chip
+                  key={preset.label}
+                  selected={item.w === preset.w && item.h === preset.h}
+                  onPress={() => {
+                    tap();
+                    onResize(preset.w, preset.h);
+                  }}
+                >
+                  {preset.label}
+                </Chip>
+              ))}
             </View>
+            <Text style={ui.muted}>Or drag the corner handle on the Hearth for any size.</Text>
 
             <Text style={ui.label}>Color</Text>
             <View style={ui.chips}>
               {tilePalette.map((color) => {
-                const selected = tileColor(tile) === color;
+                const shown = item.kind === "label" ? deepColor(color) : color;
+                const selected = item.kind === "label" ? item.color === color : itemColor(item) === color;
                 return (
                   <Tap
                     key={color}
@@ -99,12 +146,12 @@ export function TileOptions({
                       tap();
                       onChange({ color });
                     }}
-                    style={[styles.swatch, { backgroundColor: color }, selected && styles.swatchSelected]}
+                    style={[styles.swatch, { backgroundColor: shown }, selected && styles.swatchSelected]}
                     accessibilityLabel={selected ? "Selected color" : "Pick this color"}
                   >
                     {selected ? (
-                      <Animated.View entering={ZoomIn.springify().damping(12)}>
-                        <Icon name="check" size={18} color={colors.bark} />
+                      <Animated.View entering={ZoomIn.duration(180)}>
+                        <Icon name="check" size={18} color={item.kind === "label" ? "#ffffff" : colors.bark} />
                       </Animated.View>
                     ) : null}
                   </Tap>
@@ -113,10 +160,17 @@ export function TileOptions({
             </View>
 
             <View style={[ui.row, { marginTop: 8 }]}>
-              <Button title="Open" icon="chevron" variant="secondary" style={{ flex: 1 }} onPress={onOpen} />
+              {onOpen ? (
+                <Button title="Open" icon="chevron" variant="secondary" style={{ flex: 1 }} onPress={onOpen} />
+              ) : null}
               <Button title="Done" icon="check" style={{ flex: 1 }} onPress={close} />
             </View>
-            <Button title="Remove from Hearth" icon="trash" variant="danger" onPress={onRemove} />
+            <Button
+              title={item.kind === "nook" ? "Remove from Hearth" : "Remove text"}
+              icon="trash"
+              variant="danger"
+              onPress={onRemove}
+            />
           </Animated.View>
         ) : null}
       </KeyboardAvoidingView>
@@ -133,7 +187,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 10,
     paddingBottom: 36,
-    gap: 16,
+    gap: 14,
   },
   grabber: {
     alignSelf: "center",

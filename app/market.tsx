@@ -19,7 +19,7 @@ export default function Market() {
 
   async function add(nook: NookDefinition) {
     try {
-      await save({ sections: addNook(layout, nook.id) });
+      await save({ items: addNook(layout, nook.id) });
     } catch (saveError) {
       Alert.alert("Couldn't add it", (saveError as Error).message);
     }
@@ -34,7 +34,7 @@ export default function Market() {
         {
           text: "Remove",
           style: "destructive",
-          onPress: () => save({ sections: removeNook(layout, nook.id) }).catch(() => {}),
+          onPress: () => save({ items: removeNook(layout, nook.id) }).catch(() => {}),
         },
       ]
     );

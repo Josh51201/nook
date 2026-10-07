@@ -1,64 +1,60 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { tileColor, tileLabel, type HearthTile } from "../../lib/hearth";
+import { itemColor, nookLabel, type NookItem } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
-import { Icon, IconBadge } from "../icon";
+import { IconBadge } from "../icon";
 import { nookWidgets } from "./nook-widgets";
 
 const TEXT = "#2a2420";
 const MUTED = "#6f625a";
 const BADGE = "rgba(255,255,255,0.65)";
 
-// What a Hearth tile looks like at each size. Small = icon + name; Wide and
-// Large have room for the Nook's live widget.
+// A Nook tile at whatever grid size it's been given (CORE-007/019): a lone
+// icon at 1×1, icon + name when small, a row when wide, and room for the
+// Nook's own live info (CORE-010) when it's big.
 export function TileFace({
-  tile,
+  item,
   width,
   height,
-  editing,
   refreshKey,
 }: {
-  tile: HearthTile;
+  item: NookItem;
   width: number;
   height: number;
-  editing: boolean;
   refreshKey: number;
 }) {
-  const nook = findNook(tile.nookId);
-  const Widget = nookWidgets[tile.nookId];
-  const label = tileLabel(tile);
+  const nook = findNook(item.nookId);
+  const Widget = nookWidgets[item.nookId];
+  const label = nookLabel(item);
   const icon = nook?.icon ?? "category";
   const iconColor = nook?.iconColor ?? MUTED;
+  const background = itemColor(item);
 
-  return (
-    <View style={[styles.tile, { width, height, backgroundColor: tileColor(tile) }]}>
-      {tile.size === "small" ? (
-        <View style={styles.small}>
-          <IconBadge name={icon} size={48} color={iconColor} background={BADGE} />
-          <Text style={styles.titleSmall} numberOfLines={2}>
+  if (item.w === 1 || item.h === 1) {
+    const size = Math.min(width, height) * 0.62;
+    return (
+      <View style={[styles.tile, styles.iconOnly, { width, height, backgroundColor: background }]}>
+        <IconBadge name={icon} size={size} color={iconColor} background={BADGE} />
+        {item.h === 1 && item.w > 1 ? (
+          <Text style={[styles.title, { flex: 1 }]} numberOfLines={1}>
             {label}
           </Text>
-        </View>
-      ) : tile.size === "wide" ? (
-        <View style={styles.wide}>
-          <IconBadge name={icon} size={54} color={iconColor} background={BADGE} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={styles.title} numberOfLines={1}>
-              {label}
-            </Text>
-            {Widget ? (
-              <Widget size="wide" refreshKey={refreshKey} textColor={TEXT} mutedColor={MUTED} />
-            ) : (
-              <Text style={styles.tagline}>{nook?.tagline}</Text>
-            )}
-          </View>
-        </View>
-      ) : (
-        <View style={styles.large}>
-          <View style={styles.largeHeader}>
-            <IconBadge name={icon} size={56} color={iconColor} background={BADGE} />
+        ) : null}
+      </View>
+    );
+  }
+
+  const wide = item.w >= 3;
+  const tall = item.h >= 3;
+
+  return (
+    <View style={[styles.tile, { width, height, backgroundColor: background }]}>
+      {tall ? (
+        <View style={{ flex: 1, gap: 12 }}>
+          <View style={styles.row}>
+            <IconBadge name={icon} size={52} color={iconColor} background={BADGE} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.title, { fontSize: 20 }]} numberOfLines={1}>
+              <Text style={[styles.title, { fontSize: 19 }]} numberOfLines={1}>
                 {label}
               </Text>
               <Text style={styles.tagline}>{nook?.tagline}</Text>
@@ -71,12 +67,28 @@ export function TileFace({
             </View>
           ) : null}
         </View>
-      )}
-      {editing ? (
-        <View style={styles.editBadge}>
-          <Icon name="more" size={14} color={MUTED} />
+      ) : wide ? (
+        <View style={[styles.row, { flex: 1 }]}>
+          <IconBadge name={icon} size={52} color={iconColor} background={BADGE} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={styles.title} numberOfLines={1}>
+              {label}
+            </Text>
+            {Widget ? (
+              <Widget size="wide" refreshKey={refreshKey} textColor={TEXT} mutedColor={MUTED} />
+            ) : (
+              <Text style={styles.tagline}>{nook?.tagline}</Text>
+            )}
+          </View>
         </View>
-      ) : null}
+      ) : (
+        <View style={{ flex: 1, justifyContent: "space-between" }}>
+          <IconBadge name={icon} size={46} color={iconColor} background={BADGE} />
+          <Text style={styles.title} numberOfLines={2}>
+            {label}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -89,12 +101,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(0,0,0,0.06)",
   },
-  small: { flex: 1, justifyContent: "space-between" },
-  wide: { flex: 1, flexDirection: "row", alignItems: "center", gap: 14 },
-  large: { flex: 1, gap: 12 },
-  largeHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-  titleSmall: { fontSize: 16, fontWeight: "700", color: TEXT },
-  title: { fontSize: 17, fontWeight: "700", color: TEXT },
+  iconOnly: { padding: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  title: { fontSize: 16, fontWeight: "700", color: TEXT },
   tagline: { fontSize: 13, color: MUTED },
   widgetArea: {
     flex: 1,
@@ -104,15 +113,4 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   widgetLabel: { fontSize: 11, fontWeight: "800", color: MUTED, textTransform: "uppercase", letterSpacing: 0.6 },
-  editBadge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });

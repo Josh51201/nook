@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 12)_
+_Last updated: 2026-10-07 (rev 13)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -8,10 +8,10 @@ _Last updated: 2026-10-07 (rev 12)_
 - **CORE-003** Nooks can be opened from the homepage and managed (arranged, removed, configured) easily there.
 - **CORE-004** Heavy customization throughout ("to your heart's content").
 - **CORE-005** Consistent cozy "small nook" naming theme for features and terms.
-- **CORE-006** The Hearth (homepage) is fully customizable, with drag-and-drop arranging, so each person can set it up however they like (organized or otherwise). This is the app's headline appeal. _(First version built: hold-and-drag tiles within and between sections.)_
-- **CORE-007** Hearth tiles can be resized. _(Built: Small, Wide, Large.)_
+- **CORE-006** The Hearth (homepage) is fully customizable, with drag-and-drop arranging, so each person can set it up however they like (organized or otherwise). This is the app's headline appeal. _(Rebuilt as a free-form grid — see CORE-019.)_
+- **CORE-007** Hearth tiles can be resized. _(Built: any size on the grid by dragging a corner, plus quick presets.)_
 - **CORE-008** The Hearth can be restyled with colors and themes. _(First version built (proposed details): 7 tile colors, 4 Hearth themes (Hearth, Ember, Sage, Dusk), renaming the Hearth and each tile.)_
-- **CORE-009** Nooks on the Hearth can be grouped into folders or groups. _(Built as named sections you can add, rename, reorder and remove; Nooks are dragged between them. Folders are still open.)_
+- **CORE-009** Nooks on the Hearth can be grouped into folders or groups. _(Now done with text labels placed anywhere on the grid (Title/Heading/Caption). Folders are still open.)_
 - **CORE-010** Users can create widgets on the Hearth that show live info from a Nook (e.g. an upcoming Gathering). _(First version built: Wide/Large Gift Nook tiles show upcoming Gatherings, never anything about claims.)_
 - **CORE-011** Users choose what they get notified about and what's shown on their Hearth. _(Gift Nook notifications are now chosen per person — GIFT-029. Hearth-level choices still later.)_
 - **CORE-012** Each Nook has its own settings page for customizing that Nook.
@@ -19,6 +19,8 @@ _Last updated: 2026-10-07 (rev 12)_
 - **CORE-014** Every Nook has a clear way back to the Hearth.
 - **CORE-016** Whatever you're typing in is never hidden behind the phone's keyboard, and every keyboard has a way to close it.
 - **CORE-017** The app should feel alive and flow nicely — motion and animation, not static screens — and use a proper icon set instead of emoji. _(Built (proposed details): SF Symbols on iPhone / Material Symbols on Android via expo-symbols; press-in springs on everything tappable; lists that flow in and glide when they change; placeholder cards while loading; wiggling Hearth tiles in edit mode with smoother drag; iPhone large titles; respects the phone's Reduce Motion setting.)_
+- **CORE-018** Users can add widgets of different kinds to the Hearth, each completely customizable in what it shows and how it looks — e.g. reminders to log food, countdowns to holidays and events, things to buy. _(Built (proposed details): Countdown, Coming up, Reminders (checklists with phone reminders once/daily/weekly — work in Expo Go), Gifts to buy, Sticky note, Inbox, Greeting; each with title, Soft/Bold/Outline style, color, size, and its own settings, edited with a live preview. Ready-made ideas: Food log reminders, Holiday shopping list, Christmas countdown, Event reminders.)_
+- **CORE-019** Users design their own Hearth layout — everyone's looks different. _(Built (proposed details): a 4-column grid where Nooks, widgets and text can go anywhere, gaps allowed; hold to drag (an outline shows where it'll land), drag a corner to resize, and anything in the way slides down. Older section-based Hearths convert automatically.)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
 ## 1a. Accounts & Login
@@ -94,6 +96,7 @@ _Last updated: 2026-10-07 (rev 12)_
 - **2026-10-07 — Q-021 answered:** "I would want them eventually to push notifications, but we don't have to just yet." Push needs a development build instead of Expo Go plus Apple/Google setup; that step is deferred. → GIFT-031
 - **2026-10-07 — Mobile polish:** "There are some parts where the typing keyboard will cover what I am trying to type, like the entering a knock code section. So lets do some mobile improvements and just improvements over the gift nook in general... Add any other details you think would be good." Claude's picks (proposed, for Josh to confirm): Most wanted, price + budget filter, editable Gatherings with a date picker and countdowns, a "Coming up" list, Copy/Share for codes, a "set your name" nudge, haptics, plain-English errors. → CORE-016, GIFT-032–034
 - **2026-10-07 — UI overhaul:** "It looks and feels great but very static. Is there a way to add any animations... AI loves to use emojis but didn't know if there was anything better like mui symbols. I just want it to feel nice and flow nice." → CORE-017
+- **2026-10-07 — Widgets + design-your-own Hearth:** "Allow the user to create widgets of different kinds on their hearth that is completely customizable on how it's shown and what is shown, so if it's the food one they can set different reminders for uploading their food, or events coming up for holidays, like ones for reminders for events, stuff to buy etc... will let you make the judge of what all." And: "I want the user to be able to design what it looks like, everyone's hearth will look different because they can change it all." → CORE-018, CORE-019
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
