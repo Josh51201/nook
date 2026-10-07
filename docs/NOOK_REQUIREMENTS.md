@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-06 (rev 3)_
+_Last updated: 2026-10-07 (rev 4)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -32,18 +32,27 @@ _Last updated: 2026-10-06 (rev 3)_
 
 ## 3. Open Questions
 - **Q-002** Since lists live at the account level, how does a list relate to an event? Does each event show a person's whole list, or do they pick which gifts apply to which event (e.g. a big item for their birthday, small ones for Christmas)?
+  - _Built for now (proposed):_ every Gathering shows each person's whole Wishbook. Schema can also scope gifts per Gathering later without a migration.
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
+  - _Built for now (proposed):_ honorees are optional when creating a Gathering. If any are picked, the Gathering links to their Wishbooks; if none, to everyone in the Burrow. Anniversaries can pick both people.
 - **Q-004** What categories at launch? (Clothes, Money/Gift card, Books, Toys, Experiences, Generic "Other"?) Which fields does each need?
+  - _Built for now (proposed):_ the six placeholder Shelves, asking Clothes → size + color; Money/Gift Card → store + amount; Books → author; Toys → age range; Experiences → where. Clothes and Money default to "many can give" (GIFT-009). All changeable without a migration.
 - **Q-005** Can claimers see who else claimed a repeatable gift, and can they leave notes ("got the blue one", "bought, arriving 12/20")?
+  - _Built for now (proposed):_ claimers see a count ("2 others are giving this too") but not names; no notes yet.
 - **Q-006** Can someone add a gift to another person's list as a suggestion (e.g. for kids)? Should it be hidden from that person?
 - **Q-007** Kids / people without phones: can a parent manage a list on someone's behalf?
 - **Q-008** Can a claim be released, and is there a "purchased" vs "planning to buy" state?
+  - _Built for now (proposed):_ whoever tucked a gift can release it, freeing it for someone else. No "purchased" state yet.
 - **Q-009** What happens when the owner edits or deletes a gift that's already claimed? (Claimers must be notified without the owner learning it was claimed.)
+  - _Built for now (proposed):_ the owner can edit or delete any gift. Deleting silently removes its tucks; claimers are not notified yet.
 - **Q-010** Invites: link, code, or contacts? Family admins/roles?
+  - _Built for now (proposed):_ any Burrow member can send a Knock: a 6-character code, valid 7 days, shared through the phone's share sheet (text, etc.). Whoever starts a Burrow is its admin, but admins have no extra powers yet. Anyone can leave a Burrow.
 - **Q-011** Amazon: links + auto-preview (title/image/price) is easy; deeper integration is limited by Amazon's APIs. Is link-with-preview good enough for v1?
 - **Q-013** After an event ends, what happens to its claims? Are claimed one-and-done gifts removed from the owner's list automatically, and does the owner ever get to see who gave what?
 - **Q-014** How long after an event ends before it's archived, and how long before it's deleted? Fixed, or set per family?
+  - _Built for now (proposed):_ a Gathering shows as Archived once its end date passes. Nothing is auto-deleted until this is answered.
 - **Q-016** Since claims are shared across families (GIFT-013), can members of one family see *who* in another family claimed something, or just that it's claimed?
+  - _Built for now (proposed):_ names of who tucked a gift aren't shown to anyone, in any Burrow, until this is answered.
 
 ## 4. Decision Log
 - **2026-10-06 — Q-001 answered:** A person can be in several families. Their list is created outside any family and shows in all of them, with claims visible to all families except the list owner. → GIFT-011, GIFT-012, GIFT-013
