@@ -30,6 +30,7 @@ import {
   type NookItem,
 } from "../lib/hearth";
 import { findNook } from "../lib/nooks";
+import { planBirthdays } from "../lib/plan-birthdays";
 import { cancelReminders, syncReminders } from "../lib/reminders";
 import { useMyProfile } from "../lib/profile";
 import { touchesGuarded } from "../lib/touch-guard";
@@ -55,8 +56,14 @@ export default function Hearth() {
   const [dragging, setDragging] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Refresh widgets each time you come back to the Hearth.
-  useFocusEffect(useCallback(() => setRefreshKey((k) => k + 1), []));
+  // Refresh widgets each time you come back to the Hearth, and make sure
+  // upcoming family birthdays have their Gatherings (GIFT-035).
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshKey((k) => k + 1);
+      planBirthdays().then((created) => created && setRefreshKey((k) => k + 1));
+    }, [])
+  );
 
   if (!authLoading && !session) {
     return <Redirect href="/sign-in" />;

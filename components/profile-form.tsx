@@ -164,7 +164,9 @@ export function ProfileForm({
           onPress={() => setBirthday(toDateString(new Date(1990, 0, 1)))}
         />
       )}
-      <Text style={ui.muted}>Optional. Family sees the day, not the year.</Text>
+      <Text style={ui.muted}>
+        Optional. Family sees the day, not the year — and your Burrows will plan a Birthday Gathering for you each year.
+      </Text>
 
       <SectionHeader title="About me" icon="person" />
       <TextInput

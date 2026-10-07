@@ -9,6 +9,7 @@ import { NookScroll } from "../components/nook-scroll";
 import { ProfileForm } from "../components/profile-form";
 import { useAuth } from "../lib/auth-context";
 import { friendlyError, tap } from "../lib/feedback";
+import { planBirthdays } from "../lib/plan-birthdays";
 import { useMyProfile } from "../lib/profile";
 import { colors, ui } from "../lib/theme";
 
@@ -47,6 +48,7 @@ export default function Onboarding() {
             const { error } = await save({ ...values, onboarded_at: new Date().toISOString() });
             if (error) return friendlyError({ message: error });
             tap("success");
+            planBirthdays(true);
             router.replace("/hearth");
             return null;
           }}

@@ -6,6 +6,7 @@ import { NookScroll } from "../../../components/nook-scroll";
 import { ProfileForm } from "../../../components/profile-form";
 import { EmptyState } from "../../../components/ui";
 import { friendlyError, tap } from "../../../lib/feedback";
+import { planBirthdays } from "../../../lib/plan-birthdays";
 import { PROFILE_SELECT, type MyProfile } from "../../../lib/profile";
 import { supabase } from "../../../lib/supabase";
 
@@ -42,6 +43,7 @@ export default function ManagedProfile() {
           const { error } = await supabase.from("profiles").update(values).eq("id", id);
           if (error) return friendlyError(error);
           tap("success");
+          planBirthdays(true);
           router.back();
           return null;
         }}

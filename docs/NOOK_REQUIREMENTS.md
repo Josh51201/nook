@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 16)_
+_Last updated: 2026-10-07 (rev 17)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -70,6 +70,8 @@ _Last updated: 2026-10-07 (rev 16)_
 - **GIFT-034** *(proposed)* Gatherings can be edited after they're planned (date, name, who it's for), with a calendar date picker and an "in 12 days" countdown.
 - **GIFT-030** Pasting a link can fill in the gift's name and picture automatically where the shop allows it (Q-011).
 
+- **GIFT-035** Each family automatically gets a Birthday Gathering for every member (kids included) who has set a birthday on their profile, created 30 days ahead, once a year, with that person as its honoree. It's created by whichever family phone opens Nook first, so nothing runs in the background. If an admin deletes one, it doesn't come back that year. _(Built; the 30-day lead time and "created by whoever opens Nook first" are proposed.)_
+
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
   - _Built for now (proposed):_ honorees are optional when creating a Gathering. If any are picked, the Gathering links to their Wishbooks; if none, to everyone in the Burrow. Anniversaries can pick both people.
@@ -79,6 +81,7 @@ _Last updated: 2026-10-07 (rev 16)_
 
 - **Q-023** Emailed sign-in codes: Resend without a verified domain only delivers to its owner's own address, so family members can't receive codes. Which domain should Nook send email from (a domain must be bought, about $10–15/year, then verified in Resend and set as the sender in Supabase)? Needed before anyone besides Josh uses the app.
 
+- **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
 - **Q-025** The app ID (bundle identifier) is currently `com.josh51201.nook`. It is permanent once the app is published. Should it use the domain Josh buys for email (Q-023) instead?
 
 ## 4. Decision Log
