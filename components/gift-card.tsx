@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Image, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { displayName, normalizeUrl, shelfFields, type Gift } from "../lib/gift-nook";
+import { displayName, formatPrice, normalizeUrl, shelfFields, type Gift } from "../lib/gift-nook";
 import { colors, ui } from "../lib/theme";
 
 // One gift, as shown on any Wishbook. `footer` is where a family member's
@@ -30,7 +30,11 @@ export function GiftCard({
             <Text style={[ui.cardTitle, { flex: 1 }]}>{gift.title}</Text>
             <Text style={styles.badge}>{gift.is_repeatable ? "Many can give" : "One-and-done"}</Text>
           </View>
-          <Text style={ui.muted}>{gift.shelves?.label ?? "Other"}</Text>
+          <Text style={ui.muted}>
+            {gift.is_most_wanted ? <Text style={styles.mostWanted}>❤️ Most wanted · </Text> : null}
+            {gift.shelves?.label ?? "Other"}
+            {gift.price != null ? ` · ${formatPrice(gift.price)}` : ""}
+          </Text>
           {gift.suggested_by ? (
             <Text style={styles.suggested}>💡 Suggested by {displayName(gift.suggester)} · hidden from them</Text>
           ) : null}
@@ -66,6 +70,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     overflow: "hidden",
   },
+  mostWanted: { color: "#b03a48", fontWeight: "700" },
   suggested: { fontSize: 13, color: colors.bark, fontStyle: "italic" },
   detail: { fontSize: 14, color: colors.text },
 });

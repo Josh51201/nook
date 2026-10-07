@@ -27,6 +27,7 @@ import {
   type HearthSection,
   type HearthTile,
 } from "../lib/hearth";
+import { tap } from "../lib/feedback";
 import { findNook } from "../lib/nooks";
 
 const GAP = 12;
@@ -201,7 +202,11 @@ export default function Hearth() {
                 </Text>
               </TouchableOpacity>
             ) : null}
-            <TouchableOpacity onPress={() => router.push("/settings")} hitSlop={10}>
+            <TouchableOpacity
+              onPress={() => router.push("/settings")}
+              hitSlop={10}
+              accessibilityLabel="Settings"
+            >
               <Text style={[styles.headerButton, { color: theme.accent, fontSize: 20 }]}>⚙︎</Text>
             </TouchableOpacity>
           </View>
@@ -279,8 +284,12 @@ export default function Hearth() {
                           handlers={{
                             onPress: () =>
                               editing ? setOptionsFor(tile.nookId) : openNook(tile.nookId),
-                            onLongPress: () => setEditing(true),
+                            onLongPress: () => {
+                              tap();
+                              setEditing(true);
+                            },
                             onDragStart: () => {
+                              tap();
                               measureAll();
                               setDraggingId(tile.nookId);
                             },

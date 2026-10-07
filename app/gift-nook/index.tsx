@@ -4,13 +4,15 @@ import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } fro
 
 import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
-import { displayName } from "../../lib/gift-nook";
+import { friendlyError } from "../../lib/feedback";
+import { countdown, displayName, formatDate, gatheringKindInfo } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
 type BurrowRow = { id: string; name: string };
 type Kid = { id: string; name: string; burrowIds: Set<string> };
 type ReceivedPrompt = { gatheringId: string; title: string; profileId: string; who: string };
+type Upcoming = { id: string; title: string; kind: string; ends_at: string; burrows: { name: string } | null };
 
 // Gift Nook home: your Wishbook and tucks, kids you manage, "did you get
 // these?" prompts after Gatherings, your Burrows, and one box for any code
@@ -25,6 +27,8 @@ export default function GiftNookHome() {
   const [prompts, setPrompts] = useState<ReceivedPrompt[]>([]);
   const [openTucks, setOpenTucks] = useState(0);
   const [unread, setUnread] = useState(0);
+  const [upcoming, setUpcoming] = useState<Upcoming[]>([]);
+  const [needsName, setNeedsName] = useState(false);
   const [newBurrowName, setNewBurrowName] = useState("");
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -34,8 +38,16 @@ export default function GiftNookHome() {
   const load = useCallback(async () => {
     if (!userId) return;
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
-    const [burrowsResult, kidsResult, tucksResult, unreadResult, endedResult, receiptsResult] =
-      await Promise.all([
+    const [
+      burrowsResult,
+      kidsResult,
+      tucksResult,
+      unreadResult,
+      endedResult,
+      receiptsResult,
+      upcomingResult,
+      profileResult,
+    ] = await Promise.all([
         supabase.from("burrows").select("id, name").order("name"),
         supabase
           .from("profile_managers")
@@ -57,12 +69,23 @@ export default function GiftNookHome() {
           .lt("ends_at", new Date().toISOString())
           .gt("ends_at", thirtyDaysAgo),
         supabase.from("gathering_receipts").select("gathering_id, profile_id"),
+        supabase
+          .from("gatherings")
+          .select("id, title, kind, ends_at, burrows(name)")
+          .gt("ends_at", new Date().toISOString())
+          .order("ends_at")
+          .limit(3),
+        supabase.from("profiles").select("display_name").eq("id", userId).single(),
       ]);
 
     if (burrowsResult.error) setError(burrowsResult.error.message);
     setBurrows(burrowsResult.data ?? []);
     setOpenTucks(tucksResult.count ?? 0);
     setUnread(unreadResult.count ?? 0);
+    setUpcoming((upcomingResult.data ?? []) as unknown as Upcoming[]);
+    // New accounts start with their email as their name.
+    const currentName = profileResult.data?.display_name ?? "";
+    setNeedsName(!currentName.trim() || currentName.includes("@"));
 
     const kidList: Kid[] = (kidsResult.data ?? []).map((row) => {
       const profile = row.profiles as unknown as {
@@ -138,7 +161,7 @@ export default function GiftNookHome() {
     const { data, error: rpcError } = await supabase.rpc("answer_code", { any_code: code.trim() });
     setBusy(null);
     if (rpcError) {
-      Alert.alert("Couldn't use that code", rpcError.message);
+      Alert.alert("Couldn't use that code", friendlyError(rpcError));
       return;
     }
     setCode("");
@@ -164,12 +187,20 @@ export default function GiftNookHome() {
         options={{
           headerRight: () => (
             <View style={[ui.row, { gap: 18 }]}>
-              <TouchableOpacity onPress={() => router.push("/gift-nook/notifications")} hitSlop={10}>
+              <TouchableOpacity
+                onPress={() => router.push("/gift-nook/notifications")}
+                hitSlop={10}
+                accessibilityLabel={unread ? `Inbox, ${unread} unread` : "Inbox"}
+              >
                 <Text style={{ color: colors.bark, fontSize: 18 }}>
                   🔔{unread > 0 ? <Text style={{ fontSize: 14, fontWeight: "700" }}> {unread}</Text> : null}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push("/gift-nook/settings")} hitSlop={10}>
+              <TouchableOpacity
+                onPress={() => router.push("/gift-nook/settings")}
+                hitSlop={10}
+                accessibilityLabel="Gift Nook settings"
+              >
                 <Text style={{ color: colors.bark, fontSize: 20 }}>⚙︎</Text>
               </TouchableOpacity>
             </View>
@@ -177,6 +208,16 @@ export default function GiftNookHome() {
         }}
       />
       {error ? <Text style={ui.error}>{error}</Text> : null}
+
+      {needsName ? (
+        <TouchableOpacity
+          style={[ui.card, { backgroundColor: "#e9f1fb" }]}
+          onPress={() => router.push("/settings")}
+        >
+          <Text style={ui.cardTitle}>👋 Tell your family who you are</Text>
+          <Text style={ui.muted}>Right now they see your email. Tap to set your name.</Text>
+        </TouchableOpacity>
+      ) : null}
 
       {prompts.map((prompt) => (
         <TouchableOpacity
@@ -209,6 +250,27 @@ export default function GiftNookHome() {
             : "Gifts you've promised to get show up here"}
         </Text>
       </TouchableOpacity>
+
+      {upcoming.length > 0 ? (
+        <>
+          <Text style={ui.sectionTitle}>Coming up</Text>
+          {upcoming.map((gathering) => (
+            <TouchableOpacity
+              key={gathering.id}
+              style={ui.card}
+              onPress={() => router.push(`/gift-nook/gathering/${gathering.id}`)}
+            >
+              <Text style={ui.cardTitle}>
+                {gatheringKindInfo(gathering.kind).emoji} {gathering.title}
+              </Text>
+              <Text style={ui.muted}>
+                {formatDate(gathering.ends_at)} · {countdown(gathering.ends_at)}
+                {gathering.burrows?.name ? ` · ${gathering.burrows.name}` : ""}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </>
+      ) : null}
 
       <Text style={ui.sectionTitle}>Little ones you manage</Text>
       {kids.map((kid) => (

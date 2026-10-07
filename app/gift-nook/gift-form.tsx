@@ -14,6 +14,7 @@ import {
 import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
 import { displayName, repeatableByDefault, shelfFields, type Shelf } from "../../lib/gift-nook";
+import { friendlyError, tap } from "../../lib/feedback";
 import { fetchLinkPreview } from "../../lib/link-preview";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
@@ -37,6 +38,8 @@ export default function GiftForm() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [isRepeatable, setIsRepeatable] = useState(false);
+  const [isMostWanted, setIsMostWanted] = useState(false);
+  const [price, setPrice] = useState("");
   const [details, setDetails] = useState<Record<string, string>>({});
   const [isSuggestion, setIsSuggestion] = useState(false);
   const [forName, setForName] = useState<string | null>(null);
@@ -66,6 +69,8 @@ export default function GiftForm() {
           setImageUrl(gift.image_url);
           setNotes(gift.notes ?? "");
           setIsRepeatable(gift.is_repeatable);
+          setIsMostWanted(gift.is_most_wanted);
+          setPrice(gift.price != null ? String(gift.price) : "");
           setDetails(gift.details ?? {});
           setIsSuggestion(Boolean(gift.suggested_by));
         }
@@ -137,6 +142,14 @@ export default function GiftForm() {
       if (value) cleanDetails[field.key] = value;
     }
 
+    const cleanPrice = price.trim().replace(/[$,\s]/g, "");
+    const parsedPrice = cleanPrice ? Number(cleanPrice) : null;
+    if (parsedPrice != null && (Number.isNaN(parsedPrice) || parsedPrice < 0)) {
+      setIsSaving(false);
+      setError("Price should be a number, like 25 or 19.99.");
+      return;
+    }
+
     const values = {
       shelf_id: shelfId,
       title: title.trim(),
@@ -144,6 +157,8 @@ export default function GiftForm() {
       image_url: imageUrl,
       notes: notes.trim() || null,
       is_repeatable: isRepeatable,
+      is_most_wanted: isSuggestion ? false : isMostWanted,
+      price: parsedPrice,
       details: cleanDetails,
     };
 
@@ -164,8 +179,11 @@ export default function GiftForm() {
     }
 
     setIsSaving(false);
-    if (saveError) setError(saveError.message);
-    else router.back();
+    if (saveError) setError(friendlyError(saveError));
+    else {
+      tap("success");
+      router.back();
+    }
   }
 
   function confirmDelete() {
@@ -181,7 +199,7 @@ export default function GiftForm() {
           style: "destructive",
           onPress: async () => {
             const { error: deleteError } = await supabase.rpc("remove_gift", { target_gift: giftId });
-            if (deleteError) setError(deleteError.message);
+            if (deleteError) setError(friendlyError(deleteError));
             else router.back();
           },
         },
@@ -283,6 +301,15 @@ export default function GiftForm() {
         </View>
       ))}
 
+      <Text style={ui.label}>About how much? (optional)</Text>
+      <TextInput
+        style={ui.input}
+        value={price}
+        onChangeText={setPrice}
+        placeholder="e.g. 25"
+        keyboardType="decimal-pad"
+      />
+
       <Text style={ui.label}>Notes</Text>
       <TextInput
         style={[ui.input, { minHeight: 80, textAlignVertical: "top" }]}
@@ -305,6 +332,16 @@ export default function GiftForm() {
           trackColor={{ true: colors.bark }}
         />
       </View>
+
+      {!isSuggestion ? (
+        <View style={[ui.row, { justifyContent: "space-between" }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={ui.cardTitle}>❤️ Most wanted</Text>
+            <Text style={ui.muted}>Shows at the top of the list so family knows it's a favorite.</Text>
+          </View>
+          <Switch value={isMostWanted} onValueChange={setIsMostWanted} trackColor={{ true: colors.bark }} />
+        </View>
+      ) : null}
 
       {error ? <Text style={ui.error}>{error}</Text> : null}
 

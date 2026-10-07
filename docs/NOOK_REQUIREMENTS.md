@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 10)_
+_Last updated: 2026-10-07 (rev 11)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -17,6 +17,7 @@ _Last updated: 2026-10-07 (rev 10)_
 - **CORE-012** Each Nook has its own settings page for customizing that Nook.
 - **CORE-013** The Hearth has a settings page for account-wide things: account info, setting your name, signing out, and anything else important.
 - **CORE-014** Every Nook has a clear way back to the Hearth.
+- **CORE-016** Whatever you're typing in is never hidden behind the phone's keyboard, and every keyboard has a way to close it.
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
 ## 1a. Accounts & Login
@@ -53,6 +54,9 @@ _Last updated: 2026-10-07 (rev 10)_
 - **GIFT-028** Family admins can remove a member, rename or delete the family, make others admins, and delete any event. Other members can only delete events they created. A family always keeps at least one admin.
 - **GIFT-029** Notifications, each turned on or off per person in Gift Nook settings: an event coming up, new gifts added, a gift you claimed changed, and someone joined your family. These start as an in-app inbox; phone push notifications come later (GIFT-031).
 - **GIFT-031** Notifications are also sent as phone push notifications. (Later — not built yet.)
+- **GIFT-032** *(proposed)* An owner can mark a gift ❤️ Most wanted; those show first on their list.
+- **GIFT-033** *(proposed)* A gift can have an approximate price, and givers can filter someone's list by budget (under $25 / $50 / $100) and by Shelf.
+- **GIFT-034** *(proposed)* Gatherings can be edited after they're planned (date, name, who it's for), with a calendar date picker and an "in 12 days" countdown.
 - **GIFT-030** Pasting a link can fill in the gift's name and picture automatically where the shop allows it (Q-011).
 
 ## 3. Open Questions
@@ -87,6 +91,7 @@ _Last updated: 2026-10-07 (rev 10)_
 - **2026-10-07 — Q-011 answered:** Josh liked the suggested link auto-preview; deeper Amazon integration isn't needed for now. → GIFT-030
 - **2026-10-07 — Q-022 answered:** Don't assume a bought gift was given: "still rely on the user to select they received them after the event to then remove from their list rather than rely on the bought, but may still show as bought on their list for like 30 days and then release." → GIFT-026
 - **2026-10-07 — Q-021 answered:** "I would want them eventually to push notifications, but we don't have to just yet." Push needs a development build instead of Expo Go plus Apple/Google setup; that step is deferred. → GIFT-031
+- **2026-10-07 — Mobile polish:** "There are some parts where the typing keyboard will cover what I am trying to type, like the entering a knock code section. So lets do some mobile improvements and just improvements over the gift nook in general... Add any other details you think would be good." Claude's picks (proposed, for Josh to confirm): Most wanted, price + budget filter, editable Gatherings with a date picker and countdowns, a "Coming up" list, Copy/Share for codes, a "set your name" nudge, haptics, plain-English errors. → CORE-016, GIFT-032–034
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |

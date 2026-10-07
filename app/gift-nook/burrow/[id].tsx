@@ -11,8 +11,12 @@ import {
 } from "react-native";
 
 import { NookScroll } from "../../../components/nook-scroll";
+import * as Clipboard from "expo-clipboard";
+
 import { useAuth } from "../../../lib/auth-context";
+import { tap } from "../../../lib/feedback";
 import {
+  countdown,
   displayName,
   formatDate,
   gatheringKindInfo,
@@ -80,12 +84,21 @@ export default function BurrowScreen() {
       Alert.alert("Couldn't make a Knock", rpcError?.message ?? "Try again.");
       return;
     }
-    await Share.share({
-      message:
-        `Come join our Burrow "${name}" on Nook! 🏡\n\n` +
-        `Open Nook → Gift Nook → "Got a code?", and enter:\n\n${code}\n\n` +
-        `(It works for 7 days.)`,
-    });
+    const message =
+      `Come join our Burrow "${name}" on Nook! 🏡\n\n` +
+      `Open Nook → Gift Nook → "Got a code?", and enter:\n\n${code}\n\n` +
+      `(It works for 7 days.)`;
+    Alert.alert(`Knock code: ${code}`, "Send it to whoever you're inviting. It works for 7 days.", [
+      {
+        text: "Copy code",
+        onPress: async () => {
+          await Clipboard.setStringAsync(code);
+          tap();
+        },
+      },
+      { text: "Share…", onPress: () => Share.share({ message }) },
+      { text: "Done", style: "cancel" },
+    ]);
   }
 
   function confirmLeave() {
@@ -230,7 +243,11 @@ export default function BurrowScreen() {
               {member.profile_id === userId ? " (you)" : ""}
             </Text>
             {isAdmin && member.profile_id !== userId ? (
-              <TouchableOpacity onPress={() => memberActions(member)} hitSlop={10}>
+              <TouchableOpacity
+                onPress={() => memberActions(member)}
+                hitSlop={10}
+                accessibilityLabel={`Options for ${displayName(member.profiles)}`}
+              >
                 <Text style={{ fontSize: 18, fontWeight: "900", color: "#777" }}>•••</Text>
               </TouchableOpacity>
             ) : null}
@@ -302,7 +319,7 @@ function GatheringRow({ gathering, onPress }: { gathering: Gathering; onPress: (
         {kind.emoji} {gathering.title}
       </Text>
       <Text style={ui.muted}>
-        {kind.label} · {isArchived(gathering) ? "ended" : "ends"} {formatDate(gathering.ends_at)}
+        {kind.label} · {formatDate(gathering.ends_at)} · {countdown(gathering.ends_at)}
       </Text>
     </TouchableOpacity>
   );

@@ -1,10 +1,13 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { NookScroll } from "../../components/nook-scroll";
 import { useAuth } from "../../lib/auth-context";
+import { friendlyError, tap } from "../../lib/feedback";
 import {
+  countdown,
   displayName,
   gatheringKinds,
   type BurrowMember,
@@ -13,24 +16,55 @@ import {
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
-// Plan a Gathering in a Burrow (GIFT-010/014/015). Honorees are optional:
-// none means it's for everyone (e.g. Christmas); one or two people covers a
-// birthday or anniversary. How honorees affect which Wishbooks show is Q-003.
+// Plan or edit a Gathering in a Burrow (GIFT-010/014/015). Honorees are
+// optional: none means it's for everyone (e.g. Christmas); one or two people
+// covers a birthday or anniversary. How honorees affect which Wishbooks show
+// is Q-003.
+//   ?burrowId=...     plan a new one
+//   ?gatheringId=...  edit an existing one
 export default function GatheringForm() {
   const router = useRouter();
-  const { burrowId } = useLocalSearchParams<{ burrowId: string }>();
+  const params = useLocalSearchParams<{ burrowId?: string; gatheringId?: string }>();
+  const { gatheringId } = params;
   const { session } = useAuth();
   const userId = session?.user.id;
 
+  const [burrowId, setBurrowId] = useState(params.burrowId ?? null);
   const [members, setMembers] = useState<BurrowMember[]>([]);
   const [kind, setKind] = useState<GatheringKind>("christmas");
   const [title, setTitle] = useState("");
-  const [endDate, setEndDate] = useState(defaultEndDate("christmas"));
+  const [date, setDate] = useState(defaultDate("christmas"));
+  const [showIosPicker, setShowIosPicker] = useState(false);
   const [honorees, setHonorees] = useState<Set<string>>(new Set());
+  const [originalHonorees, setOriginalHonorees] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(Boolean(gatheringId));
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Editing: load what's there.
   useEffect(() => {
+    if (!gatheringId) return;
+    (async () => {
+      const [gatheringResult, honoreesResult] = await Promise.all([
+        supabase.from("gatherings").select("burrow_id, title, kind, ends_at").eq("id", gatheringId).single(),
+        supabase.from("gathering_honorees").select("profile_id").eq("gathering_id", gatheringId),
+      ]);
+      const row = gatheringResult.data;
+      if (row) {
+        setBurrowId(row.burrow_id);
+        setTitle(row.title);
+        setKind(row.kind as GatheringKind);
+        setDate(new Date(row.ends_at));
+      }
+      const ids = new Set((honoreesResult.data ?? []).map((h) => h.profile_id));
+      setHonorees(ids);
+      setOriginalHonorees(new Set(ids));
+      setIsLoading(false);
+    })();
+  }, [gatheringId]);
+
+  useEffect(() => {
+    if (!burrowId) return;
     supabase
       .from("burrow_members")
       .select("profile_id, role, profiles(id, display_name)")
@@ -40,7 +74,7 @@ export default function GatheringForm() {
 
   function pickKind(next: GatheringKind) {
     setKind(next);
-    setEndDate(defaultEndDate(next));
+    if (!gatheringId) setDate(defaultDate(next));
   }
 
   function toggleHonoree(profileId: string) {
@@ -52,12 +86,22 @@ export default function GatheringForm() {
     });
   }
 
-  async function save() {
-    const endsAt = parseDate(endDate);
-    if (!endsAt) {
-      setError("Enter the end date as YYYY-MM-DD, e.g. 2026-12-25.");
-      return;
+  function openDatePicker() {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: date,
+        mode: "date",
+        onChange: (_event, picked) => picked && setDate(picked),
+      });
+    } else {
+      setShowIosPicker((shown) => !shown);
     }
+  }
+
+  async function save() {
+    if (!burrowId) return;
+    // The Gathering "ends" at the end of the chosen day, local time.
+    const endsAt = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
     const kindLabel = gatheringKinds.find((k) => k.key === kind)!.label;
     const honoreeNames = members
       .filter((m) => honorees.has(m.profile_id))
@@ -68,32 +112,64 @@ export default function GatheringForm() {
 
     setIsSaving(true);
     setError(null);
-    const { data: gathering, error: insertError } = await supabase
-      .from("gatherings")
-      .insert({ burrow_id: burrowId, title: finalTitle, kind, ends_at: endsAt.toISOString() })
-      .select("id")
-      .single();
-    if (insertError || !gathering) {
-      setIsSaving(false);
-      setError(insertError?.message ?? "Couldn't save that Gathering.");
-      return;
+
+    let id = gatheringId;
+    if (gatheringId) {
+      const { error: updateError } = await supabase
+        .from("gatherings")
+        .update({ title: finalTitle, kind, ends_at: endsAt.toISOString() })
+        .eq("id", gatheringId);
+      if (updateError) return fail(updateError);
+    } else {
+      const { data: created, error: insertError } = await supabase
+        .from("gatherings")
+        .insert({ burrow_id: burrowId, title: finalTitle, kind, ends_at: endsAt.toISOString() })
+        .select("id")
+        .single();
+      if (insertError || !created) return fail(insertError);
+      id = created.id;
     }
-    if (honorees.size) {
-      const { error: honoreeError } = await supabase.from("gathering_honorees").insert(
-        [...honorees].map((profileId) => ({ gathering_id: gathering.id, profile_id: profileId }))
-      );
-      if (honoreeError) {
-        setIsSaving(false);
-        setError(honoreeError.message);
-        return;
-      }
+
+    const added = [...honorees].filter((p) => !originalHonorees.has(p));
+    const removed = [...originalHonorees].filter((p) => !honorees.has(p));
+    if (added.length) {
+      const { error: addError } = await supabase
+        .from("gathering_honorees")
+        .insert(added.map((profileId) => ({ gathering_id: id, profile_id: profileId })));
+      if (addError) return fail(addError);
     }
+    if (removed.length) {
+      const { error: removeError } = await supabase
+        .from("gathering_honorees")
+        .delete()
+        .eq("gathering_id", id!)
+        .in("profile_id", removed);
+      if (removeError) return fail(removeError);
+    }
+
     setIsSaving(false);
-    router.replace(`/gift-nook/gathering/${gathering.id}`);
+    tap("success");
+    if (gatheringId) router.back();
+    else router.replace(`/gift-nook/gathering/${id}`);
+  }
+
+  function fail(failure: { message: string; code?: string } | null) {
+    setIsSaving(false);
+    setError(friendlyError(failure) ?? "Couldn't save that Gathering.");
+  }
+
+  if (isLoading) {
+    return (
+      <View style={ui.center}>
+        <ActivityIndicator />
+      </View>
+    );
   }
 
   return (
     <NookScroll>
+      <Stack.Screen options={{ title: gatheringId ? "Edit Gathering" : "New Gathering" }} />
+
       <Text style={ui.label}>What kind?</Text>
       <View style={ui.chips}>
         {gatheringKinds.map((k) => {
@@ -132,6 +208,29 @@ export default function GatheringForm() {
         })}
       </View>
 
+      <Text style={ui.label}>Date</Text>
+      <TouchableOpacity
+        style={[ui.input, ui.row, { justifyContent: "space-between" }]}
+        onPress={openDatePicker}
+        accessibilityLabel="Pick the date"
+      >
+        <Text style={{ fontSize: 16, color: colors.text }}>
+          📅{" "}
+          {date.toLocaleDateString(undefined, { weekday: "short", month: "long", day: "numeric", year: "numeric" })}
+        </Text>
+        <Text style={ui.muted}>{countdown(date.toISOString())}</Text>
+      </TouchableOpacity>
+      {Platform.OS === "ios" && showIosPicker ? (
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display="inline"
+          accentColor={colors.bark}
+          onChange={(_event, picked) => picked && setDate(picked)}
+        />
+      ) : null}
+      <Text style={ui.muted}>After this day it moves to Archived.</Text>
+
       <Text style={ui.label}>Name (optional)</Text>
       <TextInput
         style={ui.input}
@@ -140,51 +239,25 @@ export default function GatheringForm() {
         placeholder="We'll name it for you if you skip this"
       />
 
-      <Text style={ui.label}>Ends on</Text>
-      <TextInput
-        style={ui.input}
-        value={endDate}
-        onChangeText={setEndDate}
-        placeholder="YYYY-MM-DD"
-        autoCorrect={false}
-        keyboardType="numbers-and-punctuation"
-      />
-      <Text style={ui.muted}>After this date it moves to Archived.</Text>
-
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
       <TouchableOpacity style={ui.button} onPress={save} disabled={isSaving}>
         {isSaving ? (
           <ActivityIndicator color={colors.white} />
         ) : (
-          <Text style={ui.buttonText}>Plan Gathering</Text>
+          <Text style={ui.buttonText}>{gatheringId ? "Save changes" : "Plan Gathering"}</Text>
         )}
       </TouchableOpacity>
     </NookScroll>
   );
 }
 
-function toDateString(date: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-// Christmas defaults to the next Dec 26 (so the day itself is still
-// "upcoming"); anything else to a month out.
-function defaultEndDate(kind: GatheringKind) {
+// Christmas defaults to the next Christmas Day; anything else to a month out.
+function defaultDate(kind: GatheringKind) {
   const now = new Date();
   if (kind === "christmas") {
-    const year = now > new Date(now.getFullYear(), 11, 26) ? now.getFullYear() + 1 : now.getFullYear();
-    return toDateString(new Date(year, 11, 26));
+    const thisYear = new Date(now.getFullYear(), 11, 25);
+    return now > new Date(now.getFullYear(), 11, 25, 23, 59) ? new Date(now.getFullYear() + 1, 11, 25) : thisYear;
   }
-  return toDateString(new Date(now.getFullYear(), now.getMonth() + 1, now.getDate()));
-}
-
-// The end of the given local day.
-function parseDate(value: string) {
-  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value.trim());
-  if (!match) return null;
-  const [, y, m, d] = match.map(Number);
-  const date = new Date(y, m - 1, d, 23, 59, 59);
-  return date.getMonth() === m - 1 ? date : null;
+  return new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
 }

@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from "react-na
 import { NookScroll } from "../../../components/nook-scroll";
 import { useAuth } from "../../../lib/auth-context";
 import {
+  countdown,
   displayName,
   formatDate,
   gatheringKindInfo,
@@ -143,9 +144,19 @@ export default function GatheringScreen() {
         <Text style={{ fontSize: 40 }}>{kind.emoji}</Text>
         <Text style={[ui.cardTitle, { fontSize: 20 }]}>{gathering.title}</Text>
         <Text style={ui.muted}>
-          {kind.label} · {archived ? "Ended" : "Ends"} {formatDate(gathering.ends_at)}
+          {kind.label} · {formatDate(gathering.ends_at)} · {countdown(gathering.ends_at)}
           {archived ? " · Archived" : ""}
         </Text>
+        {!archived ? (
+          <Text
+            style={[ui.link, { marginTop: 6 }]}
+            onPress={() =>
+              router.push({ pathname: "/gift-nook/gathering-form", params: { gatheringId: id } })
+            }
+          >
+            Edit date, name, or who it's for
+          </Text>
+        ) : null}
       </View>
 
       <Text style={ui.sectionTitle}>{hasHonorees ? "Celebrating" : "Everyone's Wishbooks"}</Text>

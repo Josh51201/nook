@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View } from "react-native";
 
 import { NookScroll } from "../../components/nook-scroll";
+import { friendlyError, tap } from "../../lib/feedback";
 import { GIFT_SELECT, isGiftShown, loadGiftPicks, type Gift } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
@@ -64,8 +65,11 @@ export default function ReceivedScreen() {
       received_gift_ids: [...checked],
     });
     setIsSaving(false);
-    if (error) Alert.alert("Couldn't save", error.message);
-    else router.back();
+    if (error) Alert.alert("Couldn't save", friendlyError(error));
+    else {
+      tap("success");
+      router.back();
+    }
   }
 
   if (isLoading) {

@@ -5,13 +5,13 @@ import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from "react-na
 import { NookScroll } from "../../components/nook-scroll";
 import { GiftCard } from "../../components/gift-card";
 import { useAuth } from "../../lib/auth-context";
-import { GIFT_SELECT, type Gift } from "../../lib/gift-nook";
+import { GIFT_SELECT, sortGifts, type Gift } from "../../lib/gift-nook";
 import { supabase } from "../../lib/supabase";
 import { ui } from "../../lib/theme";
 
 // The owner's own Wishbook (GIFT-002, GIFT-012). GIFT-007: this screen never
-// queries claims, and sorts by creation date only, so nothing here can hint
-// at what's been tucked.
+// queries claims, and sorts only by Most wanted and creation date, so nothing
+// here can hint at what's been tucked.
 export default function MyWishbook() {
   const router = useRouter();
   const { session } = useAuth();
@@ -39,7 +39,7 @@ export default function MyWishbook() {
       .eq("wishbook_id", wishbook.id)
       .order("created_at", { ascending: false });
     if (giftsError) setError(giftsError.message);
-    else setGifts((data ?? []) as unknown as Gift[]);
+    else setGifts(sortGifts((data ?? []) as unknown as Gift[]));
     setIsLoading(false);
   }, [userId]);
 

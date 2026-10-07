@@ -12,16 +12,26 @@ import {
   isActiveTuck,
   isGiftShown,
   loadGiftPicks,
+  sortGifts,
   TUCK_SELECT,
   tuckStatusLabel,
   type Gift,
   type Tuck,
 } from "../../../lib/gift-nook";
+import { friendlyError, tap } from "../../../lib/feedback";
 import { giftNookSettingDefaults, useNookSettings } from "../../../lib/nook-settings";
 import { supabase } from "../../../lib/supabase";
 import { colors, ui } from "../../../lib/theme";
 
 type FamilyGift = Gift & { claims: Tuck[] };
+
+// Browse by budget (GIFT-033). Gifts without a price show under every budget.
+const budgets = [
+  { label: "Any price", max: null },
+  { label: "Under $25", max: 25 },
+  { label: "Under $50", max: 50 },
+  { label: "Under $100", max: 100 },
+] as const;
 
 // Someone else's Wishbook, seen by family (GIFT-005/006/008/009/013). This is
 // the only place a Wishbook is shown with its tucks. It redirects away if
@@ -53,6 +63,8 @@ export default function MemberWishbook() {
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [shelfFilter, setShelfFilter] = useState<string | null>(null);
+  const [budget, setBudget] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -93,7 +105,7 @@ export default function MemberWishbook() {
       const shown = picks
         ? all.filter((gift) => gift.removed_at || isGiftShown(gift.id, picks))
         : all;
-      setGifts(shown);
+      setGifts(sortGifts(shown));
       setHiddenByPicks(all.length - shown.length);
     }
     setGatheringTitle(gatheringResult?.data?.title ?? null);
@@ -110,11 +122,16 @@ export default function MemberWishbook() {
     return <Redirect href="/gift-nook/wishbook" />;
   }
 
-  async function run(id: string, action: () => PromiseLike<{ error: { message: string } | null }>) {
+  async function run(
+    id: string,
+    action: () => PromiseLike<{ error: { message: string; code?: string } | null }>,
+    successFeel?: "light" | "success"
+  ) {
     setBusyId(id);
     const { error: actionError } = await action();
     setBusyId(null);
-    if (actionError) Alert.alert("Something went wrong", actionError.message);
+    if (actionError) Alert.alert("Couldn't do that", friendlyError(actionError));
+    else if (successFeel) tap(successFeel);
     load();
   }
 
@@ -122,12 +139,14 @@ export default function MemberWishbook() {
     run(gift.id, () =>
       supabase
         .from("claims")
-        .insert({ gift_id: gift.id, claimed_by: userId, gathering_id: gatheringId ?? null })
+        .insert({ gift_id: gift.id, claimed_by: userId, gathering_id: gatheringId ?? null }),
+      "success"
     );
 
   const setStatus = (mine: Tuck, status: "planning" | "bought") =>
     run(mine.id, () =>
-      supabase.rpc("update_tuck", { claim_id: mine.id, new_status: status, new_note: mine.note })
+      supabase.rpc("update_tuck", { claim_id: mine.id, new_status: status, new_note: mine.note }),
+      "light"
     );
 
   const acknowledge = (mine: Tuck) =>
@@ -247,7 +266,7 @@ export default function MemberWishbook() {
 
   // Gift Nook setting: hide one-and-done gifts someone else already tucked
   // away. Gifts you tucked yourself always stay, so you can manage them.
-  const visibleGifts = settings.hideTakenGifts
+  const notTaken = settings.hideTakenGifts
     ? gifts.filter(
         (gift) =>
           gift.is_repeatable ||
@@ -255,7 +274,15 @@ export default function MemberWishbook() {
           !gift.claims.some(isActiveTuck)
       )
     : gifts;
-  const hiddenTakenCount = gifts.length - visibleGifts.length;
+  const hiddenTakenCount = gifts.length - notTaken.length;
+  const visibleGifts = notTaken.filter(
+    (gift) =>
+      (!shelfFilter || gift.shelves?.key === shelfFilter) &&
+      (budget == null || gift.price == null || gift.price <= budget)
+  );
+  const shelvesHere = [
+    ...new Map(gifts.filter((g) => g.shelves).map((g) => [g.shelves!.key, g.shelves!.label])),
+  ];
 
   if (isLoading) {
     return (
@@ -317,8 +344,43 @@ export default function MemberWishbook() {
         )}
       </View>
 
-      {visibleGifts.length === 0 && !error ? (
+      {gifts.length > 4 ? (
+        <View style={{ gap: 8 }}>
+          <View style={ui.chips}>
+            {[[null, "All"] as const, ...shelvesHere].map(([key, label]) => {
+              const selected = shelfFilter === key;
+              return (
+                <TouchableOpacity
+                  key={key ?? "all"}
+                  style={[ui.chip, selected && ui.chipSelected]}
+                  onPress={() => setShelfFilter(key)}
+                >
+                  <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <View style={ui.chips}>
+            {budgets.map((option) => {
+              const selected = budget === option.max;
+              return (
+                <TouchableOpacity
+                  key={option.label}
+                  style={[ui.chip, selected && ui.chipSelected]}
+                  onPress={() => setBudget(option.max)}
+                >
+                  <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{option.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+
+      {gifts.length === 0 && !error ? (
         <Text style={ui.muted}>{name} hasn't added any gifts yet.</Text>
+      ) : visibleGifts.length === 0 ? (
+        <Text style={ui.muted}>Nothing matches those filters.</Text>
       ) : (
         visibleGifts.map((gift) => (
           <GiftCard

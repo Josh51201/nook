@@ -11,7 +11,10 @@ import {
 } from "react-native";
 
 import { NookScroll } from "../../../components/nook-scroll";
+import * as Clipboard from "expo-clipboard";
+
 import { useAuth } from "../../../lib/auth-context";
+import { tap } from "../../../lib/feedback";
 import { displayName, type Profile } from "../../../lib/gift-nook";
 import { supabase } from "../../../lib/supabase";
 import { colors, ui } from "../../../lib/theme";
@@ -90,12 +93,21 @@ export default function ManageProfile() {
   async function sendHandoff() {
     const code = await call("create_handoff", { target_profile: id });
     if (!code) return;
-    await Share.share({
-      message:
-        `${savedName}, your Nook Wishbook is ready for you! 🎁\n\n` +
-        `Sign up for Nook with your own email, open Gift Nook → "Got a code?", and enter:\n\n${code}\n\n` +
-        `Everything on your list comes with you. (Works for 7 days.)`,
-    });
+    const message =
+      `${savedName}, your Nook Wishbook is ready for you! 🎁\n\n` +
+      `Sign up for Nook with your own email, open Gift Nook → "Got a code?", and enter:\n\n${code}\n\n` +
+      `Everything on your list comes with you. (Works for 7 days.)`;
+    Alert.alert(`Hand-off code: ${code}`, `${savedName} enters this on their own account. Works for 7 days.`, [
+      {
+        text: "Copy code",
+        onPress: async () => {
+          await Clipboard.setStringAsync(String(code));
+          tap();
+        },
+      },
+      { text: "Share…", onPress: () => Share.share({ message }) },
+      { text: "Done", style: "cancel" },
+    ]);
   }
 
   function confirmDelete() {

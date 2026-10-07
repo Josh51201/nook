@@ -16,6 +16,8 @@ export type Gift = {
   is_repeatable: boolean;
   details: Record<string, string>;
   image_url: string | null; // GIFT-030
+  is_most_wanted: boolean; // GIFT-032
+  price: number | null; // GIFT-033, approximate
   suggested_by: string | null; // GIFT-022: hidden from the owner by RLS
   created_at: string;
   updated_at: string;
@@ -80,6 +82,7 @@ export type Gathering = {
 
 export const GIFT_SELECT =
   "id, wishbook_id, shelf_id, title, url, notes, is_repeatable, details, image_url, suggested_by, " +
+  "is_most_wanted, price, " +
   "created_at, updated_at, removed_at, received_at, shelves(key, label), " +
   "suggester:profiles!gifts_suggested_by_fkey(display_name)";
 
@@ -170,4 +173,30 @@ export async function loadGiftPicks(gatheringId: string, wishbookId: string): Pr
 
 export function isGiftShown(giftId: string, { picks, includeNew }: GiftPicks) {
   return picks.get(giftId) ?? includeNew;
+}
+
+// Most wanted first, then newest. Only owner-set fields — never anything
+// about tucks — so the order can't hint at claims (GIFT-007).
+export function sortGifts<T extends Pick<Gift, "is_most_wanted" | "created_at">>(gifts: T[]) {
+  return [...gifts].sort(
+    (a, b) =>
+      Number(b.is_most_wanted) - Number(a.is_most_wanted) ||
+      b.created_at.localeCompare(a.created_at)
+  );
+}
+
+export function formatPrice(price: number | null | undefined) {
+  if (price == null) return null;
+  return `~$${Number.isInteger(Number(price)) ? Number(price) : Number(price).toFixed(2)}`;
+}
+
+// "today", "tomorrow", "in 12 days", "ended 3 days ago" for a Gathering.
+export function countdown(endsAt: string, now = new Date()) {
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOfDay(new Date(endsAt)) - startOfDay(now)) / 86400000);
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  if (days > 1) return `in ${days} days`;
+  if (days === -1) return "ended yesterday";
+  return `ended ${-days} days ago`;
 }
