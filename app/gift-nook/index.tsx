@@ -98,6 +98,7 @@ export default function GiftNookHome() {
             supabase
               .from("notifications")
               .select("id", { count: "exact", head: true })
+              .eq("nook", "gift-nook")
               .is("read_at", null),
             supabase
               .from("gatherings")
@@ -203,7 +204,7 @@ export default function GiftNookHome() {
                 icon="bell"
                 label={unread ? `Inbox, ${unread} unread` : "Inbox"}
                 badge={unread}
-                onPress={() => router.push("/gift-nook/notifications")}
+                onPress={() => router.push({ pathname: "/inbox", params: { nook: "gift-nook" } })}
               />
               <HeaderIcon
                 icon="settings"

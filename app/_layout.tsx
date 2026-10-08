@@ -31,6 +31,7 @@ export default function RootLayout() {
                 name="profile"
                 options={{ ...headerOptions, title: "Your profile", headerBackTitle: "Settings" }}
               />
+              <Stack.Screen name="inbox" options={{ ...headerOptions, title: "Inbox" }} />
               <Stack.Screen
                 name="market"
                 options={{ ...headerOptions, title: "The Market" }}

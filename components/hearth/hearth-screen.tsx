@@ -122,7 +122,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       case "tucks":
         return router.push("/gift-nook/my-tucks");
       case "inbox":
-        return router.push("/gift-nook/notifications");
+        return router.push("/inbox");
       case "greeting":
         return;
       default:
@@ -364,7 +364,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                       unread={unread}
                       color={theme.accent}
                       background={theme.background}
-                      onPress={() => router.push("/gift-nook/notifications")}
+                      onPress={() => router.push("/inbox")}
                     />
                   </TourTarget>
                 )}

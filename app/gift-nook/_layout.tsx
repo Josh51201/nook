@@ -59,7 +59,6 @@ export default function GiftNookLayout() {
         }}
       />
       <Stack.Screen name="settings" options={{ title: "Gift Nook Settings" }} />
-      <Stack.Screen name="notifications" options={{ title: "Inbox", ...largeTitle }} />
       <Stack.Screen name="my-tucks" options={{ title: "Your tucks", ...largeTitle }} />
       <Stack.Screen name="received" options={{ title: "What did you get?" }} />
       <Stack.Screen name="managed-form" options={{ title: "A kid's Wishbook", presentation: "modal" }} />
