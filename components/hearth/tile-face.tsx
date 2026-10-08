@@ -10,10 +10,10 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
+import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import type { Corners, TileShape } from "../../lib/decor";
-import { deepColor, itemColor, nookLabel, tileBevel, type NookItem } from "../../lib/hearth";
+import { deepColor, itemColor, nookLabel, type NookItem } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
 import { IconBadge } from "../icon";
 import { Text } from "../text";
@@ -38,6 +38,28 @@ export function nookRadii(width: number, height: number, corners?: Corners, shap
   if (corners === "square") return { top: Math.min(top, 14), bottom: 8 };
   if (corners === "round") return { top: Math.min(short / 2, top * 1.5), bottom: Math.min(short / 2, 32) };
   return { top, bottom };
+}
+
+// A rounded outline with a different radius on each corner, as a vector path.
+// The tile's inner border and top highlight are drawn this way rather than as
+// native borders/inset shadows, which the phone doesn't redraw when only the
+// corner radii change (switching Round window back to Arched alcove).
+// `inset` pulls the outline in from the tile's edge.
+function roundedPath(width: number, height: number, top: number, bottom: number, inset: number) {
+  const w = Math.max(0, width - inset * 2);
+  const h = Math.max(0, height - inset * 2);
+  let tl = Math.max(0, top - inset);
+  let bl = Math.max(0, bottom - inset);
+  // Corners can't overlap: shrink them together if they would.
+  const k = Math.min(1, w / Math.max(1, tl * 2), w / Math.max(1, bl * 2), h / Math.max(1, tl + bl));
+  tl *= k;
+  bl *= k;
+  const x = inset;
+  const y = inset;
+  return (
+    `M${x} ${y + tl} A${tl} ${tl} 0 0 1 ${x + tl} ${y} H${x + w - tl} A${tl} ${tl} 0 0 1 ${x + w} ${y + tl} ` +
+    `V${y + h - bl} A${bl} ${bl} 0 0 1 ${x + w - bl} ${y + h} H${x + bl} A${bl} ${bl} 0 0 1 ${x} ${y + h - bl} Z`
+  );
 }
 
 // A Nook tile (CORE-007/019/036). Nooks are the heart of the app, so they
@@ -101,30 +123,27 @@ export function TileFace({
     styles.tile,
     radii,
     { width, height },
-    bold && { backgroundColor: tileDeep, boxShadow: tileBevel },
-    look === "soft" && { backgroundColor: soft, boxShadow: tileBevel },
+    bold && { backgroundColor: tileDeep },
+    look === "soft" && { backgroundColor: soft },
     outline && { borderWidth: 2, borderColor: tileDeep, backgroundColor: "transparent" },
     // A border you asked for on a solid tile (CORE-042).
     item.border && !outline && { borderWidth: 2.5, borderColor: bold ? "rgba(255,255,255,0.6)" : tileDeep },
   ];
   const widgetProps = { refreshKey, textColor: text, mutedColor: muted, accentColor: bold ? "#ffffff" : tileDeep };
 
+  // Radius of the lit top edge (never more than half the tile's width).
+  const rt = Math.max(1.5, Math.min(top, width / 2 - 0.75, height - 1));
+
   const decoration = (
     <>
       <Lantern id={gid} width={width} height={height} color={lantern} strength={bold ? 0.22 : outline ? 0.1 : 0.6} />
-      <View
-        pointerEvents="none"
-        style={[
-          styles.innerFrame,
-          {
-            borderColor: frameLine,
-            borderTopLeftRadius: Math.max(0, top - 5),
-            borderTopRightRadius: Math.max(0, top - 5),
-            borderBottomLeftRadius: Math.max(0, bottom - 5),
-            borderBottomRightRadius: Math.max(0, bottom - 5),
-          },
-        ]}
-      />
+      <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+        {/* The carved inner frame, and the lit top edge (CORE-028). */}
+        <Path d={roundedPath(width, height, top, bottom, 5.75)} fill="none" stroke={frameLine} strokeWidth={1.5} />
+        {!outline ? (
+          <Path d={`M0.75 ${rt} A${rt - 0.75} ${rt - 0.75} 0 0 1 ${rt} 0.75 H${width - rt} A${rt - 0.75} ${rt - 0.75} 0 0 1 ${width - 0.75} ${rt}`} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />
+        ) : null}
+      </Svg>
       {shape === "arch" ? (
         <View style={[styles.keystone, { backgroundColor: bold ? "rgba(255,255,255,0.55)" : tileDeep }]} />
       ) : null}
@@ -328,7 +347,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,0,0,0.06)",
   },
   centered: { alignItems: "center", justifyContent: "center" },
-  innerFrame: { position: "absolute", top: 5, left: 5, right: 5, bottom: 5, borderWidth: 1.5 },
   keystone: {
     position: "absolute",
     top: 0,
