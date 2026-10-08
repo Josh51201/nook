@@ -1,6 +1,8 @@
-import { StyleSheet, View } from "react-native";
+import { useState } from "react";
+import { StyleSheet, TextInput, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
+import { cleanTag, MAX_TAG_LENGTH } from "../../lib/hearth-tags";
 import { colors, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
 import { Icon, type IconName } from "../icon";
@@ -12,7 +14,7 @@ import { ColorPicker } from "./color-picker";
 // Select many (CORE-060): the bar along the bottom while you're picking
 // things on the Hearth, and the little sheets for "Move to" and "Color".
 
-export type SelectionAction = "move" | "copy" | "color" | "lock" | "delete";
+export type SelectionAction = "move" | "copy" | "color" | "lock" | "tag" | "delete";
 
 export function SelectionBar({
   count,
@@ -40,6 +42,7 @@ export function SelectionBar({
     { key: "copy", label: "Copy", icon: "copy" },
     { key: "color", label: "Color", icon: "palette" },
     { key: "lock", label: allLocked ? "Unlock" : "Lock", icon: "lock" },
+    { key: "tag", label: "Tag", icon: "price" },
     { key: "delete", label: "Remove", icon: "trash" },
   ];
   return (
@@ -106,6 +109,72 @@ export function MoveManySheet({
         )}
       </View>
     </BottomSheet>
+  );
+}
+
+// "Tag": add a tag to everything picked, or take it off.
+export function TagManySheet({
+  visible,
+  count,
+  tags,
+  onToggle,
+  onAdd,
+  onClose,
+}: {
+  visible: boolean;
+  count: number;
+  // Every tag in use, and how many of the picked things have it.
+  tags: { tag: string; has: number }[];
+  onToggle: (tag: string, on: boolean) => void;
+  onAdd: (tag: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      header={<Text style={[ui.sectionTitle, { marginTop: 0 }]}>Tag {count}</Text>}
+    >
+      <View style={{ gap: 10, paddingBottom: 24 }}>
+        {tags.length ? (
+          <View style={ui.chips}>
+            {tags.map(({ tag, has }) => (
+              <Chip key={tag} icon="price" selected={has === count} onPress={() => onToggle(tag, has < count)}>
+                {has > 0 && has < count ? `${tag} (${has})` : tag}
+              </Chip>
+            ))}
+          </View>
+        ) : (
+          <Text style={ui.muted}>No tags yet. Make the first one below.</Text>
+        )}
+        <NewTag onAdd={onAdd} />
+      </View>
+    </BottomSheet>
+  );
+}
+
+function NewTag({ onAdd }: { onAdd: (tag: string) => void }) {
+  const [text, setText] = useState("");
+  function add() {
+    const tag = cleanTag(text);
+    if (!tag) return;
+    onAdd(tag);
+    setText("");
+  }
+  return (
+    <View style={[ui.row, { gap: 8 }]}>
+      <TextInput
+        style={[ui.input, { flex: 1 }]}
+        value={text}
+        onChangeText={setText}
+        onSubmitEditing={add}
+        placeholder="New tag, like Kids"
+        placeholderTextColor={colors.muted}
+        maxLength={MAX_TAG_LENGTH}
+        returnKeyType="done"
+      />
+      <Chip onPress={add}>Add</Chip>
+    </View>
   );
 }
 

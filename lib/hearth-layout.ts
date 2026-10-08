@@ -38,6 +38,8 @@ type ItemBase = GridRect & {
   // Locked in place (CORE-061): can't be dragged, resized or removed until
   // unlocked, and other things move around it.
   locked?: boolean;
+  // Short labels (CORE-065) you can show or hide together.
+  tags?: string[];
 };
 
 // Nook tiles come in the same three looks as widgets (CORE-030).

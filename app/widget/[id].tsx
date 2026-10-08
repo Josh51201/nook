@@ -7,6 +7,8 @@ import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 import { ColorPicker } from "../../components/hearth/color-picker";
 import { SeasonPicker } from "../../components/hearth/season-picker";
+import { TagsEditor } from "../../components/hearth/tag-bar";
+import { allTags } from "../../lib/hearth-tags";
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
 import { IconPicker } from "../../components/hearth/icon-picker";
 import { PlacePicker } from "../../components/hearth/place-picker";
@@ -126,6 +128,7 @@ export default function WidgetEditor() {
           border: draft.border,
           showIn: draft.showIn,
           locked: draft.locked,
+          tags: draft.tags,
         } as Partial<WidgetItem>)
       );
       if (draft.w !== original.w || draft.h !== original.h) {
@@ -323,6 +326,9 @@ export default function WidgetEditor() {
 
       <Text style={ui.label}>Icon</Text>
       <IconPicker value={draft.icon} fallback={info.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
+
+      <SectionHeader title="Tags" icon="price" />
+      <TagsEditor tags={draft.tags} known={allTags(layout)} onChange={(tags) => setDraft({ ...draft, tags })} />
 
       <SectionHeader title="When it shows" icon="calendar" />
       <SeasonPicker value={draft.showIn} onChange={(showIn) => setDraft({ ...draft, showIn })} />

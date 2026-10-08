@@ -26,6 +26,7 @@ import { IconBadge } from "../icon";
 import { Button, Chip } from "../ui";
 import { ColorPicker } from "./color-picker";
 import { SeasonPicker } from "./season-picker";
+import { TagsEditor } from "./tag-bar";
 import { IconPicker } from "./icon-picker";
 import { TrinketThumb } from "./trinket-art";
 
@@ -45,6 +46,7 @@ export function ItemOptions({
   onResize,
   onOpen,
   onDivider,
+  knownTags = [],
   onRemove,
   onClose,
   moveTargets = [],
@@ -58,6 +60,8 @@ export function ItemOptions({
   onOpen?: () => void;
   // Make a text label a full-width fold-away divider, or a plain label again.
   onDivider?: (on: boolean) => void;
+  // Tags in use anywhere, to pick from (CORE-065).
+  knownTags?: string[];
   onRemove: () => void;
   onClose: () => void;
   // Places this item could move to (the Hearth, or other Hollows).
@@ -274,6 +278,9 @@ export function ItemOptions({
               </View>
             </>
           ) : null}
+
+          <Text style={ui.label}>Tags</Text>
+          <TagsEditor tags={shown.tags} known={knownTags} onChange={(tags) => onChange({ tags })} />
 
           <Text style={ui.label}>When it shows</Text>
           <SeasonPicker value={shown.showIn} onChange={(showIn) => onChange({ showIn })} />

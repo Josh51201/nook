@@ -23,6 +23,7 @@ import { tap } from "../../lib/feedback";
 import { removeUnusedPhotos } from "../../lib/hearth-photos";
 import { addEmptyPage, addPage, neighbourPage, removePage, renamePage, switchPage } from "../../lib/hearth-pages";
 import { foldItems, hiddenBy } from "../../lib/hearth-folds";
+import { allTags, hideTagged, tagMany } from "../../lib/hearth-tags";
 import { stackMates, stackPosition, visibleItems as oneOfEachStack } from "../../lib/hearth-stacks";
 import type { FoundItem } from "../../lib/hearth-find";
 import { copyMany, lockMany, moveManyToPage, moveManyToScope, recolorMany, removeMany } from "../../lib/hearth-select";
@@ -87,7 +88,8 @@ import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { nookRadii } from "./tile-face";
 import { FindSheet } from "./find-sheet";
 import { PagesSheet, PageStrip } from "./pages-sheet";
-import { ColorManySheet, MoveManySheet, SelectionBar, type SelectionAction, type SelectionTarget } from "./selection";
+import { ColorManySheet, MoveManySheet, SelectionBar, TagManySheet, type SelectionAction, type SelectionTarget } from "./selection";
+import { TagBar } from "./tag-bar";
 import { StackShell } from "./stack-shell";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
@@ -121,6 +123,8 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   const [finding, setFinding] = useState(false);
   // Section dividers folded shut right now (CORE-064): just how it is drawn.
   const [folded, setFolded] = useState<string[]>([]);
+  // Tags switched off right now (CORE-065): also just how it is drawn.
+  const [hiddenTags, setHiddenTags] = useState<string[]>([]);
   // Dragging onto a page tab (CORE-051): where the tabs are, and which one
   // the dragged item is over.
   const tabRects = useSharedValue<{ id: string; x: number; y: number; w: number; h: number }[]>([]);
@@ -131,7 +135,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   // Select many (CORE-060): picking several things to act on together.
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
-  const [pickSheet, setPickSheet] = useState<"move" | "color" | null>(null);
+  const [pickSheet, setPickSheet] = useState<"move" | "color" | "tag" | null>(null);
   // Which widget of each stack is showing (CORE-050).
   const [stackShown, setStackShown] = useState<Record<string, number>>({});
   const [dragging, setDragging] = useState(false);
@@ -394,6 +398,8 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   // The page tabs show with two or more pages, and always while editing, so
   // there is somewhere to drop things.
   const showStrip = !scope && (layout.pages.length > 1 || editing);
+  const knownTags = allTags(layout);
+  const showTags = knownTags.length > 0 && !editing;
   const pageSwipe = Gesture.Pan()
     .runOnJS(true)
     .enabled(canSwipePages)
@@ -765,6 +771,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     else if (action === "color") setPickSheet("color");
     else if (action === "copy") copyPicked();
     else if (action === "lock") lockPicked();
+    else if (action === "tag") setPickSheet("tag");
     else removePicked();
   }
 
@@ -903,8 +910,8 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   const today = new Date();
   const inSight = oneOfEachStack(items, stackShown);
   const inSeasonItems = editing ? inSight : inSight.filter((item) => inSeason(item.showIn, today));
-  // Folding only applies when you are looking, not designing.
-  const visibleItems = editing ? inSeasonItems : foldItems(inSeasonItems, folded);
+  // Folding and hidden tags only apply when you are looking, not designing.
+  const visibleItems = editing ? inSeasonItems : foldItems(hideTagged(inSeasonItems, hiddenTags), folded);
 
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
     const inner = renderInner(item, size);
@@ -1135,9 +1142,10 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
           </View>
         </View>
 
-        {showStrip ? (
+        {showStrip || showTags ? (
           <View onLayout={(e) => setStripHeight(e.nativeEvent.layout.height)}>
-          <PageStrip
+          {showStrip ? (
+            <PageStrip
             pages={layout.pages}
             activeId={layout.activePage}
             accent={theme.accent}
@@ -1152,6 +1160,24 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
             onSwitch={goToPage}
             onAdd={() => addNewPage("")}
           />
+          ) : null}
+            {showTags ? (
+              <TagBar
+                tags={knownTags}
+                hidden={hiddenTags}
+                accent={theme.accent}
+                text={theme.text}
+                background={theme.background}
+                onToggle={(tag) =>
+                  setHiddenTags((prev) =>
+                    prev.some((h) => h.toLowerCase() === tag.toLowerCase())
+                      ? prev.filter((h) => h.toLowerCase() !== tag.toLowerCase())
+                      : [...prev, tag]
+                  )
+                }
+                onShowAll={() => setHiddenTags([])}
+              />
+            ) : null}
           </View>
         ) : null}
 
@@ -1397,7 +1423,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
       {/* Content melts away under the top bar instead of meeting a hard edge. */}
       {barHeight > 0 ? (
         <GlowVeil
-          top={insets.top + barHeight + (showStrip ? stripHeight : 0)}
+          top={insets.top + barHeight + (showStrip || showTags ? stripHeight : 0)}
           height={16}
           background={theme.background}
           color={theme.glow}
@@ -1500,6 +1526,17 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
       />
 
       <MoveManySheet visible={pickSheet === "move"} count={pickedIds.length} targets={pickTargets()} onClose={() => setPickSheet(null)} />
+      <TagManySheet
+        visible={pickSheet === "tag"}
+        count={pickedIds.length}
+        tags={knownTags.map((tag) => ({
+          tag,
+          has: items.filter((i) => pickedIds.includes(i.id) && (i.tags ?? []).some((t) => t.toLowerCase() === tag.toLowerCase())).length,
+        }))}
+        onToggle={(tag, on) => persist(tagMany(layout, pickedIds, tag, on))}
+        onAdd={(tag) => persist(tagMany(layout, pickedIds, tag, true))}
+        onClose={() => setPickSheet(null)}
+      />
       <ColorManySheet
         visible={pickSheet === "color"}
         count={pickedIds.length}
