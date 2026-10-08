@@ -352,6 +352,11 @@ function GridItem({
   const fingerX = useSharedValue(-1);
   const fingerY = useSharedValue(-1);
   const wiggle = useWiggle(editing && !active, seed);
+  // Edit mode as the gesture sees it (it must not be rebuilt when it changes).
+  const editingNow = useSharedValue(editing);
+  useEffect(() => {
+    editingNow.value = editing;
+  }, [editing, editingNow]);
 
   // Dragging while the page scrolls: the finger's own movement (raw), plus
   // how far the page has scrolled since the drag began, is where the item
@@ -472,15 +477,14 @@ function GridItem({
       .onFinalize(() => {
         pressed.value = withTiming(0, { duration: 180 });
       });
-    if (!editing) {
-      const longPress = Gesture.LongPress()
-        .minDuration(400)
-        .onStart(() => scheduleOnRN(hold));
-      return Gesture.Exclusive(longPress, tapGesture);
-    }
+    // The same hold-then-drag gesture whether or not the Hearth is in Edit
+    // mode, so holding a tile that isn't being edited yet switches Edit on
+    // AND picks the tile up in one go (the gesture isn't rebuilt when Edit
+    // switches on, so the finger already down keeps dragging).
     const pan = Gesture.Pan()
-      .activateAfterLongPress(150)
+      .activateAfterLongPress(300)
       .onStart((event) => {
+        if (!editingNow.value) scheduleOnRN(hold);
         geo.value = { x, y, w, h, stride };
         rawX.value = 0;
         rawY.value = 0;
@@ -567,7 +571,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, edge, trash, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
