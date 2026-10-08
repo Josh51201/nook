@@ -11,7 +11,7 @@ import { useTheme } from "../../lib/theme";
 // fades in while growing from just a little smaller, so it feels like
 // stepping inside rather than sliding sideways.
 export default function HollowScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, flash } = useLocalSearchParams<{ id: string; flash?: string }>();
   const { session, isLoading } = useAuth();
   const { layout } = useHearthLayout();
   const { key: themeKey } = useTheme();
@@ -30,7 +30,7 @@ export default function HollowScreen() {
 
   return (
     <Animated.View style={[{ flex: 1, backgroundColor: theme.background }, stepIn]}>
-      <HearthScreen scope={id} />
+      <HearthScreen scope={id} reveal={flash} />
     </Animated.View>
   );
 }

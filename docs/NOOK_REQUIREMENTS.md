@@ -2,7 +2,7 @@
 
 _Fine print for built features is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 41)_
+_Last updated: 2026-10-08 (rev 42)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -71,9 +71,9 @@ Josh wants the Hearth to be truly one of a kind for anyone who puts in the time,
 ### Hearth organization, round three
 Josh wants every organization idea below ("I think all of them"). None are built yet; every detail is Claude's proposal until Josh confirms it. Pages, stacks and Scenes were already wanted (CORE-050..052).
 - **CORE-060** Select many: in Edit, tap to pick several tiles, widgets and Trinkets, then move, copy, Move to a Hollow, recolor or delete them together. _(Built 2026-10-08 (proposed details): Edit → **Select**, tap things to pick them, then a bar at the bottom offers Move to (the Hearth, a Hollow or another page), Copy, Color and Remove (with Undo). Picking turns off dragging and resizing. Moving several by dragging them together isn't built.)_
-- **CORE-061** Lock in place: pin an item so it can't be dragged, resized or deleted by accident; unlock it from its Edit sheet.
-- **CORE-062** Tidy up: one button closes gaps and lines things up, with an Undo.
-- **CORE-063** Find in Edit: a search box that highlights a widget or Nook and opens the Hollow it's in.
+- **CORE-061** Lock in place: pin an item so it can't be dragged, resized or deleted by accident; unlock it from its Edit sheet. _(Built 2026-10-08 (proposed details): "Lock in place" in any item's sheet or widget editor, or **Lock** in Select. A locked item shows a little padlock in Edit, can't be dragged, resized or removed (Select-many skips it), and others move around it: dropping something on it lands in the nearest open spot. Copies start unlocked. Tapping it still opens it.)_
+- **CORE-062** Tidy up: one button closes gaps and lines things up, with an Undo. _(Built 2026-10-08 (proposed details): Edit → **Tidy up** slides everything up to close gaps, keeping each column; locked items stay put and a stack moves as one. Works inside a Hollow too. "Tidied up" with Undo for 5 seconds.)_
+- **CORE-063** Find in Edit: a search box that highlights a widget or Nook and opens the Hollow it's in. _(Built 2026-10-08 (proposed details): Edit → **Find** (on the Hearth) searches names on every page and inside every Hollow; best matches first. Tapping a result switches page or steps into the Hollow, scrolls to it and makes it glow.)_
 - **CORE-064** Section dividers: a labelled divider you can fold shut to hide the band of the grid under it, until the next divider.
 - **CORE-065** Tags and filters: tag any item (e.g. Kids, Home, Gifts) and show or hide a tag with one tap.
 
@@ -184,4 +184,4 @@ Josh's stated priority, in order:
 3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).
 4. ~~**Pet Care Nook**~~ — built 2026-10-08 (section 2d).
 5. ~~**Rhythms Nook**~~ — built 2026-10-08 (section 2e).
-6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. Still to do: 048, 052, 054, 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 next: lock (061), tidy up (062), find (063). Round 3: dividers (064), Scenes (052), tags (065).
+6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. Still to do: 048, 052, 054, 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 built 2026-10-08: lock (061), tidy up (062), find (063). Round 3 next: dividers (064), Scenes (052), tags (065).

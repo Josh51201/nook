@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, Switch, View } from "react-native";
 import { Text, TextInput } from "../text";
 
 import { cornerChoices, liftChoices, tileShapes } from "../../lib/decor";
@@ -340,6 +340,18 @@ export function ItemOptions({
               ) : null}
             </>
           ) : null}
+
+          <View style={[ui.row, { justifyContent: "space-between" }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={ui.cardTitle}>Lock in place</Text>
+              <Text style={ui.muted}>Can't be dragged, resized or removed until you unlock it.</Text>
+            </View>
+            <Switch
+              value={Boolean(shown.locked)}
+              onValueChange={(locked) => onChange({ locked: locked || undefined })}
+              trackColor={{ true: colors.bark }}
+            />
+          </View>
 
           {moveTargets.length && onMoveTo && shown.kind !== "hollow" ? (
             <>

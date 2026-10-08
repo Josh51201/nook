@@ -498,7 +498,7 @@ function GridItem({
     // AND picks the tile up in one go (the gesture isn't rebuilt when Edit
     // switches on, so the finger already down keeps dragging).
     const pan = Gesture.Pan()
-      .enabled(!selecting)
+      .enabled(!selecting && !item.locked)
       .activateAfterLongPress(300)
       .onStart((event) => {
         if (!editingNow.value) scheduleOnRN(hold);
@@ -588,7 +588,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [selecting, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [selecting, item.locked, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
@@ -658,7 +658,12 @@ function GridItem({
           </View>
         </>
       ) : null}
-      {editing && !selecting ? (
+      {editing && !selecting && item.locked ? (
+        <View pointerEvents="none" style={[styles.lockBadge, { borderColor: accent }]} accessibilityLabel="Locked in place">
+          <Icon name="lock" size={12} color={accent} />
+        </View>
+      ) : null}
+      {editing && !selecting && !item.locked ? (
         <GestureDetector gesture={resizeGesture}>
           <Animated.View
             entering={FadeIn.duration(200)}
@@ -704,6 +709,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   copy: { position: "absolute", left: -6, top: -6 },
+  lockBadge: {
+    position: "absolute",
+    right: -6,
+    top: -6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   pick: {
     position: "absolute",
     left: -6,

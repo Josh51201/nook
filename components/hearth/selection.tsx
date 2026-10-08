@@ -12,10 +12,11 @@ import { ColorPicker } from "./color-picker";
 // Select many (CORE-060): the bar along the bottom while you're picking
 // things on the Hearth, and the little sheets for "Move to" and "Color".
 
-export type SelectionAction = "move" | "copy" | "color" | "delete";
+export type SelectionAction = "move" | "copy" | "color" | "lock" | "delete";
 
 export function SelectionBar({
   count,
+  allLocked,
   accent,
   background,
   text,
@@ -24,6 +25,8 @@ export function SelectionBar({
   onDone,
 }: {
   count: number;
+  // Everything picked is locked, so the lock button unlocks.
+  allLocked: boolean;
   accent: string;
   background: string;
   text: string;
@@ -36,6 +39,7 @@ export function SelectionBar({
     { key: "move", label: "Move to", icon: "burrow" },
     { key: "copy", label: "Copy", icon: "copy" },
     { key: "color", label: "Color", icon: "palette" },
+    { key: "lock", label: allLocked ? "Unlock" : "Lock", icon: "lock" },
     { key: "delete", label: "Remove", icon: "trash" },
   ];
   return (

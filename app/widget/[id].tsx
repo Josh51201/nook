@@ -125,6 +125,7 @@ export default function WidgetEditor() {
           lift: draft.lift,
           border: draft.border,
           showIn: draft.showIn,
+          locked: draft.locked,
         } as Partial<WidgetItem>)
       );
       if (draft.w !== original.w || draft.h !== original.h) {
@@ -162,6 +163,10 @@ export default function WidgetEditor() {
   }
 
   function confirmRemove() {
+    if (original?.locked) {
+      Alert.alert("It's locked", "Unlock it first (Lock in place, further up) to remove it.");
+      return;
+    }
     Alert.alert("Remove this widget?", undefined, [
       { text: "Cancel", style: "cancel" },
       {
@@ -337,6 +342,8 @@ export default function WidgetEditor() {
           ))}
       </View>
       <Text style={ui.muted}>Or drag its corner on the Hearth for any size.</Text>
+      <SwitchRow label="Lock in place" value={Boolean(draft.locked)} onChange={(locked) => setDraft({ ...draft, locked: locked || undefined })} />
+      <Text style={ui.muted}>Can't be dragged, resized or removed until you unlock it.</Text>
 
       <SectionHeader title="Make a copy" icon="copy" />
       <View style={ui.chips}>

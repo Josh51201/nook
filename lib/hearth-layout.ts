@@ -35,6 +35,9 @@ type ItemBase = GridRect & {
   // Widgets that share a stack (CORE-050) sit in the same spot and the same
   // size; you swipe between them. Items in one stack have the same id here.
   stack?: string;
+  // Locked in place (CORE-061): can't be dragged, resized or removed until
+  // unlocked, and other things move around it.
+  locked?: boolean;
 };
 
 // Nook tiles come in the same three looks as widgets (CORE-030).
@@ -305,7 +308,8 @@ export function settle(items: HearthItem[], fixedId: string): HearthItem[] {
   if (!fixed) return result;
   // Widgets in a stack (CORE-050) are one thing: they don't push each other,
   // and they move as a group.
-  const isFixed = (item: HearthItem) => item.id === fixedId || (!!fixed.stack && item.stack === fixed.stack);
+  const isFixed = (item: HearthItem) =>
+    item.id === fixedId || (!!fixed.stack && item.stack === fixed.stack) || Boolean(item.locked);
   const order = () =>
     [...result].sort((a, b) => (isFixed(a) ? 0 : 1) - (isFixed(b) ? 0 : 1) || a.y - b.y || a.x - b.x);
 
@@ -351,16 +355,74 @@ function withStackMates(items: HearthItem[], id: string) {
   return (item: HearthItem) => item.id === id || (!!stack && item.stack === stack);
 }
 
+// A locked item (CORE-061) is never moved or resized by hand, and nothing
+// can be dropped on top of it: a drop on one lands in the nearest open spot.
 export function moveItem(layout: HearthLayout, id: string, x: number, y: number): HearthItem[] {
+  const moving = layout.items.find((item) => item.id === id);
+  if (!moving || moving.locked) return layout.items;
   const goes = withStackMates(layout.items, id);
-  const items = layout.items.map((item) => (goes(item) ? clampRect({ ...item, x, y }) : item));
+  let target = clampRect({ ...moving, x, y });
+  const obstacles = layout.items.filter((item) => item.locked && !goes(item));
+  if (obstacles.some((item) => overlaps(item, target))) {
+    const spot = nearestOpenSpot(obstacles, target);
+    target = { ...target, ...spot };
+  }
+  const items = layout.items.map((item) => (goes(item) ? { ...item, x: target.x, y: target.y } : item));
   return settle(items, id);
 }
 
 export function resizeItem(layout: HearthLayout, id: string, w: number, h: number): HearthItem[] {
+  const resizing = layout.items.find((item) => item.id === id);
+  if (!resizing || resizing.locked) return layout.items;
   const goes = withStackMates(layout.items, id);
-  const items = layout.items.map((item) => (goes(item) ? clampRect({ ...item, w, h }) : item));
+  const next = clampRect({ ...resizing, w, h });
+  // Growing into a locked item isn't allowed.
+  if (layout.items.some((item) => item.locked && !goes(item) && overlaps(item, next))) return layout.items;
+  const items = layout.items.map((item) => (goes(item) ? { ...item, w: next.w, h: next.h, x: next.x, y: next.y } : item));
   return settle(items, id);
+}
+
+// The open spot closest to where an item was dropped, given things that
+// can't be pushed out of the way.
+function nearestOpenSpot(obstacles: GridRect[], want: GridRect): { x: number; y: number } {
+  const bottom = Math.max(want.y, rowsUsed(obstacles)) + 1;
+  let best = { x: want.x, y: want.y };
+  let bestDistance = Infinity;
+  for (let y = 0; y <= bottom; y++) {
+    for (let x = 0; x + want.w <= COLUMNS; x++) {
+      if (obstacles.some((o) => overlaps(o, { x, y, w: want.w, h: want.h }))) continue;
+      const distance = (x - want.x) ** 2 + (y - want.y) ** 2;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = { x, y };
+      }
+    }
+  }
+  return best;
+}
+
+// Tidy up (CORE-062): everything slides up to close the gaps, keeping its
+// column, and nothing overlaps. Locked items stay exactly where they are,
+// and a stack moves as one.
+export function tidyItems(items: HearthItem[]): HearthItem[] {
+  const result = items.map((item) => ({ ...item }));
+  const placed: HearthItem[] = result.filter((item) => item.locked);
+  const rest = result.filter((item) => !item.locked).sort((a, b) => a.y - b.y || a.x - b.x);
+  const stackRow = new Map<string, number>();
+  for (const item of rest) {
+    const known = item.stack ? stackRow.get(item.stack) : undefined;
+    if (known !== undefined) {
+      item.y = known;
+      placed.push(item);
+      continue;
+    }
+    let y = 0;
+    while (placed.some((other) => overlaps({ x: item.x, y, w: item.w, h: item.h }, other))) y++;
+    item.y = y;
+    if (item.stack) stackRow.set(item.stack, y);
+    placed.push(item);
+  }
+  return result;
 }
 
 // A stack that's down to one widget isn't a stack any more.
@@ -450,7 +512,7 @@ export function copyItem(layout: HearthLayout, id: string, to: Scope): { items: 
     return { items: layout.items, copyId: null };
   }
   // A copy stands on its own: it doesn't join the stack it was copied from.
-  const { x: _x, y: _y, id: _id, stack: _stack, ...rest } = JSON.parse(JSON.stringify(found.item)) as HearthItem;
+  const { x: _x, y: _y, id: _id, stack: _stack, locked: _locked, ...rest } = JSON.parse(JSON.stringify(found.item)) as HearthItem;
   if (rest.kind === "widget" && rest.widget.kind === "reminders") {
     rest.widget.settings.items = rest.widget.settings.items.map(({ notificationId: _n, schedule: _s, ...reminder }) => ({
       ...reminder,

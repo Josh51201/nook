@@ -22,8 +22,9 @@ import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type 
 import { tap } from "../../lib/feedback";
 import { removeUnusedPhotos } from "../../lib/hearth-photos";
 import { addPage, neighbourPage, removePage, renamePage, switchPage } from "../../lib/hearth-pages";
-import { stackPosition, visibleItems as oneOfEachStack } from "../../lib/hearth-stacks";
-import { copyMany, moveManyToPage, moveManyToScope, recolorMany, removeMany } from "../../lib/hearth-select";
+import { stackMates, stackPosition, visibleItems as oneOfEachStack } from "../../lib/hearth-stacks";
+import type { FoundItem } from "../../lib/hearth-find";
+import { copyMany, lockMany, moveManyToPage, moveManyToScope, recolorMany, removeMany } from "../../lib/hearth-select";
 import { trinketInfo, type TrinketKey } from "../../lib/trinkets";
 import { inSeason } from "../../lib/widget-extras";
 import { colors, useTheme } from "../../lib/theme";
@@ -44,6 +45,7 @@ import {
   moveItem,
   moveToScope,
   newItemId,
+  tidyItems,
   nookLabel,
   removeHollow,
   removeItem,
@@ -82,6 +84,7 @@ import { GRID_GAP, HearthGrid } from "./hearth-grid";
 import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { nookRadii } from "./tile-face";
+import { FindSheet } from "./find-sheet";
 import { PagesSheet, PageStrip } from "./pages-sheet";
 import { ColorManySheet, MoveManySheet, SelectionBar, type SelectionAction, type SelectionTarget } from "./selection";
 import { StackShell } from "./stack-shell";
@@ -99,7 +102,7 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 // drag items anywhere, resize them from the corner, and add things. On the
 // Hearth you can also add Hollows, drop tiles onto them to put them inside,
 // and tap one to open its door and step in.
-export function HearthScreen({ scope }: { scope: Scope }) {
+export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string }) {
   const router = useRouter();
   const { layout, save, isLoading, error, reload } = useHearthLayout();
   // The theme in effect right now (Dusk while the phone is dark, if asked).
@@ -114,6 +117,9 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const [adding, setAdding] = useState(false);
   const [decorating, setDecorating] = useState(false);
   const [pagesOpen, setPagesOpen] = useState(false);
+  const [finding, setFinding] = useState(false);
+  // A thing to bring into view and glow (from Find, CORE-063).
+  const [revealId, setRevealId] = useState<string | null>(reveal ?? null);
   // Select many (CORE-060): picking several things to act on together.
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
@@ -254,7 +260,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const gridRef = useRef<View>(null);
   const reduceMotion = useReducedMotion();
 
-  const sheetOpen = adding || decorating || pagesOpen || pickSheet !== null || optionsFor !== null || zoom !== null;
+  const sheetOpen = adding || decorating || pagesOpen || finding || pickSheet !== null || optionsFor !== null || zoom !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -567,6 +573,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   useEffect(() => () => settleToast(), []);
 
   function remove(item: HearthItem) {
+    if (item.locked) return Alert.alert("It's locked", "Unlock it first to remove it.");
     if (item.kind === "hollow") return persist(removeHollow(layout, item.id));
     if (item.kind === "widget" && item.widget.kind === "reminders") cancelReminders(item.widget.settings.items);
     persistHere((inner) => removeItem(inner, item.id));
@@ -637,7 +644,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   }
 
   function removePicked() {
-    const chosen = items.filter((i) => pickedIds.includes(i.id));
+    const chosen = items.filter((i) => pickedIds.includes(i.id) && !i.locked);
+    if (!chosen.length) return Alert.alert("They're locked", "Unlock them first to remove them.");
     Alert.alert(
       `Remove ${chosen.length} ${chosen.length === 1 ? "thing" : "things"}?`,
       chosen.some((i) => i.kind === "hollow") ? "A Hollow keeps what's inside — it goes back onto your Hearth." : undefined,
@@ -679,8 +687,81 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     if (action === "move") setPickSheet("move");
     else if (action === "color") setPickSheet("color");
     else if (action === "copy") copyPicked();
+    else if (action === "lock") lockPicked();
     else removePicked();
   }
+
+  // Lock (CORE-061) everything picked, or unlock it if it's all locked already.
+  function lockPicked() {
+    const chosen = items.filter((i) => pickedIds.includes(i.id));
+    const lock = !chosen.every((i) => i.locked);
+    persist(lockMany(layout, pickedIds, lock));
+    tap("success");
+    stopSelecting();
+    settleToast();
+    showToast(lock ? `Locked ${chosen.length} in place` : `Unlocked ${chosen.length}`);
+  }
+
+  // Tidy up (CORE-062): close the gaps, with a way back.
+  function tidyUp() {
+    const before = layout.items;
+    const next = inScope(layout, scope, (inner) => tidyItems(inner.items));
+    settleToast();
+    if (JSON.stringify(next) === JSON.stringify(before)) return showToast("Already tidy");
+    tap("success");
+    persist(next);
+    showToast(
+      "Tidied up",
+      {
+        label: "Undo",
+        run: () => {
+          if (toastTimer.current) clearTimeout(toastTimer.current);
+          toastTimer.current = null;
+          tap();
+          persist(before);
+          setToast(null);
+        },
+      },
+      5000
+    );
+  }
+
+  // Find (CORE-063): go to what was picked, switching page or stepping into
+  // its Hollow first, then bring it into view with a glow.
+  async function goToFound(found: FoundItem) {
+    setFinding(false);
+    try {
+      if (found.pageId !== layout.activePage) {
+        const changes = switchPage(layout, found.pageId);
+        if (changes) await save(changes);
+      }
+    } catch (switchError) {
+      return Alert.alert("Couldn't go there", (switchError as Error).message);
+    }
+    tap("success");
+    if (found.hollowId) router.push({ pathname: "/hollow/[id]", params: { id: found.hollowId, flash: found.item.id } });
+    else setRevealId(found.item.id);
+  }
+
+  useEffect(() => {
+    if (!revealId || !gridWidth) return;
+    const item = items.find((i) => i.id === revealId);
+    if (!item) return;
+    setRevealId(null);
+    if (item.stack) {
+      const place = stackMates(items, item).indexOf(item);
+      setStackShown((prev) => ({ ...prev, [item.stack as string]: place }));
+    }
+    setFlashId(item.id);
+    setTimeout(() => setFlashId(null), 2600);
+    const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
+    setTimeout(() => {
+      tourScroll.area.viewport.current?.measureInWindow((_x, _y, _w, height) => {
+        const y = gridTop.current + item.y * stride - (height - item.h * stride) / 2;
+        tourScroll.scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+      });
+    }, 250);
+  }, [revealId, gridWidth, items]);
 
   const optionsItem = (items.find((i) => i.id === optionsFor && i.kind !== "widget") ?? null) as
     | NookItem
@@ -983,49 +1064,39 @@ export function HearthScreen({ scope }: { scope: Scope }) {
               <Animated.View
                 entering={FadeIn.duration(200)}
                 exiting={FadeOut.duration(150)}
-                style={[styles.hint, { backgroundColor: `${theme.accent}18` }]}
+                style={[styles.hint, { backgroundColor: `${theme.accent}18`, flexDirection: "column", alignItems: "stretch", gap: 10 }]}
               >
-                <Icon name="drag" size={18} color={theme.accent} />
-                <Text style={{ color: theme.text, flex: 1 }}>
-                  {scope
-                    ? "Hold anything and drag it anywhere, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."
-                    : "Hold anything and drag it anywhere — onto a Hollow to put it inside, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."}
-                </Text>
-                <View style={{ gap: 6, alignItems: "flex-end" }}>
-                  <Tap
-                    onPress={() => setDecorating(true)}
-                    hitSlop={8}
-                    style={[styles.decorateButton, { backgroundColor: theme.accent }]}
-                    accessibilityLabel="Decorate"
-                  >
-                    <Icon name="palette" size={14} color={theme.background} />
-                    <Text style={{ color: theme.background, fontWeight: "700", fontSize: 13 }}>Decorate</Text>
-                  </Tap>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Icon name="drag" size={18} color={theme.accent} />
+                  <Text style={{ color: theme.text, flex: 1 }}>
+                    {scope
+                      ? "Hold anything and drag it anywhere, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."
+                      : "Hold anything and drag it anywhere — onto a Hollow to put it inside, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <Pill icon="palette" label="Decorate" accent={theme.accent} background={theme.background} onPress={() => setDecorating(true)} />
                   {scope ? null : (
-                    <Tap
-                      onPress={() => setPagesOpen(true)}
-                      hitSlop={8}
-                      style={[styles.decorateButton, { backgroundColor: theme.accent }]}
-                      accessibilityLabel="Pages"
-                    >
-                      <Icon name="widgets" size={14} color={theme.background} />
-                      <Text style={{ color: theme.background, fontWeight: "700", fontSize: 13 }}>Pages</Text>
-                    </Tap>
+                    <Pill icon="widgets" label="Pages" accent={theme.accent} background={theme.background} onPress={() => setPagesOpen(true)} />
                   )}
                   {isEmpty ? null : (
-                    <Tap
-                      onPress={() => {
-                        tap();
-                        setSelecting((s) => !s);
-                        setPicked([]);
-                      }}
-                      hitSlop={8}
-                      style={[styles.decorateButton, { backgroundColor: theme.accent }]}
-                      accessibilityLabel="Select several"
-                    >
-                      <Icon name="check" size={14} color={theme.background} />
-                      <Text style={{ color: theme.background, fontWeight: "700", fontSize: 13 }}>{selecting ? "Stop" : "Select"}</Text>
-                    </Tap>
+                    <>
+                      <Pill
+                        icon="check"
+                        label={selecting ? "Stop selecting" : "Select"}
+                        accent={theme.accent}
+                        background={theme.background}
+                        onPress={() => {
+                          tap();
+                          setSelecting((s) => !s);
+                          setPicked([]);
+                        }}
+                      />
+                      <Pill icon="tidy" label="Tidy up" accent={theme.accent} background={theme.background} onPress={tidyUp} />
+                      {scope ? null : (
+                        <Pill icon="search" label="Find" accent={theme.accent} background={theme.background} onPress={() => setFinding(true)} />
+                      )}
+                    </>
                   )}
                 </View>
               </Animated.View>
@@ -1185,7 +1256,11 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           pointerEvents="box-none"
         >
           <View style={[styles.trash, styles.toast, { backgroundColor: theme.text, borderColor: theme.text }]}>
-            <Icon name={toast.action?.label === "Undo" ? "trash" : "copy"} size={16} color={theme.background} />
+            <Icon
+              name={toast.action?.label === "Undo" ? (toast.text.startsWith("Tidied") ? "tidy" : "trash") : toast.text.includes("ocked") ? "lock" : "copy"}
+              size={16}
+              color={theme.background}
+            />
             <Text style={{ color: theme.background, flexShrink: 1 }} numberOfLines={2}>
               {toast.text}
             </Text>
@@ -1201,6 +1276,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       {selecting && editing ? (
         <SelectionBar
           count={pickedIds.length}
+          allLocked={pickedIds.length > 0 && items.filter((i) => pickedIds.includes(i.id)).every((i) => i.locked)}
           accent={theme.accent}
           background={theme.background}
           text={theme.text}
@@ -1316,6 +1392,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         onClose={() => setPickSheet(null)}
       />
 
+      <FindSheet visible={finding} onClose={() => setFinding(false)} layout={layout} onPick={goToFound} />
+
       <PagesSheet
         visible={pagesOpen}
         onClose={() => setPagesOpen(false)}
@@ -1341,6 +1419,28 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         }}
       />
     </View>
+  );
+}
+
+// A small button in the Edit hint.
+function Pill({
+  icon,
+  label,
+  accent,
+  background,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  accent: string;
+  background: string;
+  onPress: () => void;
+}) {
+  return (
+    <Tap onPress={onPress} hitSlop={8} style={[styles.decorateButton, { backgroundColor: accent }]} accessibilityLabel={label}>
+      <Icon name={icon} size={14} color={background} />
+      <Text style={{ color: background, fontWeight: "700", fontSize: 13 }}>{label}</Text>
+    </Tap>
   );
 }
 
