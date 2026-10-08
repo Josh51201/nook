@@ -3,13 +3,14 @@ import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
-import Animated, { FadeIn, FadeOut, ZoomIn, useSharedValue } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, ZoomIn, useReducedMotion, useSharedValue } from "react-native-reanimated";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { tap } from "../../lib/feedback";
 import { useTheme } from "../../lib/theme";
 import {
   addItem,
+  COLUMNS,
   deepColor,
   findHollow,
   hearthThemes,
@@ -43,12 +44,13 @@ import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { touchesGuarded } from "../../lib/touch-guard";
 import { widgetKindInfo, type WidgetConfig } from "../../lib/widgets";
 import { Firelight, GlowVeil } from "../firelight";
-import { Icon, IconBadge } from "../icon";
+import { Icon, IconBadge, type IconName } from "../icon";
 import { Skeleton, Tap } from "../motion";
 import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from "../tour";
 import { AddSheet } from "./add-sheet";
 import { GRID_GAP, HearthGrid } from "./hearth-grid";
 import { HollowFace } from "./hollow-face";
+import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WidgetView } from "./widgets";
@@ -168,7 +170,22 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 
   // On the Hearth, tuck the tab bar away while a sheet is open so the sheet
   // reaches the bottom of the screen (CORE-025).
-  const sheetOpen = adding || optionsFor !== null;
+  // Stepping into a Nook from its tile (CORE-034).
+  const [zoom, setZoom] = useState<{
+    rect: ZoomRect;
+    color: string;
+    icon: IconName;
+    iconColor: string;
+    route: string;
+    direction: "in" | "out";
+    pushed: boolean;
+  } | null>(null);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const gridRef = useRef<View>(null);
+  const reduceMotion = useReducedMotion();
+
+  const sheetOpen = adding || optionsFor !== null || zoom !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -181,6 +198,9 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       setRefreshKey((k) => k + 1);
       setOpeningHollow(null);
       entering.current = false;
+      // Back from a Nook we zoomed into: shrink back into its tile.
+      const lastZoom = zoomRef.current;
+      if (lastZoom?.pushed) setZoom({ ...lastZoom, direction: "out", pushed: false });
       if (!scope) planBirthdays().then((created) => created && setRefreshKey((k) => k + 1));
     }, [scope])
   );
@@ -197,6 +217,40 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     const route = findNook(nookId)?.route;
     if (route) router.push(route);
   }
+
+  // Tapping a tile: it grows to fill the screen, then the Nook appears.
+  function openNookFromTile(item: NookItem) {
+    const nook = findNook(item.nookId);
+    if (!nook?.route) return;
+    const route = nook.route;
+    if (reduceMotion || !gridRef.current || zoomRef.current) return router.push(route);
+    const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
+    const look = item.look ?? "soft";
+    const deep = item.color ? deepColor(item.color) : nook.iconColor;
+    gridRef.current.measureInWindow((gx, gy) => {
+      tap();
+      setZoom({
+        rect: { x: gx + item.x * stride, y: gy + item.y * stride, width: item.w * stride - GRID_GAP, height: item.h * stride - GRID_GAP },
+        color: look === "bold" ? deep : look === "outline" ? theme.background : itemColor(item),
+        icon: item.icon ?? nook.icon,
+        iconColor: look === "bold" ? "#ffffff" : deep,
+        route,
+        direction: "in",
+        pushed: false,
+      });
+    });
+  }
+
+  const finishZoom = useCallback(() => {
+    const current = zoomRef.current;
+    if (!current) return;
+    if (current.direction === "in") {
+      setZoom({ ...current, pushed: true });
+      router.push(current.route as never);
+    } else {
+      setZoom(null);
+    }
+  }, [router]);
 
   // Tapping a widget outside edit mode: widgets that are a window onto your
   // own stuff (Inbox, Gifts to buy) open that list; every other widget opens
@@ -229,7 +283,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     } else if (editing) {
       setOptionsFor(item.id);
     } else if (item.kind === "nook") {
-      openNook(item.nookId);
+      openNookFromTile(item);
     } else if (item.kind === "hollow") {
       tap();
       setOpeningHollow(item.id); // the door swings open, then we step in
@@ -495,7 +549,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
               </Animated.View>
             ) : null}
 
-            <View onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
+            <View ref={gridRef} collapsable={false} onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
               {error ? (
                 <View style={{ gap: 8 }}>
                   <Text style={{ color: "#c0392b" }}>Couldn't load your Hearth: {error}</Text>
@@ -599,6 +653,19 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           background={theme.background}
           color={theme.glow}
           strength={themeKey === "dusk" ? 0.34 : 0.26}
+        />
+      ) : null}
+
+      {zoom ? (
+        <NookZoom
+          key={`${zoom.route}-${zoom.direction}`}
+          rect={zoom.rect}
+          color={zoom.color}
+          background={theme.background}
+          icon={zoom.icon}
+          iconColor={zoom.iconColor}
+          direction={zoom.direction}
+          onDone={finishZoom}
         />
       ) : null}
 
