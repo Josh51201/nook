@@ -22,6 +22,7 @@ import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type 
 import { tap } from "../../lib/feedback";
 import { removeUnusedPhotos } from "../../lib/hearth-photos";
 import { trinketInfo, type TrinketKey } from "../../lib/trinkets";
+import { inSeason } from "../../lib/widget-extras";
 import { colors, useTheme } from "../../lib/theme";
 import {
   addItem,
@@ -553,7 +554,17 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 
   const isEmpty = items.length === 0;
 
+  // Things set to show only in some months (CORE-053) are hidden out of
+  // season, but stay (dimmed) while you're editing so you can find them.
+  const today = new Date();
+  const visibleItems = editing ? items : items.filter((item) => inSeason(item.showIn, today));
+
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
+    const inner = renderInner(item, size);
+    return editing && !inSeason(item.showIn, today) ? <View style={{ opacity: 0.4 }}>{inner}</View> : inner;
+  }
+
+  function renderInner(item: HearthItem, size: { width: number; height: number }) {
     if (item.kind === "nook") return <TileFace item={item} {...size} refreshKey={refreshKey} themeText={theme.text} />;
     if (item.kind === "hollow") {
       return (
@@ -809,7 +820,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                 </Animated.View>
               ) : (
                 <HearthGrid
-                  items={items}
+                  items={visibleItems}
                   width={gridWidth}
                   editing={editing}
                   accent={theme.accent}

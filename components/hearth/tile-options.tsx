@@ -25,6 +25,7 @@ import { BottomSheet } from "../bottom-sheet";
 import { IconBadge } from "../icon";
 import { Button, Chip } from "../ui";
 import { ColorPicker } from "./color-picker";
+import { SeasonPicker } from "./season-picker";
 import { IconPicker } from "./icon-picker";
 import { TrinketThumb } from "./trinket-art";
 
@@ -261,6 +262,9 @@ export function ItemOptions({
               </View>
             </>
           ) : null}
+
+          <Text style={ui.label}>When it shows</Text>
+          <SeasonPicker value={shown.showIn} onChange={(showIn) => onChange({ showIn })} />
 
           <Text style={ui.label}>Size</Text>
           <View style={ui.chips}>

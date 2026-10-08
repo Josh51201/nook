@@ -1,6 +1,7 @@
 import type { IconName } from "../components/icon";
 import { deepOf } from "./colors";
 import type { CustomTheme, SeasonalThemes } from "./custom-theme";
+import type { ShowIn } from "./widget-extras";
 import { wallpaperPath, type Ambience, type Corners, type Lift, type TileShape, type Wallpaper } from "./decor";
 import { findNook } from "./nooks";
 import { trinketInfo, type TrinketKey } from "./trinkets";
@@ -29,6 +30,8 @@ type ItemBase = GridRect & {
   corners?: Corners;
   lift?: Lift;
   border?: boolean;
+  // Only shown in these months (CORE-053); always shown if unset.
+  showIn?: ShowIn;
 };
 
 // Nook tiles come in the same three looks as widgets (CORE-030).

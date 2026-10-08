@@ -1,6 +1,8 @@
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import Svg, { Circle, Line } from "react-native-svg";
 import { Text } from "../text";
 import Animated, { FadeIn, FadeInRight, LinearTransition, ZoomIn } from "react-native-reanimated";
 
@@ -17,6 +19,7 @@ import { usePetsSummary } from "../../lib/pets-data";
 import { useRhythmsSummary } from "../../lib/rhythms-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
+import { currentStreak, dayKey, lastDays, pickedTargets, quoteOfDay, quotePool, toggleDay } from "../../lib/widget-extras";
 import {
   describeSchedule,
   widgetKindInfo,
@@ -182,6 +185,14 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <Rhythms {...props} widget={widget} />;
     case "frame":
       return null; // drawn whole by PhotoFrame, above
+    case "clock":
+      return <ClockWidget {...props} widget={widget} />;
+    case "quote":
+      return <QuoteWidget {...props} widget={widget} />;
+    case "launch":
+      return <Launch {...props} widget={widget} />;
+    case "streak":
+      return <Streak {...props} widget={widget} />;
   }
 }
 
@@ -1194,6 +1205,256 @@ function PhotoFrame({
           </Text>
         </View>
       ) : null}
+    </View>
+  );
+}
+
+// --- Clock (CORE-049) -----------------------------------------------------------------
+
+function ClockWidget({ widget, palette, shape, width, height, icon }: BodyProps<"clock">) {
+  const { face, hour24, showDate } = widget.settings;
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const time = now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: !hour24 });
+  const longDate = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const shortDate = now.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+
+  if (shape === "icon") {
+    return <IconFace icon={icon} palette={palette} value={time.replace(/\s?[AP]M/i, "")} />;
+  }
+  if (shape === "strip") return <Strip icon={icon} palette={palette} text={time} sub={showDate ? shortDate : null} />;
+
+  const innerWidth = width - 28;
+  const innerHeight = height - 28;
+  if (face === "analog") {
+    const size = Math.max(60, Math.min(innerWidth, innerHeight - (showDate ? 22 : 0)));
+    return (
+      <View style={styles.centerFill}>
+        <AnalogClock size={size} now={now} palette={palette} />
+        {showDate ? (
+          <Text style={[styles.small, { color: palette.muted, marginTop: 6 }]} numberOfLines={1}>
+            {shape === "small" ? shortDate : longDate}
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
+  const fontSize = Math.max(22, Math.min(innerWidth * 0.26, innerHeight * 0.4, 72));
+  return (
+    <View style={styles.centerFill}>
+      <Text
+        style={{ fontSize, fontWeight: "800", color: palette.text, letterSpacing: -1 }}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.5}
+      >
+        {time}
+      </Text>
+      {showDate ? (
+        <Text style={[styles.body, { color: palette.muted }]} numberOfLines={1}>
+          {shape === "small" || shape === "tall" ? shortDate : longDate}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function AnalogClock({ size, now, palette }: { size: number; now: Date; palette: Palette }) {
+  const c = size / 2;
+  const r = c - 3;
+  const minutes = now.getMinutes();
+  const hours = (now.getHours() % 12) + minutes / 60;
+  const hand = (angle: number, length: number) => {
+    const rad = ((angle - 90) * Math.PI) / 180;
+    return { x2: c + Math.cos(rad) * length, y2: c + Math.sin(rad) * length };
+  };
+  return (
+    <Svg width={size} height={size}>
+      <Circle cx={c} cy={c} r={r} fill={palette.panel} stroke={palette.accent} strokeWidth={2.5} />
+      {Array.from({ length: 12 }, (_, i) => {
+        const rad = ((i * 30 - 90) * Math.PI) / 180;
+        const long = i % 3 === 0;
+        return (
+          <Line
+            key={i}
+            x1={c + Math.cos(rad) * (r - (long ? 9 : 6))}
+            y1={c + Math.sin(rad) * (r - (long ? 9 : 6))}
+            x2={c + Math.cos(rad) * (r - 2)}
+            y2={c + Math.sin(rad) * (r - 2)}
+            stroke={palette.muted}
+            strokeWidth={long ? 2.5 : 1.5}
+            strokeLinecap="round"
+          />
+        );
+      })}
+      <Line x1={c} y1={c} {...hand(hours * 30, r * 0.5)} stroke={palette.text} strokeWidth={4} strokeLinecap="round" />
+      <Line x1={c} y1={c} {...hand(minutes * 6, r * 0.78)} stroke={palette.text} strokeWidth={2.5} strokeLinecap="round" />
+      <Circle cx={c} cy={c} r={4} fill={palette.accent} />
+    </Svg>
+  );
+}
+
+// --- Quote of the day (CORE-049) ---------------------------------------------------------
+
+function QuoteWidget({ widget, palette, shape, width, height, icon }: BodyProps<"quote">) {
+  const pool = quotePool(widget.settings.source, widget.settings.mine);
+  const text = quoteOfDay(pool, new Date()) ?? "Add your own quotes in this widget's settings";
+
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+  if (shape === "strip") return <Strip icon={icon} palette={palette} text={text} />;
+
+  const innerWidth = width - 28;
+  const innerHeight = height - 28;
+  const fontSize = Math.max(14, Math.min(22, innerWidth * 0.08 + innerHeight * 0.04));
+  const lines = Math.max(2, Math.floor((innerHeight - 30) / (fontSize * 1.4)));
+  return (
+    <View style={[styles.centerFill, { gap: 8, paddingHorizontal: 4 }]}>
+      <Icon name="sparkles" size={16} color={palette.accent} />
+      <Text
+        style={{ fontSize, lineHeight: fontSize * 1.4, fontWeight: "600", color: palette.text, textAlign: "center", fontStyle: "italic" }}
+        numberOfLines={lines}
+      >
+        “{text}”
+      </Text>
+    </View>
+  );
+}
+
+// --- Quick launch (CORE-049) -------------------------------------------------------------
+
+function Launch({ widget, palette, shape, width, height, icon, onChange }: BodyProps<"launch">) {
+  const router = useRouter();
+  const targets = pickedTargets(widget.settings.targets);
+  // Like ticking a reminder: only live outside Edit mode.
+  const live = Boolean(onChange);
+
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={targets.length} />;
+  if (!targets.length) return <Empty icon={icon} palette={palette} text="Pick where the buttons go" />;
+
+  const gap = 8;
+  const innerWidth = width - 28;
+  const innerHeight = height - 28;
+  const minWidth = shape === "strip" ? 44 : 72;
+  const columns = Math.max(1, Math.min(targets.length, Math.floor((innerWidth + gap) / (minWidth + gap))));
+  const rows = Math.ceil(targets.length / columns);
+  const buttonWidth = (innerWidth - gap * (columns - 1)) / columns;
+  const buttonHeight = Math.max(36, Math.min(96, (innerHeight - gap * (rows - 1)) / rows));
+  const showLabels = shape !== "strip" && buttonWidth >= 64 && buttonHeight >= 62;
+
+  return (
+    <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap, alignContent: "center", justifyContent: "center" }}>
+      {targets.map((target) => (
+        <Tap
+          key={target.key}
+          onPressIn={() => guardTouches()}
+          onPress={live ? () => router.push(target.route as never) : undefined}
+          disabled={!live}
+          accessibilityLabel={`Open ${target.label}`}
+          style={{
+            width: buttonWidth,
+            height: buttonHeight,
+            borderRadius: 16,
+            backgroundColor: palette.panel,
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 4,
+          }}
+        >
+          <Icon name={target.icon} size={showLabels ? 24 : 22} color={palette.accent} />
+          {showLabels ? (
+            <Text style={[styles.tiny, { color: palette.text, fontWeight: "700" }]} numberOfLines={1}>
+              {target.label}
+            </Text>
+          ) : null}
+        </Tap>
+      ))}
+    </View>
+  );
+}
+
+// --- Habit streak (CORE-049) -----------------------------------------------------------
+
+function Streak({ widget, palette, shape, width, height, icon, onChange }: BodyProps<"streak">) {
+  const today = dayKey(new Date());
+  const { name, days } = widget.settings;
+  const streak = currentStreak(days, today);
+  const doneToday = days.includes(today);
+  const onBold = palette.text === "#ffffff";
+
+  function toggle() {
+    onChange?.({ ...widget, settings: { ...widget.settings, days: toggleDay(days, today) } });
+  }
+
+  if (shape === "icon") return <IconFace icon={streak ? "flame" : icon} palette={palette} value={String(streak)} caption={doneToday ? "done" : "streak"} />;
+  if (shape === "strip") {
+    return (
+      <Strip
+        icon={streak ? "flame" : icon}
+        palette={palette}
+        text={`${streak} day${streak === 1 ? "" : "s"} · ${name}`}
+        sub={doneToday ? "Done today" : "Not yet today"}
+      />
+    );
+  }
+
+  const week = lastDays(7, today);
+  const big = shape === "small" ? 40 : 52;
+  const dots = (
+    <View style={[styles.row, { gap: 6, justifyContent: "center" }]}>
+      {week.map((day) => {
+        const done = days.includes(day);
+        return (
+          <View
+            key={day}
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: 7,
+              backgroundColor: done ? palette.accent : palette.panel,
+              borderWidth: day === today ? 2 : 0,
+              borderColor: palette.accent,
+            }}
+          />
+        );
+      })}
+    </View>
+  );
+  const button = (
+    <Tap
+      onPressIn={() => guardTouches()}
+      onPress={onChange ? toggle : undefined}
+      disabled={!onChange}
+      style={[
+        styles.pill,
+        {
+          alignSelf: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          backgroundColor: doneToday ? palette.panel : onBold ? "#ffffff" : palette.deep,
+        },
+      ]}
+      accessibilityLabel={doneToday ? "Undo today" : "Mark done today"}
+    >
+      <Text style={{ color: doneToday ? palette.text : onBold ? palette.deep : "#ffffff", fontWeight: "700", fontSize: 13 }}>
+        {doneToday ? "Done today ✓" : "Done today"}
+      </Text>
+    </Tap>
+  );
+
+  return (
+    <View style={[styles.centerFill, { gap: 8 }]}>
+      <View style={{ alignItems: "center" }}>
+        <Text style={{ fontSize: big, fontWeight: "800", color: palette.text, letterSpacing: -1, lineHeight: big * 1.05 }}>{streak}</Text>
+        <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+          {streak === 1 ? "day" : "days"} · {name}
+        </Text>
+      </View>
+      {height > 150 || shape === "wide" ? dots : null}
+      {button}
     </View>
   );
 }

@@ -6,6 +6,7 @@ import { Text, TextInput } from "../../components/text";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 import { ColorPicker } from "../../components/hearth/color-picker";
+import { SeasonPicker } from "../../components/hearth/season-picker";
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
 import { IconPicker } from "../../components/hearth/icon-picker";
 import { WidgetView } from "../../components/hearth/widgets";
@@ -17,6 +18,7 @@ import { Banner, Button, Chip, EmptyState, SectionHeader } from "../../component
 import { useAuth } from "../../lib/auth-context";
 import { cornerChoices, liftChoices } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
+import { launchTargets, MAX_LAUNCH_TARGETS, MAX_OWN_QUOTES, parseQuotes } from "../../lib/widget-extras";
 import { pickAndUploadPhoto, removeUnusedPhotos, usePhotoUrls } from "../../lib/hearth-photos";
 import { formatDate, gatheringKinds, type GatheringKind } from "../../lib/gift-nook";
 import {
@@ -115,6 +117,7 @@ export default function WidgetEditor() {
           corners: draft.corners,
           lift: draft.lift,
           border: draft.border,
+          showIn: draft.showIn,
         } as Partial<WidgetItem>)
       );
       if (draft.w !== original.w || draft.h !== original.h) {
@@ -293,6 +296,9 @@ export default function WidgetEditor() {
       <Text style={ui.label}>Icon</Text>
       <IconPicker value={draft.icon} fallback={info.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
 
+      <SectionHeader title="When it shows" icon="calendar" />
+      <SeasonPicker value={draft.showIn} onChange={(showIn) => setDraft({ ...draft, showIn })} />
+
       <Text style={ui.label}>Size</Text>
       <View style={ui.chips}>
         {sizePresets.widget
@@ -418,6 +424,54 @@ function FrameSettings({
   );
 }
 
+// --- Quote of the day (CORE-049) ----------------------------------------------------------
+
+function QuoteSettings({
+  widget,
+  setSettings,
+}: {
+  widget: WidgetOf<"quote">;
+  setSettings: (changes: Record<string, unknown>) => void;
+}) {
+  // What you're typing, line by line; the saved list is tidied from it.
+  const [text, setText] = useState(widget.settings.mine.join("\n"));
+  return (
+    <>
+      <Text style={ui.label}>Where the quotes come from</Text>
+      <View style={ui.chips}>
+        {(
+          [
+            ["cozy", "Ours"],
+            ["mine", "Just mine"],
+            ["both", "Both"],
+          ] as const
+        ).map(([source, label]) => (
+          <Chip key={source} selected={widget.settings.source === source} onPress={() => setSettings({ source })}>
+            {label}
+          </Chip>
+        ))}
+      </View>
+      {widget.settings.source !== "cozy" ? (
+        <>
+          <Text style={ui.label}>Your own quotes (one per line, up to {MAX_OWN_QUOTES})</Text>
+          <TextInput
+            style={[ui.input, { minHeight: 120, textAlignVertical: "top" }]}
+            value={text}
+            onChangeText={(next) => {
+              setText(next);
+              setSettings({ mine: parseQuotes(next) });
+            }}
+            placeholder={"Something Grandma always said\nA line from a song you love"}
+            placeholderTextColor={colors.muted}
+            multiline
+          />
+        </>
+      ) : null}
+      <Text style={ui.muted}>One quote a day, the same all day, and a new one at midnight.</Text>
+    </>
+  );
+}
+
 // --- Per-kind settings --------------------------------------------------------
 
 function KindSettings({
@@ -487,6 +541,86 @@ function KindSettings({
       );
     case "frame":
       return <FrameSettings widget={widget} setSettings={setSettings} />;
+    case "clock":
+      return (
+        <>
+          <Text style={ui.label}>Face</Text>
+          <View style={ui.chips}>
+            <Chip icon="clock" selected={widget.settings.face === "digital"} onPress={() => setSettings({ face: "digital" })}>
+              Digital
+            </Chip>
+            <Chip icon="sun" selected={widget.settings.face === "analog"} onPress={() => setSettings({ face: "analog" })}>
+              Analog
+            </Chip>
+          </View>
+          <View style={[ui.row, { gap: 10 }]}>
+            <Text style={[ui.label, { flex: 1, marginBottom: 0 }]}>24-hour time</Text>
+            <Switch value={widget.settings.hour24} onValueChange={(hour24) => setSettings({ hour24 })} trackColor={{ true: colors.bark }} />
+          </View>
+          <View style={[ui.row, { gap: 10 }]}>
+            <Text style={[ui.label, { flex: 1, marginBottom: 0 }]}>Show the date</Text>
+            <Switch value={widget.settings.showDate} onValueChange={(showDate) => setSettings({ showDate })} trackColor={{ true: colors.bark }} />
+          </View>
+        </>
+      );
+    case "quote":
+      return <QuoteSettings widget={widget} setSettings={setSettings} />;
+    case "launch":
+      return (
+        <>
+          <Text style={ui.label}>
+            Buttons ({widget.settings.targets.length}/{MAX_LAUNCH_TARGETS})
+          </Text>
+          <View style={ui.chips}>
+            {launchTargets().map((target) => {
+              const on = widget.settings.targets.includes(target.key);
+              return (
+                <Chip
+                  key={target.key}
+                  icon={target.icon}
+                  selected={on}
+                  onPress={() => {
+                    if (on) setSettings({ targets: widget.settings.targets.filter((k) => k !== target.key) });
+                    else if (widget.settings.targets.length < MAX_LAUNCH_TARGETS) setSettings({ targets: [...widget.settings.targets, target.key] });
+                  }}
+                >
+                  {target.label}
+                </Chip>
+              );
+            })}
+          </View>
+          <Text style={ui.muted}>Buttons show in the order you tap them. They only work outside Edit mode.</Text>
+        </>
+      );
+    case "streak":
+      return (
+        <>
+          <Text style={ui.label}>What are you keeping up?</Text>
+          <TextInput
+            style={ui.input}
+            value={widget.settings.name}
+            onChangeText={(name) => setSettings({ name: name.slice(0, 30) })}
+            placeholder="e.g. Walk the dog"
+            placeholderTextColor={colors.muted}
+          />
+          <Text style={ui.muted}>
+            {widget.settings.days.length} day{widget.settings.days.length === 1 ? "" : "s"} logged. Tap “Done today” on your Hearth each day; miss a day and the streak starts over.
+          </Text>
+          {widget.settings.days.length ? (
+            <Button
+              title="Start over"
+              icon="undo"
+              variant="secondary"
+              onPress={() =>
+                Alert.alert("Start over?", "This clears every day you've logged for this habit.", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Start over", style: "destructive", onPress: () => setSettings({ days: [] }) },
+                ])
+              }
+            />
+          ) : null}
+        </>
+      );
     case "rhythms":
       return (
         <>

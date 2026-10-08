@@ -1,12 +1,13 @@
 import type { IconName } from "../components/icon";
 import type { GatheringKind } from "./gift-nook";
+import type { QuoteSource } from "./widget-extras";
 
 // Hearth widgets (CORE-018): standalone, fully customizable cards on the
 // Hearth. Pure data + defaults only (no React), so it's unit-testable. Each
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "frame";
+export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "frame" | "clock" | "quote" | "launch" | "streak";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -64,6 +65,11 @@ export type WidgetSettings = {
   pets: { count: number };
   rhythms: { count: number; mineOnly: boolean };
   frame: { photos: string[]; style: FrameStyle; seconds: number; caption: string };
+  clock: { face: "digital" | "analog"; hour24: boolean; showDate: boolean };
+  quote: { source: QuoteSource; mine: string[] };
+  // Keys of where the buttons go (see launchTargets in lib/widget-extras.ts).
+  launch: { targets: string[] };
+  streak: { name: string; days: string[] };
 };
 
 export type WidgetConfig = {
@@ -98,6 +104,10 @@ export const widgetKinds: {
   { kind: "pets", label: "Pet care", description: "Who still needs feeding today and what's due at the vet, from your Pet Care Nook.", icon: "paw", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "rhythms", label: "Due soon", description: "Home chores overdue or coming up, from your Rhythms Nook.", icon: "rhythm", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "frame", label: "Photo frame", description: "Your own pictures in a frame, one after another.", icon: "camera", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "clock", label: "Clock", description: "The time and date, as a digital or an analog clock.", icon: "clock", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "quote", label: "Quote of the day", description: "A warm line a day, from ours or from your own list.", icon: "sparkles", size: { w: 4, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "launch", label: "Quick launch", description: "Buttons that jump straight to your Nooks and favorite places.", icon: "widgets", size: { w: 4, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "streak", label: "Habit streak", description: "Tap each day you do something and watch the streak grow.", icon: "flame", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 1, h: 1 } },
 ];
 
@@ -152,6 +162,14 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
       return { ...base, kind, settings: { count: 3, mineOnly: false } };
     case "frame":
       return { ...base, kind, showTitle: false, settings: { photos: [], style: "wood", seconds: 12, caption: "" } };
+    case "clock":
+      return { ...base, kind, showTitle: false, settings: { face: "digital", hour24: false, showDate: true } };
+    case "quote":
+      return { ...base, kind, showTitle: false, settings: { source: "cozy", mine: [] } };
+    case "launch":
+      return { ...base, kind, settings: { targets: ["inbox", "market", "home"] } };
+    case "streak":
+      return { ...base, kind, settings: { name: "My habit", days: [] } };
   }
 }
 
