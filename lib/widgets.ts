@@ -1,13 +1,14 @@
 import type { IconName } from "../components/icon";
 import type { GatheringKind } from "./gift-nook";
 import type { QuoteSource } from "./widget-extras";
+import type { Condition, Place, Unit, WindowFrame } from "./weather";
 
 // Hearth widgets (CORE-018): standalone, fully customizable cards on the
 // Hearth. Pure data + defaults only (no React), so it's unit-testable. Each
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "frame" | "clock" | "quote" | "launch" | "streak";
+export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -70,6 +71,19 @@ export type WidgetSettings = {
   // Keys of where the buttons go (see launchTargets in lib/widget-extras.ts).
   launch: { targets: string[] };
   streak: { name: string; days: string[] };
+  // Weather (CORE-056): a place you picked by name, never the phone's location.
+  weather: { place: Place | null; unit: Unit; showForecast: boolean };
+  // A window (CORE-057): live weather from a place, or a sky you chose.
+  window: {
+    source: "live" | "pick";
+    place: Place | null;
+    unit: Unit;
+    condition: Condition;
+    time: "auto" | "day" | "night";
+    frame: WindowFrame;
+    curtains: boolean;
+    showTemp: boolean;
+  };
 };
 
 export type WidgetConfig = {
@@ -108,6 +122,8 @@ export const widgetKinds: {
   { kind: "quote", label: "Quote of the day", description: "A warm line a day, from ours or from your own list.", icon: "sparkles", size: { w: 4, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "launch", label: "Quick launch", description: "Buttons that jump straight to your Nooks and favorite places.", icon: "widgets", size: { w: 4, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "streak", label: "Habit streak", description: "Tap each day you do something and watch the streak grow.", icon: "flame", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "weather", label: "Weather", description: "The weather now and the next few days, for a town you pick.", icon: "cloud", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "window", label: "Window", description: "A little window with the weather outside: live from a town, or a sky you choose.", icon: "sun", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 1, h: 1 } },
 ];
 
@@ -170,6 +186,15 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
       return { ...base, kind, settings: { targets: ["inbox", "market", "home"] } };
     case "streak":
       return { ...base, kind, settings: { name: "My habit", days: [] } };
+    case "weather":
+      return { ...base, kind, settings: { place: null, unit: "f", showForecast: true } };
+    case "window":
+      return {
+        ...base,
+        kind,
+        showTitle: false,
+        settings: { source: "pick", place: null, unit: "f", condition: "rain", time: "auto", frame: "wood", curtains: true, showTemp: false },
+      };
   }
 }
 

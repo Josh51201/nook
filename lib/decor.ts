@@ -71,17 +71,20 @@ export function seasonOf(now: Date): Season {
 
 // --- Ambience (CORE-047) -------------------------------------------------------------
 
-export type AmbienceKind = "leaves" | "snow" | "petals" | "fireflies" | "motes";
-export type Ambience = "off" | "auto" | AmbienceKind;
+export type AmbienceKind = "leaves" | "snow" | "petals" | "fireflies" | "motes" | "rain";
+// "weather" matches the weather outside (CORE-058).
+export type Ambience = "off" | "auto" | "weather" | AmbienceKind;
 
 export const ambiences: { key: Ambience; label: string; icon: IconName }[] = [
   { key: "off", label: "Off", icon: "close" },
   { key: "auto", label: "Follow the season", icon: "sparkles" },
+  { key: "weather", label: "Match the weather", icon: "umbrella" },
   { key: "leaves", label: "Falling leaves", icon: "leaf" },
   { key: "snow", label: "Snow", icon: "christmas" },
   { key: "petals", label: "Blossom petals", icon: "flower" },
   { key: "fireflies", label: "Fireflies", icon: "star" },
   { key: "motes", label: "Sunbeam dust", icon: "sun" },
+  { key: "rain", label: "Rain", icon: "drop" },
 ];
 
 // Night is fireflies; by day it follows the season (northern hemisphere):
@@ -97,9 +100,12 @@ export function autoAmbience(now: Date): AmbienceKind {
   return "leaves";
 }
 
-// What to actually show right now, or nothing.
-export function activeAmbience(mode: Ambience | undefined, now: Date): AmbienceKind | null {
+// What to actually show right now, or nothing. Matching the weather uses
+// `outside` (rain or snow from lib/weather's ambienceForWeather); when the
+// weather outside is anything else, or not known yet, it follows the season.
+export function activeAmbience(mode: Ambience | undefined, now: Date, outside?: AmbienceKind | null): AmbienceKind | null {
   if (!mode || mode === "off") return null;
+  if (mode === "weather") return outside ?? autoAmbience(now);
   return mode === "auto" ? autoAmbience(now) : mode;
 }
 

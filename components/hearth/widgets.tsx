@@ -19,6 +19,8 @@ import { usePetsSummary } from "../../lib/pets-data";
 import { useRhythmsSummary } from "../../lib/rhythms-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
+import { conditionIcon, conditionLabel, dayName, formatTemp, windowSky } from "../../lib/weather";
+import { useWeather } from "../../lib/weather-data";
 import { currentStreak, dayKey, lastDays, pickedTargets, quoteOfDay, quotePool, toggleDay } from "../../lib/widget-extras";
 import {
   describeSchedule,
@@ -30,6 +32,7 @@ import {
 } from "../../lib/widgets";
 import { Icon, IconBadge, type IconName } from "../icon";
 import { Tap } from "../motion";
+import { WindowScene } from "./window-scene";
 
 // Renders any Hearth widget (CORE-018) in its chosen look, laid out for the
 // shape it's been given (CORE-030): a single icon with a count, a one-line
@@ -86,6 +89,7 @@ export function WidgetView({
   onChange,
   corners,
   border,
+  still = false,
 }: {
   widget: WidgetConfig;
   color?: string;
@@ -100,10 +104,15 @@ export function WidgetView({
   // Shape tweaks (CORE-042): how round the corners are, and a border.
   corners?: Corners;
   border?: boolean;
+  // Hold animations still, e.g. while the Hearth is being edited.
+  still?: boolean;
 }) {
   const radius = cornerRadius(corners, width, height);
   if (widget.kind === "frame") {
     return <PhotoFrame settings={widget.settings} width={width} height={height} radius={radius} />;
+  }
+  if (widget.kind === "window") {
+    return <WindowWidget settings={widget.settings} width={width} height={height} radius={radius} still={still} refreshKey={refreshKey} />;
   }
   const soft = color ?? tilePalette[0];
   const deep = deepColor(soft);
@@ -193,6 +202,10 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <Launch {...props} widget={widget} />;
     case "streak":
       return <Streak {...props} widget={widget} />;
+    case "weather":
+      return <WeatherWidget {...props} widget={widget} />;
+    case "window":
+      return null; // drawn whole by WindowWidget, above
   }
 }
 
@@ -1209,6 +1222,131 @@ function PhotoFrame({
   );
 }
 
+// --- Weather (CORE-056) ---------------------------------------------------------------
+
+function WeatherWidget({ widget, palette, shape, width, height, icon, refreshKey }: BodyProps<"weather">) {
+  const { place, unit, showForecast } = widget.settings;
+  const { weather, loading, failed } = useWeather(place, unit, refreshKey);
+
+  if (!place || !weather) {
+    const text = !place ? "Pick a town in this widget's settings" : loading ? "Checking the sky…" : failed ? "Couldn't reach the weather just now" : "Checking the sky…";
+    if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+    if (shape === "strip") return <Strip icon={icon} palette={palette} text={place?.name ?? "Weather"} sub={text} />;
+    return <Empty icon={icon} palette={palette} text={text} />;
+  }
+
+  const sky = conditionIcon(weather.condition, weather.isDay);
+  const label = conditionLabel(weather.condition);
+  const today = weather.days[0];
+  const highLow = today ? `H ${formatTemp(today.high)} · L ${formatTemp(today.low)}` : null;
+
+  if (shape === "icon") return <IconFace icon={sky} palette={palette} value={formatTemp(weather.temp)} />;
+  if (shape === "strip") {
+    return <Strip icon={sky} palette={palette} text={`${formatTemp(weather.temp)} ${label}`} sub={highLow ? `${place.name} · ${highLow}` : place.name} />;
+  }
+
+  const innerWidth = width - 28;
+  const innerHeight = height - 28;
+  const forecast = showForecast && isBig(shape) ? weather.days : [];
+  const side = shape === "wide" || (shape === "large" && innerWidth > innerHeight * 1.3);
+  const tempSize = Math.max(28, Math.min(64, (side ? innerWidth * 0.5 : innerWidth) * 0.3, innerHeight * (forecast.length && !side ? 0.22 : 0.34)));
+
+  const now = (
+    <View style={[styles.centerFill, { gap: 2 }]}>
+      <View style={[styles.row, { gap: 8 }]}>
+        <Icon name={sky} size={Math.round(tempSize * 0.7)} color={palette.accent} />
+        <Text style={{ fontSize: tempSize, fontWeight: "800", color: palette.text, letterSpacing: -1 }} numberOfLines={1}>
+          {formatTemp(weather.temp)}
+        </Text>
+      </View>
+      <Text style={[styles.body, { color: palette.text, fontWeight: "700" }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Muted palette={palette}>{shape === "small" || !highLow ? place.name : `${place.name} · ${highLow}`}</Muted>
+    </View>
+  );
+  if (!forecast.length) return now;
+
+  const days = (
+    <Panel palette={palette} style={side ? { flex: 1, justifyContent: "center", gap: 6 } : { gap: 6 }}>
+      {forecast.map((day) => (
+        <View key={day.day} style={[styles.row, { gap: 8 }]}>
+          <Text style={[styles.small, { color: palette.text, fontWeight: "700", flex: 1 }]} numberOfLines={1}>
+            {dayName(day.day, weather.days[0].day)}
+          </Text>
+          <Icon name={conditionIcon(day.condition, true)} size={15} color={palette.accent} />
+          <Text style={[styles.small, { color: palette.text, fontWeight: "700", minWidth: 30, textAlign: "right" }]}>{formatTemp(day.high)}</Text>
+          <Text style={[styles.small, { color: palette.muted, minWidth: 30, textAlign: "right" }]}>{formatTemp(day.low)}</Text>
+        </View>
+      ))}
+    </Panel>
+  );
+  return side ? (
+    <View style={[styles.row, { flex: 1, gap: 12 }]}>
+      <View style={{ flex: 1 }}>{now}</View>
+      {days}
+    </View>
+  ) : (
+    <View style={{ flex: 1, gap: 8 }}>
+      {now}
+      {days}
+    </View>
+  );
+}
+
+// --- Window (CORE-057) ------------------------------------------------------------------
+
+// A little window with the weather outside: live from a town, or a sky you chose.
+function WindowWidget({
+  settings,
+  width,
+  height,
+  radius,
+  still,
+  refreshKey,
+}: {
+  settings: WidgetOf<"window">["settings"];
+  width: number;
+  height: number;
+  radius: number;
+  still: boolean;
+  refreshKey: number;
+}) {
+  const live = settings.source === "live";
+  const { weather } = useWeather(live ? settings.place : null, settings.unit, refreshKey);
+  // Day turns to night by the clock for a sky you chose; check now and then.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const sky = windowSky(settings, weather, now);
+  const roomy = Math.min(width, height) >= 110;
+  const note = live && !settings.place ? "Pick a town" : settings.showTemp && live && weather ? formatTemp(weather.temp) : null;
+
+  return (
+    <View style={{ width, height, borderRadius: radius, boxShadow: tileBevel }}>
+      <WindowScene
+        width={width}
+        height={height}
+        condition={sky.condition}
+        isDay={sky.isDay}
+        frame={settings.frame}
+        curtains={settings.curtains}
+        radius={radius}
+        still={still}
+      />
+      {note && (roomy || note.length <= 4) ? (
+        <View style={[styles.windowPill, { top: Math.max(8, height * 0.08), right: Math.max(8, width * 0.08) }]}>
+          <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "800" }} numberOfLines={1}>
+            {note}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 // --- Clock (CORE-049) -----------------------------------------------------------------
 
 function ClockWidget({ widget, palette, shape, width, height, icon }: BodyProps<"clock">) {
@@ -1558,6 +1696,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(40,30,24,0.55)",
   },
+  windowPill: { position: "absolute", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: "rgba(40,30,24,0.55)" },
   frame: { borderRadius: 24, padding: 14, overflow: "hidden" },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
   title: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6, flex: 1 },

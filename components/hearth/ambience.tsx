@@ -14,11 +14,11 @@ import Animated, {
 import type { AmbienceKind } from "../../lib/decor";
 
 // The weather in the air over the Hearth (CORE-047): leaves, snow, petals,
-// fireflies or drifting sunbeam dust. Drawn over everything but never
+// fireflies, drifting sunbeam dust, or rain (CORE-058). Drawn over everything but never
 // touchable, and paused while editing so it can't get in the way of dragging.
 // Holds still (shows nothing) if the phone's Reduce Motion is on.
 
-const COUNTS: Record<AmbienceKind, number> = { leaves: 14, snow: 28, petals: 18, fireflies: 12, motes: 16 };
+const COUNTS: Record<AmbienceKind, number> = { leaves: 14, snow: 28, petals: 18, fireflies: 12, motes: 16, rain: 46 };
 const LEAF_COLORS = ["#c8602d", "#d98e2b", "#a8442a", "#8a6a1c", "#b5532a"];
 const PETAL_COLORS = ["#f4b6c8", "#fbd5df", "#f7c6d3", "#ffffff"];
 
@@ -37,7 +37,9 @@ export function AmbienceLayer({ kind }: { kind: AmbienceKind }) {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {Array.from({ length: COUNTS[kind] }, (_, i) =>
-        falling ? (
+        kind === "rain" ? (
+          <Raindrop key={`${kind}${i}`} i={i} width={width} height={height} />
+        ) : falling ? (
           <Faller key={`${kind}${i}`} kind={kind} i={i} width={width} height={height} />
         ) : (
           <Glimmer key={`${kind}${i}`} kind={kind} i={i} width={width} height={height} />
@@ -113,6 +115,47 @@ function Faller({ kind, i, width, height }: { kind: "leaves" | "snow" | "petals"
         />
       )}
     </Animated.View>
+  );
+}
+
+// Rain: soft, slanted streaks falling quickly, some nearer (longer, a little
+// brighter) than others.
+function Raindrop({ i, width, height }: { i: number; width: number; height: number }) {
+  const progress = useSharedValue(0);
+  const near = rand(i, 1) > 0.65;
+  const length = near ? 22 + rand(i, 2) * 10 : 12 + rand(i, 2) * 8;
+  const duration = (near ? 900 : 1300) + rand(i, 3) * 500;
+  const startAt = rand(i, 4);
+  // Starts a little off to the right, since it falls on a slant.
+  const left = rand(i, 5) * (width + 60);
+  const slant = height * 0.12;
+
+  useEffect(() => {
+    progress.value = startAt;
+    progress.value = withDelay(
+      rand(i, 6) * 600,
+      withSequence(
+        withTiming(1, { duration: duration * (1 - startAt), easing: Easing.linear }),
+        withRepeat(withSequence(withTiming(0, { duration: 0 }), withTiming(1, { duration, easing: Easing.linear })), -1)
+      )
+    );
+  }, []);
+
+  const style = useAnimatedStyle(() => {
+    const p = progress.value;
+    return {
+      transform: [{ translateX: left - p * slant }, { translateY: -length + p * (height + length) }, { rotate: "7deg" }],
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.particle,
+        { width: near ? 2 : 1.4, height: length, borderRadius: 1, backgroundColor: near ? "rgba(150,180,215,0.55)" : "rgba(150,180,215,0.35)" },
+        style,
+      ]}
+    />
   );
 }
 

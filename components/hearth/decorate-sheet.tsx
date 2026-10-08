@@ -15,7 +15,7 @@ import { pickAndUploadPhoto, usePhotoUrls } from "../../lib/hearth-photos";
 import { colors, themed, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
 import { IconBadge } from "../icon";
-import { Button, Chip, SectionHeader } from "../ui";
+import { Banner, Button, Chip, SectionHeader } from "../ui";
 import { Text } from "../text";
 import { ColorPicker } from "./color-picker";
 
@@ -34,6 +34,7 @@ export function DecorateSheet({
   onWallpaper,
   ambience,
   onAmbience,
+  weatherPlace,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -45,6 +46,8 @@ export function DecorateSheet({
   onWallpaper: (next: Wallpaper | undefined) => void;
   ambience: Ambience;
   onAmbience: (next: Ambience) => void;
+  // The town "Match the weather" follows, if any (CORE-058).
+  weatherPlace?: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const kind: Kind = wallpaper?.kind ?? (inHollow ? "inherit" : "none");
@@ -189,8 +192,21 @@ export function DecorateSheet({
         </View>
         <Text style={ui.muted}>
           The air over your whole Hearth, paused while you're editing. “Follow the season” picks snow, petals,
-          sunbeam dust or leaves, and fireflies at night. Off if your phone's Reduce Motion is on.
+          sunbeam dust or leaves, and fireflies at night. “Match the weather” brings rain or snow when it's
+          raining or snowing outside, and follows the season otherwise. Off if your phone's Reduce Motion is on.
         </Text>
+        {ambience === "weather" ? (
+          <Banner
+            icon="umbrella"
+            tone="sky"
+            title={weatherPlace ? `Matching the weather in ${weatherPlace}` : "Pick a town first"}
+            body={
+              weatherPlace
+                ? "From your Weather widget (or a Window showing live weather)."
+                : "Add a Weather widget, or a Window set to live weather, and choose a town in its settings."
+            }
+          />
+        ) : null}
 
         <Button title="Done" icon="check" onPress={onClose} style={{ marginTop: 6 }} />
       </ScrollView>

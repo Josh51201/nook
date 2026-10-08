@@ -9,6 +9,7 @@ import { ColorPicker } from "../../components/hearth/color-picker";
 import { SeasonPicker } from "../../components/hearth/season-picker";
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
 import { IconPicker } from "../../components/hearth/icon-picker";
+import { PlacePicker } from "../../components/hearth/place-picker";
 import { WidgetView } from "../../components/hearth/widgets";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
@@ -18,6 +19,7 @@ import { Banner, Button, Chip, EmptyState, SectionHeader } from "../../component
 import { useAuth } from "../../lib/auth-context";
 import { cornerChoices, liftChoices } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
+import { conditions, windowFrames, type Place, type Unit } from "../../lib/weather";
 import { launchTargets, MAX_LAUNCH_TARGETS, MAX_OWN_QUOTES, parseQuotes } from "../../lib/widget-extras";
 import { pickAndUploadPhoto, removeUnusedPhotos, usePhotoUrls } from "../../lib/hearth-photos";
 import { formatDate, gatheringKinds, type GatheringKind } from "../../lib/gift-nook";
@@ -256,7 +258,7 @@ export default function WidgetEditor() {
         ))}
       </View>
 
-      {widget.kind === "frame" ? null : (
+      {widget.kind === "frame" || widget.kind === "window" ? null : (
         <>
           <Text style={ui.label}>Color</Text>
           <ColorPicker value={draft.color} onChange={(color) => setDraft({ ...draft, color })} />
@@ -279,7 +281,7 @@ export default function WidgetEditor() {
           </Chip>
         ))}
       </View>
-      {widget.kind === "frame" ? null : (
+      {widget.kind === "frame" || widget.kind === "window" ? null : (
         <>
           <Text style={ui.label}>Border</Text>
           <View style={ui.chips}>
@@ -472,6 +474,93 @@ function QuoteSettings({
   );
 }
 
+// --- Weather and Window (CORE-056, 057) ---------------------------------------------------
+
+function UnitChips({ value, onChange }: { value: Unit; onChange: (unit: Unit) => void }) {
+  return (
+    <>
+      <Text style={ui.label}>Temperature in</Text>
+      <View style={ui.chips}>
+        <Chip selected={value === "f"} onPress={() => onChange("f")}>
+          °F
+        </Chip>
+        <Chip selected={value === "c"} onPress={() => onChange("c")}>
+          °C
+        </Chip>
+      </View>
+    </>
+  );
+}
+
+function WindowSettings({
+  widget,
+  setSettings,
+}: {
+  widget: WidgetOf<"window">;
+  setSettings: (changes: Record<string, unknown>) => void;
+}) {
+  const s = widget.settings;
+  const live = s.source === "live";
+  return (
+    <>
+      <Text style={ui.label}>Outside the window</Text>
+      <View style={ui.chips}>
+        <Chip icon="place" selected={live} onPress={() => setSettings({ source: "live" })}>
+          The real weather
+        </Chip>
+        <Chip icon="sparkles" selected={!live} onPress={() => setSettings({ source: "pick" })}>
+          A sky I choose
+        </Chip>
+      </View>
+      {live ? (
+        <>
+          <Text style={ui.label}>Town</Text>
+          <PlacePicker value={s.place} onChange={(place: Place) => setSettings({ place })} />
+          <SwitchRow label="Show the temperature" value={s.showTemp} onChange={(showTemp) => setSettings({ showTemp })} />
+          {s.showTemp ? <UnitChips value={s.unit} onChange={(unit) => setSettings({ unit })} /> : null}
+        </>
+      ) : (
+        <>
+          <Text style={ui.label}>Weather</Text>
+          <View style={ui.chips}>
+            {conditions.map((c) => (
+              <Chip key={c.key} selected={s.condition === c.key} onPress={() => setSettings({ condition: c.key })}>
+                {c.label}
+              </Chip>
+            ))}
+          </View>
+        </>
+      )}
+      <Text style={ui.label}>Day or night</Text>
+      <View style={ui.chips}>
+        {(
+          [
+            ["auto", live ? "Like outside" : "By the clock"],
+            ["day", "Always day"],
+            ["night", "Always night"],
+          ] as const
+        ).map(([time, label]) => (
+          <Chip key={time} selected={s.time === time} onPress={() => setSettings({ time })}>
+            {label}
+          </Chip>
+        ))}
+      </View>
+      <Text style={ui.label}>Frame</Text>
+      <View style={ui.chips}>
+        {windowFrames.map((f) => (
+          <Chip key={f.key} selected={s.frame === f.key} onPress={() => setSettings({ frame: f.key })}>
+            {f.label}
+          </Chip>
+        ))}
+      </View>
+      <SwitchRow label="Curtains" value={s.curtains} onChange={(curtains) => setSettings({ curtains })} />
+      <Text style={ui.muted}>
+        The rain, snow and clouds hold still while you're editing your Hearth, and if your phone's Reduce Motion is on.
+      </Text>
+    </>
+  );
+}
+
 // --- Per-kind settings --------------------------------------------------------
 
 function KindSettings({
@@ -565,6 +654,18 @@ function KindSettings({
       );
     case "quote":
       return <QuoteSettings widget={widget} setSettings={setSettings} />;
+    case "weather":
+      return (
+        <>
+          <Text style={ui.label}>Town</Text>
+          <PlacePicker value={widget.settings.place} onChange={(place) => setSettings({ place })} />
+          <UnitChips value={widget.settings.unit} onChange={(unit) => setSettings({ unit })} />
+          <SwitchRow label="Show the next few days" value={widget.settings.showForecast} onChange={(showForecast) => setSettings({ showForecast })} />
+          <Text style={ui.muted}>The days show when the widget is big enough. Updates every 15 minutes or so.</Text>
+        </>
+      );
+    case "window":
+      return <WindowSettings widget={widget} setSettings={setSettings} />;
     case "launch":
       return (
         <>

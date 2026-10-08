@@ -62,6 +62,8 @@ import { hasRealName, useMyProfile } from "../../lib/profile";
 import { supabase } from "../../lib/supabase";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { touchesGuarded } from "../../lib/touch-guard";
+import { ambienceForWeather, weatherPlaceOf } from "../../lib/weather";
+import { useWeather } from "../../lib/weather-data";
 import { widgetKindInfo, type WidgetConfig } from "../../lib/widgets";
 import { Firelight, GlowVeil } from "../firelight";
 import { AmbienceLayer } from "./ambience";
@@ -113,6 +115,9 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const navigation = useNavigation();
   const tourScroll = useTourScrollArea();
   const { profile } = useMyProfile();
+  // "Match the weather" (CORE-058) follows the place on your Weather or Window widget.
+  const matchPlace = layout.ambience === "weather" ? weatherPlaceOf(layout.items) : null;
+  const outside = useWeather(matchPlace?.place, matchPlace?.unit ?? "f", refreshKey);
   const { session } = useAuth();
   const insets = useSafeAreaInsets();
   const [barHeight, setBarHeight] = useState(0);
@@ -587,6 +592,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           themeText={theme.text}
           corners={item.corners}
           border={item.border}
+          still={editing}
           onChange={editing ? undefined : (widget) => changeWidget(item, widget)}
         />
       );
@@ -637,7 +643,11 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 
   const title = scope ? hollow?.name ?? "" : layout.title || "The Hearth";
   const wallpaper = effectiveWallpaper(layout.wallpaper, hollow?.wallpaper, Boolean(scope));
-  const ambienceKind = activeAmbience(layout.ambience, new Date());
+  const ambienceKind = activeAmbience(
+    layout.ambience,
+    new Date(),
+    outside.weather ? ambienceForWeather(outside.weather.condition) : null
+  );
 
   return (
     <View style={[styles.fill, { backgroundColor: theme.background }]}>
@@ -1018,6 +1028,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         onWallpaper={changeWallpaper}
         ambience={layout.ambience}
         onAmbience={changeAmbience}
+        weatherPlace={weatherPlaceOf(layout.items)?.place.name}
       />
 
       <AddSheet
