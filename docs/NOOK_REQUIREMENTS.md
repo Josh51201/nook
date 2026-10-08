@@ -44,6 +44,24 @@ _Last updated: 2026-10-08 (rev 38)_
 - **CORE-040** In Edit mode, dragging a widget (or anything on the Hearth) to a trash can deletes it. _(Built (proposed details): while dragging, a "Hold here to remove" trash can appears at the bottom of the screen; the item has to be held over it for about half a second (it shrinks, the can goes dashed "Hold…", then turns red "Let go to remove" with a buzz) before letting go removes it, so passing over it on the way somewhere else never deletes anything. Letting go early just places the item. The page doesn't auto-scroll while over it. Letting go when armed removes it, with "Removed … — Undo" at the bottom for 5 seconds. A Hollow thrown away keeps its contents (they move onto the Hearth). Reminder alerts are only cancelled once the undo has passed.)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
+### Hearth customization, round two
+Josh wants the Hearth to be truly one of a kind for anyone who puts in the time, and said yes to every idea below ("I love all those options"). None are built yet; every detail is Claude's proposal until Josh confirms it. Some of this is paid under Nook Plus (MON-002, MON-003); where the free/paid line sits is Q-028, but a good free baseline stays.
+- **CORE-041** Wallpapers: a pattern, a gradient or your own photo behind the Hearth, and a different one for each Hollow.
+- **CORE-042** Any color, not just 7: a full color picker for tiles, accents and themes, plus corner roundness, shadow depth and borders.
+- **CORE-043** Build-your-own themes: pick every color, save it under a name, and optionally let themes switch with the season (a Christmas Hearth in December).
+- **CORE-044** More shapes for Nook tiles besides the arched alcove, such as a round window, a little door or a hanging sign.
+- **CORE-045** Decor pieces *(proposed name: Trinkets)*: little non-clickable objects placed anywhere on the Hearth or in a Hollow, like a plant, lantern, sleeping cat, rug or stack of books.
+- **CORE-046** A photo frame widget showing your own pictures in a frame, rotating through them.
+- **CORE-047** Ambience that follows the date and time of day (falling leaves, snow, fireflies), plus an optional soft fireplace sound that is off by default.
+- **CORE-048** A pet that lives on your Hearth, made from the photos in Pet Care (PET-006).
+- **CORE-049** More widget kinds: photo, clock/date, weather, quote of the day (pairs with the Quote Jar idea), quick-launch buttons, and a habit streak counter.
+- **CORE-050** Widget stacks: several widgets in one spot that you swipe through.
+- **CORE-051** More than one Hearth page, swiped between, such as "Everyday" and "Holidays".
+- **CORE-052** Scenes *(proposed name)*: save a whole Hearth setup and swap it in by hand or on a schedule (Morning, Evening, Christmas).
+- **CORE-053** Show a widget or tile only sometimes, such as a gift countdown that only appears in November and December.
+- **CORE-054** A shared Home Hearth: a Hollow everyone in your Home (HOME-001, capped at 6) sees and arranges together, like the household bulletin board.
+- **CORE-055** Share a look: send a layout or theme to family as a code so they can copy it and then change it.
+
 ## 1a. Accounts & Login
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.
 - **AUTH-002** While developing in Expo Go, there is an extra email + password "Developer sign-in" so test accounts (made in the Supabase dashboard) can be used without waiting for an emailed code. It never ships: it does not exist in a real release build.
@@ -222,6 +240,7 @@ _Last updated: 2026-10-08 (rev 38)_
 - **2026-10-08 — Rhythms Nook:** Yearly Rhythms is next ("Yes I agree"). Josh picked: the name Rhythms Nook; a starter list to pick from; an optional owner per chore; and all four reminders (heads-up, due day, overdue, someone did it), but "they should all be optional and a toggle in the individual nook settings." → RHY-001..008, Glossary, section 7
 - **2026-10-08 — Subscription:** Josh wants App Store revenue without ads, so a subscription. On one person covering a Home: "if you add in a whole burrow of 20+ people who get everything for free seems broken." Then: "I like the per home idea but yes needs capped at 6." So the plan is per Home, covers the Home only (never a Burrow), customization follows the Home, and a Home holds at most 6. The free/paid line, price and trial are still Claude's suggestions. → MON-001..004, HOME-006, Q-028, Glossary
 - **2026-10-08 — Subscription setup recorded:** Josh asked to put in how the subscription will be set up now, with free/paid changeable later: "will add more things that we can change over what is free and what is not later." Recorded MON-005 (one editable free/paid list) as his; MON-006..010 (entitlement on the Home, who subscribes, read-only when it ends, Apple + RevenueCat, Market labels) are Claude's proposals. → MON-005..010, Q-028
+- **2026-10-08 — Hearth customization, round two:** After Claude laid out ideas in five groups (look, cozy extras, widgets, layout, sharing), Josh: "I love all those options." Recorded all of them as wanted; details are proposed and none are built. Claude's suggested first round: wallpapers and the color picker, Trinkets and photo frames, seasonal ambience. → CORE-041..055, Glossary
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -235,6 +254,8 @@ _Last updated: 2026-10-08 (rev 38)_
 | The yearly-chores Nook | Rhythms Nook | approved |
 | One recurring chore in the Rhythms Nook | Rhythm | proposed |
 | The paid subscription, per Home | Nook Plus | proposed |
+| A decorative object placed on the Hearth | Trinket | proposed |
+| A saved whole-Hearth setup | Scene | proposed |
 | The people you live with, shared by Nooks | Home | proposed |
 | One entry in the Letterbox (one mailing address) | Contact | proposed |
 | Homepage | The Hearth | proposed |
@@ -271,3 +292,4 @@ Josh's stated priority, in order:
 3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).
 4. ~~**Pet Care Nook**~~ — built 2026-10-08 (section 2d).
 5. ~~**Rhythms Nook**~~ — built 2026-10-08 (section 2e).
+6. _(Proposed order, not yet confirmed by Josh.)_ **Hearth customization, round two (CORE-041..055):** first wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047); the rest after.
