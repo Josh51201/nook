@@ -18,6 +18,7 @@ type Navigation = {
 const places: Record<string, { label: string; icon: IconName }> = {
   "burrow/[id]": { label: "Burrow", icon: "burrow" },
   inbox: { label: "Inbox", icon: "bell" },
+  "widget/view/[id]": { label: "Back", icon: "widgets" },
   "gift-nook": { label: "Gift Nook", icon: "gift" },
   potluck: { label: "Potluck Nook", icon: "potluck" },
 };

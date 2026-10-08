@@ -219,3 +219,44 @@ export function describeSchedule(schedule: ReminderSchedule | undefined) {
   const at = new Date(schedule.at);
   return at.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
+
+// --- Countdown math (for a countdown's open page) ---------------------------------
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+// Whole calendar days from today to the day itself (negative once it's passed).
+export function daysUntil(target: Date, now = new Date()) {
+  return Math.round((startOfDay(target).getTime() - startOfDay(now).getTime()) / 86400000);
+}
+
+// Ticks down to the moment the big day begins.
+export function timeUntil(target: Date, now = new Date()) {
+  const ms = Math.max(0, startOfDay(target).getTime() - now.getTime());
+  return {
+    days: Math.floor(ms / 86400000),
+    hours: Math.floor(ms / 3600000) % 24,
+    minutes: Math.floor(ms / 60000) % 60,
+    seconds: Math.floor(ms / 1000) % 60,
+  };
+}
+
+// Saturdays still to come before the day (not counting today or the day).
+export function weekendsUntil(target: Date, now = new Date()) {
+  const days = daysUntil(target, now);
+  let count = 0;
+  for (let i = 1; i < Math.min(days, 3660); i++) {
+    const day = startOfDay(now);
+    day.setDate(day.getDate() + i);
+    if (day.getDay() === 6) count++;
+  }
+  return count;
+}
+
+// "2 weeks and 3 days", "5 days", "3 weeks".
+export function weeksAndDays(days: number) {
+  const weeks = Math.floor(days / 7);
+  const rest = days % 7;
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  if (!weeks) return plural(rest, "day");
+  return rest ? `${plural(weeks, "week")} and ${plural(rest, "day")}` : plural(weeks, "week");
+}

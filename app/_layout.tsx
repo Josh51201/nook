@@ -68,7 +68,8 @@ function RootStack() {
       <Stack.Screen name="profile" options={{ ...headerOptions, title: "Your profile", headerBackTitle: "Settings" }} />
       <Stack.Screen name="inbox" options={{ ...headerOptions, title: "Inbox" }} />
       <Stack.Screen name="market" options={{ ...headerOptions, title: "The Market" }} />
-      <Stack.Screen name="widget/[id]" options={{ ...headerOptions, title: "Widget" }} />
+      <Stack.Screen name="widget/[id]" options={{ ...headerOptions, title: "Widget", headerBackTitle: "Back" }} />
+      <Stack.Screen name="widget/view/[id]" options={{ ...headerOptions, title: "Widget" }} />
     </Stack>
   );
 }

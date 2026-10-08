@@ -28,7 +28,7 @@ import { Tap } from "../motion";
 // GIFT-007: widgets only ever show your own tucks (gifts *you're* getting
 // others) and Gatherings — never anything about tucks on your own gifts.
 
-type Palette = {
+export type Palette = {
   text: string;
   muted: string;
   accent: string;
@@ -38,6 +38,32 @@ type Palette = {
   // The deep partner of the widget's color (calendar pages, pills).
   deep: string;
 };
+
+// A widget's colors for its look; also used by its open page (app/widget/view).
+export function widgetPalette(look: WidgetConfig["look"], color: string | undefined, themeText: string): Palette {
+  const deep = deepColor(color ?? tilePalette[0]);
+  if (look === "bold") {
+    return {
+      text: "#ffffff",
+      muted: "rgba(255,255,255,0.78)",
+      accent: "#ffffff",
+      faint: "rgba(255,255,255,0.16)",
+      panel: "rgba(255,255,255,0.15)",
+      deep,
+    };
+  }
+  if (look === "outline") {
+    return { text: themeText, muted: `${themeText}99`, accent: deep, faint: `${deep}14`, panel: `${deep}12`, deep };
+  }
+  return {
+    text: "#2a2420",
+    muted: "#6f625a",
+    accent: deep,
+    faint: "rgba(255,255,255,0.55)",
+    panel: "rgba(255,255,255,0.62)",
+    deep,
+  };
+}
 
 export function WidgetView({
   widget,
@@ -63,26 +89,7 @@ export function WidgetView({
   const soft = color ?? tilePalette[0];
   const deep = deepColor(soft);
   const look = widget.look;
-  const palette: Palette =
-    look === "bold"
-      ? {
-          text: "#ffffff",
-          muted: "rgba(255,255,255,0.78)",
-          accent: "#ffffff",
-          faint: "rgba(255,255,255,0.16)",
-          panel: "rgba(255,255,255,0.15)",
-          deep,
-        }
-      : look === "outline"
-        ? { text: themeText, muted: `${themeText}99`, accent: deep, faint: `${deep}14`, panel: `${deep}12`, deep }
-        : {
-            text: "#2a2420",
-            muted: "#6f625a",
-            accent: deep,
-            faint: "rgba(255,255,255,0.55)",
-            panel: "rgba(255,255,255,0.62)",
-            deep,
-          };
+  const palette = widgetPalette(look, soft, themeText);
   const info = widgetKindInfo(widget.kind);
   const shape = widgetShape(width, height);
   const showTitle = widget.showTitle && shape !== "icon" && shape !== "strip";
@@ -244,7 +251,7 @@ function Empty({ icon, palette, text }: { icon: IconName; palette: Palette; text
 }
 
 // A tear-off calendar page: the month on a colored band, the day big below.
-function CalendarPage({ date, palette, size }: { date: Date; palette: Palette; size: number }) {
+export function CalendarPage({ date, palette, size }: { date: Date; palette: Palette; size: number }) {
   return (
     <View style={[styles.calendar, { width: size * 0.86, height: size }]}>
       <View style={[styles.calendarBand, { height: size * 0.26, backgroundColor: palette.deep }]}>
@@ -264,7 +271,7 @@ function CalendarPage({ date, palette, size }: { date: Date; palette: Palette; s
   );
 }
 
-function Pill({ palette, text }: { palette: Palette; text: string }) {
+export function Pill({ palette, text }: { palette: Palette; text: string }) {
   const onBold = palette.text === "#ffffff";
   return (
     <Text
@@ -279,7 +286,7 @@ function Pill({ palette, text }: { palette: Palette; text: string }) {
   );
 }
 
-function ProgressBar({ palette, done, total }: { palette: Palette; done: number; total: number }) {
+export function ProgressBar({ palette, done, total }: { palette: Palette; done: number; total: number }) {
   const fraction = total ? done / total : 0;
   return (
     <View style={[styles.track, { backgroundColor: palette.panel }]}>
@@ -293,25 +300,38 @@ function ProgressBar({ palette, done, total }: { palette: Palette; done: number;
 
 // --- Countdown ------------------------------------------------------------------
 
-function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"countdown">) {
-  const { source, gatheringId, customTitle, customDate, display } = widget.settings;
-  const [target, setTarget] = useState<{ title: string; date: string; icon: IconName } | null | undefined>(undefined);
+export type CountdownTarget = { title: string; date: string; icon: IconName; gatheringId?: string };
+
+// What a countdown is counting to: your own date, a chosen Gathering, or
+// the next one coming up. undefined while loading, null if there's nothing.
+export function useCountdownTarget(settings: WidgetOf<"countdown">["settings"], refreshKey: number) {
+  const { source, gatheringId, customTitle, customDate } = settings;
+  const [target, setTarget] = useState<CountdownTarget | null | undefined>(undefined);
 
   useEffect(() => {
     if (source === "custom") {
       setTarget(customDate ? { title: customTitle || "The big day", date: customDate, icon: "calendar" } : null);
       return;
     }
-    let query = supabase.from("gatherings").select("title, kind, ends_at");
+    let query = supabase.from("gatherings").select("id, title, kind, ends_at");
     query = source === "gathering" && gatheringId ? query.eq("id", gatheringId) : query.gt("ends_at", new Date().toISOString());
     query
       .order("ends_at")
       .limit(1)
       .then(({ data }) => {
         const row = data?.[0];
-        setTarget(row ? { title: row.title, date: row.ends_at, icon: gatheringKindInfo(row.kind).icon } : null);
+        setTarget(
+          row ? { title: row.title, date: row.ends_at, icon: gatheringKindInfo(row.kind).icon, gatheringId: row.id } : null
+        );
       });
   }, [source, gatheringId, customTitle, customDate, refreshKey]);
+
+  return target;
+}
+
+function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"countdown">) {
+  const { source, display } = widget.settings;
+  const target = useCountdownTarget(widget.settings, refreshKey);
 
   if (target === undefined) return null;
   if (!target) {
@@ -481,7 +501,7 @@ function Reminders({ widget, palette, height, shape, icon, onChange }: BodyProps
       <IconFace icon={icon} palette={palette} badge={remaining.length} />
     );
   }
-  if (!items.length) return <Empty icon="todo" palette={palette} text="Tap Edit to add reminders" />;
+  if (!items.length) return <Empty icon="todo" palette={palette} text="Tap to add some" />;
   if (shape === "strip") {
     return (
       <Strip
