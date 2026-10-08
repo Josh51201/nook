@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 23)_
+_Last updated: 2026-10-07 (rev 24)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -39,6 +39,7 @@ _Last updated: 2026-10-07 (rev 23)_
 ## 1b. Profile
 - **PROF-001** Each person has a customizable profile: their name, a picture (a chosen icon or their initials on a chosen color), an optional birthday, and a short "about me". Family in their Burrows can see it; nobody else. They can edit it any time (Settings → Your profile). _(Built; the specific options — 16 icons, 8 colors, bio up to 160 characters, birthday shown as day only — are proposed.)_
 - **PROF-002** A brand-new person is asked to set up their profile (name required, the rest optional) before they enter the Hearth, instead of showing their email as their name. New accounts start with no name rather than their email.
+- **PROF-004** Each person can list their allergies and dietary needs on their profile; a kid's managers set the kid's. Family in their Burrows can see them, like the rest of a profile. (For Potluck warnings — POT-005.) _(The choices — peanuts, tree nuts, dairy, eggs, gluten, shellfish, fish, soy, sesame; vegetarian, vegan, gluten-free, dairy-free, halal, kosher — are proposed.)_
 - **PROF-003** A kid's managers can set up the kid's profile too — picture, birthday and "about me" — from Manage. Only their managers can (and their family sees it, like anyone's).
 
 ## 2. Gift Nook (first Nook)
@@ -79,6 +80,16 @@ _Last updated: 2026-10-07 (rev 23)_
 
 - **GIFT-035** Each family automatically gets a Birthday Gathering for every member (kids included) who has set a birthday on their profile, created 30 days ahead, once a year, with that person as its honoree. It's created by whichever family phone opens Nook first, so nothing runs in the background. If an admin deletes one, it doesn't come back that year. _(Built; the 30-day lead time and "created by whoever opens Nook first" are proposed.)_
 - **GIFT-036** Idea Stash: a person can keep private notes about other people — things they mentioned liking, gift ideas, sizes — that only they can ever see, and turn an idea into a gift (e.g. a suggestion on that person's list) when ready. _(Not built yet; details proposed.)_
+
+## 2b. Potluck Nook
+- **POT-001** A Potluck Nook for who's bringing what to a get-together, so nobody doubles up and nothing's missing. _(Built 2026-10-07 — in the Market, on each Burrow's page, and on each Gift Nook Gathering ("Plan a Potluck for this"). Proposed details: a spot can't take more dishes than the host asked for; signing up to bring something RSVPs you as Going; Potlucks are deleted 90 days after the day, like Gatherings; allergies also editable in Potluck settings.)_
+- **POT-002** Every Potluck belongs to a Burrow, and that Burrow's members are who's invited. A Potluck can be tied to a Gathering (e.g. "Christmas at Grandma's" has both gift lists and a potluck) or stand on its own (a friends' or church potluck — make a Burrow for that group).
+- **POT-003** The host can list what's needed ("2 sides, 1 dessert, drinks"), and people claim those slots; anyone can also just add a dish they're bringing.
+- **POT-004** Dishes can be tagged with what's in them and which diets they suit.
+- **POT-005** When a dish clashes with the allergy or diet of someone coming, the Potluck warns about it and names the person ("Contains peanuts — Mia has a peanut allergy").
+- **POT-006** People RSVP — Going / Maybe / Can't make it — with how many they're bringing ("+2"), so the host knows how much food is needed. Warnings only count people who are coming. _(Proposed: a kid's managers RSVP for the kid; "Maybe" counts as coming for warnings.)_
+- **POT-007** The day before, everyone bringing something gets an inbox reminder ("Tomorrow: you're bringing mashed potatoes"); it can be turned off in Potluck settings.
+- **POT-008** Whoever makes a Potluck is its host and can add co-hosts; hosts and co-hosts can change it (slots, date, details). Burrow admins can step in too.
 
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
@@ -130,6 +141,7 @@ _Last updated: 2026-10-07 (rev 23)_
 - **2026-10-07 — Q-027 answered + tour, inbox, depth:** The tabs stay as built: "I think the way you did it looks great, but maybe we have an inbox in the top right now to show when you have stuff to look at." The tour "looks like a real apps tutorial," but needs to "scroll down to the add button" when widgets push it off screen. And: "I wanna add a little depth as well to the main screen... shadows or something on widgets... to add more pop and depth to the main hearth. I'll let you decide." → CORE-025, CORE-026, CORE-027, CORE-028, Q-027
 - **2026-10-07 — Tour only once; depth everywhere:** "The tutorial should only show up on the users first time opening the app, or just when they click on it in the settings. But right now its seeming to do it every time I go back into it." The separate Burrows-tab tour (which popped up again on the first Burrows visit) was folded into the one tour. And: "Is there a way to match that style throughout the app?" → CORE-026, CORE-028
 - **2026-10-07 — Potluck next:** After the Burrows tab, tour and depth work, asked what else to do first: "I agree, will let you do what is fit. Dont do the new nook just yet, get these last minute things out of the way first. But think next should be Potluck." Claude made the inbox work across all Nooks. Still waiting on Josh: Q-023 (email domain), Q-025 (app ID), Q-020 (account deletion). → CORE-027, section 7
+- **2026-10-07 — Potluck shaped:** Josh's picks: Potlucks can hang off a Gathering *or* stand alone ("Both"); hosts list slots and anyone can also add a dish; allergies and diets live on profiles, dishes are tagged, and clashes are warned about by name; RSVPs with a headcount; every Potluck belongs to a Burrow; a reminder the day before; host plus co-hosts can edit, with Burrow admins able to step in. → POT-001..008, PROF-004
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -147,7 +159,7 @@ _Last updated: 2026-10-07 (rev 23)_
 
 ## 6. Nook Backlog
 Josh's picks, in no particular order. Names and details are proposed until he confirms them; each will get proper requirement IDs when it's about to be built.
-- **Potluck** — who's bringing what to a Gathering, with allergies and dietary needs pulled from each person's profile. Builds on Gatherings.
+- **Potluck** — now being built: see section 2b (POT-001..008).
 - **Card & Contact List** — the holiday card list with addresses, who you've sent to and who sent you one each year; doubles as a contact list for family and friends.
 - **Pet Care** — shared pet profiles with "fed the dog?" check-offs so nobody feeds twice, plus vet, vaccine and medication dates with reminders; a Hearth widget shows the latest.
 - **Lent Out** — track things you've lent or borrowed (the drill, the casserole dish), to or from whom, with gentle reminders to ask for them back.
@@ -165,4 +177,4 @@ Other ideas Claude mentioned that Josh hasn't picked: Surprise Planner (plan a s
 ## 7. Up next
 Josh's stated priority, in order:
 1. ~~**Hearth organization (CORE-022..024)**~~ — built 2026-10-07 as Hollows.
-2. **Potluck Nook** (see Nook Backlog) — next, after the final polish pass.
+2. ~~**Potluck Nook**~~ — built 2026-10-07 (section 2b).

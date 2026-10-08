@@ -1,0 +1,151 @@
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { Text, View } from "react-native";
+
+import { LoadingScreen } from "../../components/motion";
+import { NookScroll } from "../../components/nook-scroll";
+import { Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
+import { useAuth } from "../../lib/auth-context";
+import { guarded } from "../../lib/feedback";
+import { countdown } from "../../lib/gift-nook";
+import { headcount, type Rsvp } from "../../lib/potluck";
+import { formatWhen } from "../../lib/potluck-data";
+import { supabase } from "../../lib/supabase";
+import { colors, ui } from "../../lib/theme";
+
+type Row = {
+  id: string;
+  title: string;
+  starts_at: string;
+  place: string | null;
+  burrow_id: string;
+  burrows: { name: string } | null;
+  potluck_rsvps: Rsvp[];
+  potluck_dishes: { brought_by: string; name: string }[];
+};
+
+const rsvpWords = { going: "You're going", maybe: "You're a maybe", no: "You can't make it" };
+
+// Potluck home (POT-001/002): every Potluck in your Burrows, soonest first.
+// Opened from a Burrow's page it shows just that Burrow's (?burrowId=).
+export default function PotluckHome() {
+  const router = useRouter();
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const { burrowId } = useLocalSearchParams<{ burrowId?: string }>();
+
+  const [rows, setRows] = useState<Row[]>([]);
+  const [burrowName, setBurrowName] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(
+    () =>
+      guarded(
+        async () => {
+          let query = supabase
+            .from("potlucks")
+            .select(
+              "id, title, starts_at, place, burrow_id, burrows(name), potluck_rsvps(profile_id, status, extra_guests), potluck_dishes(brought_by, name)"
+            )
+            .order("starts_at");
+          if (burrowId) query = query.eq("burrow_id", burrowId);
+          const { data, error: loadError } = await query;
+          if (loadError) setError(loadError.message);
+          setRows((data ?? []) as unknown as Row[]);
+          if (burrowId) {
+            const { data: burrow } = await supabase.from("burrows").select("name").eq("id", burrowId).maybeSingle();
+            setBurrowName(burrow?.name ?? null);
+          }
+          setIsLoading(false);
+        },
+        setError,
+        () => setIsLoading(false)
+      ),
+    [burrowId]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  if (isLoading) return <LoadingScreen cards={3} />;
+
+  // Still "coming up" until the day is over.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const upcoming = rows.filter((row) => new Date(row.starts_at) >= startOfToday);
+  const past = rows.filter((row) => new Date(row.starts_at) < startOfToday).reverse();
+
+  function card(row: Row, i: number) {
+    const mine = row.potluck_rsvps.find((r) => r.profile_id === userId);
+    const bringing = row.potluck_dishes.filter((d) => d.brought_by === userId).map((d) => d.name);
+    const { going } = headcount(row.potluck_rsvps);
+    const details = [
+      mine ? rsvpWords[mine.status] : "Not answered yet",
+      going ? `${going} coming` : null,
+      bringing.length ? `you're bringing ${bringing.join(", ")}` : null,
+    ].filter(Boolean);
+    return (
+      <NavCard
+        key={row.id}
+        index={i}
+        icon="potluck"
+        iconColor="#4f6b45"
+        iconBackground="#dfe8d6"
+        title={row.title}
+        subtitle={[
+          `${formatWhen(row.starts_at)} · ${countdown(row.starts_at)}`,
+          row.place,
+          burrowId ? null : row.burrows?.name,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        onPress={() => router.push(`/potluck/${row.id}`)}
+      >
+        <Text style={[ui.muted, { marginTop: 6, marginLeft: 52, color: mine ? colors.text : colors.bark }]}>
+          {details.join(" · ")}
+        </Text>
+      </NavCard>
+    );
+  }
+
+  return (
+    <NookScroll onRefresh={load}>
+      <Stack.Screen
+        options={{
+          title: burrowName ? `${burrowName} Potlucks` : "Potluck",
+          headerRight: () => (
+            <HeaderIcon icon="settings" label="Potluck settings" onPress={() => router.push("/potluck/settings")} />
+          ),
+        }}
+      />
+      {error ? <Text style={ui.error}>{error}</Text> : null}
+
+      <SectionHeader title="Coming up" icon="calendar" />
+      {upcoming.length === 0 ? (
+        <EmptyState
+          icon="potluck"
+          title="No Potlucks planned"
+          body="Plan one for a Gathering like Christmas, or on its own — then everyone signs up to bring something."
+        />
+      ) : (
+        upcoming.map(card)
+      )}
+      <Button
+        title="Plan a Potluck"
+        icon="add"
+        onPress={() => router.push({ pathname: "/potluck/form", params: burrowId ? { burrowId } : {} })}
+      />
+
+      {past.length > 0 ? (
+        <View style={{ gap: 14, opacity: 0.75 }}>
+          <SectionHeader title="Past" icon="given" />
+          {past.map(card)}
+        </View>
+      ) : null}
+    </NookScroll>
+  );
+}

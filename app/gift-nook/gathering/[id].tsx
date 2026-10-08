@@ -46,6 +46,7 @@ export default function GatheringScreen() {
   const [hasHonorees, setHasHonorees] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
   const [managedIds, setManagedIds] = useState<Set<string>>(new Set());
+  const [potlucks, setPotlucks] = useState<{ id: string; title: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,6 +85,14 @@ export default function GatheringScreen() {
             myRole.data?.role === "admin" || row.created_by === userId,
           );
           setManagedIds(new Set((managed.data ?? []).map((m) => m.profile_id)));
+
+          // POT-002: a Potluck can be planned for this Gathering.
+          const { data: potluckRows } = await supabase
+            .from("potlucks")
+            .select("id, title")
+            .eq("gathering_id", id)
+            .order("starts_at");
+          setPotlucks(potluckRows ?? []);
 
           const { data: honorees } = await supabase
             .from("gathering_honorees")
@@ -228,6 +237,29 @@ export default function GatheringScreen() {
           ) : null}
         </View>
       </Appear>
+
+      {potlucks.map((potluck, i) => (
+        <NavCard
+          key={potluck.id}
+          index={i}
+          icon="potluck"
+          iconColor="#4f6b45"
+          iconBackground="#dfe8d6"
+          title={potluck.title === gathering.title ? "Potluck" : potluck.title}
+          subtitle="Who's bringing what"
+          onPress={() => router.push(`/potluck/${potluck.id}`)}
+        />
+      ))}
+      {potlucks.length === 0 && !archived ? (
+        <NavCard
+          icon="potluck"
+          iconColor="#4f6b45"
+          iconBackground="#dfe8d6"
+          title="Plan a Potluck for this"
+          subtitle="Sort out who's bringing what"
+          onPress={() => router.push({ pathname: "/potluck/form", params: { gatheringId: id } })}
+        />
+      ) : null}
 
       <SectionHeader
         title={hasHonorees ? "Celebrating" : "Everyone's Wishbooks"}

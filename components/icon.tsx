@@ -16,6 +16,12 @@ const icons = {
   hearth: { ios: "house.fill", android: "home" },
   burrow: { ios: "house.lodge.fill", android: "cottage" },
   market: { ios: "storefront.fill", android: "storefront" },
+  potluck: { ios: "fork.knife", android: "restaurant" },
+  // Potluck
+  warning: { ios: "exclamationmark.triangle.fill", android: "warning" },
+  place: { ios: "mappin.and.ellipse", android: "location_on" },
+  clock: { ios: "clock", android: "schedule" },
+  minus: { ios: "minus", android: "remove" },
   // Gift Nook
   wishbook: { ios: "book.closed.fill", android: "menu_book" },
   tucks: { ios: "bag.fill", android: "shopping_bag" },

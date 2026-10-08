@@ -39,6 +39,22 @@ export const nookCatalog: NookDefinition[] = [
     },
   },
   {
+    id: "potluck",
+    title: "Potluck",
+    icon: "potluck",
+    iconColor: "#4f6b45",
+    tagline: "Who's bringing what",
+    description:
+      "Plan the food for a get-together: what's needed, who's bringing what, who's coming — with a heads-up when a dish clashes with someone's allergy.",
+    route: "/potluck",
+    available: true,
+    color: "#dfe8d6",
+    burrow: {
+      route: (burrowId) => `/potluck?burrowId=${burrowId}`,
+      blurb: "Who's bringing what",
+    },
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

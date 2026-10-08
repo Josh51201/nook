@@ -96,3 +96,9 @@ export const giftNookSettingDefaults = {
   notifyTuckChanged: true,
   notifyMemberJoined: true,
 };
+
+// Potluck settings. notifyReminder is also read by the database
+// (public.wants_potluck_reminder) — rename it in both places or not at all.
+export const potluckSettingDefaults = {
+  notifyReminder: true, // POT-007
+};

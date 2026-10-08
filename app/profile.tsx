@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 
+import { DietaryNeeds } from "../components/dietary-needs";
 import { LoadingScreen } from "../components/motion";
 import { NookScroll } from "../components/nook-scroll";
 import { ProfileForm } from "../components/profile-form";
@@ -8,7 +9,8 @@ import { friendlyError, tap } from "../lib/feedback";
 import { planBirthdays } from "../lib/plan-birthdays";
 import { useMyProfile } from "../lib/profile";
 
-// Edit your profile any time (PROF-001).
+// Edit your profile any time (PROF-001), including allergies and diets
+// (PROF-004), which save as you tap.
 export default function EditProfile() {
   const router = useRouter();
   const { profile, isLoading, save } = useMyProfile();
@@ -32,6 +34,7 @@ export default function EditProfile() {
           return null;
         }}
       />
+      <DietaryNeeds profileId={profile.id} who="you" />
     </NookScroll>
   );
 }

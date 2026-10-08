@@ -1,0 +1,24 @@
+import { Redirect, Stack } from "expo-router";
+
+import { nookStackOptions } from "../../components/nook-stack";
+import { useAuth } from "../../lib/auth-context";
+import { largeTitle } from "../../lib/theme";
+
+// Potluck Nook (POT-001..008).
+export default function PotluckLayout() {
+  const { session, isLoading } = useAuth();
+
+  if (!isLoading && !session) {
+    return <Redirect href="/sign-in" />;
+  }
+
+  return (
+    <Stack screenOptions={nookStackOptions as never}>
+      <Stack.Screen name="index" options={{ title: "Potluck", ...largeTitle }} />
+      <Stack.Screen name="[id]" options={{ title: "Potluck" }} />
+      <Stack.Screen name="form" options={{ title: "Plan a Potluck", presentation: "modal" }} />
+      <Stack.Screen name="dish-form" options={{ title: "Your dish", presentation: "modal" }} />
+      <Stack.Screen name="settings" options={{ title: "Potluck Settings" }} />
+    </Stack>
+  );
+}

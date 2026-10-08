@@ -1,37 +1,8 @@
-import { Redirect, Stack, useRouter } from "expo-router";
-import { Text } from "react-native";
+import { Redirect, Stack } from "expo-router";
 
-import { Icon } from "../../components/icon";
-import { Tap } from "../../components/motion";
+import { nookStackOptions } from "../../components/nook-stack";
 import { useAuth } from "../../lib/auth-context";
-import { colors, largeTitle, stackScreenOptions, ui } from "../../lib/theme";
-
-// "Back to the Hearth" for any Gift Nook screen opened straight from the Hearth
-// (a widget, say), where it's the first screen in the stack and so has no
-// back button of its own. Opened from a Burrow's page instead, it leads back
-// there.
-function HearthBack({ toBurrow }: { toBurrow: boolean }) {
-  const router = useRouter();
-  const label = toBurrow ? "Burrow" : "Hearth";
-  return (
-    <Tap
-      onPress={() => (router.canGoBack() ? router.back() : router.replace("/hearth"))}
-      hitSlop={12}
-      pressedScale={0.9}
-      style={[ui.row, { gap: 5 }]}
-      accessibilityLabel={`Back to the ${label}`}
-    >
-      <Icon name={toBurrow ? "burrow" : "hearth"} size={18} />
-      <Text style={{ color: colors.bark, fontSize: 17, fontWeight: "500" }}>{label}</Text>
-    </Tap>
-  );
-}
-
-// Was the Gift Nook opened from a Burrow's page (CORE-025)?
-function openedFromBurrow(navigation: { getParent: () => { getState: () => unknown } | undefined }) {
-  const root = navigation.getParent()?.getState() as { index: number; routes: { name: string }[] } | undefined;
-  return root?.routes[root.index - 1]?.name === "burrow/[id]";
-}
+import { largeTitle } from "../../lib/theme";
 
 export default function GiftNookLayout() {
   const { session, isLoading } = useAuth();
@@ -41,16 +12,7 @@ export default function GiftNookLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={({ navigation }) => ({
-        ...stackScreenOptions,
-        // First screen in this stack? Offer the way back to the Hearth.
-        headerLeft:
-          navigation.getState().routes.length <= 1
-            ? () => <HearthBack toBurrow={openedFromBurrow(navigation)} />
-            : undefined,
-      })}
-    >
+    <Stack screenOptions={nookStackOptions as never}>
       <Stack.Screen
         name="index"
         options={{

@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
+import { DietaryNeeds } from "../../../components/dietary-needs";
 import { LoadingScreen } from "../../../components/motion";
 import { NookScroll } from "../../../components/nook-scroll";
 import { ProfileForm } from "../../../components/profile-form";
@@ -10,7 +11,8 @@ import { planBirthdays } from "../../../lib/plan-birthdays";
 import { PROFILE_SELECT, type MyProfile } from "../../../lib/profile";
 import { supabase } from "../../../lib/supabase";
 
-// A manager edits a kid's picture, birthday and "about me" (PROF-003). The
+// A manager edits a kid's picture, birthday and "about me" (PROF-003), and
+// their allergies and diets (PROF-004). The
 // database only lets the kid's managers do this (profiles update policy).
 export default function ManagedProfile() {
   const router = useRouter();
@@ -48,6 +50,7 @@ export default function ManagedProfile() {
           return null;
         }}
       />
+      <DietaryNeeds profileId={id} who={profile.display_name ?? "them"} />
     </NookScroll>
   );
 }

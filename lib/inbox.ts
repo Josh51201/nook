@@ -16,6 +16,7 @@ export type Notice = {
     gift_id?: string;
     burrow_id?: string;
     gathering_id?: string;
+    potluck_id?: string;
   };
   created_at: string;
   read_at: string | null;
@@ -37,6 +38,12 @@ const kinds: Record<string, Record<string, KindInfo>> = {
     member_joined: {
       icon: "invite",
       route: (data) => (data.burrow_id ? `/burrow/${data.burrow_id}` : null),
+    },
+  },
+  potluck: {
+    potluck_reminder: {
+      icon: "potluck",
+      route: (data) => (data.potluck_id ? `/potluck/${data.potluck_id}` : null),
     },
   },
 };
