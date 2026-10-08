@@ -52,6 +52,8 @@ export default function WidgetEditor() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { layout, save, isLoading } = useHearthLayout();
   const { width: screenWidth } = useWindowDimensions();
+  // Hooks first: the screen returns early below while it loads.
+  const { key: themeKey } = useTheme();
   // The widget may live on the Hearth or inside a Hollow (CORE-022).
   const found = locate(layout, id);
   const original = found?.item.kind === "widget" ? (found.item as WidgetItem) : undefined;
@@ -72,7 +74,6 @@ export default function WidgetEditor() {
 
   const widget = draft.widget;
   const info = widgetKindInfo(widget.kind);
-  const { key: themeKey } = useTheme();
   const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
   const stride = (screenWidth - 40 - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
 
