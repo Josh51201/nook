@@ -777,27 +777,29 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       {/* The trash can, while dragging (CORE-040). */}
       {dragging ? (
         <View pointerEvents="none" style={[styles.trashArea, { bottom: (scope ? insets.bottom : 0) + 20 }]}>
-          <Animated.View
-            ref={trashRef}
-            entering={ZoomIn.duration(180)}
-            onLayout={() =>
-              trashRef.current?.measureInWindow((x, y, w, h) => {
-                trashRect.value = { x, y, w, h };
-              })
-            }
-            style={[
-              styles.trash,
-              {
-                backgroundColor: overTrash ? colors.error : theme.background,
-                borderColor: overTrash ? colors.error : `${theme.text}33`,
-                transform: [{ scale: overTrash ? 1.08 : 1 }],
-              },
-            ]}
-          >
-            <Icon name="trash" size={20} color={overTrash ? "#ffffff" : theme.text} />
-            <Text style={{ color: overTrash ? "#ffffff" : theme.text, fontWeight: "700" }}>
-              {overTrash ? "Let go to remove" : "Drag here to remove"}
-            </Text>
+          <Animated.View entering={ZoomIn.duration(180)}>
+            <View
+              ref={trashRef}
+              collapsable={false}
+              onLayout={() =>
+                trashRef.current?.measureInWindow((x, y, w, h) => {
+                  trashRect.value = { x, y, w, h };
+                })
+              }
+              style={[
+                styles.trash,
+                {
+                  backgroundColor: overTrash ? colors.error : theme.background,
+                  borderColor: overTrash ? colors.error : `${theme.text}33`,
+                  transform: [{ scale: overTrash ? 1.08 : 1 }],
+                },
+              ]}
+            >
+              <Icon name="trash" size={20} color={overTrash ? "#ffffff" : theme.text} />
+              <Text style={{ color: overTrash ? "#ffffff" : theme.text, fontWeight: "700" }}>
+                {overTrash ? "Let go to remove" : "Drag here to remove"}
+              </Text>
+            </View>
           </Animated.View>
         </View>
       ) : toast ? (
