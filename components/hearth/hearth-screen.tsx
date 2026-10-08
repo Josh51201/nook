@@ -21,7 +21,7 @@ import { useAuth } from "../../lib/auth-context";
 import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type Corners, type TileShape, type Wallpaper } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { removeUnusedPhotos } from "../../lib/hearth-photos";
-import { addPage, neighbourPage, removePage, renamePage, switchPage } from "../../lib/hearth-pages";
+import { addEmptyPage, addPage, neighbourPage, removePage, renamePage, switchPage } from "../../lib/hearth-pages";
 import { stackMates, stackPosition, visibleItems as oneOfEachStack } from "../../lib/hearth-stacks";
 import type { FoundItem } from "../../lib/hearth-find";
 import { copyMany, lockMany, moveManyToPage, moveManyToScope, recolorMany, removeMany } from "../../lib/hearth-select";
@@ -118,6 +118,11 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   const [decorating, setDecorating] = useState(false);
   const [pagesOpen, setPagesOpen] = useState(false);
   const [finding, setFinding] = useState(false);
+  // Dragging onto a page tab (CORE-051): where the tabs are, and which one
+  // the dragged item is over.
+  const tabRects = useSharedValue<{ id: string; x: number; y: number; w: number; h: number }[]>([]);
+  const tabNodes = useRef<Record<string, View | null>>({});
+  const [hoverTab, setHoverTab] = useState("");
   // A thing to bring into view and glow (from Find, CORE-063).
   const [revealId, setRevealId] = useState<string | null>(reveal ?? null);
   // Select many (CORE-060): picking several things to act on together.
@@ -174,6 +179,21 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   const pendingCancel = useRef<(() => void) | null>(null);
   const draggingNow = useRef(false);
 
+  // Where each page tab is right now, for dropping an item onto one.
+  function measureTabs() {
+    const ids = Object.keys(tabNodes.current).filter((id) => tabNodes.current[id]);
+    const found: { id: string; x: number; y: number; w: number; h: number }[] = [];
+    let waiting = ids.length;
+    if (!waiting) tabRects.value = [];
+    for (const id of ids) {
+      tabNodes.current[id]?.measureInWindow((x, y, w, h) => {
+        found.push({ id, x, y, w, h });
+        waiting -= 1;
+        if (waiting === 0) tabRects.value = found;
+      });
+    }
+  }
+
   const measureViewport = useCallback(() => {
     tourScroll.area.viewport.current?.measureInWindow((_x, y, _width, height) => {
       viewTop.value = y;
@@ -211,15 +231,19 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     };
   }, [scrollView, tourScroll.scrollRef]);
   const dragScroll = useMemo(
-    () => ({ scrollY, top: viewTop, bottom: viewBottom, onEdge: setEdge, trash: trashRect }),
-    [scrollY, viewTop, viewBottom, setEdge, trashRect]
+    () => ({ scrollY, top: viewTop, bottom: viewBottom, onEdge: setEdge, trash: trashRect, tabs: tabRects }),
+    [scrollY, viewTop, viewBottom, setEdge, trashRect, tabRects]
   );
 
   function onDraggingChange(isDragging: boolean) {
     draggingNow.current = isDragging;
     setDragging(isDragging);
-    if (isDragging) measureViewport();
-    else {
+    if (isDragging) {
+      measureViewport();
+      measureTabs();
+    } else {
+      tabRects.value = [];
+      setHoverTab("");
       setEdge(0);
       trashRect.value = null;
       setOverTrash(false);
@@ -296,6 +320,48 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     setPagesOpen(false);
     save(changes).catch((saveError: Error) => Alert.alert("Couldn't change page", saveError.message));
   }
+  // An item dropped on a page tab moves to that page; the "New page" tab
+  // makes one first (CORE-051).
+  function dropOnTab(item: HearthItem, tabId: string) {
+    setHoverTab("");
+    let work: HearthLayout = layout;
+    let target = tabId;
+    let created: Pick<HearthLayout, "pages" | "otherPages"> | null = null;
+    if (tabId === "new") {
+      const added = addEmptyPage(layout);
+      if (!added) return Alert.alert("That's the most pages", "Remove a page to make room for another.");
+      created = added.changes;
+      work = { ...layout, ...added.changes };
+      target = added.id;
+    }
+    if (target === layout.activePage) return;
+    const moved = moveManyToPage(work, [item.id], target);
+    if (!moved) return;
+    const before = { items: layout.items, otherPages: layout.otherPages };
+    const name = work.pages.find((p) => p.id === target)?.name ?? "that page";
+    tap("success");
+    save({ ...(created ?? {}), ...moved }).catch((saveError: Error) => Alert.alert("Couldn't move it", saveError.message));
+    settleToast();
+    showToast(
+      `Moved “${itemLabel(item)}” to ${name}`,
+      {
+        label: "Undo",
+        run: () => {
+          if (toastTimer.current) clearTimeout(toastTimer.current);
+          toastTimer.current = null;
+          tap();
+          save(before).catch(() => {});
+          setToast(null);
+        },
+      },
+      5000
+    );
+  }
+
+  function toggleLock(item: HearthItem) {
+    persistHere((inner) => updateItem(inner, item.id, { locked: item.locked ? undefined : true }));
+  }
+
   function swipePage(step: 1 | -1) {
     const next = neighbourPage(layout, step);
     if (next) goToPage(next);
@@ -322,6 +388,9 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     ]);
   }
   const canSwipePages = !scope && !editing && layout.pages.length > 1;
+  // The page tabs show with two or more pages, and always while editing, so
+  // there is somewhere to drop things.
+  const showStrip = !scope && (layout.pages.length > 1 || editing);
   const pageSwipe = Gesture.Pan()
     .runOnJS(true)
     .enabled(canSwipePages)
@@ -1037,7 +1106,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
           </View>
         </View>
 
-        {!scope && layout.pages.length > 1 ? (
+        {showStrip ? (
           <View onLayout={(e) => setStripHeight(e.nativeEvent.layout.height)}>
           <PageStrip
             pages={layout.pages}
@@ -1045,7 +1114,14 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
             accent={theme.accent}
             text={theme.text}
             background={theme.background}
+            hoverId={hoverTab}
+            canAdd={editing}
+            tabRef={(id, node) => {
+              if (node) tabNodes.current[id] = node;
+              else delete tabNodes.current[id];
+            }}
             onSwitch={goToPage}
+            onAdd={() => addNewPage("")}
           />
           </View>
         ) : null}
@@ -1181,6 +1257,9 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
                   flashId={flashId}
                   selecting={selecting}
                   selectedIds={picked}
+                  onToggleLock={toggleLock}
+                  onTabHover={setHoverTab}
+                  onDropOnTab={scope ? undefined : dropOnTab}
                   onDraggingChange={onDraggingChange}
                   dragScroll={dragScroll}
                   renderItem={renderItem}
@@ -1257,7 +1336,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         >
           <View style={[styles.trash, styles.toast, { backgroundColor: theme.text, borderColor: theme.text }]}>
             <Icon
-              name={toast.action?.label === "Undo" ? (toast.text.startsWith("Tidied") ? "tidy" : "trash") : toast.text.includes("ocked") ? "lock" : "copy"}
+              name={toast.action?.label === "Undo" ? (toast.text.startsWith("Tidied") ? "tidy" : toast.text.startsWith("Moved") ? "widgets" : "trash") : toast.text.includes("ocked") ? "lock" : "copy"}
               size={16}
               color={theme.background}
             />
@@ -1289,7 +1368,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
       {/* Content melts away under the top bar instead of meeting a hard edge. */}
       {barHeight > 0 ? (
         <GlowVeil
-          top={insets.top + barHeight + (!scope && layout.pages.length > 1 ? stripHeight : 0)}
+          top={insets.top + barHeight + (showStrip ? stripHeight : 0)}
           height={16}
           background={theme.background}
           color={theme.glow}

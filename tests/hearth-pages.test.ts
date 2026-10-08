@@ -104,3 +104,24 @@ describe("Hearth pages (CORE-051)", () => {
     expect(removed.items.map((i) => i.id)).toEqual(["a"]);
   });
 });
+
+describe("Dropping on a tab (CORE-051)", () => {
+  it("makes a new page without taking you to it", async () => {
+    const { addEmptyPage } = await import("../lib/hearth-pages");
+    const { moveManyToPage } = await import("../lib/hearth-select");
+    const start = withPages({ items: [nook("a"), nook("b", 2, 0)] });
+    const added = addEmptyPage(start)!;
+    expect(added.changes.pages).toHaveLength(2);
+    expect(added.changes.otherPages[added.id]).toEqual([]);
+    const moved = moveManyToPage({ ...start, ...added.changes }, ["a"], added.id)!;
+    expect(moved.items.map((i) => i.id)).toEqual(["b"]);
+    expect(moved.otherPages[added.id].map((i) => i.id)).toEqual(["a"]);
+  });
+
+  it("won't make more than the most pages", async () => {
+    const { addEmptyPage } = await import("../lib/hearth-pages");
+    let layout = withPages({});
+    for (let i = 1; i < MAX_PAGES; i++) layout = withPages(addPage(layout, `P${i}`)!.changes);
+    expect(addEmptyPage(layout)).toBeNull();
+  });
+});

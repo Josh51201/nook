@@ -20,14 +20,25 @@ export function PageStrip({
   accent,
   text,
   background,
+  hoverId,
+  canAdd,
+  tabRef,
   onSwitch,
+  onAdd,
 }: {
   pages: HearthPage[];
   activeId: string;
   accent: string;
   text: string;
   background: string;
+  // The tab a dragged item is over right now.
+  hoverId?: string;
+  // Show a "New page" tab (while editing).
+  canAdd?: boolean;
+  // So the screen can find each tab on screen (the id "new" is the + tab).
+  tabRef?: (id: string, node: View | null) => void;
   onSwitch: (id: string) => void;
+  onAdd?: () => void;
 }) {
   return (
     // flexGrow 0: a scroll view would otherwise stretch to fill the screen.
@@ -41,28 +52,55 @@ export function PageStrip({
       >
         {pages.map((page) => {
           const on = page.id === activeId;
+          const hover = hoverId === page.id;
           return (
-            <Tap
-              key={page.id}
-              onPress={() => onSwitch(page.id)}
-              pressedScale={0.94}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: on ? accent : `${accent}14`,
-                borderWidth: 1,
-                borderColor: on ? accent : `${accent}33`,
-              }}
-            >
-              <Text style={{ fontSize: 14, fontWeight: on ? "800" : "600", color: on ? background : text }} numberOfLines={1}>
-                {page.name}
-              </Text>
-            </Tap>
+            <View key={page.id} ref={(node) => tabRef?.(page.id, node)} collapsable={false} style={{ transform: [{ scale: hover ? 1.1 : 1 }] }}>
+              <Tap
+                onPress={() => onSwitch(page.id)}
+                pressedScale={0.94}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: hover ? accent : on ? accent : `${accent}14`,
+                  borderWidth: hover ? 2 : 1,
+                  borderColor: on || hover ? accent : `${accent}33`,
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: on || hover ? "800" : "600", color: on || hover ? background : text }} numberOfLines={1}>
+                  {page.name}
+                </Text>
+              </Tap>
+            </View>
           );
         })}
+        {canAdd && onAdd ? (
+          <View ref={(node) => tabRef?.("new", node)} collapsable={false} style={{ transform: [{ scale: hoverId === "new" ? 1.1 : 1 }] }}>
+            <Tap
+              onPress={onAdd}
+              pressedScale={0.94}
+              accessibilityRole="button"
+              accessibilityLabel="New page"
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                borderWidth: hoverId === "new" ? 2 : 1,
+                borderStyle: "dashed",
+                borderColor: accent,
+                backgroundColor: hoverId === "new" ? accent : "transparent",
+              }}
+            >
+              <Icon name="add" size={14} color={hoverId === "new" ? background : accent} />
+              <Text style={{ fontSize: 14, fontWeight: "700", color: hoverId === "new" ? background : accent }}>New page</Text>
+            </Tap>
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );

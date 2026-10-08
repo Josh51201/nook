@@ -25,6 +25,19 @@ export function switchPage(layout: HearthLayout, pageId: string): PageChanges | 
   return pack(layout.pages, pageId, itemsByPage(layout));
 }
 
+// A new empty page that you stay off (for dropping an item onto "New page").
+export function addEmptyPage(layout: HearthLayout): { id: string; changes: Pick<HearthLayout, "pages" | "otherPages"> } | null {
+  if (layout.pages.length >= MAX_PAGES) return null;
+  const id = newItemId("p");
+  return {
+    id,
+    changes: {
+      pages: [...layout.pages, { id, name: `Page ${layout.pages.length + 1}` }],
+      otherPages: { ...layout.otherPages, [id]: [] },
+    },
+  };
+}
+
 // A new empty page, which you're taken to.
 export function addPage(layout: HearthLayout, name: string): { changes: PageChanges; id: string } | null {
   if (layout.pages.length >= MAX_PAGES) return null;

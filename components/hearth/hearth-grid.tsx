@@ -37,6 +37,9 @@ export type DragScroll = {
   onEdge: (speed: number) => void;
   // Where the trash can is on screen while dragging (CORE-040), or null.
   trash: SharedValue<{ x: number; y: number; w: number; h: number } | null>;
+  // Where the page tabs are on screen while dragging (CORE-051): drop on one
+  // to move the item to that page.
+  tabs: SharedValue<{ id: string; x: number; y: number; w: number; h: number }[]>;
 };
 
 // How far around the trash can still counts as over it, and how long an item
@@ -73,6 +76,9 @@ export function HearthGrid({
   flashId,
   selecting = false,
   selectedIds,
+  onToggleLock,
+  onTabHover,
+  onDropOnTab,
   renderItem,
 }: {
   items: HearthItem[];
@@ -105,6 +111,11 @@ export function HearthGrid({
   // nothing drags or resizes.
   selecting?: boolean;
   selectedIds?: string[];
+  // The lock button in Edit (CORE-061).
+  onToggleLock?: (item: HearthItem) => void;
+  // A dragged item is over a page tab ("" when it isn't), and let go there.
+  onTabHover?: (tabId: string) => void;
+  onDropOnTab?: (item: HearthItem, tabId: string) => void;
   renderItem: (item: HearthItem, size: { width: number; height: number }) => ReactNode;
 }) {
   const cell = (width - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
@@ -213,6 +224,13 @@ export function HearthGrid({
           flash={flashId === item.id}
           selecting={selecting}
           selected={selectedIds?.includes(item.id) ?? false}
+          onToggleLock={onToggleLock ? () => onToggleLock(item) : undefined}
+          onTabHover={(id) => onTabHover?.(id)}
+          onTabDrop={(id) => {
+            finish();
+            onTabHover?.("");
+            onDropOnTab?.(item, id);
+          }}
           onTrash={() => {
             finish();
             onTrashHover?.(false);
@@ -321,6 +339,9 @@ function GridItem({
   flash,
   selecting,
   selected,
+  onToggleLock,
+  onTabHover,
+  onTabDrop,
   onBegin,
   onGhost,
   onDrop,
@@ -344,6 +365,9 @@ function GridItem({
   flash?: boolean;
   selecting: boolean;
   selected: boolean;
+  onToggleLock?: () => void;
+  onTabHover: (tabId: string) => void;
+  onTabDrop: (tabId: string) => void;
   onBegin: () => void;
   onGhost: (rect: GridRect, finger: { x: number; y: number } | null) => void;
   onDrop: (x: number, y: number) => void;
@@ -384,7 +408,9 @@ function GridItem({
   const dragging = useSharedValue(false);
   const lastSpeed = useSharedValue(0);
   const geo = useSharedValue({ x: 0, y: 0, w: 1, h: 1, stride: 1 });
-  const { scrollY, top: viewTop, bottom: viewBottom, onEdge, trash } = dragScroll;
+  const { scrollY, top: viewTop, bottom: viewBottom, onEdge, trash, tabs } = dragScroll;
+  // The page tab the finger is over, or "".
+  const tabOver = useSharedValue("");
   // Held over the trash can: it shrinks away a little, ready to go.
   const overTrash = useSharedValue(false);
   const doomed = useSharedValue(0);
@@ -423,13 +449,18 @@ function GridItem({
   }, [item.x, item.y, stride, left, top, dragX, dragY, dropping]);
 
   // Latest callbacks without rebuilding gestures mid-drag.
-  const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover, onTrashArmed });
-  handlers.current = { onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover, onTrashArmed };
+  const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop });
+  handlers.current = { onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop };
   const trashArmed = useCallback((on: boolean) => {
     if (on) tap("success");
     handlers.current.onTrashArmed(on);
   }, []);
   const trashDrop = useCallback(() => handlers.current.onTrash(), []);
+  const tabHover = useCallback((id: string) => {
+    if (id) tap();
+    handlers.current.onTabHover(id);
+  }, []);
+  const tabDrop = useCallback((id: string) => handlers.current.onTabDrop(id), []);
   const trashHover = useCallback((over: boolean) => {
     if (over) tap();
     handlers.current.onTrashHover(over);
@@ -550,9 +581,27 @@ function GridItem({
           }
           scheduleOnRN(trashHover, over);
         }
+        // Over a page tab?
+        const spots = tabs.value;
+        let hit = "";
+        for (let i = 0; i < spots.length; i++) {
+          const spot = spots[i];
+          if (
+            event.absoluteX >= spot.x - 4 &&
+            event.absoluteX <= spot.x + spot.w + 4 &&
+            event.absoluteY >= spot.y - 6 &&
+            event.absoluteY <= spot.y + spot.h + 6
+          ) {
+            hit = spot.id;
+          }
+        }
+        if (hit !== tabOver.value) {
+          tabOver.value = hit;
+          scheduleOnRN(tabHover, hit);
+        }
         // Near the top or bottom of the screen? Scroll that way (not while
-        // aiming at the trash can).
-        const speed = over ? 0 : edgeScrollSpeed(event.absoluteY, viewTop.value, viewBottom.value);
+        // aiming at the trash can or a page tab).
+        const speed = over || hit !== "" ? 0 : edgeScrollSpeed(event.absoluteY, viewTop.value, viewBottom.value);
         if (speed !== lastSpeed.value) {
           lastSpeed.value = speed;
           scheduleOnRN(edge, speed);
@@ -562,6 +611,11 @@ function GridItem({
         if (overTrash.value && armed.value === 1) {
           dropping.value = false;
           scheduleOnRN(trashDrop);
+          return;
+        }
+        if (tabOver.value !== "") {
+          dropping.value = false;
+          scheduleOnRN(tabDrop, tabOver.value);
           return;
         }
         const moved = targetX.value !== x || targetY.value !== y;
@@ -577,6 +631,10 @@ function GridItem({
           scheduleOnRN(trashHover, false);
         }
         doomed.value = withTiming(0, { duration: 200 });
+        if (tabOver.value !== "") {
+          tabOver.value = "";
+          scheduleOnRN(tabHover, "");
+        }
         if (lastSpeed.value !== 0) {
           lastSpeed.value = 0;
           scheduleOnRN(edge, 0);
@@ -588,7 +646,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [selecting, item.locked, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [selecting, item.locked, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, tabs, tabOver, tabHover, tabDrop, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
@@ -658,10 +716,22 @@ function GridItem({
           </View>
         </>
       ) : null}
-      {editing && !selecting && item.locked ? (
-        <View pointerEvents="none" style={[styles.lockBadge, { borderColor: accent }]} accessibilityLabel="Locked in place">
-          <Icon name="lock" size={12} color={accent} />
-        </View>
+      {editing && !selecting && onToggleLock && !active ? (
+        <Animated.View entering={FadeIn.duration(200)} style={styles.lockBadge}>
+          <Tap
+            onPress={() => {
+              tap("success");
+              onToggleLock();
+            }}
+            hitSlop={12}
+            pressedScale={0.8}
+            style={[styles.copyButton, { borderColor: accent, backgroundColor: item.locked ? accent : "#ffffff" }]}
+            accessibilityRole="button"
+            accessibilityLabel={item.locked ? "Unlock" : "Lock in place"}
+          >
+            <Icon name={item.locked ? "lock" : "unlock"} size={12} color={item.locked ? "#ffffff" : accent} />
+          </Tap>
+        </Animated.View>
       ) : null}
       {editing && !selecting && !item.locked ? (
         <GestureDetector gesture={resizeGesture}>
@@ -709,18 +779,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   copy: { position: "absolute", left: -6, top: -6 },
-  lockBadge: {
-    position: "absolute",
-    right: -6,
-    top: -6,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 2,
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  lockBadge: { position: "absolute", right: -6, top: -6 },
   pick: {
     position: "absolute",
     left: -6,

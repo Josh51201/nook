@@ -69,6 +69,7 @@ const icons = {
   filter: { ios: "line.3.horizontal.decrease", android: "filter_list" },
   undo: { ios: "arrow.uturn.backward", android: "undo" },
   lock: { ios: "lock.fill", android: "lock" },
+  unlock: { ios: "lock.open.fill", android: "lock_open" },
   search: { ios: "magnifyingglass", android: "search" },
   tidy: { ios: "wand.and.stars", android: "auto_fix_high" },
   door: { ios: "door.left.hand.open", android: "door_open" },
