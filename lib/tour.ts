@@ -1,13 +1,18 @@
 import type { IconName } from "../components/icon";
 
 // The first-time tour (CORE-026): little pop-up bubbles that point at parts
-// of the app and say what they do. Pure logic only (no React), so it's
-// unit-testable; components/tour.tsx draws it.
+// of the app and say what they do. One tour, shown once — the first time
+// someone reaches their Hearth — or again from Settings. It walks over to
+// the Burrows tab partway through and back to the Hearth at the end.
+// Pure logic only (no React), so it's unit-testable; components/tour.tsx
+// draws it.
 //
-// Which tours someone has seen is saved to their account (nook_settings,
-// nook = 'tours'), so it doesn't come back on a new phone.
+// Having seen it is saved to the account (nook_settings, nook = 'tours'),
+// so it doesn't come back on a new phone, and on the phone too, in case
+// that save doesn't make it.
 
-export type TourKey = "hearth" | "burrows";
+// The screens (tabs) a tour step can take you to.
+export type TourScreen = "hearth" | "burrows";
 
 export type TourStep = {
   icon: IconName;
@@ -20,83 +25,88 @@ export type TourStep = {
   // Skip this step entirely when its target doesn't exist — e.g. the Edit
   // button, which only appears once something is on the Hearth.
   optional?: boolean;
+  // Go to this tab first. Steps without one work from anywhere (the tab
+  // bar, or a bubble in the middle).
+  screen?: TourScreen;
 };
 
-export const tours: Record<TourKey, TourStep[]> = {
-  hearth: [
-    {
-      icon: "hearth",
-      title: "Welcome to your Hearth",
-      body: "This is home — everything in Nook starts here. Here's a quick look around.",
-    },
-    {
-      icon: "bell",
-      target: "hearth-inbox",
-      title: "Your inbox",
-      body: "News from your Nooks lands here — a Gathering coming up, someone joining your Burrow. A little number shows when there's something new.",
-    },
-    {
-      icon: "drag",
-      target: "hearth-edit",
-      optional: true,
-      title: "Make it yours",
-      body: "Tap Edit, or hold anything, to drag it around, resize it from its corner, or drop it onto a Hollow.",
-    },
-    {
-      icon: "add",
-      target: "hearth-add",
-      title: "Add to your Hearth",
-      body: "Tap here to add widgets — countdowns, reminders, notes — plus text, and Hollows: little houses and stumps you can step into to keep things tidy.",
-    },
-    {
-      icon: "market",
-      target: "hearth-market",
-      optional: true,
-      title: "The Market",
-      body: "Nooks live here — little apps like the Gift Nook. Add one and it shows up as a tile on your Hearth.",
-    },
-    {
-      icon: "burrow",
-      target: "tab-burrows",
-      title: "Burrows are your people",
-      body: "A Burrow is your family or group. Start one, or join one with a Knock code. Every Nook that shares with people — like the Gift Nook — uses your Burrows.",
-    },
-    {
-      icon: "settings",
-      target: "tab-settings",
-      title: "Settings",
-      body: "Your profile, your Hearth's name and theme — and this tour again, whenever you want it.",
-    },
-  ],
-  burrows: [
-    {
-      icon: "burrow",
-      target: "burrows-start",
-      title: "Start a Burrow",
-      body: "Give it a name, like “The Collinses”. You'll be its admin, and you can invite people by sending them a Knock.",
-    },
-    {
-      icon: "door",
-      target: "burrows-code",
-      title: "Got a Knock?",
-      body: "When someone invites you, they'll send you a 6-letter code. Type it here to join their Burrow.",
-    },
-    {
-      icon: "group",
-      title: "One Burrow, every Nook",
-      body: "Your Burrows are shared by every Nook that needs family — so everyone only has to join once.",
-    },
-  ],
-};
+export const firstTour: TourStep[] = [
+  {
+    icon: "hearth",
+    title: "Welcome to your Hearth",
+    body: "This is home — everything in Nook starts here. Here's a quick look around.",
+  },
+  {
+    icon: "bell",
+    screen: "hearth",
+    target: "hearth-inbox",
+    title: "Your inbox",
+    body: "News from your Nooks lands here — a Gathering coming up, someone joining your Burrow. A little number shows when there's something new.",
+  },
+  {
+    icon: "drag",
+    screen: "hearth",
+    target: "hearth-edit",
+    optional: true,
+    title: "Make it yours",
+    body: "Tap Edit, or hold anything, to drag it around, resize it from its corner, or drop it onto a Hollow.",
+  },
+  {
+    icon: "add",
+    screen: "hearth",
+    target: "hearth-add",
+    title: "Add to your Hearth",
+    body: "Tap here to add widgets — countdowns, reminders, notes — plus text, and Hollows: little houses and stumps you can step into to keep things tidy.",
+  },
+  {
+    icon: "market",
+    screen: "hearth",
+    target: "hearth-market",
+    optional: true,
+    title: "The Market",
+    body: "Nooks live here — little apps like the Gift Nook. Add one and it shows up as a tile on your Hearth.",
+  },
+  {
+    icon: "burrow",
+    target: "tab-burrows",
+    title: "Burrows are your people",
+    body: "A Burrow is your family or group. Every Nook that shares with people — like the Gift Nook — uses the same Burrows, so everyone only joins once. Let's take a peek.",
+  },
+  {
+    icon: "burrow",
+    screen: "burrows",
+    target: "burrows-start",
+    title: "Start a Burrow",
+    body: "Give it a name, like “The Collinses”. You'll be its admin, and you can invite people by sending them a Knock.",
+  },
+  {
+    icon: "door",
+    screen: "burrows",
+    target: "burrows-code",
+    title: "Got a Knock?",
+    body: "When someone invites you, they'll send you a 6-letter code. Type it here to join their Burrow.",
+  },
+  {
+    icon: "settings",
+    target: "tab-settings",
+    title: "Settings",
+    body: "Your profile, your Hearth's name and theme — and this tour again, whenever you want it.",
+  },
+];
 
 export type Rect = { x: number; y: number; width: number; height: number };
 export type Screen = { width: number; height: number };
 
-// The steps that will actually show, given which targets exist right now.
-export function resolveSteps(steps: TourStep[], present: Set<string>): TourStep[] {
+// The steps that will actually show, given which targets exist on the
+// screen the tour starts from. Steps on another tab are kept as they are;
+// their targets are looked for once the tour gets there.
+export function resolveSteps(steps: TourStep[], present: Set<string>, startScreen: TourScreen = "hearth"): TourStep[] {
   return steps
-    .filter((step) => !step.optional || (step.target && present.has(step.target)))
-    .map((step) => (step.target && !present.has(step.target) ? { ...step, target: undefined } : step));
+    .filter((step) => (step.screen && step.screen !== startScreen) || !step.optional || present.has(step.target ?? ""))
+    .map((step) => {
+      if (step.screen && step.screen !== startScreen) return step;
+      return step.target && !present.has(step.target) ? { ...step, target: undefined } : step;
+    });
 }
 
 // Is a measured target fully inside `bounds` (the screen, or the visible

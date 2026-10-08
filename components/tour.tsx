@@ -1,4 +1,5 @@
-import { useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router, useFocusEffect } from "expo-router";
 import {
   createContext,
   useCallback,
@@ -36,34 +37,42 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
+import { useAuth } from "../lib/auth-context";
 import { tap } from "../lib/feedback";
 import { useNookSettings } from "../lib/nook-settings";
 import { colors, shadow } from "../lib/theme";
 import {
+  firstTour,
   holePath,
   isWithin,
   placeBubble,
   resolveSteps,
   revealOffset,
   spotlight,
-  tours,
   type Rect,
-  type TourKey,
+  type TourScreen,
   type TourStep,
 } from "../lib/tour";
 import { Icon, IconBadge } from "./icon";
 import { Tap } from "./motion";
 
 // The first-time tour (CORE-026). Screens wrap the things worth pointing at
-// in <TourTarget id="…">, and call useTourAutoStart("hearth", ready) so the
-// tour starts the first time someone lands there. The overlay dims the
+// in <TourTarget id="…">; the Hearth calls useTourAutoStart(ready) so the
+// tour starts the first time someone ever lands there — and never again,
+// unless they ask for it in Settings. The overlay dims the
 // screen, cuts a soft spotlight around the target, and a bubble with an
 // arrow explains it. Targets inside a <TourScrollArea> are scrolled into
 // view first. Lives in the tabs layout, so it can point at the tab bar too.
 // Outside the provider (e.g. inside a Hollow) all of it is a no-op.
 
-type Seen = Record<TourKey, boolean>;
-const tourDefaults: Seen = { hearth: false, burrows: false };
+const tourDefaults = { hearth: false };
+
+// Once the tour has started for someone, it never starts again on its own.
+// Remembered three ways, so nothing can bring it back by accident: on the
+// account (follows them to a new phone), on this phone (in case that save
+// fails), and for as long as the app stays open.
+const startedThisSession = new Set<string>();
+const phoneKey = (userId: string) => `nook.tourSeen.${userId}`;
 
 // A scrolling list the tour can move to bring a target into view.
 type ScrollArea = {
@@ -77,7 +86,7 @@ type Target = { ref: RefObject<View | null>; area: ScrollArea | null };
 
 type TourContextValue = {
   register: (id: string, target: Target) => () => void;
-  maybeStart: (key: TourKey) => void;
+  maybeStart: () => void;
   replay: () => Promise<void>;
 };
 
@@ -95,12 +104,24 @@ function measure(view: View | null | undefined) {
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function TourProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  const userId = session?.user.id;
   const { settings: seen, update, isLoading, error } = useNookSettings("tours", tourDefaults);
+  const [seenOnPhone, setSeenOnPhone] = useState<boolean | null>(null);
   const targets = useRef(new Map<string, Target>());
   const scrolled = useRef(new Set<ScrollArea>());
-  const [active, setActive] = useState<{ key: TourKey; steps: TourStep[] } | null>(null);
+  const screen = useRef<TourScreen>("hearth");
+  const [active, setActive] = useState<TourStep[] | null>(null);
   const starting = useRef(false);
   const { width, height } = useWindowDimensions();
+
+  useEffect(() => {
+    if (!userId) return;
+    setSeenOnPhone(null);
+    AsyncStorage.getItem(phoneKey(userId))
+      .then((value) => setSeenOnPhone(value === "1"))
+      .catch(() => setSeenOnPhone(false));
+  }, [userId]);
 
   const register = useCallback((id: string, target: Target) => {
     targets.current.set(id, target);
@@ -109,10 +130,20 @@ export function TourProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Find a target on screen, scrolling its list to it if need be. Null if
-  // it can't be shown (the bubble then sits in the middle).
+  // Get to a step's target: switch tabs if the step lives on another one,
+  // wait for the target to appear (that tab may still be loading), and
+  // scroll its list to it if need be. Null if it can't be shown (the bubble
+  // then sits in the middle).
   const locate = useCallback(
-    async (id: string) => {
+    async (step: TourStep) => {
+      if (step.screen && step.screen !== screen.current) {
+        screen.current = step.screen;
+        router.navigate(`/${step.screen}`);
+        await wait(450);
+      }
+      const id = step.target;
+      if (!id) return null;
+      for (let tries = 0; tries < 25 && !targets.current.get(id)?.ref.current; tries++) await wait(120);
       const target = targets.current.get(id);
       let rect = await measure(target?.ref.current);
       const area = target?.area;
@@ -131,42 +162,58 @@ export function TourProvider({ children }: { children: ReactNode }) {
     [width, height]
   );
 
-  const maybeStart = useCallback(
-    (key: TourKey) => {
-      // Not loaded (or couldn't load) yet: better to skip than to show the
-      // tour every single time.
-      if (isLoading || error || seen[key] || active || starting.current) return;
-      starting.current = true;
-      // Give the screen a moment to settle (entrance animations, layout).
-      setTimeout(() => {
-        starting.current = false;
-        const present = new Set(
-          [...targets.current].filter(([, target]) => target.ref.current).map(([id]) => id)
-        );
-        const steps = resolveSteps(tours[key], present);
-        setActive((current) => current ?? { key, steps });
-      }, 700);
-    },
-    [isLoading, error, seen, active]
-  );
+  const maybeStart = useCallback(() => {
+    // Wait until we know for sure it hasn't been seen — on the account and
+    // on this phone. If either can't be read, skip it rather than risk
+    // showing it again.
+    if (!userId || isLoading || error || seenOnPhone !== false || seen.hearth) return;
+    if (startedThisSession.has(userId) || active || starting.current) return;
+    starting.current = true;
+    // Give the screen a moment to settle (entrance animations, layout).
+    setTimeout(() => {
+      starting.current = false;
+      if (startedThisSession.has(userId)) return;
+      // Counts as seen from the moment it starts, so closing the app (or
+      // wandering off) halfway through doesn't bring it back.
+      startedThisSession.add(userId);
+      setSeenOnPhone(true);
+      AsyncStorage.setItem(phoneKey(userId), "1").catch(() => {});
+      update({ hearth: true }).catch(() => {});
+
+      const present = new Set(
+        [...targets.current].filter(([, target]) => target.ref.current).map(([id]) => id)
+      );
+      screen.current = "hearth";
+      setActive(resolveSteps(firstTour, present, "hearth"));
+    }, 700);
+  }, [userId, isLoading, error, seenOnPhone, seen.hearth, active, update]);
 
   const finish = useCallback(() => {
-    if (!active) return;
-    update({ [active.key]: true } as Partial<Seen>).catch(() => {});
-    // Put any list we scrolled back at the top, where it started.
+    // Back home to the Hearth, with any list we scrolled back at the top.
+    if (screen.current !== "hearth") {
+      screen.current = "hearth";
+      router.navigate("/hearth");
+    }
     scrolled.current.forEach((area) => area.scrollTo(0));
     scrolled.current.clear();
     setActive(null);
-  }, [active, update]);
+  }, []);
 
-  const replay = useCallback(() => update({ hearth: false, burrows: false }), [update]);
+  // Settings → "Show me around again".
+  const replay = useCallback(async () => {
+    if (!userId) return;
+    startedThisSession.delete(userId);
+    await AsyncStorage.removeItem(phoneKey(userId)).catch(() => {});
+    setSeenOnPhone(false);
+    await update({ hearth: false });
+  }, [userId, update]);
 
   const value = useMemo(() => ({ register, maybeStart, replay }), [register, maybeStart, replay]);
 
   return (
     <TourContext.Provider value={value}>
       {children}
-      {active ? <TourOverlay key={active.key} steps={active.steps} locate={locate} onDone={finish} /> : null}
+      {active ? <TourOverlay steps={active} locate={locate} onDone={finish} /> : null}
     </TourContext.Provider>
   );
 }
@@ -196,14 +243,15 @@ export function TourTarget({
   );
 }
 
-// Start this screen's tour the first time someone sees it, once `ready`
-// (its content has loaded, so the things to point at exist).
-export function useTourAutoStart(key: TourKey, ready: boolean) {
+// Start the tour the first time someone ever sees this screen (the
+// Hearth), once `ready` (its content has loaded, so the things to point at
+// exist).
+export function useTourAutoStart(ready: boolean) {
   const tour = useContext(TourContext);
   useFocusEffect(
     useCallback(() => {
-      if (ready) tour?.maybeStart(key);
-    }, [tour, key, ready])
+      if (ready) tour?.maybeStart();
+    }, [tour, ready])
   );
 }
 
@@ -253,7 +301,7 @@ function TourOverlay({
   onDone,
 }: {
   steps: TourStep[];
-  locate: (id: string) => Promise<Rect | null>;
+  locate: (step: TourStep) => Promise<Rect | null>;
   onDone: () => void;
 }) {
   const { width, height } = useWindowDimensions();
@@ -269,8 +317,8 @@ function TourOverlay({
 
   useEffect(() => {
     let cancelled = false;
-    const target = steps[index]?.target;
-    (target ? locate(target) : Promise.resolve(null)).then((next) => {
+    const current = steps[index];
+    (current ? locate(current) : Promise.resolve(null)).then((next) => {
       if (!cancelled) setFound({ index, rect: next });
     });
     return () => {

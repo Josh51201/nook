@@ -1,7 +1,7 @@
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors } from "../lib/theme";
+import { colors, depth } from "../lib/theme";
 
 // One icon set for the whole app: Apple's SF Symbols on iPhone, Google's
 // Material Symbols on Android (both via expo-symbols, built into Expo Go).
@@ -137,6 +137,7 @@ export function IconBadge({
         backgroundColor: background,
         alignItems: "center",
         justifyContent: "center",
+        boxShadow: depth.badge,
       }}
     >
       <Icon name={name} size={size * 0.52} color={color} />

@@ -3,13 +3,15 @@ import { RefreshControl, type StyleProp, type ViewStyle } from "react-native";
 import { KeyboardAwareScrollView, KeyboardToolbar } from "react-native-keyboard-controller";
 
 import { colors, ui } from "../lib/theme";
+import { Firelight } from "./firelight";
 import { TourScrollArea, type useTourScrollArea } from "./tour";
 
 // The scrolling body for every Nook screen. It keeps whatever field you're
 // typing in lifted above the keyboard (iOS and Android), puts a Done /
 // next-field bar on top of the keyboard (multi-line notes have no Done key
 // otherwise), and gives a real pull-to-refresh spinner when `onRefresh`
-// is passed. Pass `tour` (from useTourScrollArea) to let the first-time
+// is passed. A soft firelight glow sits behind the top of the page
+// (CORE-028). Pass `tour` (from useTourScrollArea) to let the first-time
 // tour scroll this screen to what it's pointing at.
 export function NookScroll({
   children,
@@ -48,6 +50,9 @@ export function NookScroll({
         ) : undefined
       }
     >
+      {/* Inside the scroll (not behind it) so the ScrollView stays the
+          screen's first view — iPhone large titles depend on that. */}
+      <Firelight />
       {children}
     </KeyboardAwareScrollView>
   );

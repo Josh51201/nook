@@ -8,7 +8,7 @@ import {
   placeBubble,
   resolveSteps,
   revealOffset,
-  tours,
+  firstTour,
   type TourStep,
 } from "../lib/tour";
 
@@ -36,10 +36,20 @@ describe("resolveSteps", () => {
     expect(resolved[1].target).toBeUndefined();
   });
 
-  it("never drops a tour down to nothing", () => {
-    for (const tour of Object.values(tours)) {
-      expect(resolveSteps(tour, new Set()).length).toBeGreaterThan(0);
-    }
+  it("never drops the tour down to nothing", () => {
+    expect(resolveSteps(firstTour, new Set()).length).toBeGreaterThan(0);
+  });
+
+  it("keeps steps on another tab as they are, to be found once the tour gets there", () => {
+    // Starting on the Hearth, the Burrows tab's targets don't exist yet.
+    const resolved = resolveSteps(firstTour, new Set(["hearth-inbox", "hearth-add", "tab-burrows", "tab-settings"]));
+    const onBurrows = resolved.filter((step) => step.screen === "burrows");
+    expect(onBurrows.map((step) => step.target)).toEqual(["burrows-start", "burrows-code"]);
+  });
+
+  it("is one tour: it visits the Burrows tab, and ends on a step that works from any tab", () => {
+    expect(firstTour.some((step) => step.screen === "burrows")).toBe(true);
+    expect(firstTour.at(-1)?.screen).toBeUndefined();
   });
 });
 

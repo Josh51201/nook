@@ -1,11 +1,10 @@
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { tap } from "../../lib/feedback";
 import {
@@ -39,6 +38,7 @@ import { supabase } from "../../lib/supabase";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { touchesGuarded } from "../../lib/touch-guard";
 import { widgetKindInfo, type WidgetConfig } from "../../lib/widgets";
+import { Firelight } from "../firelight";
 import { Icon, IconBadge } from "../icon";
 import { Skeleton, Tap } from "../motion";
 import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from "../tour";
@@ -80,7 +80,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const unread = useUnreadCount(!scope, refreshKey);
 
   // The first time someone lands on their Hearth, show them around (CORE-026).
-  useTourAutoStart("hearth", !scope && !isLoading && !error);
+  useTourAutoStart(!scope && !isLoading && !error);
 
   // On the Hearth, tuck the tab bar away while a sheet is open so the sheet
   // reaches the bottom of the screen (CORE-025).
@@ -295,7 +295,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 
   return (
     <View style={[styles.fill, { backgroundColor: theme.background }]}>
-      <Firelight color={theme.glow} strength={layout.theme === "dusk" ? 0.34 : 0.26} />
+      <Firelight variant="hearth" color={theme.glow} strength={layout.theme === "dusk" ? 0.34 : 0.26} />
       <SafeAreaView style={styles.fill} edges={["top", "left", "right"]}>
         <StatusBar style={layout.theme === "dusk" ? "light" : "dark"} />
         <TourScrollArea area={tourScroll.area}>
@@ -613,28 +613,8 @@ function InboxBell({
   );
 }
 
-// Warm light from the fire, glowing behind the top of the Hearth — gives
-// the page some depth instead of a flat color.
-function Firelight({ color, strength }: { color: string; strength: number }) {
-  const { width } = useWindowDimensions();
-  const height = Math.round(width * 1.1);
-  return (
-    <Svg width={width} height={height} style={styles.firelight} pointerEvents="none">
-      <Defs>
-        <RadialGradient id="firelight" cx="50%" cy="0%" rx="80%" ry="100%" fx="50%" fy="0%">
-          <Stop offset="0" stopColor={color} stopOpacity={strength} />
-          <Stop offset="0.55" stopColor={color} stopOpacity={strength * 0.35} />
-          <Stop offset="1" stopColor={color} stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Rect x={0} y={0} width={width} height={height} fill="url(#firelight)" />
-    </Svg>
-  );
-}
-
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  firelight: { position: "absolute", top: 0, left: 0 },
   badge: {
     position: "absolute",
     top: -6,

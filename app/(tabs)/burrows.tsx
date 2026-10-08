@@ -5,7 +5,7 @@ import { Alert, Text, TextInput, View } from "react-native";
 import { Avatar } from "../../components/avatar";
 import { LoadingScreen } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
-import { TourTarget, useTourAutoStart, useTourScrollArea } from "../../components/tour";
+import { TourTarget, useTourScrollArea } from "../../components/tour";
 import { Button, EmptyState, NavCard, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, guarded } from "../../lib/feedback";
@@ -57,7 +57,7 @@ export default function Burrows() {
     }, [load])
   );
 
-  useTourAutoStart("burrows", !isLoading);
+  // The first-time tour visits this tab partway through (CORE-026).
   const tourScroll = useTourScrollArea();
 
   async function createBurrow() {

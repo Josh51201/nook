@@ -19,16 +19,27 @@ export const colors = {
   rose: "#fdecea",
 };
 
-// A soft, warm lift for cards (iOS shadow / Android elevation).
-export const shadow = Platform.select({
-  ios: {
-    shadowColor: "#5a3a22",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  default: { elevation: 2 },
-});
+// Depth, the same soft-tactile language as the Hearth's tiles (CORE-028):
+// things you can tap or read sit *up* on a warm, layered shadow with a lit
+// top edge; places you type into sit gently *down*. CSS-style box shadows,
+// so they look the same on iPhone and Android.
+const shade = (alpha: number) => `rgba(74, 44, 22, ${alpha})`;
+
+// Cards and bubbles: a tight contact shadow plus a wide, gentle one.
+export const shadow = {
+  boxShadow: `0px 1px 2px ${shade(0.06)}, 0px 6px 16px -4px ${shade(0.1)}, 0px 18px 32px -16px ${shade(0.14)}`,
+};
+
+export const depth = {
+  // The main bark button: raised, with light catching its top edge.
+  button: `0px 1px 2px ${shade(0.2)}, 0px 8px 16px -6px rgba(138, 90, 59, 0.5), inset 0px 1.5px 0px rgba(255, 255, 255, 0.22), inset 0px -2px 0px rgba(0, 0, 0, 0.12)`,
+  // Soft secondary buttons and chips: barely lifted.
+  soft: `0px 1px 2px ${shade(0.08)}, inset 0px 1.5px 0px rgba(255, 255, 255, 0.65)`,
+  // Text boxes: pressed a little into the page.
+  sunken: `inset 0px 2px 4px ${shade(0.07)}`,
+  // Tinted icon badges: a lit top edge.
+  badge: `inset 0px 1px 0px rgba(255, 255, 255, 0.7), inset 0px -1px 0px ${shade(0.05)}`,
+};
 
 export const ui = StyleSheet.create({
   screen: { padding: 20, gap: 14, paddingBottom: 56 },
@@ -39,6 +50,8 @@ export const ui = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     gap: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: shade(0.06),
     ...shadow,
   },
   cardTitle: { fontSize: 16, fontWeight: "600", color: colors.text },
@@ -52,6 +65,7 @@ export const ui = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     backgroundColor: colors.surface,
+    boxShadow: depth.sunken,
   },
   label: { fontSize: 14, fontWeight: "600", color: colors.text, marginBottom: -6 },
   button: {
@@ -63,6 +77,7 @@ export const ui = StyleSheet.create({
     justifyContent: "center",
     flexDirection: "row",
     gap: 8,
+    boxShadow: depth.button,
   },
   buttonText: { color: colors.white, fontSize: 16, fontWeight: "600" },
   secondaryButton: {
@@ -74,6 +89,7 @@ export const ui = StyleSheet.create({
     justifyContent: "center",
     flexDirection: "row",
     gap: 8,
+    boxShadow: depth.soft,
   },
   secondaryButtonText: { color: colors.bark, fontSize: 15, fontWeight: "600" },
   link: { color: colors.bark, fontSize: 15, fontWeight: "500" },
@@ -86,8 +102,9 @@ export const ui = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 7,
     paddingHorizontal: 13,
+    boxShadow: depth.soft,
   },
-  chipSelected: { backgroundColor: colors.bark, borderColor: colors.bark },
+  chipSelected: { backgroundColor: colors.bark, borderColor: colors.bark, boxShadow: depth.button },
   chipText: { color: colors.text, fontSize: 14 },
   chipTextSelected: { color: colors.white, fontWeight: "600" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

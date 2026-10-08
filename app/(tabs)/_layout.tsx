@@ -56,6 +56,9 @@ function NookTabBar({ state, descriptors, navigation, insets }: BottomTabBarProp
   const background = theme?.background ?? colors.background;
   const accent = theme?.accent ?? colors.bark;
   const muted = theme?.muted ?? colors.muted;
+  // A soft shadow cast upward, so the bar floats over the page (CORE-028).
+  const shade = theme?.shade ?? hearthThemes.hearth.shade;
+  const lift = `0px -6px 20px -10px rgba(${shade}, ${layout.theme === "dusk" && theme ? 0.6 : 0.16})`;
 
   // A screen can tuck the bar away (the Hearth does while a sheet is open).
   const hidden = (descriptors[focused.key].options.tabBarStyle as { display?: string } | undefined)?.display === "none";
@@ -67,7 +70,8 @@ function NookTabBar({ state, descriptors, navigation, insets }: BottomTabBarProp
         styles.bar,
         {
           backgroundColor: background,
-          borderTopColor: theme ? `${accent}22` : colors.border,
+          borderTopColor: theme ? `${accent}1a` : `${colors.border}aa`,
+          boxShadow: lift,
           paddingBottom: Math.max(insets.bottom, 10),
         },
       ]}
