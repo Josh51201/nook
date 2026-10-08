@@ -18,7 +18,7 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../../lib/auth-context";
-import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type Corners, type Wallpaper } from "../../lib/decor";
+import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type Corners, type TileShape, type Wallpaper } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { removeUnusedPhotos } from "../../lib/hearth-photos";
 import { trinketInfo, type TrinketKey } from "../../lib/trinkets";
@@ -222,6 +222,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     icon: IconName;
     iconColor: string;
     corners?: Corners;
+    shape?: TileShape;
     route: string;
     direction: "in" | "out";
     pushed: boolean;
@@ -281,6 +282,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         icon: item.icon ?? nook.icon,
         iconColor: look === "bold" ? "#ffffff" : deep,
         corners: item.corners,
+        shape: item.shape,
         route,
         direction: "in",
         pushed: false,
@@ -628,10 +630,10 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 
   return (
     <View style={[styles.fill, { backgroundColor: theme.background }]}>
-      <WallpaperLayer wallpaper={wallpaper} background={theme.background} dark={themeKey === "dusk"} />
-      <Firelight variant="hearth" color={theme.glow} strength={themeKey === "dusk" ? 0.34 : 0.26} />
+      <WallpaperLayer wallpaper={wallpaper} background={theme.background} dark={theme.dark} />
+      <Firelight variant="hearth" color={theme.glow} strength={theme.dark ? 0.34 : 0.26} />
       <SafeAreaView style={styles.fill} edges={["top", "left", "right"]}>
-        <StatusBar style={themeKey === "dusk" ? "light" : "dark"} />
+        <StatusBar style={theme.dark ? "light" : "dark"} />
         {/* The top bar stays put while the Hearth scrolls beneath it, so the
             inbox and Edit are always in reach. */}
         <View style={styles.topBar} onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
@@ -921,7 +923,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           height={16}
           background={theme.background}
           color={theme.glow}
-          strength={themeKey === "dusk" ? 0.34 : 0.26}
+          strength={theme.dark ? 0.34 : 0.26}
         />
       ) : null}
 
@@ -929,7 +931,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         <NookZoom
           key={`${zoom.route}-${zoom.direction}`}
           rect={zoom.rect}
-          radii={nookRadii(zoom.rect.width, zoom.rect.height, zoom.corners)}
+          radii={nookRadii(zoom.rect.width, zoom.rect.height, zoom.corners, zoom.shape)}
           color={zoom.color}
           background={theme.background}
           icon={zoom.icon}

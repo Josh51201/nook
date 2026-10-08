@@ -9,7 +9,9 @@ import { Button, NavCard, SectionHeader } from "../../components/ui";
 import { NookScroll } from "../../components/nook-scroll";
 import { useTour } from "../../components/tour";
 import { useAuth } from "../../lib/auth-context";
+import { MAX_CUSTOM_THEMES, buildHearthTheme } from "../../lib/custom-theme";
 import {
+  builtInThemes,
   hearthThemes,
   useHearthLayout,
   type HearthThemeKey,
@@ -48,6 +50,12 @@ export default function HearthSettings() {
       phoneIsDark && layout.followPhone && theme !== "dusk" ? { theme, followPhone: false } : { theme }
     );
   }
+
+  // The built-in themes, then the ones you've made (CORE-043).
+  const themeChoices = [
+    ...builtInThemes.map((key) => ({ key: key as HearthThemeKey, theme: hearthThemes[key] })),
+    ...layout.customThemes.map((custom) => ({ key: custom.id, theme: buildHearthTheme(custom) })),
+  ];
 
   function saveHearthChanges(changes: Parameters<typeof saveHearth>[0]) {
     saveHearth(changes).catch((saveError: Error) =>
@@ -128,8 +136,7 @@ export default function HearthSettings() {
           />
           <Text style={ui.label}>Theme</Text>
           <View style={ui.chips}>
-            {(Object.keys(hearthThemes) as HearthThemeKey[]).map((key) => {
-              const theme = hearthThemes[key];
+            {themeChoices.map(({ key, theme }) => {
               const selected = layout.theme === key;
               return (
                 <Tap
@@ -161,6 +168,33 @@ export default function HearthSettings() {
               ? "Your phone is in dark mode, so Nook is wearing Dusk. Pick a theme to switch to it now."
               : "Your theme dresses the whole app, not just the Hearth."}
           </Text>
+          {layout.customThemes.map((custom) => (
+            <Tap
+              key={custom.id}
+              onPress={() => router.push({ pathname: "/theme-editor", params: { id: custom.id } })}
+              style={[ui.card, ui.row, { gap: 12 }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Change ${custom.name}`}
+            >
+              <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: custom.background, borderWidth: 3, borderColor: custom.accent }} />
+              <Text style={[ui.cardTitle, { flex: 1 }]}>{custom.name}</Text>
+              <Text style={ui.link}>Change</Text>
+            </Tap>
+          ))}
+          {layout.customThemes.length < MAX_CUSTOM_THEMES ? (
+            <NavCard
+              icon="palette"
+              title="Make your own theme"
+              subtitle="Pick a background and an accent; the rest is chosen for you"
+              onPress={() => router.push("/theme-editor")}
+            />
+          ) : null}
+          <NavCard
+            icon="leaf"
+            title="Change with the seasons"
+            subtitle={layout.seasonal.enabled ? "On — your Hearth dresses for the time of year" : "A different theme for winter, spring, summer and autumn"}
+            onPress={() => router.push("/theme-seasons")}
+          />
           <Text style={ui.label}>Font</Text>
           {fontChoices.map((choice) => {
             const selected = layout.font === choice.key;

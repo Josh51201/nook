@@ -12,11 +12,13 @@ import { familyFor, type FontKey } from "./fonts";
 // Every screen re-mounts when the theme changes (see ThemedScreen), so
 // nothing is left showing the old colors.
 
-export type ThemeKey = "hearth" | "ember" | "sage" | "dusk";
+// The four built-in themes have fixed keys; your own (CORE-043) are added at
+// runtime under "custom-…" keys.
+export type ThemeKey = string;
 
 export type { FontKey } from "./fonts";
 
-type Palette = {
+export type Palette = {
   dark: boolean;
   bark: string; // the accent
   barkSoft: string; // tinted backgrounds for icons/chips
@@ -36,7 +38,7 @@ type Palette = {
   shade: string; // shadow tint, as "r, g, b"
 };
 
-export const palettes: Record<ThemeKey, Palette> = {
+export const palettes: Record<string, Palette> = {
   hearth: {
     dark: false,
     bark: "#8a5a3b",
@@ -118,6 +120,7 @@ export const palettes: Record<ThemeKey, Palette> = {
 // --- The live theme ------------------------------------------------------------
 
 let current: ThemeKey = "hearth";
+let currentPalette: Palette | null = null;
 let version = 0;
 const listeners = new Set<() => void>();
 
@@ -159,10 +162,14 @@ function bump() {
   listeners.forEach((listener) => listener());
 }
 
+// A theme you've edited keeps its key but gets a new palette object, so
+// compare the palette too, not just the key.
 export function applyTheme(key: ThemeKey) {
-  if (key === current) return;
+  const palette = palettes[key] ?? palettes.hearth;
+  if (key === current && (currentPalette === null ? palette === palettes[current] : palette === currentPalette)) return;
   current = key;
-  Object.assign(colors, palettes[key]);
+  currentPalette = palette;
+  Object.assign(colors, palette);
   bump();
 }
 

@@ -56,6 +56,19 @@ export function wallpaperPath(wallpaper: Wallpaper | undefined) {
   return wallpaper?.kind === "photo" ? wallpaper.path : null;
 }
 
+// --- Seasons (CORE-043, 047) ---------------------------------------------------------
+
+export type Season = "winter" | "spring" | "summer" | "autumn";
+
+// Northern hemisphere: winter is December to February, and so on.
+export function seasonOf(now: Date): Season {
+  const month = now.getMonth(); // 0 = January
+  if (month === 11 || month <= 1) return "winter";
+  if (month <= 4) return "spring";
+  if (month <= 7) return "summer";
+  return "autumn";
+}
+
 // --- Ambience (CORE-047) -------------------------------------------------------------
 
 export type AmbienceKind = "leaves" | "snow" | "petals" | "fireflies" | "motes";
@@ -93,6 +106,17 @@ export function activeAmbience(mode: Ambience | undefined, now: Date): AmbienceK
 export function ambienceLabel(mode: Ambience | undefined) {
   return ambiences.find((a) => a.key === mode)?.label ?? "Off";
 }
+
+// --- Nook tile shapes (CORE-044) ---------------------------------------------------------
+
+export type TileShape = "arch" | "window" | "door" | "sign";
+
+export const tileShapes: { key: TileShape; label: string; icon: IconName }[] = [
+  { key: "arch", label: "Arched alcove", icon: "burrow" },
+  { key: "window", label: "Round window", icon: "sun" },
+  { key: "door", label: "Little door", icon: "door" },
+  { key: "sign", label: "Hanging sign", icon: "price" },
+];
 
 // --- Shape: corners, shadow, border (CORE-042) -----------------------------------------
 

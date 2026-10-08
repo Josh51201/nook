@@ -275,7 +275,7 @@ function shadowShape(item: HearthItem, stride: number) {
   const height = item.h * stride - GRID_GAP;
   if (item.kind === "widget") return { borderRadius: cornerRadius(item.corners, width, height) };
   if (item.kind !== "nook") return { borderRadius: 24 };
-  const { top, bottom } = nookRadii(width, height, item.corners);
+  const { top, bottom } = nookRadii(width, height, item.corners, item.shape);
   return {
     borderTopLeftRadius: top,
     borderTopRightRadius: top,

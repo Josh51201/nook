@@ -1,6 +1,7 @@
 import type { IconName } from "../components/icon";
 import { deepOf } from "./colors";
-import { wallpaperPath, type Ambience, type Corners, type Lift, type Wallpaper } from "./decor";
+import type { CustomTheme, SeasonalThemes } from "./custom-theme";
+import { wallpaperPath, type Ambience, type Corners, type Lift, type TileShape, type Wallpaper } from "./decor";
 import { findNook } from "./nooks";
 import { trinketInfo, type TrinketKey } from "./trinkets";
 import { newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
@@ -31,7 +32,7 @@ type ItemBase = GridRect & {
 };
 
 // Nook tiles come in the same three looks as widgets (CORE-030).
-export type NookItem = ItemBase & { kind: "nook"; nookId: string; label?: string; look?: WidgetLook };
+export type NookItem = ItemBase & { kind: "nook"; nookId: string; label?: string; look?: WidgetLook; shape?: TileShape };
 export type WidgetItem = ItemBase & { kind: "widget"; widget: WidgetConfig };
 export type LabelItem = ItemBase & {
   kind: "label";
@@ -88,6 +89,9 @@ export type HearthLayout = {
   // Behind everything (CORE-041), and the weather in the air (CORE-047).
   wallpaper: Wallpaper;
   ambience: Ambience;
+  // Themes you've made (CORE-043), and themes that change with the seasons.
+  customThemes: CustomTheme[];
+  seasonal: SeasonalThemes;
   items: HearthItem[];
 };
 
@@ -115,15 +119,26 @@ export function deepColor(soft: string | undefined) {
   return soft && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(soft) ? deepOf(soft) : deepPalette[0];
 }
 
-export type HearthThemeKey = "hearth" | "ember" | "sage" | "dusk";
+// The four built-in themes have fixed keys; themes you make are added at
+// runtime under "custom-…" keys (see components/themed-screen.tsx).
+export type HearthThemeKey = string;
+export const builtInThemes = ["hearth", "ember", "sage", "dusk"] as const;
+
+export type HearthTheme = {
+  label: string;
+  background: string;
+  text: string;
+  muted: string;
+  accent: string;
+  shade: string;
+  glow: string;
+  dark: boolean;
+};
 
 // `shade` tints the shadows under tiles (as "r, g, b"), and `glow` is the
 // firelight behind the top of the Hearth — both chosen per theme so the
 // depth reads on light and dark Hearths alike.
-export const hearthThemes: Record<
-  HearthThemeKey,
-  { label: string; background: string; text: string; muted: string; accent: string; shade: string; glow: string }
-> = {
+export const hearthThemes: Record<HearthThemeKey, HearthTheme> = {
   hearth: {
     label: "Hearth",
     background: "#fbf7f2",
@@ -132,6 +147,7 @@ export const hearthThemes: Record<
     accent: "#8a5a3b",
     shade: "74, 44, 22",
     glow: "#f5b97c",
+    dark: false,
   },
   ember: {
     label: "Ember",
@@ -141,6 +157,7 @@ export const hearthThemes: Record<
     accent: "#b0552d",
     shade: "110, 48, 20",
     glow: "#f49a5c",
+    dark: false,
   },
   sage: {
     label: "Sage",
@@ -150,6 +167,7 @@ export const hearthThemes: Record<
     accent: "#4f6b45",
     shade: "38, 58, 32",
     glow: "#d9e3a4",
+    dark: false,
   },
   dusk: {
     label: "Dusk",
@@ -159,6 +177,7 @@ export const hearthThemes: Record<
     accent: "#f0b98d",
     shade: "0, 0, 0",
     glow: "#f09a52",
+    dark: true,
   },
 };
 
@@ -173,7 +192,7 @@ export function tileShadow(themeKey: HearthThemeKey, raised = false) {
 // 0 = none, 1 = widgets' usual, 2 = Nook tiles' usual, 3 = floating high.
 export function shadowAtLevel(themeKey: HearthThemeKey, level: 0 | 1 | 2 | 3): string | undefined {
   const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
-  const k = themeKey === "dusk" ? 2.6 : 1;
+  const k = theme.dark ? 2.6 : 1;
   const a = (alpha: number) => `rgba(${theme.shade}, ${Math.min(1, alpha * k).toFixed(3)})`;
   if (level === 0) return undefined;
   if (level === 3) return `0px 3px 5px ${a(0.12)}, 0px 18px 30px -6px ${a(0.2)}, 0px 40px 60px -20px ${a(0.32)}`;
@@ -194,6 +213,8 @@ export const defaultHearthLayout: HearthLayout = {
   font: "classic",
   wallpaper: { kind: "none" },
   ambience: "off",
+  customThemes: [],
+  seasonal: { enabled: false },
   items: [],
 };
 
@@ -438,6 +459,8 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
     font: saved.font ?? defaultHearthLayout.font,
     wallpaper: saved.wallpaper ?? defaultHearthLayout.wallpaper,
     ambience: saved.ambience ?? defaultHearthLayout.ambience,
+    customThemes: saved.customThemes ?? defaultHearthLayout.customThemes,
+    seasonal: saved.seasonal ?? defaultHearthLayout.seasonal,
   };
   // Saved settings are merged over defaults (items: []), so an old Hearth
   // shows up as "sections present, no items".

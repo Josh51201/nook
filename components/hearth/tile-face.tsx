@@ -12,7 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 
-import type { Corners } from "../../lib/decor";
+import type { Corners, TileShape } from "../../lib/decor";
 import { deepColor, itemColor, nookLabel, tileBevel, type NookItem } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
 import { IconBadge } from "../icon";
@@ -25,8 +25,13 @@ const MUTED = "#6f625a";
 // The arch of a Nook tile: a rounded top like an alcove, softer at the
 // bottom. Shared with the grid (for the shadow's shape) and the zoom into a
 // Nook (CORE-034/036).
-export function nookRadii(width: number, height: number, corners?: Corners) {
+export function nookRadii(width: number, height: number, corners?: Corners, shape?: TileShape) {
   const short = Math.min(width, height);
+  // A round window is as round as the tile allows; a door is a tall arch
+  // with a flat threshold; a sign is a plank with softened corners (CORE-044).
+  if (shape === "window") return { top: short / 2, bottom: short / 2 };
+  if (shape === "door") return { top: Math.min(short / 2, width / 2), bottom: 6 };
+  if (shape === "sign") return { top: corners === "square" ? 4 : corners === "round" ? 22 : 12, bottom: corners === "square" ? 4 : corners === "round" ? 22 : 12 };
   const top = Math.min(58, short * (short < 110 ? 0.42 : 0.32));
   const bottom = short < 110 ? 16 : 20;
   // Square: a barely-there arch. Round: a full dome and a soft base (CORE-042).
@@ -62,7 +67,12 @@ export function TileFace({
   const icon = item.icon ?? nook?.icon ?? "category";
   const soft = itemColor(item);
   const look = item.look ?? "soft";
-  const { top, bottom } = nookRadii(width, height, item.corners);
+  const shape = item.shape ?? "arch";
+  const { top, bottom } = nookRadii(width, height, item.corners, shape);
+  // Round windows and doors curve in, so their contents need a little more
+  // room at the sides.
+  const short = Math.min(width, height);
+  const extra = shape === "window" ? short * 0.14 : shape === "door" ? short * 0.05 : 0;
 
   // Colors for this look. The deep color is the chosen color's partner, or
   // the Nook's own icon color if no color was picked.
@@ -103,14 +113,36 @@ export function TileFace({
           styles.innerFrame,
           {
             borderColor: frameLine,
-            borderTopLeftRadius: top - 5,
-            borderTopRightRadius: top - 5,
-            borderBottomLeftRadius: bottom - 5,
-            borderBottomRightRadius: bottom - 5,
+            borderTopLeftRadius: Math.max(0, top - 5),
+            borderTopRightRadius: Math.max(0, top - 5),
+            borderBottomLeftRadius: Math.max(0, bottom - 5),
+            borderBottomRightRadius: Math.max(0, bottom - 5),
           },
         ]}
       />
-      <View style={[styles.keystone, { backgroundColor: bold ? "rgba(255,255,255,0.55)" : tileDeep }]} />
+      {shape === "arch" ? (
+        <View style={[styles.keystone, { backgroundColor: bold ? "rgba(255,255,255,0.55)" : tileDeep }]} />
+      ) : null}
+      {shape === "window" ? (
+        <>
+          <View pointerEvents="none" style={[styles.mullionV, { backgroundColor: frameLine }]} />
+          <View pointerEvents="none" style={[styles.mullionH, { backgroundColor: frameLine }]} />
+        </>
+      ) : null}
+      {shape === "door" ? (
+        <>
+          <View pointerEvents="none" style={[styles.knob, { backgroundColor: bold ? "rgba(255,255,255,0.85)" : tileDeep }]} />
+          <View pointerEvents="none" style={[styles.threshold, { backgroundColor: frameLine }]} />
+        </>
+      ) : null}
+      {shape === "sign" ? (
+        <>
+          <View pointerEvents="none" style={[styles.nail, { left: 12, backgroundColor: bold ? "rgba(255,255,255,0.85)" : tileDeep }]} />
+          <View pointerEvents="none" style={[styles.nail, { right: 12, backgroundColor: bold ? "rgba(255,255,255,0.85)" : tileDeep }]} />
+          <View pointerEvents="none" style={[styles.grain, { top: "34%", backgroundColor: frameLine }]} />
+          <View pointerEvents="none" style={[styles.grain, { top: "66%", backgroundColor: frameLine }]} />
+        </>
+      ) : null}
       <Sheen width={width} height={height} seed={item.id} />
     </>
   );
@@ -129,7 +161,7 @@ export function TileFace({
   if (item.h === 1 || item.w === 1) {
     const size = Math.min(width, height) * 0.6;
     return (
-      <View style={[frame, styles.centered, { flexDirection: item.h === 1 ? "row" : "column", gap: 10, paddingHorizontal: 16 }]}>
+      <View style={[frame, styles.centered, { flexDirection: item.h === 1 ? "row" : "column", gap: 10, paddingHorizontal: 16 + extra }]}>
         {decoration}
         <IconBadge name={icon} size={size} color={iconColor} background={badge} />
         {item.h === 1 ? (
@@ -149,7 +181,7 @@ export function TileFace({
 
   if (tall) {
     return (
-      <View style={[frame, { paddingTop: 24 }]}>
+      <View style={[frame, { paddingTop: 24, paddingHorizontal: 14 + extra }]}>
         {decoration}
         <View style={{ flex: 1, gap: 12 }}>
           <View style={[styles.row, { paddingHorizontal: 6 }]}>
@@ -182,7 +214,7 @@ export function TileFace({
 
   if (wide) {
     return (
-      <View style={[frame, styles.row, { paddingHorizontal: 20 }]}>
+      <View style={[frame, styles.row, { paddingHorizontal: 20 + extra }]}>
         {decoration}
         <IconBadge name={icon} size={56} color={iconColor} background={badge} />
         <View style={{ flex: 1, gap: 4 }}>
@@ -203,7 +235,7 @@ export function TileFace({
 
   // Small: the icon in the alcove, the name beneath it.
   return (
-    <View style={[frame, styles.centered, { gap: 8, paddingTop: 20 }]}>
+    <View style={[frame, styles.centered, { gap: 8, paddingTop: 20, paddingHorizontal: 14 + extra }]}>
       {decoration}
       <IconBadge name={icon} size={50} color={iconColor} background={badge} />
       <View style={{ alignItems: "center", gap: 1, alignSelf: "stretch" }}>
@@ -303,6 +335,12 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
   },
+  mullionV: { position: "absolute", top: 8, bottom: 8, left: "50%", marginLeft: -1, width: 2, borderRadius: 1 },
+  mullionH: { position: "absolute", left: 8, right: 8, top: "50%", marginTop: -1, height: 2, borderRadius: 1 },
+  knob: { position: "absolute", right: 14, top: "52%", width: 9, height: 9, borderRadius: 5 },
+  threshold: { position: "absolute", left: 10, right: 10, bottom: 9, height: 2, borderRadius: 1 },
+  nail: { position: "absolute", top: 9, width: 7, height: 7, borderRadius: 4 },
+  grain: { position: "absolute", left: 22, right: 22, height: 1.5, borderRadius: 1, opacity: 0.6 },
   sheen: { position: "absolute", left: 0 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   title: { fontSize: 16, lineHeight: 21, fontWeight: "800", color: TEXT },

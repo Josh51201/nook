@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { Text, TextInput } from "../text";
 
-import { cornerChoices, liftChoices } from "../../lib/decor";
+import { cornerChoices, liftChoices, tileShapes } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import {
   hollowDecors,
@@ -291,6 +291,14 @@ export function ItemOptions({
             <>
               {shown.kind === "nook" ? (
                 <>
+                  <Text style={ui.label}>Shape</Text>
+                  <View style={ui.chips}>
+                    {tileShapes.map((t) => (
+                      <Chip key={t.key} icon={t.icon} selected={(shown.shape ?? "arch") === t.key} onPress={() => onChange({ shape: t.key })}>
+                        {t.label}
+                      </Chip>
+                    ))}
+                  </View>
                   <Text style={ui.label}>Corners</Text>
                   <View style={ui.chips}>
                     {cornerChoices.map((c) => (

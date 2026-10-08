@@ -72,6 +72,22 @@ export function shade(hex: string, amount: number): string {
   return hslToHex(h, s, clamp(l + (amount >= 0 ? (1 - l) * amount : l * amount), 0, 1));
 }
 
+// WCAG contrast between two colors (1 = none, 21 = black on white).
+export function luminance(hex: string): number {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3 ? clean.replace(/(.)/g, "$1$1") : clean;
+  const channel = (i: number) => {
+    const v = parseInt(full.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+
+export function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 // Is it a color we can show (a "#rgb" or "#rrggbb")? Saved settings are only
 // ever our own, but a bad value should never crash a screen.
 export function isHex(value: unknown): value is string {
