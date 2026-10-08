@@ -398,3 +398,20 @@ export function removeHollow(layout: HearthLayout, hollowId: string): HearthItem
   }
   return next.items;
 }
+
+// Auto-scroll while dragging (CORE-029): how many pixels per frame to scroll
+// the page when a finger is at `fingerY` and the scrolling area spans
+// `top`..`bottom` on screen. Negative scrolls up, 0 means the finger is not
+// near an edge. Speeds up the closer to (or beyond) the edge it gets.
+export const EDGE_ZONE = 90;
+export const EDGE_MAX_SPEED = 14;
+
+export function edgeScrollSpeed(fingerY: number, top: number, bottom: number) {
+  "worklet";
+  if (bottom <= top) return 0;
+  const intoTop = (top + EDGE_ZONE - fingerY) / EDGE_ZONE;
+  const intoBottom = (fingerY - (bottom - EDGE_ZONE)) / EDGE_ZONE;
+  if (intoTop > 0) return -Math.round(Math.min(1, intoTop) * EDGE_MAX_SPEED);
+  if (intoBottom > 0) return Math.round(Math.min(1, intoBottom) * EDGE_MAX_SPEED);
+  return 0;
+}

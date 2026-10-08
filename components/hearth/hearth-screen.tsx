@@ -1,9 +1,9 @@
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
-import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, ZoomIn, useSharedValue } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { tap } from "../../lib/feedback";
@@ -34,6 +34,7 @@ import {
 } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
 import { planBirthdays } from "../../lib/plan-birthdays";
+import { hasRealName, useMyProfile } from "../../lib/profile";
 import { supabase } from "../../lib/supabase";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { touchesGuarded } from "../../lib/touch-guard";
@@ -77,6 +78,84 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const entering = useRef(false);
   const navigation = useNavigation();
   const tourScroll = useTourScrollArea();
+  const { profile } = useMyProfile();
+  const [scrolled, setScrolled] = useState(false);
+
+  // Auto-scroll while dragging (CORE-029): hold an item near the top or
+  // bottom of the screen and the page scrolls along with it. The grid
+  // reports how fast (onEdge); this runs the scrolling frame by frame and
+  // tells dragged items how far the page has moved.
+  const scrollY = useSharedValue(0);
+  const viewTop = useSharedValue(0);
+  const viewBottom = useSharedValue(0);
+  const viewHeight = useRef(0);
+  const edgeSpeed = useRef(0);
+  const frame = useRef<number | null>(null);
+  const draggingNow = useRef(false);
+
+  const measureViewport = useCallback(() => {
+    tourScroll.area.viewport.current?.measureInWindow((_x, y, _width, height) => {
+      viewTop.value = y;
+      viewBottom.value = y + height;
+      viewHeight.current = height;
+    });
+  }, [tourScroll.area.viewport, viewTop, viewBottom]);
+
+  const setEdge = useCallback(
+    (speed: number) => {
+      edgeSpeed.current = speed;
+      if (speed === 0 || frame.current !== null) return;
+      const tick = () => {
+        const step = edgeSpeed.current;
+        if (!step) {
+          frame.current = null;
+          return;
+        }
+        const metrics = tourScroll.area.metrics.current;
+        const max = Math.max(0, metrics.content - viewHeight.current);
+        const next = Math.min(max, Math.max(0, metrics.offset + step));
+        if (next !== metrics.offset) {
+          metrics.offset = next;
+          scrollY.value = next;
+          tourScroll.scrollRef.current?.scrollTo({ y: next, animated: false });
+        }
+        frame.current = requestAnimationFrame(tick);
+      };
+      frame.current = requestAnimationFrame(tick);
+    },
+    [tourScroll.area.metrics, tourScroll.scrollRef, scrollY]
+  );
+  useEffect(
+    () => () => {
+      edgeSpeed.current = 0;
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    },
+    []
+  );
+  const dragScroll = useMemo(
+    () => ({ scrollY, top: viewTop, bottom: viewBottom, onEdge: setEdge }),
+    [scrollY, viewTop, viewBottom, setEdge]
+  );
+
+  function onDraggingChange(isDragging: boolean) {
+    draggingNow.current = isDragging;
+    setDragging(isDragging);
+    if (isDragging) measureViewport();
+    else setEdge(0);
+  }
+
+  // While the page is being scrolled for a drag, its own scroll events lag
+  // behind and would only fight us; otherwise they keep everything in sync.
+  const scrollProps = {
+    ...tourScroll.scrollProps,
+    onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = event.nativeEvent.contentOffset.y;
+      setScrolled(y > 4);
+      if (edgeSpeed.current !== 0) return;
+      tourScroll.scrollProps.onScroll(event);
+      if (!draggingNow.current) scrollY.value = y;
+    },
+  };
   const unread = useUnreadCount(!scope, refreshKey);
 
   // The first time someone lands on their Hearth, show them around (CORE-026).
@@ -298,90 +377,108 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       <Firelight variant="hearth" color={theme.glow} strength={layout.theme === "dusk" ? 0.34 : 0.26} />
       <SafeAreaView style={styles.fill} edges={["top", "left", "right"]}>
         <StatusBar style={layout.theme === "dusk" ? "light" : "dark"} />
+        {/* The top bar stays put while the Hearth scrolls beneath it, so the
+            inbox and Edit are always in reach. */}
+        <View
+          style={[
+            styles.topBar,
+            scrolled && { backgroundColor: theme.background, boxShadow: `0px 8px 14px -10px rgba(${theme.shade}, 0.45)` },
+          ]}
+        >
+          {scope ? (
+            <Tap
+              onPress={() => router.back()}
+              hitSlop={12}
+              pressedScale={0.9}
+              style={[styles.back]}
+              accessibilityLabel="Back to the Hearth"
+            >
+              <Icon name="hearth" size={18} color={theme.accent} />
+              <Text style={{ color: theme.accent, fontSize: 16, fontWeight: "600" }}>Hearth</Text>
+            </Tap>
+          ) : null}
+
+          <View style={styles.header}>
+            <View style={styles.titleRow}>
+              {hollow ? (
+                <IconBadge
+                  name={hollow.look === "stump" ? "leaf" : "burrow"}
+                  size={44}
+                  color={deepColor(itemColor(hollow))}
+                  background={itemColor(hollow)}
+                />
+              ) : (
+                <View style={[styles.flame, { backgroundColor: `${theme.accent}1f`, boxShadow: `0px 0px 18px 2px ${theme.glow}88` }]}>
+                  <Icon name="flame" size={26} color={theme.accent} />
+                </View>
+              )}
+              <View style={{ flexShrink: 1 }}>
+                {scope ? null : (
+                  <Text style={[styles.greeting, { color: theme.accent }]} numberOfLines={1}>
+                    {greeting(profile && hasRealName(profile.display_name) ? profile.display_name!.trim().split(" ")[0] : null)}
+                  </Text>
+                )}
+                <Text style={[styles.title, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                  {title}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.headerButtons}>
+              {editing ? (
+                <Tap onPress={() => setAdding(true)} hitSlop={10} pressedScale={0.85} accessibilityLabel="Add">
+                  <Icon name="add" size={24} color={theme.accent} />
+                </Tap>
+              ) : null}
+              <TourTarget id="hearth-edit">
+                <Tap
+                  onPress={() => {
+                    tap();
+                    setEditing((e) => !e);
+                  }}
+                  hitSlop={10}
+                  style={[
+                    styles.editButton,
+                    { backgroundColor: editing ? theme.accent : "transparent", borderColor: theme.accent },
+                  ]}
+                >
+                  <Text style={[styles.headerButton, { color: editing ? theme.background : theme.accent }]}>
+                    {editing ? "Done" : "Edit"}
+                  </Text>
+                </Tap>
+              </TourTarget>
+              {scope ? null : (
+                <TourTarget id="hearth-inbox">
+                  <InboxBell
+                    unread={unread}
+                    color={theme.accent}
+                    background={theme.background}
+                    onPress={() => router.push("/inbox")}
+                  />
+                </TourTarget>
+              )}
+              {/* The Hearth's own settings are in the Settings tab. */}
+              {hollow ? (
+                <Tap
+                  onPress={() => setHollowOptions(true)}
+                  hitSlop={10}
+                  pressedScale={0.85}
+                  accessibilityLabel={`${hollow.name} settings`}
+                >
+                  <Icon name="settings" size={24} color={theme.accent} />
+                </Tap>
+              ) : null}
+            </View>
+          </View>
+        </View>
+
         <TourScrollArea area={tourScroll.area}>
           <ScrollView
             ref={tourScroll.scrollRef as never}
-            {...tourScroll.scrollProps}
+            {...scrollProps}
             contentContainerStyle={styles.container}
             scrollEnabled={!dragging}
             keyboardShouldPersistTaps="handled"
           >
-            {scope ? (
-              <Tap
-                onPress={() => router.back()}
-                hitSlop={12}
-                pressedScale={0.9}
-                style={[styles.back]}
-                accessibilityLabel="Back to the Hearth"
-              >
-                <Icon name="hearth" size={18} color={theme.accent} />
-                <Text style={{ color: theme.accent, fontSize: 16, fontWeight: "600" }}>Hearth</Text>
-              </Tap>
-            ) : null}
-
-            <View style={styles.header}>
-              <View style={[styles.titleRow]}>
-                {hollow ? (
-                  <IconBadge
-                    name={hollow.look === "stump" ? "leaf" : "burrow"}
-                    size={40}
-                    color={deepColor(itemColor(hollow))}
-                    background={itemColor(hollow)}
-                  />
-                ) : null}
-                <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-                  {title}
-                </Text>
-              </View>
-              <View style={styles.headerButtons}>
-                {editing ? (
-                  <Tap onPress={() => setAdding(true)} hitSlop={10} pressedScale={0.85} accessibilityLabel="Add">
-                    <Icon name="add" size={24} color={theme.accent} />
-                  </Tap>
-                ) : null}
-                {!isEmpty ? (
-                  <TourTarget id="hearth-edit">
-                    <Tap
-                      onPress={() => {
-                        tap();
-                        setEditing((e) => !e);
-                      }}
-                      hitSlop={10}
-                      style={[
-                        styles.editButton,
-                        { backgroundColor: editing ? theme.accent : "transparent", borderColor: theme.accent },
-                      ]}
-                    >
-                      <Text style={[styles.headerButton, { color: editing ? theme.background : theme.accent }]}>
-                        {editing ? "Done" : "Edit"}
-                      </Text>
-                    </Tap>
-                  </TourTarget>
-                ) : null}
-                {scope ? null : (
-                  <TourTarget id="hearth-inbox">
-                    <InboxBell
-                      unread={unread}
-                      color={theme.accent}
-                      background={theme.background}
-                      onPress={() => router.push("/inbox")}
-                    />
-                  </TourTarget>
-                )}
-                {/* The Hearth's own settings are in the Settings tab. */}
-                {hollow ? (
-                  <Tap
-                    onPress={() => setHollowOptions(true)}
-                    hitSlop={10}
-                    pressedScale={0.85}
-                    accessibilityLabel={`${hollow.name} settings`}
-                  >
-                    <Icon name="settings" size={24} color={theme.accent} />
-                  </Tap>
-                ) : null}
-              </View>
-            </View>
-
             {editing ? (
               <Animated.View
                 entering={FadeIn.duration(200)}
@@ -461,7 +558,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   }
                   onPressItem={onPressItem}
                   onLongPress={() => setEditing(true)}
-                  onDraggingChange={setDragging}
+                  onDraggingChange={onDraggingChange}
+                  dragScroll={dragScroll}
                   renderItem={renderItem}
                 />
               )}
@@ -558,6 +656,13 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   );
 }
 
+// "Good evening, Josh" for the top of the Hearth.
+function greeting(name: string | null) {
+  const hour = new Date().getHours();
+  const hello = hour < 5 ? "Up late" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  return name ? `${hello}, ${name}` : hello;
+}
+
 // How many unread notices are waiting, for the Hearth's inbox bell.
 function useUnreadCount(enabled: boolean, refreshKey: number) {
   const [unread, setUnread] = useState(0);
@@ -630,11 +735,14 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: "#ffffff", fontSize: 10.5, fontWeight: "800" },
   center: { alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
-  container: { padding: PADDING, gap: 16, paddingBottom: 32 },
-  back: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginTop: 4 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 12 },
+  container: { padding: PADDING, paddingTop: 8, gap: 16, paddingBottom: 32 },
+  topBar: { paddingHorizontal: PADDING, paddingTop: 6, paddingBottom: 12, zIndex: 5 },
+  back: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginBottom: 6 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
-  title: { fontSize: 32, fontWeight: "800", flexShrink: 1, letterSpacing: -0.5 },
+  flame: { width: 46, height: 46, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  greeting: { fontSize: 11.5, fontWeight: "800", letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 1 },
+  title: { fontSize: 30, fontWeight: "800", flexShrink: 1, letterSpacing: -0.6 },
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerButton: { fontSize: 15, fontWeight: "700" },
   editButton: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 5 },

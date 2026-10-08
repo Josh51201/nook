@@ -4,6 +4,8 @@ import {
   addItem,
   addNook,
   defaultHearthLayout,
+  EDGE_MAX_SPEED,
+  edgeScrollSpeed,
   findFreeSpot,
   hasNook,
   migrateLayout,
@@ -232,5 +234,31 @@ describe("Hollows (CORE-022..024)", () => {
     expect(hasNook(layout, "gift-nook")).toBe(true);
     const items = removeNook(layout, "gift-nook");
     expect((items[0] as { items: HearthItem[] }).items).toEqual([]);
+  });
+});
+
+describe("edgeScrollSpeed (auto-scroll while dragging)", () => {
+  const top = 120;
+  const bottom = 760;
+
+  it("stays still when the finger is away from both edges", () => {
+    expect(edgeScrollSpeed(400, top, bottom)).toBe(0);
+  });
+
+  it("scrolls down near the bottom, faster the closer it gets, and up near the top", () => {
+    const gentle = edgeScrollSpeed(bottom - 60, top, bottom);
+    const fast = edgeScrollSpeed(bottom - 5, top, bottom);
+    expect(gentle).toBeGreaterThan(0);
+    expect(fast).toBeGreaterThan(gentle);
+    expect(edgeScrollSpeed(top + 20, top, bottom)).toBeLessThan(0);
+  });
+
+  it("tops out at the maximum, even with the finger past the edge", () => {
+    expect(edgeScrollSpeed(bottom + 300, top, bottom)).toBe(EDGE_MAX_SPEED);
+    expect(edgeScrollSpeed(top - 300, top, bottom)).toBe(-EDGE_MAX_SPEED);
+  });
+
+  it("does nothing until the scrolling area has been measured", () => {
+    expect(edgeScrollSpeed(10, 0, 0)).toBe(0);
   });
 });

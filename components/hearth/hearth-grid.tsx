@@ -4,14 +4,16 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   FadeIn,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { tap } from "../../lib/feedback";
-import { COLUMNS, minSize, rowsUsed, type GridRect, type HearthItem, type HollowItem } from "../../lib/hearth-layout";
+import { COLUMNS, edgeScrollSpeed, minSize, rowsUsed, type GridRect, type HearthItem, type HollowItem } from "../../lib/hearth-layout";
 import { Icon } from "../icon";
 import { useWiggle } from "../motion";
 
@@ -19,18 +21,32 @@ export const GRID_GAP = 12;
 const EXTRA_EDIT_ROWS = 3; // empty rows to drop into while designing
 const ease = { duration: 240, easing: Easing.out(Easing.cubic) };
 
+// How the screen's scroll area looks to a dragged item, so the page can
+// scroll along with it: how far it's scrolled now, and where it sits on
+// the screen. `onEdge` is told how fast to scroll (negative = up, 0 =
+// stop) while a finger is held near the top or bottom edge.
+export type DragScroll = {
+  scrollY: SharedValue<number>;
+  top: SharedValue<number>;
+  bottom: SharedValue<number>;
+  onEdge: (speed: number) => void;
+};
+
 // The free-form Hearth canvas (CORE-006/019). Items sit at exact grid cells;
 // in edit mode you hold one to drag it anywhere (an outline shows where it
 // will land), or drag its corner handle to resize it. Calm, eased motion
 // throughout — no springs (the Hearth felt too bouncy). Tiles and widgets
 // rest on a soft shadow, sink a touch when pressed, and lift higher while
-// dragged, so the Hearth has some depth.
+// dragged, so the Hearth has some depth. Hold an item near the top or bottom
+// of the screen and the page scrolls along, so a long Hearth can be
+// rearranged in one go.
 export function HearthGrid({
   items,
   width,
   editing,
   accent,
   shadow,
+  dragScroll,
   onMove,
   onResize,
   onPressItem,
@@ -45,6 +61,7 @@ export function HearthGrid({
   accent: string;
   // The resting shadow under tiles and widgets (a CSS box-shadow).
   shadow?: string;
+  dragScroll: DragScroll;
   onMove: (id: string, x: number, y: number) => void;
   onResize: (id: string, w: number, h: number) => void;
   onPressItem: (item: HearthItem) => void;
@@ -152,6 +169,7 @@ export function HearthGrid({
           active={activeId === item.id}
           accent={accent}
           shadow={isRaised(item) ? shadow : undefined}
+          dragScroll={dragScroll}
           onPress={() => onPressItem(item)}
           onLongPress={onLongPress}
           onBegin={() => begin(item.id)}
@@ -208,6 +226,7 @@ function GridItem({
   active,
   accent,
   shadow,
+  dragScroll,
   onPress,
   onLongPress,
   onBegin,
@@ -223,6 +242,7 @@ function GridItem({
   active: boolean;
   accent: string;
   shadow?: string;
+  dragScroll: DragScroll;
   onPress: () => void;
   onLongPress: () => void;
   onBegin: () => void;
@@ -249,6 +269,18 @@ function GridItem({
   const fingerX = useSharedValue(-1);
   const fingerY = useSharedValue(-1);
   const wiggle = useWiggle(editing && !active, seed);
+
+  // Dragging while the page scrolls: the finger's own movement (raw), plus
+  // how far the page has scrolled since the drag began, is where the item
+  // is. Everything `follow` reads is a shared value, so it can run both as
+  // the finger moves and as the page scrolls under a still finger.
+  const rawX = useSharedValue(0);
+  const rawY = useSharedValue(0);
+  const startScroll = useSharedValue(0);
+  const dragging = useSharedValue(false);
+  const lastSpeed = useSharedValue(0);
+  const geo = useSharedValue({ x: 0, y: 0, w: 1, h: 1, stride: 1 });
+  const { scrollY, top: viewTop, bottom: viewBottom, onEdge } = dragScroll;
 
   // New position from the layout: glide there. If this is the tile that was
   // just dropped, carry on from where the finger let go instead of jumping.
@@ -289,6 +321,34 @@ function GridItem({
     handlers.current.onGhost({ x, y, w, h }, null);
   }, []);
   const drop = useCallback((x: number, y: number) => handlers.current.onDrop(x, y), []);
+  const edge = useCallback((speed: number) => onEdge(speed), [onEdge]);
+
+  function follow() {
+    "worklet";
+    const g = geo.value;
+    const dy = rawY.value + (scrollY.value - startScroll.value);
+    dragX.value = rawX.value;
+    dragY.value = dy;
+    const nextX = Math.min(COLUMNS - g.w, Math.max(0, Math.round(g.x + rawX.value / g.stride)));
+    const nextY = Math.max(0, Math.round(g.y + dy / g.stride));
+    const fx = Math.floor((g.x * g.stride + grabX.value + rawX.value) / g.stride);
+    const fy = Math.floor((g.y * g.stride + grabY.value + dy) / g.stride);
+    if (nextX !== targetX.value || nextY !== targetY.value || fx !== fingerX.value || fy !== fingerY.value) {
+      targetX.value = nextX;
+      targetY.value = nextY;
+      fingerX.value = fx;
+      fingerY.value = fy;
+      scheduleOnRN(ghost, nextX, nextY, g.w, g.h, fx, fy);
+    }
+  }
+
+  // The page scrolled under a finger that is holding still: keep up.
+  useAnimatedReaction(
+    () => scrollY.value,
+    () => {
+      if (dragging.value) follow();
+    }
+  );
   const resizeEnd = useCallback((w: number, h: number) => handlers.current.onResizeEnd(w, h), []);
 
   const { x, y, w, h } = item;
@@ -312,6 +372,12 @@ function GridItem({
     const pan = Gesture.Pan()
       .activateAfterLongPress(150)
       .onStart((event) => {
+        geo.value = { x, y, w, h, stride };
+        rawX.value = 0;
+        rawY.value = 0;
+        startScroll.value = scrollY.value;
+        dragging.value = true;
+        lastSpeed.value = 0;
         targetX.value = x;
         targetY.value = y;
         grabX.value = event.x;
@@ -323,18 +389,14 @@ function GridItem({
         scheduleOnRN(ghost, x, y, w, h, fingerX.value, fingerY.value);
       })
       .onUpdate((event) => {
-        dragX.value = event.translationX;
-        dragY.value = event.translationY;
-        const nextX = Math.min(COLUMNS - w, Math.max(0, Math.round(x + event.translationX / stride)));
-        const nextY = Math.max(0, Math.round(y + event.translationY / stride));
-        const fx = Math.floor((x * stride + grabX.value + event.translationX) / stride);
-        const fy = Math.floor((y * stride + grabY.value + event.translationY) / stride);
-        if (nextX !== targetX.value || nextY !== targetY.value || fx !== fingerX.value || fy !== fingerY.value) {
-          targetX.value = nextX;
-          targetY.value = nextY;
-          fingerX.value = fx;
-          fingerY.value = fy;
-          scheduleOnRN(ghost, nextX, nextY, w, h, fx, fy);
+        rawX.value = event.translationX;
+        rawY.value = event.translationY;
+        follow();
+        // Near the top or bottom of the screen? Scroll that way.
+        const speed = edgeScrollSpeed(event.absoluteY, viewTop.value, viewBottom.value);
+        if (speed !== lastSpeed.value) {
+          lastSpeed.value = speed;
+          scheduleOnRN(edge, speed);
         }
       })
       .onEnd(() => {
@@ -343,6 +405,11 @@ function GridItem({
         scheduleOnRN(drop, targetX.value, targetY.value);
       })
       .onFinalize(() => {
+        dragging.value = false;
+        if (lastSpeed.value !== 0) {
+          lastSpeed.value = 0;
+          scheduleOnRN(edge, 0);
+        }
         lifted.value = withTiming(0, { duration: 200 });
         if (!dropping.value) {
           dragX.value = withTiming(0, ease);
@@ -350,7 +417,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY]);
+  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, edge, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
