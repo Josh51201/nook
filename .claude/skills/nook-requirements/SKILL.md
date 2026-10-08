@@ -23,6 +23,11 @@ the first time.
   When something changes, give Josh the updated file (or just the changed sections if small)
   so he can replace the Project copy.
 
+**Keep it small (Claude Code):** the doc is big, so don't read it end to end. Grep for the IDs or
+keywords you need and read only that section. Decisions go in `docs/NOOK_DECISION_LOG.md`, not in
+the main doc. When something is built, leave the requirement with a 1–2 sentence "Built" note;
+long detail goes in `docs/archive/NOOK_REQUIREMENTS_FULL.md` only if it's worth keeping.
+
 ## When to update
 
 Update whenever the conversation produces any of these:

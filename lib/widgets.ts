@@ -127,6 +127,15 @@ export const widgetKinds: {
   { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 1, h: 1 } },
 ];
 
+// How the "Add" sheet groups widgets so it isn't one long list (CORE-059).
+// Every kind belongs to exactly one category (a test checks this).
+export const widgetCategories: { id: string; label: string; blurb: string; icon: IconName; kinds: WidgetKind[] }[] = [
+  { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["gatherings", "tucks", "inbox", "cards", "pets", "rhythms"] },
+  { id: "lists", label: "Lists & routines", blurb: "Things to remember, tick off and jump to", icon: "todo", kinds: ["reminders", "note", "streak", "launch"] },
+  { id: "time", label: "Time & weather", blurb: "Dates, the clock and the sky", icon: "clock", kinds: ["countdown", "clock", "weather", "window"] },
+  { id: "cozy", label: "Cozy touches", blurb: "Pictures, words and a warm hello", icon: "sparkles", kinds: ["frame", "quote", "greeting"] },
+];
+
 // Every widget can be any size, down to a single icon (CORE-030). Its
 // insides are laid out for the shape it's been given, in pixels:
 //   icon  — one cell (or a narrow column): an icon with a count

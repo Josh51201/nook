@@ -2,7 +2,11 @@
 
 Nook is a phone app that holds many mini-apps ("Nooks") under one account. Full spec, open
 questions, decision log, and naming glossary live in [docs/NOOK_REQUIREMENTS.md](docs/NOOK_REQUIREMENTS.md).
-**Read it before any feature work.** Josh (the user) has never built a phone app before —
+**Don't read the whole thing** — it costs a lot of context. Grep it for the IDs/keywords
+you need (e.g. `CORE-03`, `GIFT-007`, `Q-028`) and read just those lines or the one section
+you're touching. Past decisions are in [docs/NOOK_DECISION_LOG.md](docs/NOOK_DECISION_LOG.md) and
+the full "Built" fine print is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; open those only when
+you need that history. Keep new "Built" notes in the main doc to 1–2 short sentences. Josh (the user) has never built a phone app before —
 explain setup steps (installs, accounts, keys) in plain language and confirm he's done them
 before relying on them.
 

@@ -4,7 +4,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 
 import { trinkets, type TrinketKey } from "../../lib/trinkets";
 import { colors, ui } from "../../lib/theme";
-import { defaultWidget, widgetKinds, widgetTemplates, type WidgetConfig } from "../../lib/widgets";
+import { defaultWidget, widgetCategories, widgetKindInfo, widgetTemplates, type WidgetConfig } from "../../lib/widgets";
 import { BottomSheet } from "../bottom-sheet";
 import { IconBadge, type IconName } from "../icon";
 import { Tap } from "../motion";
@@ -91,23 +91,32 @@ export function AddSheet({
           </>
         ) : null}
 
-        <SectionHeader title="Widgets" icon="widgets" />
-        {widgetKinds.map((kind, i) => (
-          <Row
-            key={kind.kind}
-            index={i + 2}
-            icon={kind.icon}
-            title={kind.label}
-            subtitle={kind.description}
-            onPress={() => onAddWidget(defaultWidget(kind.kind))}
-          />
+        {widgetCategories.map((category, c) => (
+          <View key={category.id} style={{ gap: 10 }}>
+            <SectionHeader title={category.label} icon={category.icon} />
+            <Text style={ui.muted}>{category.blurb}</Text>
+            {category.kinds.map((kind, i) => {
+              const info = widgetKindInfo(kind);
+              return (
+                <Row
+                  key={kind}
+                  index={c * 2 + i + 2}
+                  icon={info.icon}
+                  title={info.label}
+                  subtitle={info.description}
+                  onPress={() => onAddWidget(defaultWidget(kind))}
+                />
+              );
+            })}
+          </View>
         ))}
 
         <SectionHeader title="Ideas" icon="sparkles" />
+        <Text style={ui.muted}>Ready-made widgets, already set up for you</Text>
         {widgetTemplates.map((template, i) => (
           <Row
             key={template.id}
-            index={i + 2 + widgetKinds.length}
+            index={i + 2}
             icon={template.icon}
             title={template.label}
             subtitle={template.description}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultWidget, widgetKinds } from "../lib/widgets";
+import { defaultWidget, widgetCategories, widgetKinds } from "../lib/widgets";
 import {
   addDays,
   bestStreak,
@@ -122,6 +122,13 @@ describe("quick launch (CORE-049)", () => {
     }
     const launch = defaultWidget("launch");
     if (launch.kind === "launch") expect(pickedTargets(launch.settings.targets).length).toBe(launch.settings.targets.length);
+  });
+});
+
+describe("Add sheet categories (CORE-059)", () => {
+  it("puts every widget kind in exactly one category", () => {
+    const listed = widgetCategories.flatMap((c) => c.kinds);
+    expect([...listed].sort()).toEqual(widgetKinds.map((k) => k.kind).sort());
   });
 });
 
