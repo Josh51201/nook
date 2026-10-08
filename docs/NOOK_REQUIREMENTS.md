@@ -2,7 +2,7 @@
 
 _Fine print for built features is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 43)_
+_Last updated: 2026-10-08 (rev 44)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -52,7 +52,7 @@ Josh wants the Hearth to be truly one of a kind for anyone who puts in the time,
 - **CORE-042** Any color, not just 7: a full color picker for tiles, accents and themes, plus corner roundness, shadow depth and borders. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-043** Build-your-own themes: pick every color, save it under a name, and optionally let themes switch with the season (a Christmas Hearth in December). _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-044** More shapes for Nook tiles besides the arched alcove, such as a round window, a little door or a hanging sign. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_ Changing shape rebuilds the tile; window bars show only on roughly square tiles.
-- **CORE-045** Decor pieces *(proposed name: Trinkets)*: little non-clickable objects placed anywhere on the Hearth or in a Hollow, like a plant, lantern, sleeping cat, rug or stack of books. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
+- **CORE-045** Decor pieces *(proposed name: Trinkets)*: little non-clickable objects placed anywhere on the Hearth or in a Hollow, like a plant, lantern, sleeping cat, rug or stack of books. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_ Josh wants Trinkets to be movable anywhere. _(Built 2026-10-08: Trinkets float. They land exactly where you let go, even between grid cells, can overlap other things, and are never pushed by them or counted as taking up a cell. Tidy up leaves them alone. Stored as two extra decimals per Trinket, about 100 bytes each.)_
 - **CORE-046** A photo frame widget showing your own pictures in a frame, rotating through them. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-047** Ambience that follows the date and time of day (falling leaves, snow, fireflies), plus an optional soft fireplace sound that is off by default. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-048** A pet that lives on your Hearth, made from the photos in Pet Care (PET-006).

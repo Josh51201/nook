@@ -290,12 +290,22 @@ export function rowsUsed(items: GridRect[]) {
   return items.reduce((max, item) => Math.max(max, item.y + item.h), 0);
 }
 
+// Trinkets (CORE-045) float: they can sit anywhere, between the grid's
+// cells, overlap things, and are never pushed out of the way or push others.
+// Their x and y are in cells but may have decimals.
+export function isFloating(item: HearthItem) {
+  return item.kind === "trinket";
+}
+
+const hundredths = (n: number) => Math.round(n * 100) / 100;
+
 function clampRect<T extends HearthItem>(item: T): T {
   const min = minSize(item);
   const w = Math.max(min.w, Math.min(COLUMNS, Math.round(item.w)));
   const h = Math.max(min.h, Math.min(8, Math.round(item.h)));
-  const x = Math.max(0, Math.min(COLUMNS - w, Math.round(item.x)));
-  const y = Math.max(0, Math.round(item.y));
+  const free = isFloating(item);
+  const x = Math.max(0, Math.min(COLUMNS - w, free ? hundredths(item.x) : Math.round(item.x)));
+  const y = Math.max(0, free ? hundredths(item.y) : Math.round(item.y));
   return { ...item, x, y, w, h };
 }
 
@@ -321,6 +331,7 @@ export function settle(items: HearthItem[], fixedId: string): HearthItem[] {
       if (isFixed(item)) continue;
       for (let j = 0; j < i; j++) {
         const above = sorted[j];
+        if (isFloating(item) || isFloating(above)) continue;
         if (overlaps(item, above) && !(item.stack && item.stack === above.stack)) {
           item.y = above.y + above.h;
           moved = true;
@@ -360,9 +371,14 @@ function withStackMates(items: HearthItem[], id: string) {
 export function moveItem(layout: HearthLayout, id: string, x: number, y: number): HearthItem[] {
   const moving = layout.items.find((item) => item.id === id);
   if (!moving || moving.locked) return layout.items;
+  // A Trinket just goes where it was put.
+  if (isFloating(moving)) {
+    const placed = clampRect({ ...moving, x, y });
+    return layout.items.map((item) => (item.id === id ? placed : item));
+  }
   const goes = withStackMates(layout.items, id);
   let target = clampRect({ ...moving, x, y });
-  const obstacles = layout.items.filter((item) => item.locked && !goes(item));
+  const obstacles = layout.items.filter((item) => item.locked && !goes(item) && !isFloating(item));
   if (obstacles.some((item) => overlaps(item, target))) {
     const spot = nearestOpenSpot(obstacles, target);
     target = { ...target, ...spot };
@@ -377,7 +393,9 @@ export function resizeItem(layout: HearthLayout, id: string, w: number, h: numbe
   const goes = withStackMates(layout.items, id);
   const next = clampRect({ ...resizing, w, h });
   // Growing into a locked item isn't allowed.
-  if (layout.items.some((item) => item.locked && !goes(item) && overlaps(item, next))) return layout.items;
+  if (!isFloating(resizing) && layout.items.some((item) => item.locked && !goes(item) && !isFloating(item) && overlaps(item, next))) {
+    return layout.items;
+  }
   const items = layout.items.map((item) => (goes(item) ? { ...item, w: next.w, h: next.h, x: next.x, y: next.y } : item));
   return settle(items, id);
 }
@@ -406,8 +424,9 @@ function nearestOpenSpot(obstacles: GridRect[], want: GridRect): { x: number; y:
 // and a stack moves as one.
 export function tidyItems(items: HearthItem[]): HearthItem[] {
   const result = items.map((item) => ({ ...item }));
-  const placed: HearthItem[] = result.filter((item) => item.locked);
-  const rest = result.filter((item) => !item.locked).sort((a, b) => a.y - b.y || a.x - b.x);
+  // Trinkets float, so tidying leaves them where they are.
+  const placed: HearthItem[] = result.filter((item) => item.locked && !isFloating(item));
+  const rest = result.filter((item) => !item.locked && !isFloating(item)).sort((a, b) => a.y - b.y || a.x - b.x);
   const stackRow = new Map<string, number>();
   for (const item of rest) {
     const known = item.stack ? stackRow.get(item.stack) : undefined;
@@ -455,7 +474,7 @@ export function addItem(
     | Omit<HollowItem, "x" | "y">
     | Omit<TrinketItem, "x" | "y">
 ): HearthItem[] {
-  const spot = findFreeSpot(layout.items, item.w, item.h);
+  const spot = findFreeSpot(layout.items.filter((other) => !isFloating(other)), item.w, item.h);
   return [...layout.items, { ...item, ...spot } as HearthItem];
 }
 

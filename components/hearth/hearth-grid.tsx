@@ -255,7 +255,8 @@ export function HearthGrid({
             if (target && target.id !== dropHollowRef.current?.id) tap();
             dropHollowRef.current = target;
             setDropHollow(target);
-            setGhost(rect);
+            // A Trinket has no cell to snap to, so no outline.
+            setGhost(item.kind === "trinket" ? null : rect);
           }}
           onDrop={(x, y) => {
             const into = dropHollowRef.current;
@@ -513,6 +514,7 @@ function GridItem({
   const resizeEnd = useCallback((w: number, h: number) => handlers.current.onResizeEnd(w, h), []);
 
   const { x, y, w, h } = item;
+  const free = item.kind === "trinket";
   const moveGesture = useMemo(() => {
     const tapGesture = Gesture.Tap()
       .onBegin(() => {
@@ -618,9 +620,15 @@ function GridItem({
           scheduleOnRN(tabDrop, tabOver.value);
           return;
         }
-        const moved = targetX.value !== x || targetY.value !== y;
+        // A Trinket lands exactly where it was let go; everything else
+        // snaps to a cell.
+        const moved = free || targetX.value !== x || targetY.value !== y;
         dropping.value = moved;
-        scheduleOnRN(drop, targetX.value, targetY.value);
+        scheduleOnRN(
+          drop,
+          free ? Math.min(COLUMNS - w, Math.max(0, x + dragX.value / stride)) : targetX.value,
+          free ? Math.max(0, y + dragY.value / stride) : targetY.value
+        );
       })
       .onFinalize(() => {
         dragging.value = false;
@@ -646,7 +654,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [selecting, item.locked, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, tabs, tabOver, tabHover, tabDrop, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [selecting, item.locked, free, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, tabs, tabOver, tabHover, tabDrop, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
