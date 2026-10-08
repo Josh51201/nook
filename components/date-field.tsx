@@ -30,7 +30,7 @@ export function DateField({
           maximumDate={maximumDate}
           themeVariant={colors.dark ? "dark" : "light"}
           accentColor={colors.bark}
-          onChange={(_e, picked) => picked && onChange(picked)}
+          onValueChange={(_e, picked) => onChange(picked)}
         />
       </View>
     );
@@ -46,15 +46,14 @@ export function DateField({
       DateTimePickerAndroid.open({
         value: base,
         mode: "time",
-        onChange: (_e, picked) => picked && onChange(picked),
+        onValueChange: (_e, picked) => onChange(picked),
       });
     if (mode === "time") return pickTime(value);
     DateTimePickerAndroid.open({
       value,
       mode: "date",
       maximumDate,
-      onChange: (_e, picked) => {
-        if (!picked) return;
+      onValueChange: (_e, picked) => {
         if (mode === "datetime") {
           picked.setHours(value.getHours(), value.getMinutes());
           pickTime(picked);

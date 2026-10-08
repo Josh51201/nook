@@ -323,19 +323,15 @@ export default function MemberWishbook() {
           ) : null}
           {giverList}
           <View style={[ui.row, { flexWrap: "wrap" }]}>
-            <Chip
-              icon="bought"
-              selected={mine.status === "bought"}
-              onPress={() =>
-                !isBusy &&
-                setStatus(
-                  mine,
-                  mine.status === "bought" ? "planning" : "bought",
-                )
-              }
-            >
-              {mine.status === "bought" ? "Bought" : "Mark bought"}
-            </Chip>
+            {mine.status === "bought" ? (
+              <Chip icon="undo" onPress={() => !isBusy && setStatus(mine, "planning")}>
+                Not bought after all
+              </Chip>
+            ) : (
+              <Chip icon="bought" onPress={() => !isBusy && setStatus(mine, "bought")}>
+                Mark bought
+              </Chip>
+            )}
             <Chip
               icon="edit"
               onPress={() => router.push(`/gift-nook/tuck/${mine.id}`)}
