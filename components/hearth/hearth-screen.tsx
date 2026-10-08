@@ -135,6 +135,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const { session } = useAuth();
   const insets = useSafeAreaInsets();
   const [barHeight, setBarHeight] = useState(0);
+  // The page row under the bar (CORE-051), so the fade starts below it.
+  const [stripHeight, setStripHeight] = useState(0);
 
   // Auto-scroll while dragging (CORE-029): hold an item near the top or
   // bottom of the screen and the page scrolls along with it. The grid
@@ -955,6 +957,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         </View>
 
         {!scope && layout.pages.length > 1 ? (
+          <View onLayout={(e) => setStripHeight(e.nativeEvent.layout.height)}>
           <PageStrip
             pages={layout.pages}
             activeId={layout.activePage}
@@ -963,6 +966,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
             background={theme.background}
             onSwitch={goToPage}
           />
+          </View>
         ) : null}
 
         <GestureDetector gesture={pageSwipe}>
@@ -1209,7 +1213,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       {/* Content melts away under the top bar instead of meeting a hard edge. */}
       {barHeight > 0 ? (
         <GlowVeil
-          top={insets.top + barHeight}
+          top={insets.top + barHeight + (!scope && layout.pages.length > 1 ? stripHeight : 0)}
           height={16}
           background={theme.background}
           color={theme.glow}
