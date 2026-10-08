@@ -2,7 +2,7 @@
 
 _Fine print for built features is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 46)_
+_Last updated: 2026-10-08 (rev 47)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -61,7 +61,7 @@ Josh wants the Hearth to be truly one of a kind for anyone who puts in the time,
 - **CORE-051** More than one Hearth page, swiped between, such as "Everyday" and "Holidays". _(Built 2026-10-08 (proposed details): swipe the Hearth sideways, or tap a page name in the strip under the top bar (shown once there are two or more). Edit → **Pages** adds, renames (up to 20 letters) and removes pages, up to 6. Removing a page moves what's on it to the first page. Hollows have just one page. Nooks, photos and the weather town are found across every page.)_ Josh also wants to drag a widget onto a page tab to move it there. _(Built (proposed details): while dragging in Edit, the page tabs light up under your finger; let go on one to move the item there, with "Moved … Undo". In Edit there is also a **New page** tab: drop on it to make a page and move the item onto it. Hollows have no tabs.)_
 - **CORE-052** Scenes *(proposed name)*: save a whole Hearth setup and swap it in by hand or on a schedule (Morning, Evening, Christmas). _(Built 2026-10-08 (proposed details): Edit → **Scenes** (Hearth only). A scene saves the whole Hearth — every page and what is on it, the theme, wallpaper and ambience — under a name; up to 6. Scenes work like wardrobes: the Hearth you see is the active scene, and switching stores the one you are leaving back into its scene, so nothing is lost (a Hearth that is not a scene yet is kept as "My Hearth" first). A scene can switch on by itself when you open the Hearth in a time slot — Morning (5 AM–noon), Afternoon, Evening (5–10 PM), Night — and/or some months; the most specific match wins, and one you pick by hand stays until the matching scene changes. Scenes are kept in their own saved row so editing your Hearth does not rewrite them. Fonts and custom themes are not part of a scene.)_
 - **CORE-053** Show a widget or tile only sometimes, such as a gift countdown that only appears in November and December. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
-- **CORE-054** A shared Home Hearth: a Hollow everyone in your Home (HOME-001, capped at 6) sees and arranges together, like the household bulletin board.
+- **CORE-054** A shared Home Hearth: ~~a Hollow~~ a page of the Hearth everyone in your Home (HOME-001, capped at 6) sees and arranges together, like the household bulletin board. It shows up for everyone automatically once a Home has two or more people; each person can hide it for themselves. _(Built 2026-10-08 (proposed details): a **Home** tab with a little house after your own pages, renamable by anyone, not counted in your 6 pages. Anything but a Hollow can go on it (drag onto its tab, or Select → Move), and every page tool works there. Changes show on everyone's phone within a moment, and two people changing different things don't undo each other. Widgets load their contents for whoever is looking, so Gifts to buy shows each person their own list (GIFT-007). Photo frames there copy their pictures to a folder only the Home can see. Theme, wallpaper and Scenes stay yours. Phone alerts on a shared reminders list ring only on the phone that set them.)_
 - **CORE-055** Share a look: send a layout or theme to family as a code so they can copy it and then change it.
 - **CORE-056** A Weather widget: the weather now and the next few days for a place. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-057** A Window widget: a little window on the Hearth with the weather outside it. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_ Curtains removed 2026-10-08 (they looked wrong on wide or rectangular windows).
@@ -149,6 +149,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | A decorative object placed on the Hearth | Trinket | proposed |
 | A saved whole-Hearth setup | Scene | proposed |
 | The pet that lives on your Hearth (CORE-048) | Hearth pet | proposed |
+| The Hearth page shared with your Home (CORE-054) | Home page | proposed |
 | The people you live with, shared by Nooks | Home | proposed |
 | One entry in the Letterbox (one mailing address) | Contact | proposed |
 | Homepage | The Hearth | proposed |
@@ -185,4 +186,4 @@ Josh's stated priority, in order:
 3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).
 4. ~~**Pet Care Nook**~~ — built 2026-10-08 (section 2d).
 5. ~~**Rhythms Nook**~~ — built 2026-10-08 (section 2e).
-6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. 048 built 2026-10-08. Still to do: 054, 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 built 2026-10-08: lock (061), tidy up (062), find (063). Round 3 built 2026-10-08: dividers (064), Scenes (052), tags (065).
+6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. 048 and 054 built 2026-10-08. Still to do: 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 built 2026-10-08: lock (061), tidy up (062), find (063). Round 3 built 2026-10-08: dividers (064), Scenes (052), tags (065).

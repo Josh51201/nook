@@ -19,6 +19,8 @@ import { NookScroll } from "../../components/nook-scroll";
 import { DateField } from "../../components/date-field";
 import { Banner, Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
+import { useHearthView } from "../../lib/hearth-view";
+import { homePhotoFolder } from "../../lib/home-hearth";
 import { bedStyles, critterForSpecies, critterInfo, critters } from "../../lib/hearth-pet";
 import { usePets } from "../../lib/pets-data";
 import { cornerChoices, liftChoices } from "../../lib/decor";
@@ -39,7 +41,6 @@ import {
   resizeItem,
   sizePresets,
   updateItem,
-  useHearthLayout,
   type Scope,
   type WidgetItem,
 } from "../../lib/hearth";
@@ -68,7 +69,8 @@ import { addToStack, MAX_STACK, stackMates, unstack } from "../../lib/hearth-sta
 export default function WidgetEditor() {
   const router = useRouter();
   const { id, copied, stacked } = useLocalSearchParams<{ id: string; copied?: string; stacked?: string }>();
-  const { layout, save, isLoading } = useHearthLayout();
+  // The widget may be on the page shared with your Home (CORE-054).
+  const { layout, save, isLoading, onHome, home: homeHearth } = useHearthView();
   const { width: screenWidth } = useWindowDimensions();
   // Hooks first: the screen returns early below while it loads.
   const { key: themeKey } = useTheme();
@@ -92,6 +94,9 @@ export default function WidgetEditor() {
 
   const widget = draft.widget;
   const info = widgetKindInfo(widget.kind);
+  // On the page shared with your Home (CORE-054), not inside a Hollow.
+  const sharedPage = onHome && home === null;
+  const hereName = sharedPage ? homeHearth.name : "The Hearth";
   const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
   const stride = (screenWidth - 40 - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
 
@@ -238,7 +243,12 @@ export default function WidgetEditor() {
       </Animated.View>
 
       <SectionHeader title="What it shows" icon={info.icon} />
-      <KindSettings widget={widget} setSettings={setSettings} setWidget={setWidget} />
+      <KindSettings
+        widget={widget}
+        setSettings={setSettings}
+        setWidget={setWidget}
+        photoFolder={sharedPage && homeHearth.homeId ? homePhotoFolder(homeHearth.homeId) : undefined}
+      />
 
       {hollowsOf(layout).length ? (
         <>
@@ -356,8 +366,8 @@ export default function WidgetEditor() {
 
       <SectionHeader title="Make a copy" icon="copy" />
       <View style={ui.chips}>
-        <Chip icon="hearth" onPress={() => saveWidget(null)}>
-          The Hearth
+        <Chip icon={sharedPage ? "burrow" : "hearth"} onPress={() => saveWidget(null)}>
+          {hereName}
         </Chip>
         {hollowsOf(layout).map((hollowItem) => (
           <Chip key={hollowItem.id} icon="burrow" onPress={() => saveWidget(hollowItem.id)}>
@@ -403,9 +413,11 @@ export default function WidgetEditor() {
 function FrameSettings({
   widget,
   setSettings,
+  folder,
 }: {
   widget: WidgetOf<"frame">;
   setSettings: (changes: Record<string, unknown>) => void;
+  folder?: string;
 }) {
   const { session } = useAuth();
   const [uploading, setUploading] = useState(false);
@@ -416,7 +428,7 @@ function FrameSettings({
     const userId = session?.user.id;
     if (!userId || uploading || photos.length >= MAX_FRAME_PHOTOS) return;
     setUploading(true);
-    const path = await pickAndUploadPhoto(userId);
+    const path = await pickAndUploadPhoto(userId, folder);
     setUploading(false);
     if (path) setSettings({ photos: [...photos, path] });
   }
@@ -480,7 +492,11 @@ function FrameSettings({
           </View>
         </>
       ) : null}
-      <Text style={ui.muted}>Your pictures are private to you. They're kept safe and only shown on your own Hearth.</Text>
+      <Text style={ui.muted}>
+        {folder
+          ? "This frame is on the page shared with your Home, so everyone in your Home can see these pictures. Nobody else can."
+          : "Your pictures are private to you. They're kept safe and only shown on your own Hearth."}
+      </Text>
     </>
   );
 }
@@ -721,10 +737,13 @@ function KindSettings({
   widget,
   setSettings,
   setWidget,
+  photoFolder,
 }: {
   widget: WidgetConfig;
   setSettings: (changes: Record<string, unknown>) => void;
   setWidget: (changes: Partial<WidgetConfig>) => void;
+  // Where new photos go: the Home's folder for the shared page.
+  photoFolder?: string;
 }) {
   switch (widget.kind) {
     case "companion":
@@ -787,7 +806,7 @@ function KindSettings({
         </>
       );
     case "frame":
-      return <FrameSettings widget={widget} setSettings={setSettings} />;
+      return <FrameSettings widget={widget} setSettings={setSettings} folder={photoFolder} />;
     case "clock":
       return (
         <>

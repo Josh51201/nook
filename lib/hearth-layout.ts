@@ -113,6 +113,8 @@ export type HearthLayout = {
   seasonal: SeasonalThemes;
   pages: HearthPage[];
   activePage: string;
+  // Hide the page shared with your Home (CORE-054).
+  hideHomePage?: boolean;
   otherPages: Record<string, HearthItem[]>;
   items: HearthItem[];
 };
@@ -604,6 +606,7 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
     ambience: saved.ambience ?? defaultHearthLayout.ambience,
     customThemes: saved.customThemes ?? defaultHearthLayout.customThemes,
     seasonal: saved.seasonal ?? defaultHearthLayout.seasonal,
+    hideHomePage: saved.hideHomePage,
     ...normalizePages(saved),
   };
   // Saved settings are merged over defaults (items: []), so an old Hearth

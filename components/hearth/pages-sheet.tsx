@@ -25,9 +25,12 @@ export function PageStrip({
   tabRef,
   onSwitch,
   onAdd,
+  homeId,
 }: {
   pages: HearthPage[];
   activeId: string;
+  // The page shared with your Home (CORE-054), shown with a little house.
+  homeId?: string;
   accent: string;
   text: string;
   background: string;
@@ -69,9 +72,12 @@ export function PageStrip({
                   borderColor: on || hover ? accent : `${accent}33`,
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: on || hover ? "800" : "600", color: on || hover ? background : text }} numberOfLines={1}>
-                  {page.name}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  {page.id === homeId ? <Icon name="burrow" size={13} color={on || hover ? background : accent} /> : null}
+                  <Text style={{ fontSize: 14, fontWeight: on || hover ? "800" : "600", color: on || hover ? background : text }} numberOfLines={1}>
+                    {page.name}
+                  </Text>
+                </View>
               </Tap>
             </View>
           );
@@ -116,6 +122,10 @@ export function PagesSheet({
   onAdd,
   onRename,
   onRemove,
+  homeId,
+  homeHidden = false,
+  homeName,
+  onShowHome,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -124,10 +134,18 @@ export function PagesSheet({
   onSwitch: (id: string) => void;
   onAdd: (name: string) => void;
   onRename: (id: string, name: string) => void;
+  // For the Home page, this hides it instead (it's everyone's).
   onRemove: (id: string) => void;
+  // The page shared with your Home (CORE-054), if it's showing; whether
+  // you've hidden it, and a way to bring it back.
+  homeId?: string;
+  homeHidden?: boolean;
+  homeName?: string;
+  onShowHome?: () => void;
 }) {
   const [newName, setNewName] = useState("");
-  const full = pages.length >= MAX_PAGES;
+  // The Home page doesn't count against your own pages.
+  const full = pages.filter((p) => p.id !== homeId).length >= MAX_PAGES;
 
   return (
     <BottomSheet
@@ -145,12 +163,19 @@ export function PagesSheet({
             key={page.id}
             page={page}
             active={page.id === activeId}
-            canRemove={pages.length > 1}
+            canRemove={page.id === homeId || pages.filter((p) => p.id !== homeId).length > 1}
+            shared={page.id === homeId}
             onSwitch={() => onSwitch(page.id)}
             onRename={(name) => onRename(page.id, name)}
             onRemove={() => onRemove(page.id)}
           />
         ))}
+        {homeId ? (
+          <Text style={ui.muted}>The page with the little house is shared with everyone in your Home: anyone can add to it, rearrange it or rename it. Hiding it only hides it for you.</Text>
+        ) : null}
+        {homeHidden && onShowHome ? (
+          <Button title={`Show “${homeName ?? "Home"}” again`} icon="burrow" variant="secondary" onPress={onShowHome} />
+        ) : null}
         {full ? (
           <Text style={ui.muted}>That's the most pages ({MAX_PAGES}).</Text>
         ) : (
@@ -184,6 +209,7 @@ function PageRow({
   page,
   active,
   canRemove,
+  shared = false,
   onSwitch,
   onRename,
   onRemove,
@@ -191,6 +217,7 @@ function PageRow({
   page: HearthPage;
   active: boolean;
   canRemove: boolean;
+  shared?: boolean;
   onSwitch: () => void;
   onRename: (name: string) => void;
   onRemove: () => void;
@@ -198,6 +225,7 @@ function PageRow({
   const [name, setName] = useState(page.name);
   return (
     <View style={[ui.row, { gap: 10 }]}>
+      {shared ? <Icon name="burrow" size={20} color={colors.bark} /> : null}
       <View style={{ flex: 1 }}>
         <TextInput
           style={ui.input}
@@ -216,8 +244,8 @@ function PageRow({
         <Chip onPress={onSwitch}>Go</Chip>
       )}
       {canRemove ? (
-        <Tap onPress={onRemove} hitSlop={10} pressedScale={0.85} accessibilityLabel={`Remove ${page.name}`}>
-          <Icon name="trash" size={22} color={colors.error} />
+        <Tap onPress={onRemove} hitSlop={10} pressedScale={0.85} accessibilityLabel={shared ? `Hide ${page.name}` : `Remove ${page.name}`}>
+          <Icon name={shared ? "hidden" : "trash"} size={22} color={shared ? colors.muted : colors.error} />
         </Tap>
       ) : null}
     </View>

@@ -1,10 +1,14 @@
 import { findFreeSpot, newItemId, type HearthItem, type HearthLayout } from "./hearth-layout";
+import { HOME_PAGE } from "./home-hearth";
 
 // Pages of the Hearth (CORE-051). Pure helpers, no React: each returns the
 // changes to save. The page you're on keeps its items in `layout.items`;
 // the others wait in `layout.otherPages`.
 
 export const MAX_PAGES = 6;
+
+// Your own pages; the page shared with your Home (CORE-054) doesn't count.
+const ownPages = (layout: HearthLayout) => layout.pages.filter((p) => p.id !== HOME_PAGE).length;
 
 type PageChanges = Pick<HearthLayout, "pages" | "activePage" | "otherPages" | "items">;
 
@@ -27,12 +31,12 @@ export function switchPage(layout: HearthLayout, pageId: string): PageChanges | 
 
 // A new empty page that you stay off (for dropping an item onto "New page").
 export function addEmptyPage(layout: HearthLayout): { id: string; changes: Pick<HearthLayout, "pages" | "otherPages"> } | null {
-  if (layout.pages.length >= MAX_PAGES) return null;
+  if (ownPages(layout) >= MAX_PAGES) return null;
   const id = newItemId("p");
   return {
     id,
     changes: {
-      pages: [...layout.pages, { id, name: `Page ${layout.pages.length + 1}` }],
+      pages: [...layout.pages, { id, name: `Page ${ownPages(layout) + 1}` }],
       otherPages: { ...layout.otherPages, [id]: [] },
     },
   };
@@ -40,9 +44,9 @@ export function addEmptyPage(layout: HearthLayout): { id: string; changes: Pick<
 
 // A new empty page, which you're taken to.
 export function addPage(layout: HearthLayout, name: string): { changes: PageChanges; id: string } | null {
-  if (layout.pages.length >= MAX_PAGES) return null;
+  if (ownPages(layout) >= MAX_PAGES) return null;
   const id = newItemId("p");
-  const pages = [...layout.pages, { id, name: cleanName(name) || `Page ${layout.pages.length + 1}` }];
+  const pages = [...layout.pages, { id, name: cleanName(name) || `Page ${ownPages(layout) + 1}` }];
   return { id, changes: pack(pages, id, { ...itemsByPage(layout), [id]: [] }) };
 }
 
@@ -54,7 +58,7 @@ export function renamePage(layout: HearthLayout, pageId: string, name: string): 
 // Taking a page away never deletes what's on it (like removing a Hollow):
 // everything moves to the first page that's left, in free spots.
 export function removePage(layout: HearthLayout, pageId: string): PageChanges | null {
-  if (layout.pages.length < 2 || !layout.pages.some((p) => p.id === pageId)) return null;
+  if (pageId === HOME_PAGE || ownPages(layout) < 2 || !layout.pages.some((p) => p.id === pageId)) return null;
   const pages = layout.pages.filter((p) => p.id !== pageId);
   const byPage = itemsByPage(layout);
   const target = pages[0].id;

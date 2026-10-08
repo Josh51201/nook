@@ -18,6 +18,7 @@ import { NookScroll } from "../../../components/nook-scroll";
 import { Text, TextInput } from "../../../components/text";
 import { Button, EmptyState, NavCard, SectionHeader } from "../../../components/ui";
 import { tap } from "../../../lib/feedback";
+import { useHearthView } from "../../../lib/hearth-view";
 import { countdown, gatheringKindInfo, gatheringKinds } from "../../../lib/gift-nook";
 import {
   hearthThemes,
@@ -26,7 +27,6 @@ import {
   tileBevel,
   tilePalette,
   updateItem,
-  useHearthLayout,
   type HearthLayout,
   type WidgetItem,
 } from "../../../lib/hearth";
@@ -53,7 +53,8 @@ import {
 export default function WidgetPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { layout, save, isLoading } = useHearthLayout();
+  // The widget may be on the page shared with your Home (CORE-054).
+  const { layout, save, isLoading } = useHearthView();
   const { key: themeKey } = useTheme();
   const [refreshKey, setRefreshKey] = useState(0);
   // The newest Hearth, for saving changes made in quick succession.

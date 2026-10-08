@@ -68,7 +68,6 @@ import {
   scopeItems,
   shadowAtLevel,
   updateItem,
-  useHearthLayout,
   type HearthItem,
   type HearthLayout,
   type HollowItem,
@@ -99,6 +98,8 @@ import { GRID_GAP, HearthGrid } from "./hearth-grid";
 import { PetStageContext } from "./pet-art";
 import { isPetBed, PetRoamers, strideFor } from "./pet-roamer";
 import { petSizeForStride } from "../../lib/hearth-pet";
+import { useHearthView } from "../../lib/hearth-view";
+import { canGoOnHomePage, HOME_PAGE } from "../../lib/home-hearth";
 import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { nookRadii } from "./tile-face";
@@ -124,7 +125,8 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 // and tap one to open its door and step in.
 export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string }) {
   const router = useRouter();
-  const { layout, save, isLoading, error, reload } = useHearthLayout();
+  // Your own pages, plus the page shared with your Home (CORE-054).
+  const { layout, save, isLoading, error, reload, personal, home, showsHome, onHome } = useHearthView(scope);
   // The theme in effect right now (Dusk while the phone is dark, if asked).
   const { key: themeKey } = useTheme();
   const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
@@ -360,7 +362,8 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   async function useScene(id: string, automatic = false) {
     if (!scenesReady || isLoading) return;
     if (scenes.active === id) return;
-    const result = switchScene(scenes, layout, id);
+    // Scenes are yours alone: the Home page is never part of one.
+    const result = switchScene(scenes, personal.layout, id);
     if (!result) {
       if (!automatic) {
         Alert.alert("Can't switch yet", "You have the most scenes there can be. Remove one first, so this Hearth can be kept.");
@@ -371,7 +374,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     try {
       // The scenes are written first, so the Hearth you're leaving is safe.
       await scenesStore.update({ scenes: result.state.scenes, active: result.state.active });
-      await save({ ...result.show });
+      await personal.save({ ...result.show });
     } catch (switchError) {
       scenesStore.update({ scenes: before.scenes, active: before.active }).catch(() => {});
       Alert.alert("Couldn't switch scenes", (switchError as Error).message);
@@ -410,7 +413,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   );
 
   function saveCurrentScene(name: string) {
-    const saved = saveScene(scenes, layout, name);
+    const saved = saveScene(scenes, personal.layout, name);
     if (!saved) return Alert.alert("That's the most scenes", "Remove one to save another.");
     tap("success");
     scenesStore
@@ -435,6 +438,9 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
       target = added.id;
     }
     if (target === layout.activePage) return;
+    if (target === HOME_PAGE && !canGoOnHomePage(item)) {
+      return Alert.alert("Hollows stay on your own pages", "Put the things inside it on the Home page instead.");
+    }
     const moved = moveManyToPage(work, [item.id], target);
     if (!moved) return;
     const before = { items: layout.items, otherPages: layout.otherPages };
@@ -474,6 +480,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     save(added.changes).catch((saveError: Error) => Alert.alert("Couldn't add the page", saveError.message));
   }
   function removeAPage(id: string) {
+    if (id === HOME_PAGE) return hideHomePage();
     const page = layout.pages.find((p) => p.id === id);
     Alert.alert(`Remove “${page?.name}”?`, "Everything on it moves to your first page.", [
       { text: "Cancel", style: "cancel" },
@@ -486,6 +493,26 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         },
       },
     ]);
+  }
+  // The Home page can't be removed (it's everyone's), only hidden from your
+  // own Hearth; Pages brings it back.
+  function hideHomePage() {
+    Alert.alert(`Hide “${home.name}”?`, "It stays as it is for everyone else in your Home. You can bring it back from Pages.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Hide",
+        onPress: () => {
+          home.setOnHomePage(false);
+          personal.save({ hideHomePage: true }).catch((saveError: Error) => Alert.alert("Couldn't hide it", saveError.message));
+        },
+      },
+    ]);
+  }
+  function showHomePage() {
+    tap("success");
+    setPagesOpen(false);
+    home.setOnHomePage(true);
+    personal.save({ hideHomePage: false }).catch((saveError: Error) => Alert.alert("Couldn't show it", saveError.message));
   }
   const canSwipePages = !scope && !editing && layout.pages.length > 1;
   // The page tabs show with two or more pages, and always while editing, so
@@ -804,6 +831,9 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         label: `Page: ${page.name}`,
         icon: "widgets",
         onPick: () => {
+          if (page.id === HOME_PAGE && items.some((i) => pickedIds.includes(i.id) && !canGoOnHomePage(i))) {
+            return Alert.alert("Hollows stay on your own pages", "Pick the other things, or put what's inside the Hollow on the Home page.");
+          }
           const next = moveManyToPage(layout, pickedIds, page.id);
           if (next) save(next).catch((saveError: Error) => Alert.alert("Couldn't move them", saveError.message));
           moved();
@@ -1250,6 +1280,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
             <PageStrip
             pages={layout.pages}
             activeId={layout.activePage}
+            homeId={showsHome ? HOME_PAGE : undefined}
             accent={theme.accent}
             text={theme.text}
             background={theme.background}
@@ -1338,6 +1369,15 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
               </Animated.View>
             ) : null}
 
+            {onHome && !isEmpty && !isLoading ? (
+              <Animated.View entering={FadeIn.duration(200)} style={[styles.hint, { backgroundColor: `${theme.accent}12` }]}>
+                <Icon name="group" size={18} color={theme.accent} />
+                <Text style={{ color: theme.text, flex: 1 }}>
+                  Shared with {listNames(home.others)}. Anyone in your Home can change this page.
+                </Text>
+              </Animated.View>
+            ) : null}
+
             <View
               ref={gridRef}
               collapsable={false}
@@ -1363,10 +1403,12 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
                 <Animated.View entering={FadeIn.duration(250)} style={[styles.emptyCard, { borderColor: theme.muted }]}>
                   <IconBadge name={scope ? "burrow" : "hearth"} size={72} color={theme.accent} background={`${theme.accent}1f`} />
                   <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                    {scope ? "Nothing in here yet" : "Make this place yours"}
+                    {scope ? "Nothing in here yet" : onHome ? `${home.name}, for everyone` : "Make this place yours"}
                   </Text>
                   <Text style={{ color: theme.muted, textAlign: "center" }}>
-                    {scope
+                    {onHome
+                      ? "This page is shared with everyone in your Home. Put up a shopping list, a sticky note or a countdown, and anyone can tick, move or change it. You can also drag things here onto this page's tab."
+                      : scope
                       ? "Add widgets or text here, or go back to your Hearth and drag Nooks and widgets onto this Hollow."
                       : "Add a Nook from the Market, or a widget — a countdown, reminders, a note — and arrange it all however you like."}
                   </Text>
@@ -1685,6 +1727,10 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         onAdd={addNewPage}
         onRename={(id, name) => save(renamePage(layout, id, name)).catch(() => {})}
         onRemove={removeAPage}
+        homeId={showsHome ? HOME_PAGE : undefined}
+        homeHidden={!scope && home.available && Boolean(personal.layout.hideHomePage)}
+        homeName={home.name}
+        onShowHome={showHomePage}
       />
 
       <AddSheet
@@ -1692,7 +1738,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         onClose={() => setAdding(false)}
         onAddWidget={addWidget}
         onAddLabel={addLabel}
-        onAddHollow={scope ? undefined : addHollow}
+        onAddHollow={scope || onHome ? undefined : addHollow}
         onAddTrinket={addTrinket}
         hollowName={hollow?.name}
         onOpenMarket={() => {
@@ -1727,6 +1773,13 @@ function Pill({
 }
 
 // "Good evening, Josh" for the top of the Hearth.
+// "Sarah", "Sarah and Mom", "Sarah, Mom and Dad".
+function listNames(names: string[]) {
+  if (!names.length) return "your Home";
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 function greeting(name: string | null) {
   const hour = new Date().getHours();
   const hello = hour < 5 ? "Up late" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";

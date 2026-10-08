@@ -13,7 +13,9 @@ const BUCKET = "hearth";
 
 // Pick a photo from the library and upload it. Returns its storage path, or
 // null if you backed out or it couldn't be added.
-export async function pickAndUploadPhoto(userId: string): Promise<string | null> {
+// `folder` is your own (your user id) unless the photo is for the Home page
+// (CORE-054), whose photos everyone in the Home can see.
+export async function pickAndUploadPhoto(userId: string, folder: string = userId): Promise<string | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     Alert.alert("Photos are off", "Allow Nook to use your photos in your phone's Settings to add one.");
@@ -25,7 +27,7 @@ export async function pickAndUploadPhoto(userId: string): Promise<string | null>
 
   const type = asset.mimeType && asset.mimeType.startsWith("image/") ? asset.mimeType : "image/jpeg";
   const extension = type === "image/png" ? "png" : type === "image/heic" ? "heic" : type === "image/webp" ? "webp" : "jpg";
-  const path = `${userId}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+  const path = `${folder}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
   try {
     const body = await (await fetch(asset.uri)).arrayBuffer();
     const { error } = await supabase.storage.from(BUCKET).upload(path, body, { contentType: type });
@@ -40,6 +42,19 @@ export async function pickAndUploadPhoto(userId: string): Promise<string | null>
 export async function removePhotos(paths: string[]) {
   const unique = [...new Set(paths.filter(Boolean))];
   if (unique.length) await supabase.storage.from(BUCKET).remove(unique);
+}
+
+// Copy photos between your folder and the Home's (CORE-054). Returns the
+// copies that couldn't be made; one that's already there counts as made.
+export async function copyPhotos(copies: { from: string; to: string }[]): Promise<Set<string>> {
+  const failed = new Set<string>();
+  await Promise.all(
+    copies.map(async ({ from, to }) => {
+      const { error } = await supabase.storage.from(BUCKET).copy(from, to);
+      if (error && !/exist|duplicate/i.test(error.message)) failed.add(to);
+    })
+  );
+  return failed;
 }
 
 // Photos that scenes (CORE-052) that aren't showing still need. The Hearth
