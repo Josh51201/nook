@@ -81,6 +81,11 @@ export const hollowDecors: { decor: HollowDecor; label: string; icon: IconName }
 ];
 export type HearthItem = NookItem | WidgetItem | LabelItem | HollowItem | TrinketItem;
 
+// A page of the Hearth (CORE-051), such as "Everyday" and "Holidays". Only
+// the page you're on keeps its items in `items` (so every editing helper keeps
+// working on `items`); the rest wait in `otherPages` until you swipe to them.
+export type HearthPage = { id: string; name: string };
+
 export type HearthLayout = {
   version: 2;
   title: string;
@@ -95,6 +100,9 @@ export type HearthLayout = {
   // Themes you've made (CORE-043), and themes that change with the seasons.
   customThemes: CustomTheme[];
   seasonal: SeasonalThemes;
+  pages: HearthPage[];
+  activePage: string;
+  otherPages: Record<string, HearthItem[]>;
   items: HearthItem[];
 };
 
@@ -218,6 +226,9 @@ export const defaultHearthLayout: HearthLayout = {
   ambience: "off",
   customThemes: [],
   seasonal: { enabled: false },
+  pages: [{ id: "main", name: "Hearth" }],
+  activePage: "main",
+  otherPages: {},
   items: [],
 };
 
@@ -365,7 +376,7 @@ export function addItem(
 // Every photo the Hearth uses, wherever it is: the wallpapers (Hearth and
 // Hollows) and Photo frame widgets. A photo is only deleted from storage once
 // nothing in this set shows it.
-export function photoPathsInUse(layout: Pick<HearthLayout, "wallpaper" | "items">): Set<string> {
+export function photoPathsInUse(layout: Pick<HearthLayout, "wallpaper" | "items"> & { otherPages?: HearthLayout["otherPages"] }): Set<string> {
   const used = new Set<string>();
   const hearthPhoto = wallpaperPath(layout.wallpaper);
   if (hearthPhoto) used.add(hearthPhoto);
@@ -380,7 +391,7 @@ export function photoPathsInUse(layout: Pick<HearthLayout, "wallpaper" | "items"
       }
     }
   };
-  walk(layout.items);
+  walk(everyTopLevel({ items: layout.items, otherPages: layout.otherPages ?? {} }));
   return used;
 }
 
@@ -423,11 +434,16 @@ export function copyItem(layout: HearthLayout, id: string, to: Scope): { items: 
   return { items: inScope(layout, to, (inner) => addItem(inner, { ...rest, id: copyId } as never)), copyId };
 }
 
-export function removeNook(layout: HearthLayout, nookId: string): HearthItem[] {
+// Takes every tile of a Nook off the Hearth, on every page and in every Hollow.
+export function removeNook(layout: HearthLayout, nookId: string): { items: HearthItem[]; otherPages: HearthLayout["otherPages"] } {
   const isIt = (item: HearthItem) => item.kind === "nook" && item.nookId === nookId;
-  return layout.items
-    .filter((item) => !isIt(item))
-    .map((item) => (item.kind === "hollow" ? { ...item, items: item.items.filter((inner) => !isIt(inner)) } : item));
+  const clean = (items: HearthItem[]) =>
+    items
+      .filter((item) => !isIt(item))
+      .map((item) => (item.kind === "hollow" ? { ...item, items: item.items.filter((inner) => !isIt(inner)) } : item));
+  const otherPages: HearthLayout["otherPages"] = {};
+  for (const [id, items] of Object.entries(layout.otherPages ?? {})) otherPages[id] = clean(items);
+  return { items: clean(layout.items), otherPages };
 }
 
 export function nookLabel(item: NookItem) {
@@ -453,6 +469,17 @@ type V1Section = { id: string; title: string; tiles: V1Tile[] };
 
 // The first Hearth stored named sections of tiles. Turn that into the grid:
 // each section title becomes a heading label, its tiles flow underneath.
+// Always at least one page, a real active page, and no stray page contents.
+function normalizePages(saved: Partial<HearthLayout>) {
+  const pages = Array.isArray(saved.pages) && saved.pages.length > 0 ? saved.pages : defaultHearthLayout.pages;
+  const activePage = pages.some((p) => p.id === saved.activePage) ? (saved.activePage as string) : pages[0].id;
+  const otherPages: Record<string, HearthItem[]> = {};
+  for (const page of pages) {
+    if (page.id !== activePage) otherPages[page.id] = saved.otherPages?.[page.id] ?? [];
+  }
+  return { pages, activePage, otherPages };
+}
+
 export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Section[] }): HearthLayout {
   const base = {
     ...defaultHearthLayout,
@@ -464,6 +491,7 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
     ambience: saved.ambience ?? defaultHearthLayout.ambience,
     customThemes: saved.customThemes ?? defaultHearthLayout.customThemes,
     seasonal: saved.seasonal ?? defaultHearthLayout.seasonal,
+    ...normalizePages(saved),
   };
   // Saved settings are merged over defaults (items: []), so an old Hearth
   // shows up as "sections present, no items".
@@ -515,8 +543,13 @@ export function findHollow(layout: HearthLayout, hollowId: string) {
 }
 
 // Everything, wherever it lives.
-export function allItems(layout: HearthLayout): HearthItem[] {
-  return layout.items.flatMap((item) => (item.kind === "hollow" ? [item, ...item.items] : [item]));
+export function allItems(layout: Pick<HearthLayout, "items" | "otherPages">): HearthItem[] {
+  return everyTopLevel(layout).flatMap((item) => (item.kind === "hollow" ? [item, ...item.items] : [item]));
+}
+
+// The top level of every page, not just the one you're on (CORE-051).
+export function everyTopLevel(layout: Pick<HearthLayout, "items" | "otherPages">): HearthItem[] {
+  return [...layout.items, ...Object.values(layout.otherPages ?? {}).flat()];
 }
 
 export function scopeItems(layout: HearthLayout, scope: Scope): HearthItem[] {

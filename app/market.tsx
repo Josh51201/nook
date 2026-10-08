@@ -39,7 +39,7 @@ export default function Market() {
         {
           text: "Remove",
           style: "destructive",
-          onPress: () => save({ items: removeNook(layout, nook.id) }).catch(() => {}),
+          onPress: () => save(removeNook(layout, nook.id)).catch(() => {}),
         },
       ]
     );

@@ -3,7 +3,7 @@ import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Text } from "../text";
-import { ScrollView } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, ScrollView } from "react-native-gesture-handler";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -21,6 +21,7 @@ import { useAuth } from "../../lib/auth-context";
 import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type Corners, type TileShape, type Wallpaper } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { removeUnusedPhotos } from "../../lib/hearth-photos";
+import { addPage, neighbourPage, removePage, renamePage, switchPage } from "../../lib/hearth-pages";
 import { trinketInfo, type TrinketKey } from "../../lib/trinkets";
 import { inSeason } from "../../lib/widget-extras";
 import { colors, useTheme } from "../../lib/theme";
@@ -29,6 +30,7 @@ import {
   COLUMNS,
   copyItem,
   deepColor,
+  everyTopLevel,
   findHollow,
   hearthThemes,
   hollowLookInfo,
@@ -78,6 +80,7 @@ import { GRID_GAP, HearthGrid } from "./hearth-grid";
 import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { nookRadii } from "./tile-face";
+import { PagesSheet, PageStrip } from "./pages-sheet";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WidgetView } from "./widgets";
@@ -106,6 +109,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const [optionsFor, setOptionsFor] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [decorating, setDecorating] = useState(false);
+  const [pagesOpen, setPagesOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [openingHollow, setOpeningHollow] = useState<string | null>(null);
@@ -116,7 +120,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const tourScroll = useTourScrollArea();
   const { profile } = useMyProfile();
   // "Match the weather" (CORE-058) follows the place on your Weather or Window widget.
-  const matchPlace = layout.ambience === "weather" ? weatherPlaceOf(layout.items) : null;
+  const matchPlace = layout.ambience === "weather" ? weatherPlaceOf(everyTopLevel(layout)) : null;
   const outside = useWeather(matchPlace?.place, matchPlace?.unit ?? "f", refreshKey);
   const { session } = useAuth();
   const insets = useSafeAreaInsets();
@@ -238,7 +242,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const gridRef = useRef<View>(null);
   const reduceMotion = useReducedMotion();
 
-  const sheetOpen = adding || decorating || optionsFor !== null || zoom !== null;
+  const sheetOpen = adding || decorating || pagesOpen || optionsFor !== null || zoom !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -265,6 +269,50 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   function persistHere(edit: (inner: HearthLayout) => HearthItem[]) {
     persist(inScope(layout, scope, edit));
   }
+
+  // Pages of the Hearth (CORE-051). Hollows have just the one.
+  function goToPage(id: string) {
+    const changes = switchPage(layout, id);
+    if (!changes) return;
+    tap();
+    setPagesOpen(false);
+    save(changes).catch((saveError: Error) => Alert.alert("Couldn't change page", saveError.message));
+  }
+  function swipePage(step: 1 | -1) {
+    const next = neighbourPage(layout, step);
+    if (next) goToPage(next);
+  }
+  function addNewPage(name: string) {
+    const added = addPage(layout, name);
+    if (!added) return;
+    tap("success");
+    setPagesOpen(false);
+    save(added.changes).catch((saveError: Error) => Alert.alert("Couldn't add the page", saveError.message));
+  }
+  function removeAPage(id: string) {
+    const page = layout.pages.find((p) => p.id === id);
+    Alert.alert(`Remove “${page?.name}”?`, "Everything on it moves to your first page.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          const changes = removePage(layout, id);
+          if (changes) save(changes).catch((saveError: Error) => Alert.alert("Couldn't remove it", saveError.message));
+        },
+      },
+    ]);
+  }
+  const canSwipePages = !scope && !editing && layout.pages.length > 1;
+  const pageSwipe = Gesture.Pan()
+    .runOnJS(true)
+    .enabled(canSwipePages)
+    .activeOffsetX([-30, 30])
+    .failOffsetY([-18, 18])
+    .onEnd((event) => {
+      if (event.translationX < -70) swipePage(1);
+      else if (event.translationX > 70) swipePage(-1);
+    });
 
   function openNook(nookId: string) {
     const route = findNook(nookId)?.route;
@@ -756,6 +804,12 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           </View>
         </View>
 
+        {!scope && layout.pages.length > 1 ? (
+          <PageStrip pages={layout.pages} activeId={layout.activePage} onSwitch={goToPage} />
+        ) : null}
+
+        <GestureDetector gesture={pageSwipe}>
+        <View style={styles.fill} collapsable={false}>
         <TourScrollArea area={tourScroll.area}>
           <AnimatedScrollView
             ref={scrollView}
@@ -776,15 +830,28 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                     ? "Hold anything and drag it anywhere, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."
                     : "Hold anything and drag it anywhere — onto a Hollow to put it inside, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."}
                 </Text>
-                <Tap
-                  onPress={() => setDecorating(true)}
-                  hitSlop={8}
-                  style={[styles.decorateButton, { backgroundColor: theme.accent }]}
-                  accessibilityLabel="Decorate"
-                >
-                  <Icon name="palette" size={14} color={theme.background} />
-                  <Text style={{ color: theme.background, fontWeight: "700", fontSize: 13 }}>Decorate</Text>
-                </Tap>
+                <View style={{ gap: 6, alignItems: "flex-end" }}>
+                  <Tap
+                    onPress={() => setDecorating(true)}
+                    hitSlop={8}
+                    style={[styles.decorateButton, { backgroundColor: theme.accent }]}
+                    accessibilityLabel="Decorate"
+                  >
+                    <Icon name="palette" size={14} color={theme.background} />
+                    <Text style={{ color: theme.background, fontWeight: "700", fontSize: 13 }}>Decorate</Text>
+                  </Tap>
+                  {scope ? null : (
+                    <Tap
+                      onPress={() => setPagesOpen(true)}
+                      hitSlop={8}
+                      style={[styles.decorateButton, { backgroundColor: theme.accent }]}
+                      accessibilityLabel="Pages"
+                    >
+                      <Icon name="widgets" size={14} color={theme.background} />
+                      <Text style={{ color: theme.background, fontWeight: "700", fontSize: 13 }}>Pages</Text>
+                    </Tap>
+                  )}
+                </View>
               </Animated.View>
             ) : null}
 
@@ -841,6 +908,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   )}
                 </Animated.View>
               ) : (
+                <Animated.View key={layout.activePage} entering={FadeIn.duration(180)}>
                 <HearthGrid
                   items={visibleItems}
                   width={gridWidth}
@@ -868,6 +936,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   dragScroll={dragScroll}
                   renderItem={renderItem}
                 />
+                </Animated.View>
               )}
             </View>
 
@@ -894,6 +963,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
             ) : null}
           </AnimatedScrollView>
         </TourScrollArea>
+        </View>
+        </GestureDetector>
       </SafeAreaView>
 
       {/* The weather in the air (CORE-047), paused while editing. */}
@@ -1040,7 +1111,18 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         onWallpaper={changeWallpaper}
         ambience={layout.ambience}
         onAmbience={changeAmbience}
-        weatherPlace={weatherPlaceOf(layout.items)?.place.name}
+        weatherPlace={weatherPlaceOf(everyTopLevel(layout))?.place.name}
+      />
+
+      <PagesSheet
+        visible={pagesOpen}
+        onClose={() => setPagesOpen(false)}
+        pages={layout.pages}
+        activeId={layout.activePage}
+        onSwitch={goToPage}
+        onAdd={addNewPage}
+        onRename={(id, name) => save(renamePage(layout, id, name)).catch(() => {})}
+        onRemove={removeAPage}
       />
 
       <AddSheet

@@ -94,7 +94,7 @@ describe("Hearth grid", () => {
     const once = addNook(defaultHearthLayout, "gift-nook");
     expect(hasNook(layoutOf(once), "gift-nook")).toBe(true);
     expect(addNook(layoutOf(once), "gift-nook")).toBe(once);
-    expect(removeNook(layoutOf(once), "gift-nook")).toEqual([]);
+    expect(removeNook(layoutOf(once), "gift-nook").items).toEqual([]);
   });
 
   it("adds another tile of a Nook only when asked", () => {
@@ -103,7 +103,7 @@ describe("Hearth grid", () => {
     expect(twice).toHaveLength(2);
     expect(nookCount(layoutOf(twice), "potluck")).toBe(2);
     // Taking the Nook off the Hearth takes every tile of it.
-    expect(removeNook(layoutOf(twice), "potluck")).toEqual([]);
+    expect(removeNook(layoutOf(twice), "potluck").items).toEqual([]);
   });
 
   it("copies a widget into a Hollow as its own thing", () => {
@@ -279,7 +279,7 @@ describe("Hollows (CORE-022..024)", () => {
     const { hasNook, removeNook } = await where();
     const layout = layoutOf([hollow("h", [nook("gift-nook", 0, 0)])]);
     expect(hasNook(layout, "gift-nook")).toBe(true);
-    const items = removeNook(layout, "gift-nook");
+    const items = removeNook(layout, "gift-nook").items;
     expect((items[0] as { items: HearthItem[] }).items).toEqual([]);
   });
 });
