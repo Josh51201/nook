@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { Text, View } from "react-native";
 
 import { LoadingScreen } from "../../components/motion";
+import { NookHero } from "../../components/nook-hero";
 import { NookScroll } from "../../components/nook-scroll";
 import { Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
@@ -10,6 +11,7 @@ import { guarded } from "../../lib/feedback";
 import { countdown } from "../../lib/gift-nook";
 import { headcount, type Rsvp } from "../../lib/potluck";
 import { formatWhen } from "../../lib/potluck-data";
+import { findNook } from "../../lib/nooks";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
@@ -123,6 +125,28 @@ export default function PotluckHome() {
         }}
       />
       {error ? <Text style={ui.error}>{error}</Text> : null}
+
+      <NookHero
+        icon="potluck"
+        accent={findNook("potluck")!.iconColor}
+        tint={findNook("potluck")!.color}
+        headline={upcoming[0] ? `${upcoming[0].title} ${countdown(upcoming[0].starts_at)}` : "No Potlucks planned"}
+        facts={
+          upcoming[0]
+            ? [
+                {
+                  icon: "potluck",
+                  text: (() => {
+                    const mine = upcoming[0].potluck_dishes.filter((d) => d.brought_by === userId).map((d) => d.name);
+                    return mine.length ? `You're bringing ${mine.join(", ")}` : "You haven't signed up to bring anything";
+                  })(),
+                },
+                { icon: "group", text: `${headcount(upcoming[0].potluck_rsvps).going} coming` },
+                ...(upcoming.length > 1 ? [{ icon: "calendar" as const, text: `${upcoming.length - 1} more after that` }] : []),
+              ]
+            : [{ icon: "sparkles", text: "Plan one and everyone signs up to bring something" }]
+        }
+      />
 
       <SectionHeader title="Coming up" icon="calendar" />
       {upcoming.length === 0 ? (

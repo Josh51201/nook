@@ -4,6 +4,7 @@ import { Alert, Text, TextInput, View } from "react-native";
 
 import { Avatar } from "../../components/avatar";
 import { LoadingScreen } from "../../components/motion";
+import { NookHero } from "../../components/nook-hero";
 import { NookScroll } from "../../components/nook-scroll";
 import { TourTarget, useTourScrollArea } from "../../components/tour";
 import { Button, EmptyState, NavCard, SectionHeader } from "../../components/ui";
@@ -108,11 +109,32 @@ export default function Burrows() {
 
   return (
     <NookScroll onRefresh={load} tour={tourScroll}>
-      <Text style={ui.muted}>
-        Your family and groups. Every Nook that shares with people — like the Gift Nook — uses these same
-        Burrows.
-      </Text>
       {error ? <Text style={ui.error}>{error}</Text> : null}
+
+      <NookHero
+        icon="burrow"
+        accent={colors.dark ? colors.bark : "#8a5a3b"}
+        tint={colors.barkSoft}
+        headline="Your people"
+        facts={[
+          {
+            icon: "burrow",
+            text: burrows.length
+              ? `${burrows.length} Burrow${burrows.length === 1 ? "" : "s"}`
+              : "No Burrows yet — start one below",
+          },
+          {
+            icon: "group",
+            text: (() => {
+              const people = new Set(
+                burrows.flatMap((b) => (b.burrow_members ?? []).map((m) => m.profile_id)).filter((id) => id !== userId)
+              ).size;
+              return people ? `${people} ${people === 1 ? "person" : "people"} you share with` : "Invite family with a Knock";
+            })(),
+          },
+          { icon: "sparkles", text: "Shared by every Nook" },
+        ]}
+      />
 
       <SectionHeader title="Your Burrows" icon="burrow" />
       {burrows.length === 0 ? (

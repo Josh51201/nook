@@ -67,7 +67,7 @@ export type HearthLayout = {
   theme: HearthThemeKey;
   // Switch to Dusk whenever the phone is in dark mode (CORE-032).
   followPhone: boolean;
-  // The app's typeface (CORE-033).
+  // The app's typeface (CORE-035).
   font: FontKey;
   items: HearthItem[];
 };

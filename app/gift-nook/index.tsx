@@ -5,6 +5,7 @@ import { Text, View } from "react-native";
 import { Avatar } from "../../components/avatar";
 import { IconBadge, type IconName } from "../../components/icon";
 import { Appear, LoadingScreen, Tap } from "../../components/motion";
+import { NookHero } from "../../components/nook-hero";
 import { NookScroll } from "../../components/nook-scroll";
 import {
   Banner,
@@ -22,6 +23,7 @@ import {
   formatDate,
   gatheringKindInfo,
 } from "../../lib/gift-nook";
+import { findNook } from "../../lib/nooks";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
@@ -216,6 +218,33 @@ export default function GiftNookHome() {
         }}
       />
       {error ? <Text style={ui.error}>{error}</Text> : null}
+
+      <NookHero
+        icon="gift"
+        accent={findNook("gift-nook")!.iconColor}
+        tint={findNook("gift-nook")!.color}
+        headline={
+          upcoming[0]
+            ? `${upcoming[0].title} ${countdown(upcoming[0].ends_at)}`
+            : "Nothing planned yet"
+        }
+        facts={[
+          {
+            icon: "tucks",
+            text: openTucks
+              ? `${openTucks} gift${openTucks === 1 ? "" : "s"} to get`
+              : "No gifts to get yet",
+          },
+          {
+            icon: "burrow",
+            text: `${burrows.length} Burrow${burrows.length === 1 ? "" : "s"}${
+              kids.length
+                ? ` · ${kids.length} little one${kids.length === 1 ? "" : "s"}`
+                : ""
+            }`,
+          },
+        ]}
+      />
 
 
       {prompts.map((prompt, i) => (
