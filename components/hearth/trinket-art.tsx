@@ -48,7 +48,7 @@ export function TrinketArt({
 }) {
   const shades = trinketShades(color);
   return (
-    <Alive piece={piece} still={still} style={{ width, height, transform: flip ? [{ scaleX: -1 }] : undefined }}>
+    <Alive piece={piece} still={still} style={flip ? { width, height, transform: [{ scaleX: -1 }] } : { width, height }}>
       <Svg width={width} height={height} viewBox={VIEWBOX[piece] ?? "0 0 100 100"} preserveAspectRatio="xMidYMax meet">
         <Art piece={piece} s={shades} />
       </Svg>
@@ -240,19 +240,17 @@ function Alive({ piece, still, style, children }: { piece: TrinketKey; still: bo
     );
   }, [mode]);
 
+  // Always the same shape (neutral values when it isn't moving), so the
+  // style is never empty or changing kind.
   const animated = useAnimatedStyle(() => {
-    switch (mode) {
-      case "breathe":
-        return { transform: [{ translateY: 2 }, { scaleY: 1 + t.value * 0.035 }, { translateY: -2 }] };
-      case "sway":
-        return { transform: [{ rotate: `${(t.value - 0.5) * 3}deg` }] };
-      case "flicker":
-        return { opacity: 0.88 + t.value * 0.12 };
-      case "steam":
-        return { opacity: 0.85 + t.value * 0.15 };
-      default:
-        return {};
-    }
+    const v = t.value;
+    return {
+      opacity: mode === "flicker" ? 0.88 + v * 0.12 : mode === "steam" ? 0.85 + v * 0.15 : 1,
+      transform: [
+        { rotate: mode === "sway" ? `${(v - 0.5) * 3}deg` : "0deg" },
+        { scaleY: mode === "breathe" ? 1 + v * 0.035 : 1 },
+      ],
+    };
   });
 
   return (
