@@ -1,13 +1,14 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { Alert, StyleSheet, View } from "react-native";
+import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
 import { Text } from "../components/text";
 
 import { Icon } from "../components/icon";
 import { LoadingScreen, Tap } from "../components/motion";
 import { NookScroll } from "../components/nook-scroll";
 import { EmptyState, NavCard } from "../components/ui";
-import { guarded } from "../lib/feedback";
+import { guarded, tap } from "../lib/feedback";
 import { formatDate } from "../lib/gift-nook";
 import { noticeIcon, noticeRoute, type Notice } from "../lib/inbox";
 import { findNook } from "../lib/nooks";
@@ -66,6 +67,31 @@ export default function Inbox() {
     else load();
   }
 
+  // Swipe right to mark read / unread, swipe left to delete.
+  const rows = useRef(new Map<string, SwipeableMethods>());
+
+  async function toggleRead(notice: Notice) {
+    rows.current.get(notice.id)?.close();
+    const read_at = notice.read_at ? null : new Date().toISOString();
+    setNotices((list) => list.map((n) => (n.id === notice.id ? { ...n, read_at } : n)));
+    tap();
+    const { error } = await supabase.from("notifications").update({ read_at }).eq("id", notice.id);
+    if (error) {
+      Alert.alert("Couldn't change that", error.message);
+      load();
+    }
+  }
+
+  async function remove(notice: Notice) {
+    tap();
+    setNotices((list) => list.filter((n) => n.id !== notice.id));
+    const { error } = await supabase.from("notifications").delete().eq("id", notice.id);
+    if (error) {
+      Alert.alert("Couldn't delete that", error.message);
+      load();
+    }
+  }
+
   if (isLoading) return <LoadingScreen />;
 
   const unread = notices.filter((n) => !n.read_at).length;
@@ -86,8 +112,33 @@ export default function Inbox() {
         />
       ) : (
         notices.map((notice, i) => (
-          <NavCard
+          <ReanimatedSwipeable
             key={notice.id}
+            ref={(ref) => {
+              if (ref) rows.current.set(notice.id, ref);
+              else rows.current.delete(notice.id);
+            }}
+            overshootLeft={false}
+            overshootRight={false}
+            friction={2}
+            leftThreshold={70}
+            rightThreshold={70}
+            containerStyle={{ borderRadius: 18 }}
+            renderLeftActions={() => (
+              <View style={[styles.action, { backgroundColor: colors.bark, alignItems: "flex-start" }]}>
+                <Icon name={notice.read_at ? "bell" : "check"} size={20} color={colors.onAccent} />
+                <Text style={styles.actionText}>{notice.read_at ? "Unread" : "Read"}</Text>
+              </View>
+            )}
+            renderRightActions={() => (
+              <View style={[styles.action, { backgroundColor: colors.error, alignItems: "flex-end" }]}>
+                <Icon name="trash" size={20} color="#ffffff" />
+                <Text style={styles.actionText}>Delete</Text>
+              </View>
+            )}
+            onSwipeableOpen={(direction) => (direction === "left" ? toggleRead(notice) : remove(notice))}
+          >
+          <NavCard
             index={i}
             icon={noticeIcon(notice)}
             iconBackground={notice.read_at ? colors.barkSoft : colors.sun}
@@ -102,6 +153,7 @@ export default function Inbox() {
             onPress={() => open(notice)}
             right={!notice.read_at ? <View style={styles.dot} /> : undefined}
           />
+          </ReanimatedSwipeable>
         ))
       )}
     </NookScroll>
@@ -111,5 +163,7 @@ export default function Inbox() {
 const styles = themed(() =>
   StyleSheet.create({
     dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.heart },
+    action: { flex: 1, justifyContent: "center", paddingHorizontal: 22, minWidth: 110, gap: 2, borderRadius: 18 },
+    actionText: { color: "#ffffff", fontSize: 12, fontWeight: "700" },
   })
 );

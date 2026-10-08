@@ -53,6 +53,7 @@ export default function PetPage() {
   const { data, isLoading, reload } = usePets(userId);
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const pet = data?.pets.find((p) => p.id === id);
   useEffect(() => {
@@ -69,7 +70,7 @@ export default function PetPage() {
   const meals = mealStatus(pet.pet_meals, log, data.today);
   const health = sortHealth(pet.pet_health);
   const quick = quickCareFor(pet.species);
-  const recent = log.slice(0, 8);
+  const recent = showAll ? log : log.slice(0, 8);
   const mealLabel = (mealId: string | null) => pet!.pet_meals.find((m) => m.id === mealId)?.label ?? null;
   const age = ageOf(pet.birthday);
 
@@ -237,14 +238,21 @@ export default function PetPage() {
           <SectionHeader title="Lately" icon="clock" />
           <View style={[ui.card, { gap: 10 }]}>
             {recent.map((entry) => (
-              <View key={entry.id} style={[ui.row, { gap: 10 }]}>
+              <View key={entry.id} style={[ui.row, { gap: 10, alignItems: "flex-start" }]}>
                 <Icon name={entry.kind === "meal" ? "food" : entry.kind === "walk" ? "bike" : entry.kind === "treat" ? "cookie" : entry.kind === "litter" ? "leaf" : "drop"} size={15} color={nook.iconColor} />
-                <Text style={[ui.muted, { flex: 1, color: colors.text, fontSize: 14 }]} numberOfLines={1}>
-                  {whoName(data, entry.done_by, userId)} {careVerb(entry.kind, mealLabel(entry.meal_id))} {pet.name}
-                </Text>
-                <Text style={[ui.muted, { fontSize: 12 }]}>{whenWords(entry.done_at)}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[ui.muted, { color: colors.text, fontSize: 14 }]}>
+                    {whoName(data, entry.done_by, userId)} {careVerb(entry.kind, mealLabel(entry.meal_id))} {pet.name}
+                  </Text>
+                  <Text style={[ui.muted, { fontSize: 12 }]}>{whenWords(entry.done_at)}</Text>
+                </View>
               </View>
             ))}
+            {log.length > 8 ? (
+              <Tap onPress={() => setShowAll((v) => !v)} hitSlop={8}>
+                <Text style={ui.link}>{showAll ? "Show less" : `Show everything from the last two weeks (${log.length})`}</Text>
+              </Tap>
+            ) : null}
           </View>
         </>
       ) : null}
