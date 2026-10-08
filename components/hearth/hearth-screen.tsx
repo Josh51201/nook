@@ -8,7 +8,7 @@ import Animated, { FadeIn, FadeOut, ZoomIn, useReducedMotion, useSharedValue } f
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { tap } from "../../lib/feedback";
-import { useTheme } from "../../lib/theme";
+import { colors, useTheme } from "../../lib/theme";
 import {
   addItem,
   COLUMNS,
@@ -21,9 +21,11 @@ import {
   hollowsOf,
   inScope,
   itemColor,
+  locate,
   moveItem,
   moveToScope,
   newItemId,
+  nookLabel,
   removeHollow,
   removeItem,
   resizeItem,
@@ -99,6 +101,19 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const scrollY = useSharedValue(0);
   const viewTop = useSharedValue(0);
   const viewBottom = useSharedValue(0);
+  // The trash can while dragging (CORE-040): where it is, whether something
+  // is over it, and the last thing thrown away (to undo).
+  const trashRect = useSharedValue<{ x: number; y: number; w: number; h: number } | null>(null);
+  const trashRef = useRef<View>(null);
+  const [overTrash, setOverTrash] = useState(false);
+  // A short message along the bottom ("Removed …  Undo", "Copied …").
+  const [toast, setToast] = useState<{ text: string; action?: { label: string; run: () => void } } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A copy just made glows for a moment (CORE-039); where the grid starts.
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const gridTop = useRef(0);
+  // Reminder alerts are only cancelled once the chance to undo has passed.
+  const pendingCancel = useRef<(() => void) | null>(null);
   const viewHeight = useRef(0);
   const edgeSpeed = useRef(0);
   const frame = useRef<number | null>(null);
@@ -144,15 +159,19 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     []
   );
   const dragScroll = useMemo(
-    () => ({ scrollY, top: viewTop, bottom: viewBottom, onEdge: setEdge }),
-    [scrollY, viewTop, viewBottom, setEdge]
+    () => ({ scrollY, top: viewTop, bottom: viewBottom, onEdge: setEdge, trash: trashRect }),
+    [scrollY, viewTop, viewBottom, setEdge, trashRect]
   );
 
   function onDraggingChange(isDragging: boolean) {
     draggingNow.current = isDragging;
     setDragging(isDragging);
     if (isDragging) measureViewport();
-    else setEdge(0);
+    else {
+      setEdge(0);
+      trashRect.value = null;
+      setOverTrash(false);
+    }
   }
 
   // While the page is being scrolled for a drag, its own scroll events lag
@@ -357,6 +376,57 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     setOptionsFor(id); // name it and pick its look straight away
   }
 
+  // Clear the bottom message; anything thrown away is now gone for good.
+  function settleToast() {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = null;
+    pendingCancel.current?.();
+    pendingCancel.current = null;
+    setToast(null);
+  }
+
+  function showToast(text: string, action?: { label: string; run: () => void }, ms = 4000) {
+    setToast({ text, action });
+    toastTimer.current = setTimeout(settleToast, ms);
+  }
+
+  function itemLabel(item: HearthItem) {
+    if (item.kind === "widget") return item.widget.title || widgetKindInfo(item.widget.kind).label;
+    if (item.kind === "nook") return nookLabel(item);
+    if (item.kind === "hollow") return item.name;
+    return item.text;
+  }
+
+  // Dropped on the trash can (CORE-040): gone, with a few seconds to undo.
+  function trash(item: HearthItem) {
+    settleToast();
+    tap("success");
+    const before = layout.items;
+    if (item.kind === "hollow") persist(removeHollow(layout, item.id));
+    else persistHere((inner) => removeItem(inner, item.id));
+    if (item.kind === "widget" && item.widget.kind === "reminders") {
+      const reminders = item.widget.settings.items;
+      pendingCancel.current = () => cancelReminders(reminders);
+    }
+    showToast(
+      `Removed “${itemLabel(item)}”`,
+      {
+        label: "Undo",
+        run: () => {
+          if (toastTimer.current) clearTimeout(toastTimer.current);
+          toastTimer.current = null;
+          pendingCancel.current = null; // its alerts were never cancelled
+          tap();
+          persist(before);
+          setToast(null);
+        },
+      },
+      5000
+    );
+  }
+
+  useEffect(() => () => settleToast(), []);
+
   function remove(item: HearthItem) {
     if (item.kind === "hollow") return persist(removeHollow(layout, item.id));
     if (item.kind === "widget" && item.widget.kind === "reminders") cancelReminders(item.widget.settings.items);
@@ -386,13 +456,35 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       .map((h) => ({ scope: h.id, label: h.name })),
   ];
 
+  // Make a copy (CORE-039) and show where it went: here, it scrolls into
+  // view and glows; somewhere else, a message says where, with a way there.
   function copyTo(id: string, target: Scope) {
+    const original = locate(layout, id)?.item;
     const { items: next, copyId } = copyItem(layout, id, target);
-    if (!copyId) return;
+    if (!copyId || !original) return;
     persist(next);
-    if (target !== scope) {
-      const hollowName = target ? findHollow(layout, target)?.name : null;
-      Alert.alert("Copied", target ? `The copy is in “${hollowName ?? "that Hollow"}”.` : "The copy is on your Hearth.");
+    settleToast();
+    const label = itemLabel(original);
+    if (target === scope) {
+      setFlashId(copyId);
+      setTimeout(() => setFlashId(null), 2600);
+      showToast(`Copied “${label}”`);
+      const copy = scopeItems({ ...layout, items: next }, scope).find((i) => i.id === copyId);
+      const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
+      if (copy) {
+        // Let the grid grow to fit it, then bring it to the middle of the screen.
+        setTimeout(() => {
+          tourScroll.area.viewport.current?.measureInWindow((_x, _y, _w, height) => {
+            const y = gridTop.current + copy.y * stride - (height - copy.h * stride) / 2;
+            tourScroll.scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+          });
+        }, 150);
+      }
+    } else if (target) {
+      const name = findHollow(layout, target)?.name ?? "that Hollow";
+      showToast(`Copied “${label}” into “${name}”`, { label: "Open", run: () => (settleToast(), router.push(`/hollow/${target}`)) });
+    } else {
+      showToast(`Copied “${label}” onto your Hearth`, { label: "Go there", run: () => (settleToast(), router.back()) });
     }
   }
 
@@ -568,13 +660,20 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                 <Icon name="drag" size={18} color={theme.accent} />
                 <Text style={{ color: theme.text, flex: 1 }}>
                   {scope
-                    ? "Hold anything and drag it anywhere. Drag a corner to resize. Tap to customize or move it back to the Hearth."
-                    : "Hold anything and drag it anywhere — or onto a Hollow to put it inside. Drag a corner to resize. Tap to customize, or + to add."}
+                    ? "Hold anything and drag it anywhere, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."
+                    : "Hold anything and drag it anywhere — onto a Hollow to put it inside, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."}
                 </Text>
               </Animated.View>
             ) : null}
 
-            <View ref={gridRef} collapsable={false} onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
+            <View
+              ref={gridRef}
+              collapsable={false}
+              onLayout={(e) => {
+                setGridWidth(e.nativeEvent.layout.width);
+                gridTop.current = e.nativeEvent.layout.y;
+              }}
+            >
               {error ? (
                 <View style={{ gap: 8 }}>
                   <Text style={{ color: "#c0392b" }}>Couldn't load your Hearth: {error}</Text>
@@ -639,6 +738,10 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   }
                   onPressItem={onPressItem}
                   onLongPress={() => setEditing(true)}
+                  onCopy={(item) => copyTo(item.id, scope)}
+                  onTrash={trash}
+                  onTrashHover={setOverTrash}
+                  flashId={flashId}
                   onDraggingChange={onDraggingChange}
                   dragScroll={dragScroll}
                   renderItem={renderItem}
@@ -670,6 +773,53 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           </ScrollView>
         </TourScrollArea>
       </SafeAreaView>
+
+      {/* The trash can, while dragging (CORE-040). */}
+      {dragging ? (
+        <View pointerEvents="none" style={[styles.trashArea, { bottom: (scope ? insets.bottom : 0) + 20 }]}>
+          <Animated.View
+            ref={trashRef}
+            entering={ZoomIn.duration(180)}
+            onLayout={() =>
+              trashRef.current?.measureInWindow((x, y, w, h) => {
+                trashRect.value = { x, y, w, h };
+              })
+            }
+            style={[
+              styles.trash,
+              {
+                backgroundColor: overTrash ? colors.error : theme.background,
+                borderColor: overTrash ? colors.error : `${theme.text}33`,
+                transform: [{ scale: overTrash ? 1.08 : 1 }],
+              },
+            ]}
+          >
+            <Icon name="trash" size={20} color={overTrash ? "#ffffff" : theme.text} />
+            <Text style={{ color: overTrash ? "#ffffff" : theme.text, fontWeight: "700" }}>
+              {overTrash ? "Let go to remove" : "Drag here to remove"}
+            </Text>
+          </Animated.View>
+        </View>
+      ) : toast ? (
+        <Animated.View
+          key={toast.text}
+          entering={FadeIn.duration(180)}
+          style={[styles.trashArea, { bottom: (scope ? insets.bottom : 0) + 20 }]}
+          pointerEvents="box-none"
+        >
+          <View style={[styles.trash, styles.toast, { backgroundColor: theme.text, borderColor: theme.text }]}>
+            <Icon name={toast.action?.label === "Undo" ? "trash" : "copy"} size={16} color={theme.background} />
+            <Text style={{ color: theme.background, flexShrink: 1 }} numberOfLines={2}>
+              {toast.text}
+            </Text>
+            {toast.action ? (
+              <Tap onPress={toast.action.run} hitSlop={12} accessibilityRole="button">
+                <Text style={{ color: theme.background, fontWeight: "800" }}>{toast.action.label}</Text>
+              </Tap>
+            ) : null}
+          </View>
+        </Animated.View>
+      ) : null}
 
       {/* Content melts away under the top bar instead of meeting a hard edge. */}
       {barHeight > 0 ? (
@@ -848,6 +998,18 @@ const styles = StyleSheet.create({
   badgeText: { color: "#ffffff", fontSize: 10.5, fontWeight: "800" },
   center: { alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
   container: { padding: PADDING, paddingTop: 16, gap: 16, paddingBottom: 32 },
+  trashArea: { position: "absolute", left: 0, right: 0, alignItems: "center", zIndex: 60 },
+  trash: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 22,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    boxShadow: "0px 10px 24px -8px rgba(0,0,0,0.35)",
+  },
+  toast: { gap: 12, maxWidth: "92%", height: undefined, minHeight: 52, paddingVertical: 10 },
   topBar: { paddingHorizontal: PADDING, paddingTop: 6, paddingBottom: 14, zIndex: 5 },
   back: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginBottom: 6 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },

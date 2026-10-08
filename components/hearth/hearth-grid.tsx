@@ -8,6 +8,8 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withSequence,
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
@@ -16,7 +18,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { tap } from "../../lib/feedback";
 import { COLUMNS, edgeScrollSpeed, minSize, rowsUsed, type GridRect, type HearthItem, type HollowItem } from "../../lib/hearth-layout";
 import { Icon } from "../icon";
-import { useWiggle } from "../motion";
+import { Tap, useWiggle } from "../motion";
 import { nookRadii } from "./tile-face";
 
 export const GRID_GAP = 12;
@@ -32,7 +34,12 @@ export type DragScroll = {
   top: SharedValue<number>;
   bottom: SharedValue<number>;
   onEdge: (speed: number) => void;
+  // Where the trash can is on screen while dragging (CORE-040), or null.
+  trash: SharedValue<{ x: number; y: number; w: number; h: number } | null>;
 };
+
+// How far around the trash can still counts as over it.
+const TRASH_SLOP = 16;
 
 // The free-form Hearth canvas (CORE-006/019). Items sit at exact grid cells;
 // in edit mode you hold one to drag it anywhere (an outline shows where it
@@ -56,6 +63,10 @@ export function HearthGrid({
   onLongPress,
   onDraggingChange,
   onDropIntoHollow,
+  onCopy,
+  onTrash,
+  onTrashHover,
+  flashId,
   renderItem,
 }: {
   items: HearthItem[];
@@ -75,6 +86,14 @@ export function HearthGrid({
   // Dropping a tile onto a Hollow puts it inside (CORE-024). Only on the
   // Hearth itself, since Hollows never hold Hollows.
   onDropIntoHollow?: (id: string, hollowId: string) => void;
+  // The copy button in Edit (CORE-039): a copy right here. Not for Hollows.
+  onCopy?: (item: HearthItem) => void;
+  // Dragged onto the trash can and let go (CORE-040), and whether a dragged
+  // item is over it right now.
+  onTrash?: (item: HearthItem) => void;
+  onTrashHover?: (over: boolean) => void;
+  // An item to make glow for a moment, e.g. a copy just made (CORE-039).
+  flashId?: string | null;
   renderItem: (item: HearthItem, size: { width: number; height: number }) => ReactNode;
 }) {
   const cell = (width - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
@@ -177,6 +196,14 @@ export function HearthGrid({
           dragScroll={dragScroll}
           onPress={() => onPressItem(item)}
           onLongPress={onLongPress}
+          onCopy={onCopy && item.kind !== "hollow" ? () => onCopy(item) : undefined}
+          onTrashHover={(over) => onTrashHover?.(over)}
+          flash={flashId === item.id}
+          onTrash={() => {
+            finish();
+            onTrashHover?.(false);
+            onTrash?.(item);
+          }}
           onBegin={() => begin(item.id)}
           onGhost={(rect, finger) => {
             // Is the finger over a Hollow? (Not for Hollows themselves.)
@@ -247,6 +274,10 @@ function GridItem({
   dragScroll,
   onPress,
   onLongPress,
+  onCopy,
+  onTrash,
+  onTrashHover,
+  flash,
   onBegin,
   onGhost,
   onDrop,
@@ -263,6 +294,10 @@ function GridItem({
   dragScroll: DragScroll;
   onPress: () => void;
   onLongPress: () => void;
+  onCopy?: () => void;
+  onTrash: () => void;
+  onTrashHover: (over: boolean) => void;
+  flash?: boolean;
   onBegin: () => void;
   onGhost: (rect: GridRect, finger: { x: number; y: number } | null) => void;
   onDrop: (x: number, y: number) => void;
@@ -298,7 +333,22 @@ function GridItem({
   const dragging = useSharedValue(false);
   const lastSpeed = useSharedValue(0);
   const geo = useSharedValue({ x: 0, y: 0, w: 1, h: 1, stride: 1 });
-  const { scrollY, top: viewTop, bottom: viewBottom, onEdge } = dragScroll;
+  const { scrollY, top: viewTop, bottom: viewBottom, onEdge, trash } = dragScroll;
+  // Held over the trash can: it shrinks away a little, ready to go.
+  const overTrash = useSharedValue(false);
+  const doomed = useSharedValue(0);
+  // A ring of light that pulses once around a new copy.
+  const glow = useSharedValue(0);
+  useEffect(() => {
+    if (!flash) return;
+    glow.value = withSequence(
+      withTiming(1, { duration: 220 }),
+      withTiming(0.35, { duration: 380 }),
+      withTiming(1, { duration: 380 }),
+      withDelay(500, withTiming(0, { duration: 700 }))
+    );
+  }, [flash, glow]);
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value, transform: [{ scale: 1 + glow.value * 0.03 }] }));
 
   // New position from the layout: glide there. If this is the tile that was
   // just dropped, carry on from where the finger let go instead of jumping.
@@ -320,8 +370,13 @@ function GridItem({
   }, [item.x, item.y, stride, left, top, dragX, dragY, dropping]);
 
   // Latest callbacks without rebuilding gestures mid-drag.
-  const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd });
-  handlers.current = { onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd };
+  const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover });
+  handlers.current = { onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover };
+  const trashDrop = useCallback(() => handlers.current.onTrash(), []);
+  const trashHover = useCallback((over: boolean) => {
+    if (over) tap();
+    handlers.current.onTrashHover(over);
+  }, []);
   const press = useCallback(() => handlers.current.onPress(), []);
   const hold = useCallback(() => {
     tap();
@@ -410,20 +465,44 @@ function GridItem({
         rawX.value = event.translationX;
         rawY.value = event.translationY;
         follow();
-        // Near the top or bottom of the screen? Scroll that way.
-        const speed = edgeScrollSpeed(event.absoluteY, viewTop.value, viewBottom.value);
+        // Over the trash can?
+        const bin = trash.value;
+        const over =
+          bin !== null &&
+          event.absoluteX >= bin.x - TRASH_SLOP &&
+          event.absoluteX <= bin.x + bin.w + TRASH_SLOP &&
+          event.absoluteY >= bin.y - TRASH_SLOP &&
+          event.absoluteY <= bin.y + bin.h + TRASH_SLOP;
+        if (over !== overTrash.value) {
+          overTrash.value = over;
+          doomed.value = withTiming(over ? 1 : 0, { duration: 160 });
+          scheduleOnRN(trashHover, over);
+        }
+        // Near the top or bottom of the screen? Scroll that way (not while
+        // aiming at the trash can).
+        const speed = over ? 0 : edgeScrollSpeed(event.absoluteY, viewTop.value, viewBottom.value);
         if (speed !== lastSpeed.value) {
           lastSpeed.value = speed;
           scheduleOnRN(edge, speed);
         }
       })
       .onEnd(() => {
+        if (overTrash.value) {
+          dropping.value = false;
+          scheduleOnRN(trashDrop);
+          return;
+        }
         const moved = targetX.value !== x || targetY.value !== y;
         dropping.value = moved;
         scheduleOnRN(drop, targetX.value, targetY.value);
       })
       .onFinalize(() => {
         dragging.value = false;
+        if (overTrash.value) {
+          overTrash.value = false;
+          scheduleOnRN(trashHover, false);
+        }
+        doomed.value = withTiming(0, { duration: 200 });
         if (lastSpeed.value !== 0) {
           lastSpeed.value = 0;
           scheduleOnRN(edge, 0);
@@ -435,7 +514,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, edge, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, edge, trash, trashDrop, trashHover, overTrash, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
@@ -468,8 +547,9 @@ function GridItem({
     transform: [
       { translateX: dragX.value },
       { translateY: dragY.value },
-      { scale: 1 + lifted.value * 0.04 - pressed.value * 0.03 },
+      { scale: 1 + lifted.value * 0.04 - pressed.value * 0.03 - doomed.value * 0.35 },
     ],
+    opacity: 1 - doomed.value * 0.4,
     shadowOpacity: lifted.value * 0.22,
   }));
 
@@ -478,6 +558,10 @@ function GridItem({
       <GestureDetector gesture={moveGesture}>
         <Animated.View style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, wiggle]}>{children}</Animated.View>
       </GestureDetector>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.glow, shadowShape(item, stride), { borderColor: accent, boxShadow: `0px 0px 18px 2px ${accent}` }, glowStyle]}
+      />
       {editing ? (
         <GestureDetector gesture={resizeGesture}>
           <Animated.View
@@ -489,6 +573,23 @@ function GridItem({
             <Icon name="resize" size={12} color={accent} />
           </Animated.View>
         </GestureDetector>
+      ) : null}
+      {editing && onCopy && !active ? (
+        <Animated.View entering={FadeIn.duration(200)} style={styles.copy}>
+          <Tap
+            onPress={() => {
+              tap("success");
+              onCopy();
+            }}
+            hitSlop={12}
+            pressedScale={0.8}
+            style={[styles.copyButton, { borderColor: accent }]}
+            accessibilityRole="button"
+            accessibilityLabel="Make a copy"
+          >
+            <Icon name="copy" size={12} color={accent} />
+          </Tap>
+        </Animated.View>
       ) : null}
     </Animated.View>
   );
@@ -505,6 +606,17 @@ const styles = StyleSheet.create({
     shadowColor: "#3a2414",
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
+  },
+  copy: { position: "absolute", left: -6, top: -6 },
+  glow: { position: "absolute", left: -4, top: -4, right: -4, bottom: -4, borderWidth: 3, opacity: 0 },
+  copyButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
   },
   handle: {
     position: "absolute",

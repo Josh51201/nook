@@ -11,7 +11,7 @@ import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
 import { DateField } from "../../components/date-field";
-import { Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
+import { Banner, Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
 import { tap } from "../../lib/feedback";
 import { formatDate, gatheringKinds, type GatheringKind } from "../../lib/gift-nook";
 import {
@@ -50,7 +50,7 @@ import {
 // with a live preview at its real size. Nothing is saved until "Save".
 export default function WidgetEditor() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, copied } = useLocalSearchParams<{ id: string; copied?: string }>();
   const { layout, save, isLoading } = useHearthLayout();
   const { width: screenWidth } = useWindowDimensions();
   // Hooks first: the screen returns early below while it loads.
@@ -117,7 +117,7 @@ export default function WidgetEditor() {
       // background, so closing never waits on the network.
       const pending = save({ items });
       tap("success");
-      if (copyId) router.replace(`/widget/${copyId}`);
+      if (copyId) router.replace({ pathname: "/widget/[id]", params: { id: copyId, copied: "1" } });
       else router.back();
       pending.catch((error: Error) => Alert.alert("Couldn't save your widget", error.message));
     } catch (error) {
@@ -154,6 +154,15 @@ export default function WidgetEditor() {
           ),
         }}
       />
+
+      {copied ? (
+        <Banner
+          icon="copy"
+          tone="sky"
+          title="Copied!"
+          body={`You're now changing the copy${home ? ` in “${hollowsOf(layout).find((h) => h.id === home)?.name ?? "a Hollow"}”` : " on your Hearth"}. The original stays as it was.`}
+        />
+      ) : null}
 
       {/* Live preview, at the size it'll be on your Hearth */}
       <Animated.View
