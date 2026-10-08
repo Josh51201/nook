@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { HearthScreen } from "../../components/hearth/hearth-screen";
 import { useAuth } from "../../lib/auth-context";
 import { hearthThemes, useHearthLayout } from "../../lib/hearth";
+import { useTheme } from "../../lib/theme";
 import { useMyProfile } from "../../lib/profile";
 
 // CORE-002/003/006-010/018/019/022-024: the Hearth — your home screen. All
@@ -13,7 +14,8 @@ export default function Hearth() {
   const { session, isLoading: authLoading } = useAuth();
   const { needsOnboarding, isLoading: profileLoading } = useMyProfile();
   const { layout } = useHearthLayout();
-  const theme = hearthThemes[layout.theme] ?? hearthThemes.hearth;
+  const { key: themeKey } = useTheme();
+  const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
 
   if (!authLoading && !session) return <Redirect href="/sign-in" />;
 

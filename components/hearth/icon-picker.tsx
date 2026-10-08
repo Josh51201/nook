@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { tap } from "../../lib/feedback";
-import { colors, ui } from "../../lib/theme";
+import { colors, themed, ui } from "../../lib/theme";
 import { Icon, type IconName } from "../icon";
 import { Tap } from "../motion";
 
@@ -34,8 +34,8 @@ export function IconPicker({
   return (
     <View style={{ gap: 8 }}>
       <Tap onPress={() => pick(undefined)} style={[ui.row, styles.usual, !value && styles.selected]}>
-        <Icon name={fallback} size={18} color={value ? colors.bark : colors.white} />
-        <Text style={[ui.secondaryButtonText, !value && { color: colors.white }]}>Usual icon</Text>
+        <Icon name={fallback} size={18} color={value ? colors.bark : colors.onAccent} />
+        <Text style={[ui.secondaryButtonText, !value && { color: colors.onAccent }]}>Usual icon</Text>
       </Tap>
       <View style={styles.grid}>
         {pickableIcons.map((icon) => {
@@ -51,7 +51,7 @@ export function IconPicker({
             >
               {selected ? (
                 <Animated.View entering={ZoomIn.duration(160)}>
-                  <Icon name={icon} size={22} color={colors.white} />
+                  <Icon name={icon} size={22} color={colors.onAccent} />
                 </Animated.View>
               ) : (
                 <Icon name={icon} size={22} />
@@ -64,23 +64,25 @@ export function IconPicker({
   );
 }
 
-const styles = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  cell: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.barkSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  usual: {
-    alignSelf: "flex-start",
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: colors.barkSoft,
-  },
-  selected: { backgroundColor: colors.bark },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    cell: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: colors.barkSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    usual: {
+      alignSelf: "flex-start",
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      backgroundColor: colors.barkSoft,
+    },
+    selected: { backgroundColor: colors.bark },
+  })
+);

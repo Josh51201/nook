@@ -5,7 +5,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 
 import { friendlyError } from "../lib/feedback";
 import { supabase } from "../lib/supabase";
-import { colors, ui } from "../lib/theme";
+import { colors, themed, ui } from "../lib/theme";
 import { Icon } from "./icon";
 import { Tap } from "./motion";
 import { Button } from "./ui";
@@ -86,15 +86,17 @@ export function DevSignIn() {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { marginTop: 24, gap: 12 },
-  toggle: { color: colors.muted, fontSize: 13 },
-  panel: {
-    gap: 10,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: colors.border,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    wrap: { marginTop: 24, gap: 12 },
+    toggle: { color: colors.muted, fontSize: 13 },
+    panel: {
+      gap: 10,
+      padding: 14,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: colors.border,
+    },
+  })
+);

@@ -27,7 +27,7 @@ export function DateField({
           mode={mode}
           display="compact"
           maximumDate={maximumDate}
-          themeVariant="light"
+          themeVariant={colors.dark ? "dark" : "light"}
           accentColor={colors.bark}
           onChange={(_e, picked) => picked && onChange(picked)}
         />

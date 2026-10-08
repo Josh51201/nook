@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Switch, Text, TextInput, View } from "react-native";
 
 import { Avatar } from "../../components/avatar";
 import { Button, NavCard, SectionHeader } from "../../components/ui";
@@ -142,6 +142,24 @@ export default function HearthSettings() {
                 </Tap>
               );
             })}
+          </View>
+          <Text style={ui.muted}>
+            Your theme dresses the whole app, not just the Hearth.
+          </Text>
+          <View style={[ui.card, ui.row, { gap: 12 }]}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={ui.cardTitle}>Go dark with my phone</Text>
+              <Text style={ui.muted}>
+                Switch to Dusk whenever your phone is in dark mode.
+              </Text>
+            </View>
+            <Switch
+              value={layout.followPhone}
+              onValueChange={(followPhone) =>
+                saveHearthChanges({ followPhone })
+              }
+              trackColor={{ true: colors.bark }}
+            />
           </View>
           <Text style={ui.muted}>
             To arrange, resize, or recolor your Nooks, tap Edit on the Hearth.

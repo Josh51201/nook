@@ -11,7 +11,7 @@ import { formatDate } from "../lib/gift-nook";
 import { noticeIcon, noticeRoute, type Notice } from "../lib/inbox";
 import { findNook } from "../lib/nooks";
 import { supabase } from "../lib/supabase";
-import { colors, ui } from "../lib/theme";
+import { colors, themed, ui } from "../lib/theme";
 
 // The inbox (CORE-027, GIFT-029): notices from every Nook in one place,
 // newest first, each labelled with the Nook it came from. `?nook=` limits it
@@ -107,6 +107,8 @@ export default function Inbox() {
   );
 }
 
-const styles = StyleSheet.create({
-  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.heart },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.heart },
+  })
+);

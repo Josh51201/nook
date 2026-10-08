@@ -3,14 +3,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { ThemeGate, themedScreenLayout } from "../components/themed-screen";
 import { AuthProvider } from "../lib/auth-context";
 import { configureReminders } from "../lib/reminders";
-import { stackScreenOptions } from "../lib/theme";
+import { colors, stackScreenOptions, useTheme } from "../lib/theme";
 
 // Let Hearth reminders show up even while Nook is open.
 configureReminders();
-
-const headerOptions = { ...stackScreenOptions, headerShown: true, headerBackTitle: "Hearth" };
 
 export default function RootLayout() {
   return (
@@ -18,32 +17,39 @@ export default function RootLayout() {
       <KeyboardProvider>
         <SafeAreaProvider>
           <AuthProvider>
-            <Stack screenOptions={{ headerShown: false, animation: "ios_from_right" }}>
-              {/* The Hearth, Burrows and Settings tabs (CORE-025). */}
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen
-                name="burrow/[id]"
-                options={{ ...headerOptions, title: "Burrow", headerBackTitle: "Back" }}
-              />
-              <Stack.Screen name="hollow/[id]" options={{ animation: "fade", animationDuration: 250 }} />
-              <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: "fade" }} />
-              <Stack.Screen
-                name="profile"
-                options={{ ...headerOptions, title: "Your profile", headerBackTitle: "Settings" }}
-              />
-              <Stack.Screen name="inbox" options={{ ...headerOptions, title: "Inbox" }} />
-              <Stack.Screen
-                name="market"
-                options={{ ...headerOptions, title: "The Market" }}
-              />
-              <Stack.Screen
-                name="widget/[id]"
-                options={{ ...headerOptions, title: "Widget" }}
-              />
-            </Stack>
+            <ThemeGate>
+              <RootStack />
+            </ThemeGate>
           </AuthProvider>
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function RootStack() {
+  // Re-render (and so re-style every header) when the theme changes.
+  useTheme();
+  const headerOptions = { ...stackScreenOptions, headerShown: true, headerBackTitle: "Hearth" };
+
+  return (
+    <Stack
+      screenLayout={themedScreenLayout}
+      screenOptions={{
+        headerShown: false,
+        animation: "ios_from_right",
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
+      {/* The Hearth, Burrows and Settings tabs (CORE-025). */}
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="burrow/[id]" options={{ ...headerOptions, title: "Burrow", headerBackTitle: "Back" }} />
+      <Stack.Screen name="hollow/[id]" options={{ animation: "fade", animationDuration: 250 }} />
+      <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: "fade" }} />
+      <Stack.Screen name="profile" options={{ ...headerOptions, title: "Your profile", headerBackTitle: "Settings" }} />
+      <Stack.Screen name="inbox" options={{ ...headerOptions, title: "Inbox" }} />
+      <Stack.Screen name="market" options={{ ...headerOptions, title: "The Market" }} />
+      <Stack.Screen name="widget/[id]" options={{ ...headerOptions, title: "Widget" }} />
+    </Stack>
   );
 }

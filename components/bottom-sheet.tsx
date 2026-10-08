@@ -10,7 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { colors } from "../lib/theme";
+import { colors, themed } from "../lib/theme";
 
 // A bottom sheet that lives *inside* the screen (not a system pop-up), so
 // opening another screen from it can never collide with a half-dismissed
@@ -94,22 +94,24 @@ export function BottomSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  dim: { backgroundColor: "rgba(0,0,0,0.3)" },
-  bottom: { flex: 1, justifyContent: "flex-end" },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  header: { paddingTop: 10, paddingBottom: 12, gap: 12 },
-  grabber: {
-    alignSelf: "center",
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: colors.border,
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    dim: { backgroundColor: "rgba(0,0,0,0.3)" },
+    bottom: { flex: 1, justifyContent: "flex-end" },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingHorizontal: 20,
+      paddingBottom: 30,
+    },
+    header: { paddingTop: 10, paddingBottom: 12, gap: 12 },
+    grabber: {
+      alignSelf: "center",
+      width: 44,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: colors.border,
+    },
+  })
+);

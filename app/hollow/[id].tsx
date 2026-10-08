@@ -5,6 +5,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "
 import { HearthScreen } from "../../components/hearth/hearth-screen";
 import { useAuth } from "../../lib/auth-context";
 import { hearthThemes, useHearthLayout } from "../../lib/hearth";
+import { useTheme } from "../../lib/theme";
 
 // Inside a Hollow (CORE-022/023). You arrive through the door: the screen
 // fades in while growing from just a little smaller, so it feels like
@@ -13,7 +14,8 @@ export default function HollowScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, isLoading } = useAuth();
   const { layout } = useHearthLayout();
-  const theme = hearthThemes[layout.theme] ?? hearthThemes.hearth;
+  const { key: themeKey } = useTheme();
+  const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
 
   const grow = useSharedValue(0);
   useEffect(() => {

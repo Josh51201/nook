@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ActivityIndicator, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
-import { colors, ui } from "../lib/theme";
+import { colors, themed, ui } from "../lib/theme";
 import { Icon, IconBadge, type IconName } from "./icon";
 import { Appear, Tap } from "./motion";
 
@@ -44,7 +44,7 @@ export function Button({
     );
   }
   const primary = variant === "primary";
-  const tint = primary ? colors.white : colors.bark;
+  const tint = primary ? colors.onAccent : colors.bark;
   return (
     <Tap
       onPress={onPress}
@@ -84,7 +84,7 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected }}
     >
-      {icon ? <Icon name={icon} size={14} color={selected ? colors.white : colors.bark} /> : null}
+      {icon ? <Icon name={icon} size={14} color={selected ? colors.onAccent : colors.bark} /> : null}
       <Text style={[ui.chipText, selected && ui.chipTextSelected]}>{children}</Text>
     </Tap>
   );
@@ -234,7 +234,7 @@ export function HeaderIcon({
   );
 }
 
-const headerBadge = {
+const headerBadge = themed(() => ({
   position: "absolute" as const,
   top: -6,
   right: -9,
@@ -245,4 +245,4 @@ const headerBadge = {
   backgroundColor: colors.heart,
   alignItems: "center" as const,
   justifyContent: "center" as const,
-};
+}));

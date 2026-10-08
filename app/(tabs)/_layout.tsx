@@ -5,11 +5,11 @@ import Animated, { useAnimatedStyle, withSpring } from "react-native-reanimated"
 
 import { Icon, type IconName } from "../../components/icon";
 import { Tap } from "../../components/motion";
+import { themedScreenLayout } from "../../components/themed-screen";
 import { TourProvider, TourTarget } from "../../components/tour";
 import { useAuth } from "../../lib/auth-context";
 import { tap } from "../../lib/feedback";
-import { hearthThemes, useHearthLayout } from "../../lib/hearth";
-import { colors } from "../../lib/theme";
+import { colors, themed, useTheme } from "../../lib/theme";
 
 // CORE-025: the bar along the bottom of the app — the Hearth, Burrows
 // (families, shared by every Nook) and Settings. Nooks, Hollows and other
@@ -18,21 +18,23 @@ import { colors } from "../../lib/theme";
 
 const tabIcons: Record<string, IconName> = { hearth: "hearth", burrows: "burrow", settings: "settings" };
 
-const headerOptions = {
+const headerOptions = themed(() => ({
   headerShown: true,
   headerStyle: { backgroundColor: colors.background },
   headerShadowVisible: false,
   headerTitleStyle: { fontWeight: "700" as const, color: colors.text },
   headerTintColor: colors.bark,
-};
+}));
 
 export default function TabsLayout() {
   const { session, isLoading } = useAuth();
+  useTheme();
   if (!isLoading && !session) return <Redirect href="/sign-in" />;
 
   return (
     <TourProvider>
       <Tabs
+        screenLayout={themedScreenLayout}
         tabBar={(props) => <NookTabBar {...props} />}
         screenOptions={{
           headerShown: false,
@@ -49,16 +51,13 @@ export default function TabsLayout() {
 }
 
 function NookTabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
-  const { layout } = useHearthLayout();
   const focused = state.routes[state.index];
-  // On the Hearth the bar wears your Hearth theme; elsewhere, the usual cream.
-  const theme = focused.name === "hearth" ? hearthThemes[layout.theme] ?? hearthThemes.hearth : null;
-  const background = theme?.background ?? colors.background;
-  const accent = theme?.accent ?? colors.bark;
-  const muted = theme?.muted ?? colors.muted;
+  // The bar wears the app's theme, like every screen (CORE-032).
+  const background = colors.background;
+  const accent = colors.bark;
+  const muted = colors.muted;
   // A soft shadow cast upward, so the bar floats over the page (CORE-028).
-  const shade = theme?.shade ?? hearthThemes.hearth.shade;
-  const lift = `0px -6px 20px -10px rgba(${shade}, ${layout.theme === "dusk" && theme ? 0.6 : 0.16})`;
+  const lift = `0px -6px 20px -10px rgba(${colors.shade}, ${colors.dark ? 0.6 : 0.16})`;
 
   // A screen can tuck the bar away (the Hearth does while a sheet is open).
   const hidden = (descriptors[focused.key].options.tabBarStyle as { display?: string } | undefined)?.display === "none";
@@ -70,7 +69,7 @@ function NookTabBar({ state, descriptors, navigation, insets }: BottomTabBarProp
         styles.bar,
         {
           backgroundColor: background,
-          borderTopColor: theme ? `${accent}1a` : `${colors.border}aa`,
+          borderTopColor: `${colors.border}aa`,
           boxShadow: lift,
           paddingBottom: Math.max(insets.bottom, 10),
         },

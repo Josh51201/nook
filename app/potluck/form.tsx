@@ -12,7 +12,7 @@ import { friendlyError, tap } from "../../lib/feedback";
 import { formatDate } from "../../lib/gift-nook";
 import { slotIdeas } from "../../lib/potluck";
 import { supabase } from "../../lib/supabase";
-import { colors, ui } from "../../lib/theme";
+import { colors, themed, ui } from "../../lib/theme";
 
 type SlotDraft = { id?: string; key: string; label: string; wanted: number };
 type GatheringOption = { id: string; title: string; ends_at: string };
@@ -351,13 +351,15 @@ export default function PotluckForm() {
   );
 }
 
-const styles = StyleSheet.create({
-  stepper: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.barkSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    stepper: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.barkSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  })
+);

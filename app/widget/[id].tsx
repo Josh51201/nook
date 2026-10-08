@@ -32,7 +32,7 @@ import {
 } from "../../lib/hearth";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { supabase } from "../../lib/supabase";
-import { colors, ui } from "../../lib/theme";
+import { colors, themed, ui, useTheme } from "../../lib/theme";
 import {
   describeSchedule,
   newReminderId,
@@ -71,7 +71,8 @@ export default function WidgetEditor() {
 
   const widget = draft.widget;
   const info = widgetKindInfo(widget.kind);
-  const theme = hearthThemes[layout.theme] ?? hearthThemes.hearth;
+  const { key: themeKey } = useTheme();
+  const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
   const stride = (screenWidth - 40 - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
 
   function setWidget(changes: Partial<WidgetConfig>) {
@@ -630,14 +631,14 @@ function Stepper({
   );
 }
 
-const stepperButton = {
+const stepperButton = themed(() => ({
   width: 34,
   height: 34,
   borderRadius: 17,
   backgroundColor: colors.barkSoft,
   alignItems: "center" as const,
   justifyContent: "center" as const,
-};
+}));
 const stepperText = { fontSize: 20, fontWeight: "700" as const, color: colors.bark, marginTop: -2 };
 
 function SwitchRow({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {

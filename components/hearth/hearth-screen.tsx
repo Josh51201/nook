@@ -7,6 +7,7 @@ import Animated, { FadeIn, FadeOut, ZoomIn, useSharedValue } from "react-native-
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { tap } from "../../lib/feedback";
+import { useTheme } from "../../lib/theme";
 import {
   addItem,
   deepColor,
@@ -64,7 +65,9 @@ const PADDING = 20;
 export function HearthScreen({ scope }: { scope: Scope }) {
   const router = useRouter();
   const { layout, save, isLoading, error, reload } = useHearthLayout();
-  const theme = hearthThemes[layout.theme] ?? hearthThemes.hearth;
+  // The theme in effect right now (Dusk while the phone is dark, if asked).
+  const { key: themeKey } = useTheme();
+  const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
   const hollow = scope ? findHollow(layout, scope) : null;
   const items = scopeItems(layout, scope);
 
@@ -377,9 +380,9 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 
   return (
     <View style={[styles.fill, { backgroundColor: theme.background }]}>
-      <Firelight variant="hearth" color={theme.glow} strength={layout.theme === "dusk" ? 0.34 : 0.26} />
+      <Firelight variant="hearth" color={theme.glow} strength={themeKey === "dusk" ? 0.34 : 0.26} />
       <SafeAreaView style={styles.fill} edges={["top", "left", "right"]}>
-        <StatusBar style={layout.theme === "dusk" ? "light" : "dark"} />
+        <StatusBar style={themeKey === "dusk" ? "light" : "dark"} />
         {/* The top bar stays put while the Hearth scrolls beneath it, so the
             inbox and Edit are always in reach. */}
         <View style={styles.topBar} onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
@@ -543,7 +546,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   width={gridWidth}
                   editing={editing}
                   accent={theme.accent}
-                  shadow={tileShadow(layout.theme)}
+                  shadow={tileShadow(themeKey)}
                   onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
                   onResize={(id, w, h) => persistHere((inner) => resizeItem(inner, id, w, h))}
                   onDropIntoHollow={
@@ -595,7 +598,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           height={16}
           background={theme.background}
           color={theme.glow}
-          strength={layout.theme === "dusk" ? 0.34 : 0.26}
+          strength={themeKey === "dusk" ? 0.34 : 0.26}
         />
       ) : null}
 

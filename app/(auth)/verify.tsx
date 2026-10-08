@@ -7,7 +7,7 @@ import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import { IconBadge } from "../../components/icon";
 import { Button } from "../../components/ui";
 import { supabase } from "../../lib/supabase";
-import { colors } from "../../lib/theme";
+import { colors, themed } from "../../lib/theme";
 
 export default function Verify() {
   const router = useRouter();
@@ -69,20 +69,22 @@ export default function Verify() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 24, gap: 12, backgroundColor: colors.background },
-  title: { fontSize: 28, fontWeight: "800", textAlign: "center", color: colors.text, letterSpacing: -0.4 },
-  subtitle: { fontSize: 15, color: colors.muted, textAlign: "center", marginBottom: 12, lineHeight: 21 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    color: colors.text,
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 20,
-    textAlign: "center",
-    letterSpacing: 4,
-  },
-  error: { color: "#c0392b", textAlign: "center" },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    container: { flex: 1, justifyContent: "center", padding: 24, gap: 12, backgroundColor: colors.background },
+    title: { fontSize: 28, fontWeight: "800", textAlign: "center", color: colors.text, letterSpacing: -0.4 },
+    subtitle: { fontSize: 15, color: colors.muted, textAlign: "center", marginBottom: 12, lineHeight: 21 },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      color: colors.text,
+      borderRadius: 14,
+      padding: 14,
+      fontSize: 20,
+      textAlign: "center",
+      letterSpacing: 4,
+    },
+    error: { color: "#c0392b", textAlign: "center" },
+  })
+);

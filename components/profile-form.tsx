@@ -12,7 +12,7 @@ import {
   toDateString,
   type MyProfile,
 } from "../lib/profile";
-import { colors, ui } from "../lib/theme";
+import { colors, themed, ui } from "../lib/theme";
 import { Avatar } from "./avatar";
 import { DateField } from "./date-field";
 import { Icon } from "./icon";
@@ -119,7 +119,7 @@ export function ProfileForm({
           style={[styles.iconChoice, icon === null && styles.iconChoiceSelected]}
           accessibilityLabel="Use my initials"
         >
-          <Text style={{ fontSize: 15, fontWeight: "800", color: icon === null ? colors.white : colors.bark }}>Aa</Text>
+          <Text style={{ fontSize: 15, fontWeight: "800", color: icon === null ? colors.onAccent : colors.bark }}>Aa</Text>
         </Tap>
         {avatarIcons.map((choice) => {
           const selected = icon === choice;
@@ -134,7 +134,7 @@ export function ProfileForm({
               style={[styles.iconChoice, selected && styles.iconChoiceSelected]}
               accessibilityLabel={choice}
             >
-              <Icon name={choice} size={22} color={selected ? colors.white : colors.bark} />
+              <Icon name={choice} size={22} color={selected ? colors.onAccent : colors.bark} />
             </Tap>
           );
         })}
@@ -193,26 +193,28 @@ export function ProfileForm({
   );
 }
 
-const styles = StyleSheet.create({
-  previewName: { fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 10, maxWidth: 260 },
-  swatches: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  swatch: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2.5,
-    borderColor: "transparent",
-  },
-  swatchSelected: { borderColor: colors.text },
-  iconChoice: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    backgroundColor: colors.barkSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconChoiceSelected: { backgroundColor: colors.bark },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    previewName: { fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 10, maxWidth: 260 },
+    swatches: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    swatch: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2.5,
+      borderColor: "transparent",
+    },
+    swatchSelected: { borderColor: colors.text },
+    iconChoice: {
+      width: 46,
+      height: 46,
+      borderRadius: 16,
+      backgroundColor: colors.barkSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconChoiceSelected: { backgroundColor: colors.bark },
+  })
+);

@@ -10,7 +10,7 @@ import {
   shelfIcons,
   type Gift,
 } from "../lib/gift-nook";
-import { colors, ui } from "../lib/theme";
+import { colors, themed, ui } from "../lib/theme";
 import { Icon, IconBadge } from "./icon";
 import { Appear, Tap } from "./motion";
 
@@ -96,19 +96,21 @@ export function GiftCard({
   );
 }
 
-const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  image: { width: 64, height: 64, borderRadius: 14, backgroundColor: colors.white },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.barkSoft,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  pillText: { fontSize: 11, fontWeight: "600", color: colors.bark },
-  suggested: { fontSize: 13, color: colors.bark, fontStyle: "italic", flex: 1 },
-  detail: { fontSize: 14, color: colors.text, lineHeight: 20 },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    header: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+    image: { width: 64, height: 64, borderRadius: 14, backgroundColor: colors.white },
+    pill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: colors.barkSoft,
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+    },
+    pillText: { fontSize: 11, fontWeight: "600", color: colors.bark },
+    suggested: { fontSize: 13, color: colors.bark, fontStyle: "italic", flex: 1 },
+    detail: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  })
+);

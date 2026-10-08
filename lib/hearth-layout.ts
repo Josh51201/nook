@@ -65,8 +65,14 @@ export type HearthLayout = {
   version: 2;
   title: string;
   theme: HearthThemeKey;
+  // Switch to Dusk whenever the phone is in dark mode (CORE-032).
+  followPhone: boolean;
+  // The app's typeface (CORE-033).
+  font: FontKey;
   items: HearthItem[];
 };
+
+export type FontKey = "classic" | "rounded" | "storybook";
 
 // Soft tile colors that all work with dark text, each with a deep partner
 // for "bold" widgets and outlines.
@@ -151,6 +157,8 @@ export const defaultHearthLayout: HearthLayout = {
   version: 2,
   title: "The Hearth",
   theme: "hearth",
+  followPhone: true,
+  font: "classic",
   items: [],
 };
 
@@ -322,7 +330,13 @@ type V1Section = { id: string; title: string; tiles: V1Tile[] };
 // The first Hearth stored named sections of tiles. Turn that into the grid:
 // each section title becomes a heading label, its tiles flow underneath.
 export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Section[] }): HearthLayout {
-  const base = { ...defaultHearthLayout, title: saved.title ?? defaultHearthLayout.title, theme: saved.theme ?? defaultHearthLayout.theme };
+  const base = {
+    ...defaultHearthLayout,
+    title: saved.title ?? defaultHearthLayout.title,
+    theme: saved.theme ?? defaultHearthLayout.theme,
+    followPhone: saved.followPhone ?? defaultHearthLayout.followPhone,
+    font: saved.font ?? defaultHearthLayout.font,
+  };
   // Saved settings are merged over defaults (items: []), so an old Hearth
   // shows up as "sections present, no items".
   const hasItems = Array.isArray(saved.items) && saved.items.length > 0;

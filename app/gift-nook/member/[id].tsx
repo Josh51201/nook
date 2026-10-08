@@ -38,7 +38,7 @@ import {
 } from "../../../lib/nook-settings";
 import { formatBirthday } from "../../../lib/profile";
 import { supabase } from "../../../lib/supabase";
-import { colors, ui } from "../../../lib/theme";
+import { colors, themed, ui } from "../../../lib/theme";
 
 type FamilyGift = Gift & { claims: Tuck[] };
 
@@ -560,17 +560,19 @@ export default function MemberWishbook() {
   );
 }
 
-const styles = StyleSheet.create({
-  footer: {
-    marginTop: 6,
-    paddingTop: 12,
-    gap: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  givers: { gap: 4 },
-  giver: { fontSize: 14, color: colors.text, flex: 1 },
-  note: { fontSize: 14, color: colors.muted, fontStyle: "italic" },
-  banner: { borderRadius: 12, padding: 10, gap: 8 },
-  bannerText: { fontSize: 14, color: colors.text },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    footer: {
+      marginTop: 6,
+      paddingTop: 12,
+      gap: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    givers: { gap: 4 },
+    giver: { fontSize: 14, color: colors.text, flex: 1 },
+    note: { fontSize: 14, color: colors.muted, fontStyle: "italic" },
+    banner: { borderRadius: 12, padding: 10, gap: 8 },
+    bannerText: { fontSize: 14, color: colors.text },
+  })
+);

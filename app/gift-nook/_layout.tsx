@@ -1,18 +1,20 @@
 import { Redirect, Stack } from "expo-router";
 
 import { nookStackOptions } from "../../components/nook-stack";
+import { themedScreenLayout } from "../../components/themed-screen";
 import { useAuth } from "../../lib/auth-context";
-import { largeTitle } from "../../lib/theme";
+import { largeTitle, useTheme } from "../../lib/theme";
 
 export default function GiftNookLayout() {
   const { session, isLoading } = useAuth();
+  useTheme();
 
   if (!isLoading && !session) {
     return <Redirect href="/sign-in" />;
   }
 
   return (
-    <Stack screenOptions={nookStackOptions as never}>
+    <Stack screenLayout={themedScreenLayout} screenOptions={nookStackOptions as never}>
       <Stack.Screen
         name="index"
         options={{

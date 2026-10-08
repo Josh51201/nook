@@ -40,7 +40,7 @@ import Svg, { Path } from "react-native-svg";
 import { useAuth } from "../lib/auth-context";
 import { tap } from "../lib/feedback";
 import { useNookSettings } from "../lib/nook-settings";
-import { colors, shadow } from "../lib/theme";
+import { colors, shadow, themed } from "../lib/theme";
 import {
   firstTour,
   holePath,
@@ -430,7 +430,7 @@ function TourOverlay({
             ) : null}
             <Tap onPress={next} style={styles.next} accessibilityRole="button">
               <Text style={styles.nextText}>{isLast ? "Got it" : index === 0 && !rect ? "Show me" : "Next"}</Text>
-              {isLast ? null : <Icon name="chevron" size={12} color={colors.white} />}
+              {isLast ? null : <Icon name="chevron" size={12} color={colors.onAccent} />}
             </Tap>
           </View>
         </Animated.View>
@@ -439,47 +439,49 @@ function TourOverlay({
   );
 }
 
-const styles = StyleSheet.create({
-  ring: {
-    position: "absolute",
-    borderRadius: 18,
-    borderWidth: 2.5,
-    borderColor: "#f6d9c4",
-  },
-  bubble: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    backgroundColor: colors.background,
-    borderRadius: 24,
-    padding: 18,
-    gap: 10,
-    ...shadow,
-  },
-  arrow: {
-    position: "absolute",
-    width: 18,
-    height: 18,
-    backgroundColor: colors.background,
-    transform: [{ rotate: "45deg" }],
-    borderRadius: 3,
-  },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  title: { flex: 1, fontSize: 19, fontWeight: "800", color: colors.text, letterSpacing: -0.3 },
-  body: { fontSize: 15, lineHeight: 21, color: colors.text },
-  footer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
-  skip: { color: colors.muted, fontSize: 15, fontWeight: "600" },
-  dots: { flexDirection: "row", gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
-  dotActive: { backgroundColor: colors.bark, width: 16 },
-  next: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.bark,
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 18,
-  },
-  nextText: { color: colors.white, fontSize: 15, fontWeight: "700" },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    ring: {
+      position: "absolute",
+      borderRadius: 18,
+      borderWidth: 2.5,
+      borderColor: "#f6d9c4",
+    },
+    bubble: {
+      position: "absolute",
+      left: 16,
+      right: 16,
+      backgroundColor: colors.background,
+      borderRadius: 24,
+      padding: 18,
+      gap: 10,
+      ...shadow,
+    },
+    arrow: {
+      position: "absolute",
+      width: 18,
+      height: 18,
+      backgroundColor: colors.background,
+      transform: [{ rotate: "45deg" }],
+      borderRadius: 3,
+    },
+    titleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    title: { flex: 1, fontSize: 19, fontWeight: "800", color: colors.text, letterSpacing: -0.3 },
+    body: { fontSize: 15, lineHeight: 21, color: colors.text },
+    footer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
+    skip: { color: colors.muted, fontSize: 15, fontWeight: "600" },
+    dots: { flexDirection: "row", gap: 6 },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
+    dotActive: { backgroundColor: colors.bark, width: 16 },
+    next: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: colors.bark,
+      borderRadius: 999,
+      paddingVertical: 9,
+      paddingHorizontal: 18,
+    },
+    nextText: { color: colors.onAccent, fontSize: 15, fontWeight: "700" },
+  })
+);

@@ -19,7 +19,7 @@ import {
   type Scope,
 } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
-import { colors, ui } from "../../lib/theme";
+import { colors, themed, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
 import { Icon, IconBadge } from "../icon";
 import { Tap } from "../motion";
@@ -298,15 +298,17 @@ export function ItemOptions({
   );
 }
 
-const styles = StyleSheet.create({
-  swatch: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  swatchSelected: { borderWidth: 2.5, borderColor: colors.bark },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    swatch: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: "rgba(0,0,0,0.08)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    swatchSelected: { borderWidth: 2.5, borderColor: colors.bark },
+  })
+);

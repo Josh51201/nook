@@ -21,7 +21,7 @@ import {
 } from "../../lib/potluck";
 import { formatWhen, loadPotluck, type Dish, type PotluckData } from "../../lib/potluck-data";
 import { supabase } from "../../lib/supabase";
-import { colors, ui } from "../../lib/theme";
+import { colors, themed, ui } from "../../lib/theme";
 
 const statuses: { key: RsvpStatus; label: string }[] = [
   { key: "going", label: "Going" },
@@ -417,38 +417,40 @@ function DishRow({
   );
 }
 
-const styles = StyleSheet.create({
-  title: { fontSize: 22, fontWeight: "800", color: colors.text, letterSpacing: -0.3 },
-  avatars: { flexDirection: "row", marginTop: -4 },
-  avatarRing: { borderRadius: 999, borderWidth: 2, borderColor: colors.background },
-  pill: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.bark,
-    backgroundColor: colors.barkSoft,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 999,
-    overflow: "hidden",
-  },
-  pillDone: { color: "#4f6b45", backgroundColor: "#dfe8d6" },
-  tag: {
-    fontSize: 12,
-    color: colors.muted,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  warning: { gap: 6, backgroundColor: colors.rose, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
-  warningText: { color: colors.heart, fontSize: 13, fontWeight: "600", flex: 1 },
-  stepper: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.barkSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+const styles = themed(() =>
+  StyleSheet.create({
+    title: { fontSize: 22, fontWeight: "800", color: colors.text, letterSpacing: -0.3 },
+    avatars: { flexDirection: "row", marginTop: -4 },
+    avatarRing: { borderRadius: 999, borderWidth: 2, borderColor: colors.background },
+    pill: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.bark,
+      backgroundColor: colors.barkSoft,
+      paddingHorizontal: 9,
+      paddingVertical: 3,
+      borderRadius: 999,
+      overflow: "hidden",
+    },
+    pillDone: { color: "#4f6b45", backgroundColor: "#dfe8d6" },
+    tag: {
+      fontSize: 12,
+      color: colors.muted,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 999,
+    },
+    warning: { gap: 6, backgroundColor: colors.rose, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+    warningText: { color: colors.heart, fontSize: 13, fontWeight: "600", flex: 1 },
+    stepper: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.barkSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  })
+);
