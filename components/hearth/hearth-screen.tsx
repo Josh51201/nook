@@ -403,7 +403,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   background={itemColor(hollow)}
                 />
               ) : (
-                <View style={[styles.flame, { backgroundColor: `${theme.accent}1f`, boxShadow: `0px 0px 18px 2px ${theme.glow}88` }]}>
+                <View style={[styles.flame, { backgroundColor: `${theme.accent}1f`, boxShadow: `0px 0px 12px 0px ${theme.glow}66` }]}>
                   <Icon name="flame" size={26} color={theme.accent} />
                 </View>
               )}
@@ -589,6 +589,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       {barHeight > 0 ? (
         <GlowVeil
           top={insets.top + barHeight}
+          height={16}
           background={theme.background}
           color={theme.glow}
           strength={layout.theme === "dusk" ? 0.34 : 0.26}
@@ -740,8 +741,8 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: "#ffffff", fontSize: 10.5, fontWeight: "800" },
   center: { alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
-  container: { padding: PADDING, paddingTop: 22, gap: 16, paddingBottom: 32 },
-  topBar: { paddingHorizontal: PADDING, paddingTop: 6, paddingBottom: 4, zIndex: 5 },
+  container: { padding: PADDING, paddingTop: 16, gap: 16, paddingBottom: 32 },
+  topBar: { paddingHorizontal: PADDING, paddingTop: 6, paddingBottom: 14, zIndex: 5 },
   back: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginBottom: 6 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
