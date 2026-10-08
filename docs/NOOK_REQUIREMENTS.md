@@ -61,6 +61,7 @@ _Last updated: 2026-10-08 (rev 38)_
 - **HOME-003** If your own Home was only you, everything kept in it comes along when you join another; if you were in a shared one, you just leave it. Leaving gives you your own Home again with a copy of the Letterbox addresses; card history and anything else kept together stays with the people still there.
 - **HOME-004** Anyone in a Home can add and change what's kept there. Nobody outside it can see any of it.
 - **HOME-005** Each Nook that keeps things in a Home stores them against the Home, so they follow whoever lives there. _(Letterbox did; Pet Care will.)_
+- **HOME-006** A Home holds at most 6 people, so one subscription per Home (MON-002) can't quietly cover a whole Burrow. _(Built: enforced in the database for joining and for inviting — pending invites count toward the 6 — and the Home page says when it's full. Someone leaving makes room again.)_
 
 ## 2. Gift Nook (first Nook)
 - **GIFT-001** Users create families and invite others to join. _(Now in the Burrows tab, shared by every Nook — CORE-025.)_
@@ -143,6 +144,12 @@ _Last updated: 2026-10-08 (rev 38)_
 - **RHY-007** Reminders: a heads-up before a rhythm is due, a nudge on the day, a nudge once it's overdue, and a notice when someone does one. Each can be turned on or off in the Rhythms Nook's settings. _(Built (proposed details): the heads-up goes a week ahead, except for monthly chores, which would get noisy. Nudges go to the owner if there is one, or to the whole Home if not, from 8 AM local time, once per due date. The "someone did it" notice is off by default.)_
 - **RHY-008** _(Proposed.)_ A "Due soon" Hearth widget, and the Nook's tile, show what's coming up next. Opening the widget shows the full list. _(Built: any size down to an icon with a count of what needs doing now. It lists what's overdue or due today, then the next month, and can be set to "Just mine". Tapping it opens the Rhythms Nook.)_
 
+## 2f. Subscription (Nook Plus)
+- **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
+- **MON-002** A subscription belongs to a **Home** and covers everyone in it, up to the Home's cap of 6 (HOME-006). It never covers a Burrow, so joining someone's Burrow unlocks nothing paid. The paid customization follows the Home too, not the person. _(Josh: "I like the per home idea but yes needs capped at 6".)_
+- **MON-003** _(Proposed.)_ Free forever: the Gift Nook, Burrows, the Hearth basics and the inbox, so a whole family can join without paying. Paid: the Home-based Nooks (Pet Care, Rhythms, Letterbox, and later House Binder and Sitter Sheet) plus extra customization (more Hollows and widgets, themes, tile styles). See Q-028.
+- **MON-004** _(Proposed.)_ A free trial of about 14–30 days, started through Apple, and a price around $3.99/month or $29.99/year with yearly as the better deal. _(Not built; needs the standalone app build (CORE-021) and RevenueCat. See Q-028.)_
+
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
   - _Built for now (proposed):_ honorees are optional when creating a Gathering. If any are picked, the Gathering links to their Wishbooks; if none, to everyone in the Burrow. Anniversaries can pick both people.
@@ -154,6 +161,8 @@ _Last updated: 2026-10-08 (rev 38)_
 
 - **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
 - **Q-025** The app ID (bundle identifier) is currently `com.josh51201.nook`. It is permanent once the app is published. Should it use the domain Josh buys for email (Q-023) instead?
+
+- **Q-028** Exactly where the free/paid line sits, the price and the trial length (MON-003, MON-004). Decided so far: subscription, no ads, one plan per Home, capped at 6. Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. Also depends on Q-020 (account deletion) and Q-025 (app ID) before an App Store release.
 
 ## 4. Decision Log
 - **2026-10-06 — Q-001 answered:** A person can be in several families. Their list is created outside any family and shows in all of them, with claims visible to all families except the list owner. → GIFT-011, GIFT-012, GIFT-013
@@ -205,6 +214,7 @@ _Last updated: 2026-10-08 (rev 38)_
 - **2026-10-08 — Home, outside the Letterbox:** "I say we change up the households a little bit to be done outside of the letterbox since its going to be used for multiple things. Not sure if it should be done within the Burrows or in another tab or what is best for the app. Will leave you to think of where to best put it." Claude picked a "Your Home" card at the top of the Burrows tab; Josh chose the name "Home" and Pet Care as the next Nook. → HOME-001..005, LET-002, LET-003, Glossary
 - **2026-10-08 — Pet Care Nook:** Josh picked Pet Care next. Sharing: Home plus helpers. Tracks: feeding check-offs, vet/vaccines/meds, walks and potty/litter, and a pet profile with records. Feeding: set meals per pet. Nudges: meal not fed yet, vet and vaccine due dates, and fed notices. → PET-001..007
 - **2026-10-08 — Rhythms Nook:** Yearly Rhythms is next ("Yes I agree"). Josh picked: the name Rhythms Nook; a starter list to pick from; an optional owner per chore; and all four reminders (heads-up, due day, overdue, someone did it), but "they should all be optional and a toggle in the individual nook settings." → RHY-001..008, Glossary, section 7
+- **2026-10-08 — Subscription:** Josh wants App Store revenue without ads, so a subscription. On one person covering a Home: "if you add in a whole burrow of 20+ people who get everything for free seems broken." Then: "I like the per home idea but yes needs capped at 6." So the plan is per Home, covers the Home only (never a Burrow), customization follows the Home, and a Home holds at most 6. The free/paid line, price and trial are still Claude's suggestions. → MON-001..004, HOME-006, Q-028, Glossary
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -217,6 +227,7 @@ _Last updated: 2026-10-08 (rev 38)_
 | The pet-care Nook | Pet Care Nook | approved |
 | The yearly-chores Nook | Rhythms Nook | approved |
 | One recurring chore in the Rhythms Nook | Rhythm | proposed |
+| The paid subscription, per Home | Nook Plus | proposed |
 | The people you live with, shared by Nooks | Home | proposed |
 | One entry in the Letterbox (one mailing address) | Contact | proposed |
 | Homepage | The Hearth | proposed |

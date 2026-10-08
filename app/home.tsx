@@ -12,7 +12,7 @@ import { Banner, Button, EmptyState, SectionHeader } from "../components/ui";
 import { useAuth } from "../lib/auth-context";
 import { friendlyError, tap } from "../lib/feedback";
 import { displayName } from "../lib/gift-nook";
-import { useHome, type HomeInvite } from "../lib/home";
+import { MAX_HOME_MEMBERS, useHome, type HomeInvite } from "../lib/home";
 import { supabase } from "../lib/supabase";
 import { colors, ui } from "../lib/theme";
 
@@ -42,6 +42,7 @@ export default function HomePage() {
     .filter((p) => !data.incoming.some((i) => i.invited_by === p.id))
     .sort((a, b) => displayName(a).localeCompare(displayName(b)));
   const alone = data.members.length <= 1;
+  const full = data.members.length + data.sent.length >= MAX_HOME_MEMBERS;
   const others = data.members.filter((m) => m.profile_id !== userId);
 
   async function invite(id: string, name: string) {
@@ -166,7 +167,14 @@ export default function HomePage() {
         </View>
       ))}
 
-      {invitable.length ? (
+      {full ? (
+        <View style={[ui.row, { gap: 8 }]}>
+          <Icon name="hearth" size={16} color={colors.muted} />
+          <Text style={[ui.muted, { flex: 1 }]}>
+            {`A Home holds up to ${MAX_HOME_MEMBERS} people, and yours is full.`}
+          </Text>
+        </View>
+      ) : invitable.length ? (
         <>
           <Text style={ui.label}>Invite someone you live with</Text>
           {invitable.map((person) => (

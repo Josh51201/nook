@@ -10,6 +10,10 @@ import { supabase } from "./supabase";
 // Nooks keep their things against the Home's id (see my_home() in
 // supabase/migrations/20261008170000_homes.sql).
 
+// HOME-006: a Home holds at most this many people. Also enforced in the
+// database (enforce_home_size) — change it in both places or not at all.
+export const MAX_HOME_MEMBERS = 6;
+
 export type HomeMember = { profile_id: string; profiles: Profile | null };
 
 export type HomeInvite = { id: string; home_id: string; invited: string; invited_by: string | null };
