@@ -1,26 +1,47 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import Animated, { FadeIn, FadeInRight, LinearTransition, ZoomIn } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
 import { tap } from "../../lib/feedback";
-import { guardTouches } from "../../lib/touch-guard";
-import { countdown, displayName, gatheringKindInfo, type TuckStatus } from "../../lib/gift-nook";
+import { countdown, displayName, formatDate, gatheringKindInfo, type TuckStatus } from "../../lib/gift-nook";
 import { deepColor, tileBevel, tilePalette } from "../../lib/hearth-layout";
+import { noticeIcon } from "../../lib/inbox";
 import { supabase } from "../../lib/supabase";
-import { describeSchedule, widgetKindInfo, type WidgetConfig, type WidgetOf } from "../../lib/widgets";
-import { Icon, type IconName } from "../icon";
+import { guardTouches } from "../../lib/touch-guard";
+import {
+  describeSchedule,
+  widgetKindInfo,
+  widgetShape,
+  type WidgetConfig,
+  type WidgetOf,
+  type WidgetShape,
+} from "../../lib/widgets";
+import { Icon, IconBadge, type IconName } from "../icon";
 import { Tap } from "../motion";
 
-// Renders any Hearth widget (CORE-018) at its size, in its chosen look.
+// Renders any Hearth widget (CORE-018) in its chosen look, laid out for the
+// shape it's been given (CORE-030): a single icon with a count, a one-line
+// strip, or cards that fill their space — a calendar page for a countdown,
+// a progress bar for reminders, soft inner panels for lists.
 // GIFT-007: widgets only ever show your own tucks (gifts *you're* getting
 // others) and Gatherings — never anything about tucks on your own gifts.
 
-type Palette = { text: string; muted: string; accent: string; faint: string };
+type Palette = {
+  text: string;
+  muted: string;
+  accent: string;
+  faint: string;
+  // Inner panels that hold lists, like the Gift Nook's big tile.
+  panel: string;
+  // The deep partner of the widget's color (calendar pages, pills).
+  deep: string;
+};
 
 export function WidgetView({
   widget,
   color,
+  icon,
   width,
   height,
   refreshKey,
@@ -29,6 +50,8 @@ export function WidgetView({
 }: {
   widget: WidgetConfig;
   color?: string;
+  // A person's own pick of icon (CORE-030); otherwise the widget's usual one.
+  icon?: IconName;
   width: number;
   height: number;
   refreshKey: number;
@@ -41,46 +64,75 @@ export function WidgetView({
   const look = widget.look;
   const palette: Palette =
     look === "bold"
-      ? { text: "#ffffff", muted: "rgba(255,255,255,0.78)", accent: "#ffffff", faint: "rgba(255,255,255,0.16)" }
+      ? {
+          text: "#ffffff",
+          muted: "rgba(255,255,255,0.78)",
+          accent: "#ffffff",
+          faint: "rgba(255,255,255,0.16)",
+          panel: "rgba(255,255,255,0.15)",
+          deep,
+        }
       : look === "outline"
-        ? { text: themeText, muted: `${themeText}99`, accent: deep, faint: `${deep}14` }
-        : { text: "#2a2420", muted: "#6f625a", accent: deep, faint: "rgba(255,255,255,0.55)" };
+        ? { text: themeText, muted: `${themeText}99`, accent: deep, faint: `${deep}14`, panel: `${deep}12`, deep }
+        : {
+            text: "#2a2420",
+            muted: "#6f625a",
+            accent: deep,
+            faint: "rgba(255,255,255,0.55)",
+            panel: "rgba(255,255,255,0.62)",
+            deep,
+          };
   const info = widgetKindInfo(widget.kind);
-  const compact = height < 120;
+  const shape = widgetShape(width, height);
+  const showTitle = widget.showTitle && shape !== "icon" && shape !== "strip";
 
   return (
     <View
       style={[
         styles.frame,
         { width, height },
+        shape === "icon" && { padding: 8 },
+        shape === "strip" && { paddingVertical: 10, paddingHorizontal: 14 },
         look === "bold" && { backgroundColor: deep, boxShadow: tileBevel },
         look === "soft" && { backgroundColor: soft, boxShadow: tileBevel },
         look === "outline" && { borderWidth: 2, borderColor: deep, backgroundColor: "transparent" },
       ]}
     >
-      {widget.showTitle && !compact ? (
-        <View style={[styles.titleRow]}>
-          <Icon name={info.icon} size={14} color={palette.accent} />
+      {showTitle ? (
+        <View style={styles.titleRow}>
+          <Icon name={icon ?? info.icon} size={14} color={palette.accent} />
           <Text style={[styles.title, { color: palette.muted }]} numberOfLines={1}>
             {widget.title || info.label}
           </Text>
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
-        <Body widget={widget} palette={palette} height={height} width={width} refreshKey={refreshKey} onChange={onChange} />
+        <Body
+          widget={widget}
+          palette={palette}
+          height={height - (showTitle ? 26 : 0)}
+          width={width}
+          shape={shape}
+          icon={icon ?? info.icon}
+          refreshKey={refreshKey}
+          onChange={onChange}
+        />
       </View>
     </View>
   );
 }
 
-function Body(props: {
-  widget: WidgetConfig;
+type CommonProps = {
   palette: Palette;
   width: number;
   height: number;
+  shape: WidgetShape;
+  icon: IconName;
   refreshKey: number;
   onChange?: (widget: WidgetConfig) => void;
-}) {
+};
+
+function Body(props: CommonProps & { widget: WidgetConfig }) {
   const { widget } = props;
   switch (widget.kind) {
     case "countdown":
@@ -100,27 +152,147 @@ function Body(props: {
   }
 }
 
-type BodyProps<K extends WidgetConfig["kind"]> = {
-  widget: WidgetOf<K>;
-  palette: Palette;
-  width: number;
-  height: number;
-  refreshKey: number;
-  onChange?: (widget: WidgetConfig) => void;
-};
+type BodyProps<K extends WidgetConfig["kind"]> = CommonProps & { widget: WidgetOf<K> };
 
 // How many list rows fit in a widget of this height.
 function rowsThatFit(height: number, rowHeight = 26, chrome = 52) {
   return Math.max(1, Math.floor((height - chrome) / rowHeight));
 }
 
+const isBig = (shape: WidgetShape) => shape === "wide" || shape === "tall" || shape === "large";
+
+// --- Shared building blocks -------------------------------------------------
+
 function Muted({ children, palette }: { children: ReactNode; palette: Palette }) {
   return <Text style={[styles.small, { color: palette.muted }]}>{children}</Text>;
 }
 
+function Panel({ palette, children, style }: { palette: Palette; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  return <View style={[styles.panel, { backgroundColor: palette.panel }, style]}>{children}</View>;
+}
+
+// One cell: an icon with a little count, or a short value ("12") in its place.
+function IconFace({
+  icon,
+  palette,
+  badge,
+  value,
+  caption,
+}: {
+  icon: IconName;
+  palette: Palette;
+  badge?: number;
+  value?: string;
+  caption?: string;
+}) {
+  if (value !== undefined) {
+    return (
+      <View style={styles.centerFill}>
+        <Icon name={icon} size={13} color={palette.accent} />
+        <Text style={{ fontSize: value.length > 3 ? 15 : 24, fontWeight: "800", color: palette.text, letterSpacing: -0.5 }}>
+          {value}
+        </Text>
+        {caption ? <Text style={[styles.tiny, { color: palette.muted, marginTop: -2 }]}>{caption}</Text> : null}
+      </View>
+    );
+  }
+  return (
+    <View style={styles.centerFill}>
+      <Icon name={icon} size={32} color={palette.accent} />
+      {badge ? (
+        <Animated.View
+          key={badge}
+          entering={ZoomIn.springify().damping(12)}
+          style={[styles.badge, { backgroundColor: palette.text === "#ffffff" ? "#ffffff" : palette.deep }]}
+        >
+          <Text style={[styles.badgeText, { color: palette.text === "#ffffff" ? palette.deep : "#ffffff" }]}>
+            {badge > 99 ? "99+" : badge}
+          </Text>
+        </Animated.View>
+      ) : null}
+    </View>
+  );
+}
+
+// One row tall: an icon and a single line.
+function Strip({ icon, palette, text, sub }: { icon: IconName; palette: Palette; text: string; sub?: string | null }) {
+  return (
+    <View style={[styles.row, { flex: 1, gap: 10 }]}>
+      <IconBadge name={icon} size={34} color={palette.accent} background={palette.panel} />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.body, { color: palette.text, fontWeight: "700" }]} numberOfLines={1}>
+          {text}
+        </Text>
+        {sub ? (
+          <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+            {sub}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function Empty({ icon, palette, text }: { icon: IconName; palette: Palette; text: string }) {
+  return (
+    <View style={[styles.centerFill, { gap: 6 }]}>
+      <Icon name={icon} size={22} color={palette.muted} />
+      <Text style={[styles.small, { color: palette.muted, textAlign: "center" }]}>{text}</Text>
+    </View>
+  );
+}
+
+// A tear-off calendar page: the month on a colored band, the day big below.
+function CalendarPage({ date, palette, size }: { date: Date; palette: Palette; size: number }) {
+  return (
+    <View style={[styles.calendar, { width: size * 0.86, height: size }]}>
+      <View style={[styles.calendarBand, { height: size * 0.26, backgroundColor: palette.deep }]}>
+        <Text style={{ color: "#ffffff", fontWeight: "800", fontSize: size * 0.13, letterSpacing: 1 }}>
+          {date.toLocaleDateString(undefined, { month: "short" }).toUpperCase()}
+        </Text>
+      </View>
+      <View style={styles.centerFill}>
+        <Text style={{ fontSize: size * 0.4, fontWeight: "800", color: "#2a2420", letterSpacing: -1, marginTop: -2 }}>
+          {date.getDate()}
+        </Text>
+        <Text style={{ fontSize: size * 0.11, color: "#857a72", fontWeight: "600", marginTop: -2 }}>
+          {date.toLocaleDateString(undefined, { weekday: "short" })}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function Pill({ palette, text }: { palette: Palette; text: string }) {
+  const onBold = palette.text === "#ffffff";
+  return (
+    <Text
+      style={[
+        styles.pill,
+        { color: onBold ? palette.deep : "#ffffff", backgroundColor: onBold ? "#ffffff" : palette.deep },
+      ]}
+      numberOfLines={1}
+    >
+      {text}
+    </Text>
+  );
+}
+
+function ProgressBar({ palette, done, total }: { palette: Palette; done: number; total: number }) {
+  const fraction = total ? done / total : 0;
+  return (
+    <View style={[styles.track, { backgroundColor: palette.panel }]}>
+      <Animated.View
+        layout={LinearTransition.duration(300)}
+        style={[styles.fill, { width: `${Math.round(fraction * 100)}%`, backgroundColor: palette.accent }]}
+      />
+    </View>
+  );
+}
+
 // --- Countdown ------------------------------------------------------------------
 
-function Countdown({ widget, palette, refreshKey, height }: BodyProps<"countdown">) {
+function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"countdown">) {
   const { source, gatheringId, customTitle, customDate, display } = widget.settings;
   const [target, setTarget] = useState<{ title: string; date: string; icon: IconName } | null | undefined>(undefined);
 
@@ -141,28 +313,76 @@ function Countdown({ widget, palette, refreshKey, height }: BodyProps<"countdown
   }, [source, gatheringId, customTitle, customDate, refreshKey]);
 
   if (target === undefined) return null;
-  if (!target) return <Muted palette={palette}>{source === "custom" ? "Pick a date in the editor" : "Nothing coming up"}</Muted>;
+  if (!target) {
+    if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+    return <Empty icon="calendar" palette={palette} text={source === "custom" ? "Pick a date in the editor" : "Nothing coming up"} />;
+  }
 
   const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const days = Math.round((start(new Date(target.date)) - start(new Date())) / 86400000);
-  const big = height >= 150;
+  const when = new Date(target.date);
+  const days = Math.round((start(when) - start(new Date())) / 86400000);
+  const number = days === 0 ? "Today" : String(Math.abs(days));
+  const words =
+    days === 0 ? target.title : days > 0 ? `day${days === 1 ? "" : "s"} until ${target.title}` : `days since ${target.title}`;
+  const sentence = `${target.title} ${days === 0 ? "is today!" : days > 0 ? `in ${days} day${days === 1 ? "" : "s"}` : countdown(target.date)}`;
+  const fullDate = when.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
-  if (display === "words" || height < 120) {
+  if (shape === "icon") {
+    return <IconFace icon={target.icon} palette={palette} value={number} caption={days === 0 ? undefined : "days"} />;
+  }
+  if (shape === "strip") return <Strip icon={target.icon} palette={palette} text={sentence} sub={fullDate} />;
+
+  if (display === "words" && shape === "small") {
     return (
       <View style={styles.centerFill}>
-        <Text style={[styles.body, { color: palette.text, fontWeight: "700" }]} numberOfLines={2}>
-          {target.title} {days === 0 ? "is today!" : days > 0 ? `in ${days} day${days === 1 ? "" : "s"}` : countdown(target.date)}
+        <Text style={[styles.body, { color: palette.text, fontWeight: "700", textAlign: "center" }]} numberOfLines={3}>
+          {sentence}
         </Text>
       </View>
     );
   }
+
+  const Number = ({ size }: { size: number }) => (
+    <Text style={{ fontSize: size, fontWeight: "800", color: palette.text, letterSpacing: -1.5 }} numberOfLines={1}>
+      {number}
+    </Text>
+  );
+
+  if (shape === "wide") {
+    const page = Math.min(height - 6, 110);
+    return (
+      <Animated.View entering={FadeIn.duration(250)} style={[styles.row, { flex: 1, gap: 16 }]}>
+        <CalendarPage date={when} palette={palette} size={page} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Number size={46} />
+          <Text style={[styles.body, { color: palette.text }]} numberOfLines={2}>
+            {words}
+          </Text>
+          <Muted palette={palette}>{fullDate}</Muted>
+        </View>
+      </Animated.View>
+    );
+  }
+  if (shape === "tall" || shape === "large") {
+    const big = shape === "large";
+    return (
+      <Animated.View entering={FadeIn.duration(250)} style={[styles.centerFill, { gap: 10 }]}>
+        <CalendarPage date={when} palette={palette} size={big ? 120 : 96} />
+        <View style={{ alignItems: "center" }}>
+          <Number size={big ? 64 : 48} />
+          <Text style={[styles.body, { color: palette.text, textAlign: "center" }]} numberOfLines={2}>
+            {words}
+          </Text>
+          {big ? <Muted palette={palette}>{fullDate}</Muted> : null}
+        </View>
+      </Animated.View>
+    );
+  }
   return (
     <Animated.View entering={FadeIn.duration(250)} style={styles.centerFill}>
-      <Text style={{ fontSize: big ? 56 : 40, fontWeight: "800", color: palette.text, letterSpacing: -1 }}>
-        {days === 0 ? "Today" : Math.abs(days)}
-      </Text>
+      <Number size={44} />
       <Text style={[styles.small, { color: palette.muted, textAlign: "center" }]} numberOfLines={2}>
-        {days === 0 ? target.title : days > 0 ? `day${days === 1 ? "" : "s"} until ${target.title}` : `days since ${target.title}`}
+        {words}
       </Text>
     </Animated.View>
   );
@@ -170,9 +390,11 @@ function Countdown({ widget, palette, refreshKey, height }: BodyProps<"countdown
 
 // --- Coming up -------------------------------------------------------------------
 
-function Gatherings({ widget, palette, refreshKey, height }: BodyProps<"gatherings">) {
+type GatheringRow = { id: string; title: string; kind: string; ends_at: string };
+
+function Gatherings({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"gatherings">) {
   const { burrowId, kinds, count, showCountdown } = widget.settings;
-  const [rows, setRows] = useState<{ id: string; title: string; kind: string; ends_at: string }[] | null>(null);
+  const [rows, setRows] = useState<GatheringRow[] | null>(null);
 
   useEffect(() => {
     let query = supabase.from("gatherings").select("id, title, kind, ends_at").gt("ends_at", new Date().toISOString());
@@ -180,38 +402,67 @@ function Gatherings({ widget, palette, refreshKey, height }: BodyProps<"gatherin
     if (kinds.length) query = query.in("kind", kinds);
     query
       .order("ends_at")
-      .limit(count)
+      .limit(Math.max(count, 6))
       .then(({ data }) => setRows(data ?? []));
   }, [burrowId, kinds.join(","), count, refreshKey]);
 
   if (!rows) return null;
-  if (!rows.length) return <Muted palette={palette}>Nothing coming up</Muted>;
-  const shown = rows.slice(0, rowsThatFit(height));
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={rows.length} />;
+  if (!rows.length) return <Empty icon="celebration" palette={palette} text="Nothing coming up" />;
+  const [next, ...rest] = rows;
+  const nextKind = gatheringKindInfo(next.kind);
+  if (shape === "strip") {
+    return <Strip icon={nextKind.icon} palette={palette} text={next.title} sub={`${formatDate(next.ends_at)} · ${countdown(next.ends_at)}`} />;
+  }
+
+  const listRow = (row: GatheringRow, i: number) => {
+    const kind = gatheringKindInfo(row.kind);
+    return (
+      <Animated.View key={row.id} entering={FadeInRight.delay(i * 50).springify().damping(18)} style={styles.row}>
+        <Icon name={kind.icon} size={15} color={palette.accent} />
+        <Text style={[styles.body, { color: palette.text, flex: 1 }]} numberOfLines={1}>
+          {row.title}
+        </Text>
+        {showCountdown ? <Muted palette={palette}>{countdown(row.ends_at)}</Muted> : null}
+      </Animated.View>
+    );
+  };
+
+  if (shape === "small") {
+    return <View style={{ gap: 6 }}>{rows.slice(0, Math.min(count, rowsThatFit(height))).map(listRow)}</View>;
+  }
+
+  // Bigger: the next one gets a spotlight, the rest list underneath.
+  const restFit = Math.max(0, Math.min(count - 1, rowsThatFit(height, 26, shape === "wide" ? 999 : 110)));
   return (
-    <View style={{ gap: 6 }}>
-      {shown.map((row) => {
-        const kind = gatheringKindInfo(row.kind);
-        return (
-          <View key={row.id} style={styles.row}>
-            <Icon name={kind.icon} size={15} color={palette.accent} />
-            <Text style={[styles.body, { color: palette.text, flex: 1 }]} numberOfLines={1}>
-              {row.title}
-            </Text>
-            {showCountdown ? <Muted palette={palette}>{countdown(row.ends_at)}</Muted> : null}
-          </View>
-        );
-      })}
+    <View style={{ gap: 10, flex: 1 }}>
+      <Panel palette={palette} style={[styles.row, { gap: 12 }]}>
+        <IconBadge name={nextKind.icon} size={shape === "wide" ? 40 : 46} color={palette.deep} background="rgba(255,255,255,0.7)" />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.tiny, { color: palette.muted, fontWeight: "800", letterSpacing: 0.6 }]}>NEXT UP</Text>
+          <Text style={[styles.body, { color: palette.text, fontWeight: "800", fontSize: 16 }]} numberOfLines={1}>
+            {next.title}
+          </Text>
+          <Muted palette={palette}>{formatDate(next.ends_at)}</Muted>
+        </View>
+        <Pill palette={palette} text={countdown(next.ends_at)} />
+      </Panel>
+      {shape === "wide" ? (
+        rest.length ? <Muted palette={palette}>{`Then ${rest[0].title} · ${countdown(rest[0].ends_at)}`}</Muted> : null
+      ) : (
+        <View style={{ gap: 8, paddingHorizontal: 4 }}>{rest.slice(0, restFit).map(listRow)}</View>
+      )}
     </View>
   );
 }
 
 // --- Reminders -------------------------------------------------------------------
 
-function Reminders({ widget, palette, height, onChange }: BodyProps<"reminders">) {
+function Reminders({ widget, palette, height, shape, icon, onChange }: BodyProps<"reminders">) {
   const { items, hideDone } = widget.settings;
   const visible = items.filter((item) => !hideDone || !item.done);
-  const fit = rowsThatFit(height, 30);
-  const shown = visible.slice(0, fit);
+  const remaining = items.filter((item) => !item.done);
+  const done = items.length - remaining.length;
 
   function toggle(id: string) {
     if (!onChange) return;
@@ -222,9 +473,30 @@ function Reminders({ widget, palette, height, onChange }: BodyProps<"reminders">
     });
   }
 
-  if (!items.length) return <Muted palette={palette}>Tap Edit to add reminders</Muted>;
-  return (
-    <View style={{ gap: 4 }}>
+  if (shape === "icon") {
+    return items.length && !remaining.length ? (
+      <IconFace icon="check" palette={palette} />
+    ) : (
+      <IconFace icon={icon} palette={palette} badge={remaining.length} />
+    );
+  }
+  if (!items.length) return <Empty icon="todo" palette={palette} text="Tap Edit to add reminders" />;
+  if (shape === "strip") {
+    return (
+      <Strip
+        icon={remaining.length ? icon : "check"}
+        palette={palette}
+        text={remaining[0]?.text ?? "All done!"}
+        sub={remaining.length ? `${remaining.length} to do` : `${done} done`}
+      />
+    );
+  }
+
+  const big = isBig(shape);
+  const fit = rowsThatFit(height, big ? 34 : 30, big ? 74 : 52);
+  const shown = visible.slice(0, fit);
+  const list = (
+    <View style={{ gap: big ? 6 : 4 }}>
       {shown.map((item) => (
         <Animated.View key={item.id} layout={LinearTransition.duration(200)}>
           <Tap
@@ -234,23 +506,14 @@ function Reminders({ widget, palette, height, onChange }: BodyProps<"reminders">
             style={styles.row}
             hitSlop={4}
           >
-            <View
-              style={[
-                styles.check,
-                { borderColor: palette.accent },
-                item.done && { backgroundColor: palette.accent },
-              ]}
-            >
+            <View style={[styles.check, { borderColor: palette.accent }, item.done && { backgroundColor: palette.accent }]}>
               {item.done ? <Icon name="check" size={12} color={palette.text === "#ffffff" ? "#2a2420" : "#ffffff"} /> : null}
             </View>
             <View style={{ flex: 1 }}>
-              <Text
-                style={[styles.body, { color: palette.text }, item.done && styles.done]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.body, { color: palette.text }, item.done && styles.done]} numberOfLines={1}>
                 {item.text}
               </Text>
-              {item.schedule && height >= 150 ? (
+              {item.schedule && big ? (
                 <Text style={[styles.tiny, { color: palette.muted }]} numberOfLines={1}>
                   {describeSchedule(item.schedule)}
                 </Text>
@@ -263,14 +526,34 @@ function Reminders({ widget, palette, height, onChange }: BodyProps<"reminders">
       {visible.length > shown.length ? <Muted palette={palette}>+{visible.length - shown.length} more</Muted> : null}
     </View>
   );
+
+  if (!big) return list;
+  return (
+    <View style={{ gap: 10, flex: 1 }}>
+      <View style={{ gap: 6 }}>
+        <View style={[styles.row, { justifyContent: "space-between" }]}>
+          <Text style={[styles.body, { color: palette.text, fontWeight: "700" }]}>
+            {remaining.length ? `${remaining.length} to go` : "All done!"}
+          </Text>
+          <Muted palette={palette}>{`${done} of ${items.length}`}</Muted>
+        </View>
+        <ProgressBar palette={palette} done={done} total={items.length} />
+      </View>
+      <Panel palette={palette} style={{ flex: 1 }}>
+        {list}
+      </Panel>
+    </View>
+  );
 }
 
 // --- Gifts to buy (your tucks) ------------------------------------------------
 
-function Tucks({ widget, palette, refreshKey, height }: BodyProps<"tucks">) {
+type TuckRow = { id: string; status: TuckStatus; title: string; forName: string };
+
+function Tucks({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"tucks">) {
   const { session } = useAuth();
   const { include, count } = widget.settings;
-  const [rows, setRows] = useState<{ id: string; status: TuckStatus; title: string; forName: string }[] | null>(null);
+  const [rows, setRows] = useState<TuckRow[] | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -297,75 +580,190 @@ function Tucks({ widget, palette, refreshKey, height }: BodyProps<"tucks">) {
   }, [session, include, refreshKey]);
 
   if (!rows) return null;
-  if (!rows.length) return <Muted palette={palette}>Nothing to buy right now</Muted>;
-  const shown = rows.slice(0, Math.min(count, rowsThatFit(height, 26, 86)));
-  return (
-    <View style={{ gap: 6 }}>
-      <Text style={{ fontSize: 30, fontWeight: "800", color: palette.text }}>{rows.length}</Text>
-      {shown.map((row) => (
-        <View key={row.id} style={styles.row}>
-          <Icon name={row.status === "bought" ? "bought" : "tucks"} size={13} color={palette.accent} />
-          <Text style={[styles.body, { color: palette.text, flex: 1 }]} numberOfLines={1}>
-            {row.title}
-            <Text style={{ color: palette.muted }}> · {row.forName}</Text>
-          </Text>
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={rows.length} />;
+  if (!rows.length) return <Empty icon="check" palette={palette} text="Nothing to buy right now" />;
+  if (shape === "strip") {
+    return (
+      <Strip
+        icon={icon}
+        palette={palette}
+        text={`${rows.length} gift${rows.length === 1 ? "" : "s"} to buy`}
+        sub={`${rows[0].title} · for ${rows[0].forName}`}
+      />
+    );
+  }
+
+  const row = (item: TuckRow, rich: boolean) => (
+    <View key={item.id} style={styles.row}>
+      <Icon name={item.status === "bought" ? "bought" : "tucks"} size={14} color={palette.accent} />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.body, { color: palette.text }]} numberOfLines={1}>
+          {item.title}
+          {rich ? null : <Text style={{ color: palette.muted }}> · {item.forName}</Text>}
+        </Text>
+        {rich ? <Text style={[styles.tiny, { color: palette.muted }]}>for {item.forName}</Text> : null}
+      </View>
+      {rich ? <Pill palette={palette} text={item.status === "bought" ? "Bought" : "To get"} /> : null}
+    </View>
+  );
+
+  const Count = () => (
+    <View style={{ alignItems: shape === "wide" ? "center" : "flex-start" }}>
+      <Text style={{ fontSize: shape === "wide" ? 44 : 32, fontWeight: "800", color: palette.text, letterSpacing: -1 }}>
+        {rows.length}
+      </Text>
+      <Muted palette={palette}>to buy</Muted>
+    </View>
+  );
+
+  if (shape === "small") {
+    return (
+      <View style={{ gap: 6 }}>
+        <Count />
+        {rows.slice(0, Math.min(count, rowsThatFit(height, 26, 86))).map((item) => row(item, false))}
+      </View>
+    );
+  }
+  if (shape === "wide") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 14, alignItems: "stretch" }]}>
+        <View style={{ justifyContent: "center", paddingHorizontal: 6 }}>
+          <Count />
         </View>
-      ))}
+        <Panel palette={palette} style={{ flex: 1, gap: 8, justifyContent: "center" }}>
+          {rows.slice(0, Math.min(count, rowsThatFit(height, 26, 40))).map((item) => row(item, false))}
+        </Panel>
+      </View>
+    );
+  }
+  return (
+    <View style={{ gap: 10, flex: 1 }}>
+      <Count />
+      <Panel palette={palette} style={{ gap: 10, flex: 1 }}>
+        {rows.slice(0, Math.min(Math.max(count, 3), rowsThatFit(height, 42, 120))).map((item) => row(item, true))}
+      </Panel>
     </View>
   );
 }
 
 // --- Sticky note ---------------------------------------------------------------------
 
-function Note({ widget, palette }: BodyProps<"note">) {
+function Note({ widget, palette, height, shape, icon }: BodyProps<"note">) {
   const { text, textSize, align } = widget.settings;
-  const fontSize = { small: 14, medium: 17, large: 22 }[textSize];
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+  if (shape === "strip") {
+    return (
+      <View style={[styles.row, { flex: 1 }]}>
+        <Icon name={icon} size={16} color={palette.accent} />
+        <Text style={[styles.body, { color: text ? palette.text : palette.muted, flex: 1, fontWeight: "600" }]} numberOfLines={2}>
+          {text || "Tap Edit to write something"}
+        </Text>
+      </View>
+    );
+  }
+  const scale = shape === "large" ? 1.2 : isBig(shape) ? 1.08 : 1;
+  const fontSize = { small: 14, medium: 17, large: 22 }[textSize] * scale;
+  const lineHeight = fontSize * 1.4;
+  const ruled = height >= 200 && widget.look !== "bold";
   return (
-    <Text
-      style={{ color: text ? palette.text : palette.muted, fontSize, lineHeight: fontSize * 1.35, textAlign: align, fontWeight: textSize === "large" ? "700" : "500" }}
-    >
-      {text || "Tap Edit to write something"}
-    </Text>
+    <View style={{ flex: 1 }}>
+      {/* A strip of tape holding the note up. */}
+      {widget.look === "soft" ? <View style={styles.tape} /> : null}
+      {ruled ? (
+        <View style={[StyleSheet.absoluteFill, { top: 4 }]} pointerEvents="none">
+          {Array.from({ length: Math.floor(height / lineHeight) }, (_, i) => (
+            <View key={i} style={[styles.rule, { top: (i + 1) * lineHeight, borderColor: `${palette.deep}22` }]} />
+          ))}
+        </View>
+      ) : null}
+      <Text
+        style={{
+          color: text ? palette.text : palette.muted,
+          fontSize,
+          lineHeight,
+          textAlign: align,
+          fontWeight: textSize === "large" ? "700" : "500",
+          paddingTop: widget.look === "soft" && !widget.showTitle ? 6 : 0,
+        }}
+      >
+        {text || "Tap Edit to write something"}
+      </Text>
+    </View>
   );
 }
 
 // --- Inbox --------------------------------------------------------------------------
 
-function Inbox({ widget, palette, refreshKey, height }: BodyProps<"inbox">) {
-  const [state, setState] = useState<{ unread: number; titles: string[] } | null>(null);
+function Inbox({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"inbox">) {
+  const [state, setState] = useState<{ unread: number; notices: { title: string; nook: string; kind: string }[] } | null>(null);
   useEffect(() => {
     Promise.all([
       supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null),
       supabase
         .from("notifications")
-        .select("title")
+        .select("title, nook, kind")
         .is("read_at", null)
         .order("created_at", { ascending: false })
-        .limit(widget.settings.count),
-    ]).then(([countResult, listResult]) =>
-      setState({ unread: countResult.count ?? 0, titles: (listResult.data ?? []).map((n) => n.title) })
-    );
+        .limit(Math.max(widget.settings.count, 6)),
+    ]).then(([countResult, listResult]) => setState({ unread: countResult.count ?? 0, notices: listResult.data ?? [] }));
   }, [widget.settings.count, refreshKey]);
 
   if (!state) return null;
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={state.unread} />;
+  if (shape === "strip") {
+    return (
+      <Strip
+        icon={state.unread ? icon : "check"}
+        palette={palette}
+        text={state.unread ? `${state.unread} unread` : "All caught up"}
+        sub={state.notices[0]?.title}
+      />
+    );
+  }
+  const big = isBig(shape);
+  const fit = Math.min(big ? Math.max(widget.settings.count, 3) : widget.settings.count, rowsThatFit(height, big ? 30 : 26, big ? 100 : 90));
+  const rows = state.notices.slice(0, fit).map((notice, i) => (
+    <View key={i} style={styles.row}>
+      <Icon name={noticeIcon(notice)} size={14} color={palette.accent} />
+      <Text style={[styles.body, { color: palette.text, flex: 1 }]} numberOfLines={1}>
+        {notice.title}
+      </Text>
+    </View>
+  ));
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: 8, flex: 1 }}>
       <View style={styles.row}>
-        <Text style={{ fontSize: 30, fontWeight: "800", color: palette.text }}>{state.unread}</Text>
+        <Text style={{ fontSize: big ? 36 : 30, fontWeight: "800", color: palette.text, letterSpacing: -1 }}>{state.unread}</Text>
         <Muted palette={palette}>unread</Muted>
       </View>
-      {state.titles.slice(0, rowsThatFit(height, 26, 90)).map((title, i) => (
-        <Text key={i} style={[styles.body, { color: palette.text }]} numberOfLines={1}>
-          {title}
-        </Text>
-      ))}
+      {state.unread === 0 ? (
+        <View style={[styles.row, { gap: 6 }]}>
+          <Icon name="check" size={15} color={palette.accent} />
+          <Muted palette={palette}>All caught up</Muted>
+        </View>
+      ) : big ? (
+        <Panel palette={palette} style={{ gap: 8 }}>
+          {rows}
+        </Panel>
+      ) : (
+        rows
+      )}
     </View>
   );
 }
 
 // --- Greeting -------------------------------------------------------------------
 
-function Greeting({ widget, palette, refreshKey, height }: BodyProps<"greeting">) {
+function timeOfDay() {
+  const hour = new Date().getHours();
+  if (hour < 5) return { hello: "Good evening", icon: "moon" as IconName };
+  if (hour < 11) return { hello: "Good morning", icon: "coffee" as IconName };
+  if (hour < 12) return { hello: "Good morning", icon: "sun" as IconName };
+  if (hour < 18) return { hello: "Good afternoon", icon: "sun" as IconName };
+  return { hello: "Good evening", icon: "moon" as IconName };
+}
+
+function Greeting({ widget, palette, refreshKey, shape }: BodyProps<"greeting">) {
   const { session } = useAuth();
   const { message, showName, showDate } = widget.settings;
   const [name, setName] = useState<string | null>(null);
@@ -383,20 +781,46 @@ function Greeting({ widget, palette, refreshKey, height }: BodyProps<"greeting">
       });
   }, [session, showName, refreshKey]);
 
-  const hour = new Date().getHours();
-  const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const { hello, icon } = timeOfDay();
+  const date = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const line = `${hello}${showName && name ? `, ${name}` : ""}`;
+
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+  if (shape === "strip") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 12 }]}>
+        <Icon name={icon} size={22} color={palette.accent} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 19, fontWeight: "800", color: palette.text }} numberOfLines={1}>
+            {line}
+          </Text>
+          {showDate || message ? (
+            <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+              {[showDate ? date : null, message || null].filter(Boolean).join(" · ")}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
+  const row = shape === "wide" || shape === "large";
   return (
-    <View style={[styles.centerFill, { alignItems: "flex-start" }]}>
-      <Text style={{ fontSize: height >= 150 ? 26 : 20, fontWeight: "800", color: palette.text }} numberOfLines={1}>
-        {hello}
-        {showName && name ? `, ${name}` : ""}
-      </Text>
-      {showDate || message ? (
-        <Text style={[styles.small, { color: palette.muted }]} numberOfLines={2}>
-          {showDate ? new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) : ""}
-          {showDate && message ? " · " : ""}
-          {message}
-        </Text>
+    <View style={{ flex: 1, gap: 12, justifyContent: "center" }}>
+      <View style={row ? [styles.row, { gap: 14 }] : { gap: 10 }}>
+        <IconBadge name={icon} size={shape === "large" ? 64 : 48} color={palette.deep} background="rgba(255,255,255,0.7)" />
+        <View style={{ flex: row ? 1 : undefined }}>
+          <Text style={{ fontSize: shape === "small" ? 20 : 26, fontWeight: "800", color: palette.text, letterSpacing: -0.4 }} numberOfLines={2}>
+            {line}
+          </Text>
+          {showDate ? <Muted palette={palette}>{date}</Muted> : null}
+        </View>
+      </View>
+      {message ? (
+        <Panel palette={palette}>
+          <Text style={[styles.body, { color: palette.text }]} numberOfLines={4}>
+            {message}
+          </Text>
+        </Panel>
       ) : null}
     </View>
   );
@@ -412,6 +836,47 @@ const styles = StyleSheet.create({
   tiny: { fontSize: 11 },
   done: { textDecorationLine: "line-through", opacity: 0.6 },
   centerFill: { flex: 1, justifyContent: "center", alignItems: "center", gap: 2 },
+  panel: { borderRadius: 16, padding: 12, gap: 6 },
+  badge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { fontSize: 12, fontWeight: "800" },
+  calendar: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    overflow: "hidden",
+    boxShadow: "0px 4px 10px -4px rgba(74, 44, 22, 0.25)",
+  },
+  calendarBand: { alignItems: "center", justifyContent: "center" },
+  pill: {
+    fontSize: 12,
+    fontWeight: "800",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  track: { height: 8, borderRadius: 4, overflow: "hidden" },
+  fill: { height: 8, borderRadius: 4 },
+  tape: {
+    position: "absolute",
+    top: -20,
+    alignSelf: "center",
+    width: 54,
+    height: 18,
+    backgroundColor: "rgba(255,255,255,0.55)",
+    transform: [{ rotate: "-4deg" }],
+    borderRadius: 3,
+  },
+  rule: { position: "absolute", left: 0, right: 0, borderBottomWidth: 1 },
   check: {
     width: 20,
     height: 20,

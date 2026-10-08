@@ -5,6 +5,9 @@ import Animated, { ZoomIn } from "react-native-reanimated";
 import { tap } from "../../lib/feedback";
 import {
   deepColor,
+  hollowDecors,
+  hollowLookInfo,
+  hollowLooks,
   itemColor,
   nookLabel,
   sizePresets,
@@ -21,14 +24,16 @@ import { BottomSheet } from "../bottom-sheet";
 import { Icon, IconBadge } from "../icon";
 import { Tap } from "../motion";
 import { Button, Chip } from "../ui";
+import { IconPicker } from "./icon-picker";
 
 type Editable = NookItem | LabelItem | HollowItem;
 
 export type MoveTarget = { scope: Scope; label: string };
 
 // Bottom sheet for a Nook tile, a text label or a Hollow: what it says or is
-// called, how big it is, its color (and a Hollow's look), and where it lives
-// — on the Hearth or inside a Hollow. (Widgets have their own full editor.)
+// called, how big it is, its color, a Nook tile's icon and look, a Hollow's
+// look and decorations (CORE-030/031), and where it lives — on the Hearth or
+// inside a Hollow. (Widgets have their own full editor.)
 // Drag the grabber or title down to close.
 export function ItemOptions({
   item,
@@ -89,9 +94,14 @@ export function ItemOptions({
         shown ? (
           <View style={[ui.row, { gap: 12 }]}>
             {nook ? (
-              <IconBadge name={nook.icon} color={nook.iconColor} background={nook.color} size={44} />
+              <IconBadge
+                name={(shown.kind === "nook" && shown.icon) || nook.icon}
+                color={nook.iconColor}
+                background={nook.color}
+                size={44}
+              />
             ) : shown.kind === "hollow" ? (
-              <IconBadge name={shown.look === "stump" ? "leaf" : "burrow"} size={44} background={itemColor(shown)} />
+              <IconBadge name={hollowLookInfo(shown.look).icon} size={44} background={itemColor(shown)} />
             ) : (
               <IconBadge name="text" size={44} />
             )}
@@ -125,17 +135,59 @@ export function ItemOptions({
             <>
               <Text style={ui.label}>Looks like</Text>
               <View style={ui.chips}>
-                {(["house", "stump"] as const).map((look) => (
+                {hollowLooks.map((info) => (
                   <Chip
-                    key={look}
-                    icon={look === "house" ? "burrow" : "leaf"}
-                    selected={shown.look === look}
-                    onPress={() => onChange({ look } as Partial<HollowItem>)}
+                    key={info.look}
+                    icon={info.icon}
+                    selected={shown.look === info.look}
+                    onPress={() => onChange({ look: info.look } as Partial<HollowItem>)}
                   >
-                    {look === "house" ? "A little house" : "A tree stump"}
+                    {info.label}
                   </Chip>
                 ))}
               </View>
+              <Text style={ui.label}>Decorations</Text>
+              <View style={ui.chips}>
+                {hollowDecors.map((info) => (
+                  <Chip
+                    key={info.decor}
+                    icon={info.icon}
+                    selected={(shown.decor ?? "none") === info.decor}
+                    onPress={() => onChange({ decor: info.decor } as Partial<HollowItem>)}
+                  >
+                    {info.label}
+                  </Chip>
+                ))}
+              </View>
+            </>
+          ) : null}
+
+          {shown.kind === "nook" && nook ? (
+            <>
+              <Text style={ui.label}>Style</Text>
+              <View style={ui.chips}>
+                {(
+                  [
+                    ["soft", "Soft"],
+                    ["bold", "Bold"],
+                    ["outline", "Outline"],
+                  ] as const
+                ).map(([look, labelText]) => (
+                  <Chip
+                    key={look}
+                    selected={(shown.look ?? "soft") === look}
+                    onPress={() => onChange({ look } as Partial<NookItem>)}
+                  >
+                    {labelText}
+                  </Chip>
+                ))}
+              </View>
+              <Text style={ui.label}>Icon</Text>
+              <IconPicker
+                value={shown.icon}
+                fallback={nook.icon}
+                onChange={(icon) => onChange({ icon } as Partial<NookItem>)}
+              />
             </>
           ) : null}
 

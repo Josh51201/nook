@@ -18,7 +18,7 @@ import {
   type HearthItem,
   type HearthLayout,
 } from "../lib/hearth-layout";
-import { defaultWidget } from "../lib/widgets";
+import { defaultWidget, widgetShape } from "../lib/widgets";
 
 // The free-form Hearth grid (CORE-006/019): 4 columns, items anywhere, gaps
 // allowed, and anything you drop onto slides down out of the way.
@@ -73,8 +73,11 @@ describe("Hearth grid", () => {
     expect(at(grown, "b")).toMatchObject({ y: 3 });
     expect(noOverlaps(grown)).toBe(true);
 
-    const shrunk = resizeItem(layoutOf([widget]), "w", 1, 1);
-    expect(at(shrunk, "w")).toMatchObject({ w: 2, h: 2 }); // reminders' minimum
+    // Any widget can shrink all the way to a single icon (CORE-030), but no smaller.
+    const icon = resizeItem(layoutOf([widget]), "w", 1, 1);
+    expect(at(icon, "w")).toMatchObject({ w: 1, h: 1 });
+    const tooSmall = resizeItem(layoutOf([widget]), "w", 0, 0);
+    expect(at(tooSmall, "w")).toMatchObject({ w: 1, h: 1 });
   });
 
   it("finds the first free spot for new items", () => {
@@ -260,5 +263,28 @@ describe("edgeScrollSpeed (auto-scroll while dragging)", () => {
 
   it("does nothing until the scrolling area has been measured", () => {
     expect(edgeScrollSpeed(10, 0, 0)).toBe(0);
+  });
+});
+
+describe("widgetShape (widgets laid out for their size)", () => {
+  // A 4-column grid on a typical phone: one cell is about 78px, two about 168.
+  const cell = 78;
+  const two = 168;
+  const four = 350;
+  const three = 258;
+
+  it("a single cell is an icon, a one-row widget is a strip", () => {
+    expect(widgetShape(cell, cell)).toBe("icon");
+    expect(widgetShape(cell, two)).toBe("icon");
+    expect(widgetShape(four, cell)).toBe("strip");
+    expect(widgetShape(two, cell)).toBe("strip");
+  });
+
+  it("bigger widgets get room to breathe", () => {
+    expect(widgetShape(two, two)).toBe("small");
+    expect(widgetShape(four, two)).toBe("wide");
+    expect(widgetShape(two, four)).toBe("tall");
+    expect(widgetShape(four, three)).toBe("large");
+    expect(widgetShape(four, four)).toBe("large");
   });
 });

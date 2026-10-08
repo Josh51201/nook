@@ -1,5 +1,6 @@
+import type { IconName } from "../components/icon";
 import { findNook } from "./nooks";
-import { widgetKindInfo, type WidgetConfig } from "./widgets";
+import { widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
 
 // Pure Hearth layout logic (no React/Supabase, so it's unit-testable).
 //
@@ -14,9 +15,12 @@ export const COLUMNS = 4;
 
 export type GridRect = { x: number; y: number; w: number; h: number };
 
-type ItemBase = GridRect & { id: string; color?: string };
+// `icon` is a person's own pick for a tile or widget (CORE-030); when unset
+// it shows the Nook's or widget's usual icon.
+type ItemBase = GridRect & { id: string; color?: string; icon?: IconName };
 
-export type NookItem = ItemBase & { kind: "nook"; nookId: string; label?: string };
+// Nook tiles come in the same three looks as widgets (CORE-030).
+export type NookItem = ItemBase & { kind: "nook"; nookId: string; label?: string; look?: WidgetLook };
 export type WidgetItem = ItemBase & { kind: "widget"; widget: WidgetConfig };
 export type LabelItem = ItemBase & {
   kind: "label";
@@ -24,16 +28,37 @@ export type LabelItem = ItemBase & {
   size: "title" | "heading" | "caption";
   align: "left" | "center" | "right";
 };
-// A Hollow (CORE-022..024): a house or stump on the Hearth that you step
+// A Hollow (CORE-022..024): a little place on the Hearth that you step
 // into. It holds its own grid of items. One level only: a Hollow never
 // holds another Hollow.
-export type HollowLook = "house" | "stump";
+export type HollowLook = "house" | "stump" | "hill" | "mushroom";
+// Decorations for a Hollow (CORE-031).
+export type HollowDecor = "none" | "lights" | "snow" | "flowers";
 export type HollowItem = ItemBase & {
   kind: "hollow";
   name: string;
   look: HollowLook;
+  decor?: HollowDecor;
   items: HearthItem[];
 };
+
+export const hollowLooks: { look: HollowLook; label: string; icon: IconName; color: string }[] = [
+  { look: "house", label: "A little house", icon: "burrow", color: "#f6d9c4" },
+  { look: "stump", label: "A tree stump", icon: "leaf", color: "#dfe8d6" },
+  { look: "hill", label: "A burrow hill", icon: "tree", color: "#f3e6b8" },
+  { look: "mushroom", label: "A mushroom", icon: "sparkles", color: "#efd9e4" },
+];
+
+export function hollowLookInfo(look: HollowLook) {
+  return hollowLooks.find((info) => info.look === look) ?? hollowLooks[0];
+}
+
+export const hollowDecors: { decor: HollowDecor; label: string; icon: IconName }[] = [
+  { decor: "none", label: "Plain", icon: "close" },
+  { decor: "lights", label: "String lights", icon: "sparkles" },
+  { decor: "snow", label: "Snowy", icon: "christmas" },
+  { decor: "flowers", label: "Flowers", icon: "flower" },
+];
 export type HearthItem = NookItem | WidgetItem | LabelItem | HollowItem;
 
 export type HearthLayout = {
@@ -139,6 +164,8 @@ export const sizePresets: Record<HearthItem["kind"], { label: string; w: number;
     { label: "Large", w: 4, h: 3 },
   ],
   widget: [
+    { label: "Icon", w: 1, h: 1 },
+    { label: "Strip", w: 4, h: 1 },
     { label: "Small", w: 2, h: 2 },
     { label: "Tall", w: 2, h: 4 },
     { label: "Wide", w: 4, h: 2 },
@@ -282,7 +309,7 @@ export function nookLabel(item: NookItem) {
 
 export function itemColor(item: HearthItem) {
   if (item.color) return item.color;
-  if (item.kind === "hollow") return item.look === "stump" ? "#dfe8d6" : "#f6d9c4";
+  if (item.kind === "hollow") return hollowLookInfo(item.look).color;
   if (item.kind === "nook") return findNook(item.nookId)?.color ?? tilePalette[0];
   return tilePalette[0];
 }

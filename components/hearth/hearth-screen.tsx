@@ -12,6 +12,8 @@ import {
   deepColor,
   findHollow,
   hearthThemes,
+  hollowLookInfo,
+  hollowLooks,
   hollowsOf,
   inScope,
   itemColor,
@@ -281,7 +283,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         id,
         kind: "hollow",
         name: count ? `Hollow ${count + 1}` : "My Hollow",
-        look: count % 2 ? "stump" : "house",
+        look: hollowLooks[count % hollowLooks.length].look,
         items: [],
         w: 2,
         h: 2,
@@ -315,7 +317,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const isEmpty = items.length === 0;
 
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
-    if (item.kind === "nook") return <TileFace item={item} {...size} refreshKey={refreshKey} />;
+    if (item.kind === "nook") return <TileFace item={item} {...size} refreshKey={refreshKey} themeText={theme.text} />;
     if (item.kind === "hollow") {
       return (
         <HollowFace
@@ -331,6 +333,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         <WidgetView
           widget={item.widget}
           color={item.color}
+          icon={item.icon}
           {...size}
           refreshKey={refreshKey}
           themeText={theme.text}
@@ -397,7 +400,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
             <View style={styles.titleRow}>
               {hollow ? (
                 <IconBadge
-                  name={hollow.look === "stump" ? "leaf" : "burrow"}
+                  name={hollowLookInfo(hollow.look).icon}
                   size={44}
                   color={deepColor(itemColor(hollow))}
                   background={itemColor(hollow)}

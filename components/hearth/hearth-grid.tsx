@@ -215,6 +215,7 @@ export function HearthGrid({
 function isRaised(item: HearthItem) {
   if (item.kind === "label") return false;
   if (item.kind === "widget") return item.widget.look !== "outline";
+  if (item.kind === "nook") return item.look !== "outline";
   return true;
 }
 

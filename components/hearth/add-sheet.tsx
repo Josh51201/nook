@@ -54,7 +54,7 @@ export function AddSheet({
           <Row
             icon="burrow"
             title="A Hollow"
-            subtitle="A little house or stump you step into — its own space to organize Nooks and widgets"
+            subtitle="A little house, stump, burrow hill or mushroom you step into — its own space for Nooks and widgets"
             onPress={onAddHollow}
             index={1}
             tint={colors.sky}

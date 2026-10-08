@@ -4,6 +4,7 @@ import { Alert, Switch, Text, TextInput, useWindowDimensions, View } from "react
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
+import { IconPicker } from "../../components/hearth/icon-picker";
 import { WidgetView } from "../../components/hearth/widgets";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
@@ -96,7 +97,7 @@ export default function WidgetEditor() {
         next = { ...next, settings: { ...next.settings, items: synced } };
       }
       let items = inScope(layout, home, (inner) =>
-        updateItem(inner, draft.id, { widget: next, color: draft.color } as Partial<WidgetItem>)
+        updateItem(inner, draft.id, { widget: next, color: draft.color, icon: draft.icon } as Partial<WidgetItem>)
       );
       if (draft.w !== original.w || draft.h !== original.h) {
         items = inScope({ ...layout, items }, home, (inner) => resizeItem(inner, draft.id, draft.w, draft.h));
@@ -154,6 +155,7 @@ export default function WidgetEditor() {
         <WidgetView
           widget={widget}
           color={draft.color}
+          icon={draft.icon}
           width={Math.min(draft.w * stride - GRID_GAP, screenWidth - 64)}
           height={draft.h * stride - GRID_GAP}
           refreshKey={0}
@@ -243,6 +245,9 @@ export default function WidgetEditor() {
           );
         })}
       </View>
+
+      <Text style={ui.label}>Icon</Text>
+      <IconPicker value={draft.icon} fallback={info.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
 
       <Text style={ui.label}>Size</Text>
       <View style={ui.chips}>

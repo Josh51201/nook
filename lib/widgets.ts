@@ -63,14 +63,35 @@ export const widgetKinds: {
   size: Size; // default, in Hearth grid cells (4 columns)
   minSize: Size;
 }[] = [
-  { kind: "countdown", label: "Countdown", description: "Days until your next Gathering, a specific one, or any date you like.", icon: "calendar", size: { w: 2, h: 2 }, minSize: { w: 2, h: 2 } },
-  { kind: "gatherings", label: "Coming up", description: "Upcoming Gatherings, filtered by Burrow or kind.", icon: "celebration", size: { w: 4, h: 2 }, minSize: { w: 2, h: 2 } },
-  { kind: "reminders", label: "Reminders", description: "A checklist with optional phone reminders — daily, weekly, or once.", icon: "todo", size: { w: 4, h: 3 }, minSize: { w: 2, h: 2 } },
-  { kind: "tucks", label: "Gifts to buy", description: "Your shopping list from the gifts you've tucked away.", icon: "tucks", size: { w: 2, h: 2 }, minSize: { w: 2, h: 2 } },
+  { kind: "countdown", label: "Countdown", description: "Days until your next Gathering, a specific one, or any date you like.", icon: "calendar", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "gatherings", label: "Coming up", description: "Upcoming Gatherings, filtered by Burrow or kind.", icon: "celebration", size: { w: 4, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "reminders", label: "Reminders", description: "A checklist with optional phone reminders — daily, weekly, or once.", icon: "todo", size: { w: 4, h: 3 }, minSize: { w: 1, h: 1 } },
+  { kind: "tucks", label: "Gifts to buy", description: "Your shopping list from the gifts you've tucked away.", icon: "tucks", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "note", label: "Sticky note", description: "Anything you want to see every day.", icon: "edit", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
-  { kind: "inbox", label: "Inbox", description: "Unread Gift Nook notices at a glance.", icon: "bell", size: { w: 2, h: 2 }, minSize: { w: 2, h: 2 } },
-  { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 2, h: 1 } },
+  { kind: "inbox", label: "Inbox", description: "Unread notices from your Nooks at a glance.", icon: "bell", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 1, h: 1 } },
 ];
+
+// Every widget can be any size, down to a single icon (CORE-030). Its
+// insides are laid out for the shape it's been given, in pixels:
+//   icon  — one cell (or a narrow column): an icon with a count
+//   strip — one row tall: a single line
+//   small — the classic 2×2
+//   wide  — a short, wide card
+//   tall  — a narrow, tall card
+//   large — big in both directions
+export type WidgetShape = "icon" | "strip" | "small" | "wide" | "tall" | "large";
+
+export function widgetShape(width: number, height: number): WidgetShape {
+  if (width < 120) return "icon";
+  if (height < 120) return "strip";
+  const wide = width >= 260;
+  const tall = height >= 230;
+  if (wide && tall) return "large";
+  if (wide) return "wide";
+  if (tall) return "tall";
+  return "small";
+}
 
 export function widgetKindInfo(kind: WidgetKind) {
   return widgetKinds.find((k) => k.kind === kind)!;
