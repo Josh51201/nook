@@ -16,6 +16,7 @@ import { tap } from "../../lib/feedback";
 import { formatDate, gatheringKinds, type GatheringKind } from "../../lib/gift-nook";
 import {
   COLUMNS,
+  copyItem,
   deepColor,
   hearthThemes,
   hollowsOf,
@@ -88,7 +89,8 @@ export default function WidgetEditor() {
     );
   }
 
-  async function saveWidget() {
+  // Saves, then (with `copyTo`) makes a copy there and opens it (CORE-039).
+  async function saveWidget(copyTo?: Scope) {
     if (!draft || !original || isSaving) return;
     setIsSaving(true);
     try {
@@ -109,11 +111,14 @@ export default function WidgetEditor() {
       if (livesIn !== undefined && livesIn !== home) {
         items = moveToScope({ ...layout, items }, draft.id, livesIn);
       }
+      let copyId: string | null = null;
+      if (copyTo !== undefined) ({ items, copyId } = copyItem({ ...layout, items }, draft.id, copyTo));
       // Your Hearth updates instantly; the cloud save finishes in the
       // background, so closing never waits on the network.
       const pending = save({ items });
       tap("success");
-      router.back();
+      if (copyId) router.replace(`/widget/${copyId}`);
+      else router.back();
       pending.catch((error: Error) => Alert.alert("Couldn't save your widget", error.message));
     } catch (error) {
       setIsSaving(false);
@@ -143,7 +148,7 @@ export default function WidgetEditor() {
         options={{
           title: info.label,
           headerRight: () => (
-            <Tap onPress={saveWidget} disabled={isSaving} hitSlop={10}>
+            <Tap onPress={() => saveWidget()} disabled={isSaving} hitSlop={10}>
               <Text style={{ color: colors.bark, fontSize: 17, fontWeight: "700" }}>Save</Text>
             </Tap>
           ),
@@ -268,7 +273,23 @@ export default function WidgetEditor() {
       </View>
       <Text style={ui.muted}>Or drag its corner on the Hearth for any size.</Text>
 
-      <Button title="Save" icon="check" onPress={saveWidget} loading={isSaving} style={{ marginTop: 8 }} />
+      <SectionHeader title="Make a copy" icon="copy" />
+      <View style={ui.chips}>
+        <Chip icon="hearth" onPress={() => saveWidget(null)}>
+          The Hearth
+        </Chip>
+        {hollowsOf(layout).map((hollowItem) => (
+          <Chip key={hollowItem.id} icon="burrow" onPress={() => saveWidget(hollowItem.id)}>
+            {hollowItem.name}
+          </Chip>
+        ))}
+      </View>
+      <Text style={ui.muted}>
+        Saves this one, then opens the copy so you can make it its own.
+        {widget.kind === "reminders" ? " The copy's list starts without phone alerts, so nothing rings twice." : ""}
+      </Text>
+
+      <Button title="Save" icon="check" onPress={() => saveWidget()} loading={isSaving} style={{ marginTop: 8 }} />
       <Button title="Remove widget" icon="trash" variant="danger" onPress={confirmRemove} />
     </NookScroll>
   );

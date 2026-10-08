@@ -1,6 +1,6 @@
 import type { IconName } from "../components/icon";
 import { findNook } from "./nooks";
-import { widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
+import { newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
 
 // Pure Hearth layout logic (no React/Supabase, so it's unit-testable).
 //
@@ -302,9 +302,36 @@ export function hasNook(layout: HearthLayout, nookId: string) {
   return allItems(layout).some((item) => item.kind === "nook" && item.nookId === nookId);
 }
 
-export function addNook(layout: HearthLayout, nookId: string): HearthItem[] {
-  if (hasNook(layout, nookId)) return layout.items;
+// How many tiles of one Nook are out, wherever they are (CORE-039).
+export function nookCount(layout: HearthLayout, nookId: string) {
+  return allItems(layout).filter((item) => item.kind === "nook" && item.nookId === nookId).length;
+}
+
+// The first tile comes from the Market; `another` adds one more on purpose
+// (every tile opens the same Nook — CORE-039).
+export function addNook(layout: HearthLayout, nookId: string, another = false): HearthItem[] {
+  if (!another && hasNook(layout, nookId)) return layout.items;
   return addItem(layout, { id: newItemId("n"), kind: "nook", nookId, w: 2, h: 2 });
+}
+
+// A copy of a Nook tile, widget or text — never a Hollow — on the Hearth
+// (null) or in a Hollow, at the first free spot there (CORE-039). The copy
+// is its own thing from then on. A reminder list is copied without its
+// phone alerts, so nothing rings twice.
+export function copyItem(layout: HearthLayout, id: string, to: Scope): { items: HearthItem[]; copyId: string | null } {
+  const found = locate(layout, id);
+  if (!found || found.item.kind === "hollow" || (to && !findHollow(layout, to))) {
+    return { items: layout.items, copyId: null };
+  }
+  const { x: _x, y: _y, id: _id, ...rest } = JSON.parse(JSON.stringify(found.item)) as HearthItem;
+  if (rest.kind === "widget" && rest.widget.kind === "reminders") {
+    rest.widget.settings.items = rest.widget.settings.items.map(({ notificationId: _n, schedule: _s, ...reminder }) => ({
+      ...reminder,
+      id: newReminderId(),
+    }));
+  }
+  const copyId = newItemId(rest.kind === "nook" ? "n" : rest.kind === "widget" ? "w" : "l");
+  return { items: inScope(layout, to, (inner) => addItem(inner, { ...rest, id: copyId } as never)), copyId };
 }
 
 export function removeNook(layout: HearthLayout, nookId: string): HearthItem[] {

@@ -8,28 +8,32 @@ import { Appear, LoadingScreen } from "../components/motion";
 import { NookScroll } from "../components/nook-scroll";
 import { Button } from "../components/ui";
 import { tap } from "../lib/feedback";
-import { addNook, hasNook, removeNook, useHearthLayout } from "../lib/hearth";
+import { addNook, nookCount, removeNook, useHearthLayout } from "../lib/hearth";
 import { nookCatalog, type NookDefinition } from "../lib/nooks";
 import { colors, ui } from "../lib/theme";
 
 // The Market (proposed name): browse Nooks and add them to your Hearth
-// (CORE-002). Removing a Nook only takes it off the Hearth — its data stays.
+// (CORE-002) — more than once if you like, e.g. one on the Hearth and one in
+// a Hollow; every tile opens the same Nook (CORE-039). Removing a Nook only
+// takes its tiles off the Hearth — its data stays.
 export default function Market() {
   const router = useRouter();
   const { layout, save, isLoading, error, reload } = useHearthLayout();
 
-  async function add(nook: NookDefinition) {
+  async function add(nook: NookDefinition, another = false) {
     try {
-      await save({ items: addNook(layout, nook.id) });
+      await save({ items: addNook(layout, nook.id, another) });
+      if (another) Alert.alert("Added another", `It's on your Hearth. Move it into a Hollow from Edit if you like.`);
     } catch (saveError) {
       Alert.alert("Couldn't add it", (saveError as Error).message);
     }
   }
 
-  function confirmRemove(nook: NookDefinition) {
+  function confirmRemove(nook: NookDefinition, count: number) {
     Alert.alert(
-      `Take ${nook.title} off your Hearth?`,
-      "Nothing inside it is deleted — add it back any time and it'll be just as you left it.",
+      count > 1 ? `Take all ${count} ${nook.title} tiles off your Hearth?` : `Take ${nook.title} off your Hearth?`,
+      (count > 1 ? "To remove just one, use Edit on the Hearth. " : "") +
+        "Nothing inside it is deleted — add it back any time and it'll be just as you left it.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -56,7 +60,8 @@ export default function Market() {
     <NookScroll>
       <Text style={ui.muted}>Pick the Nooks you want on your Hearth.</Text>
       {nookCatalog.map((nook, i) => {
-        const added = hasNook(layout, nook.id);
+        const count = nookCount(layout, nook.id);
+        const added = count > 0;
         return (
           <Appear key={nook.id} index={i}>
             <View style={[ui.card, { gap: 12, opacity: nook.available ? 1 : 0.75 }]}>
@@ -67,8 +72,9 @@ export default function Market() {
                   <Text style={ui.muted}>{nook.tagline}</Text>
                 </View>
                 {added ? (
-                  <Animated.View entering={ZoomIn.springify().damping(12)}>
+                  <Animated.View entering={ZoomIn.springify().damping(12)} style={[ui.row, { gap: 2 }]}>
                     <Icon name="check" size={24} color="#3f7a4f" />
+                    {count > 1 ? <Text style={{ color: "#3f7a4f", fontWeight: "800" }}>×{count}</Text> : null}
                   </Animated.View>
                 ) : null}
               </View>
@@ -79,9 +85,20 @@ export default function Market() {
                   <Text style={ui.secondaryButtonText}>Coming soon</Text>
                 </View>
               ) : added ? (
-                <View style={[ui.row, { gap: 10 }]}>
-                  <Button title="Open" icon="chevron" variant="secondary" style={{ flex: 1 }} onPress={() => router.push(nook.route!)} />
-                  <Button title="Remove" icon="trash" variant="danger" onPress={() => confirmRemove(nook)} />
+                <View style={{ gap: 10 }}>
+                  <View style={[ui.row, { gap: 10 }]}>
+                    <Button title="Open" icon="chevron" variant="secondary" style={{ flex: 1 }} onPress={() => router.push(nook.route!)} />
+                    <Button title="Remove" icon="trash" variant="danger" onPress={() => confirmRemove(nook, count)} />
+                  </View>
+                  <Button
+                    title="Add another"
+                    icon="copy"
+                    variant="secondary"
+                    onPress={() => {
+                      tap("success");
+                      add(nook, true);
+                    }}
+                  />
                 </View>
               ) : (
                 <Button

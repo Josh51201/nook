@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   addItem,
   addNook,
+  copyItem,
+  locate,
+  nookCount,
   defaultHearthLayout,
   EDGE_MAX_SPEED,
   edgeScrollSpeed,
@@ -92,6 +95,47 @@ describe("Hearth grid", () => {
     expect(hasNook(layoutOf(once), "gift-nook")).toBe(true);
     expect(addNook(layoutOf(once), "gift-nook")).toBe(once);
     expect(removeNook(layoutOf(once), "gift-nook")).toEqual([]);
+  });
+
+  it("adds another tile of a Nook only when asked", () => {
+    const once = addNook(defaultHearthLayout, "potluck");
+    const twice = addNook(layoutOf(once), "potluck", true);
+    expect(twice).toHaveLength(2);
+    expect(nookCount(layoutOf(twice), "potluck")).toBe(2);
+    // Taking the Nook off the Hearth takes every tile of it.
+    expect(removeNook(layoutOf(twice), "potluck")).toEqual([]);
+  });
+
+  it("copies a widget into a Hollow as its own thing", () => {
+    const list = {
+      ...defaultWidget("reminders"),
+      kind: "reminders" as const,
+      settings: {
+        hideDone: false,
+        items: [{ id: "r1", text: "Milk", done: false, schedule: { kind: "daily" as const, hour: 9, minute: 0 }, notificationId: "abc" }],
+      },
+    };
+    const layout = layoutOf([
+      { id: "w1", kind: "widget", widget: list, x: 0, y: 0, w: 2, h: 2 } as never,
+      { id: "h1", kind: "hollow", name: "Kitchen", look: "house", items: [], x: 2, y: 0, w: 2, h: 2 } as never,
+    ]);
+    const { items, copyId } = copyItem(layout, "w1", "h1");
+    expect(copyId).toBeTruthy();
+    const copy = locate(layoutOf(items), copyId!);
+    expect(copy?.scope).toBe("h1");
+    const copied = (copy!.item as { widget: typeof list }).widget.settings.items[0];
+    expect(copied.text).toBe("Milk");
+    // No shared phone alert, so nothing rings twice.
+    expect(copied.notificationId).toBeUndefined();
+    expect(copied.schedule).toBeUndefined();
+    expect(copied.id).not.toBe("r1");
+    // The original is untouched.
+    expect(locate(layoutOf(items), "w1")?.item).toEqual(layout.items[0]);
+  });
+
+  it("never copies a Hollow", () => {
+    const layout = layoutOf([{ id: "h1", kind: "hollow", name: "H", look: "house", items: [], x: 0, y: 0, w: 2, h: 2 } as never]);
+    expect(copyItem(layout, "h1", null).copyId).toBeNull();
   });
 
   it("counts rows in use", () => {

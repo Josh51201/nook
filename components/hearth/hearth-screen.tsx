@@ -12,6 +12,7 @@ import { useTheme } from "../../lib/theme";
 import {
   addItem,
   COLUMNS,
+  copyItem,
   deepColor,
   findHollow,
   hearthThemes,
@@ -376,6 +377,25 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       .map((h) => ({ scope: h.id, label: h.name })),
   ];
 
+  // Where a copy could go: right here first, then everywhere else (CORE-039).
+  const copyTargets: MoveTarget[] = [
+    { scope, label: "Right here" },
+    ...(scope ? [{ scope: null, label: "The Hearth" }] : []),
+    ...hollowsOf(layout)
+      .filter((h) => h.id !== scope)
+      .map((h) => ({ scope: h.id, label: h.name })),
+  ];
+
+  function copyTo(id: string, target: Scope) {
+    const { items: next, copyId } = copyItem(layout, id, target);
+    if (!copyId) return;
+    persist(next);
+    if (target !== scope) {
+      const hollowName = target ? findHollow(layout, target)?.name : null;
+      Alert.alert("Copied", target ? `The copy is in “${hollowName ?? "that Hollow"}”.` : "The copy is on your Hearth.");
+    }
+  }
+
   const isEmpty = items.length === 0;
 
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
@@ -709,6 +729,12 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           const id = optionsFor;
           setOptionsFor(null);
           if (id) persist(moveToScope(layout, id, target));
+        }}
+        copyTargets={copyTargets}
+        onCopyTo={(target) => {
+          const id = optionsFor;
+          setOptionsFor(null);
+          if (id) copyTo(id, target);
         }}
       />
 

@@ -33,8 +33,9 @@ export type MoveTarget = { scope: Scope; label: string };
 
 // Bottom sheet for a Nook tile, a text label or a Hollow: what it says or is
 // called, how big it is, its color, a Nook tile's icon and look, a Hollow's
-// look and decorations (CORE-030/031), and where it lives — on the Hearth or
-// inside a Hollow. (Widgets have their own full editor.)
+// look and decorations (CORE-030/031), where it lives — on the Hearth or
+// inside a Hollow — and making a copy of it somewhere (CORE-039). (Widgets
+// have their own full editor.)
 // Drag the grabber or title down to close.
 export function ItemOptions({
   item,
@@ -45,6 +46,8 @@ export function ItemOptions({
   onClose,
   moveTargets = [],
   onMoveTo,
+  copyTargets = [],
+  onCopyTo,
 }: {
   item: Editable | null;
   onChange: (changes: Partial<HearthItem>) => void;
@@ -55,6 +58,9 @@ export function ItemOptions({
   // Places this item could move to (the Hearth, or other Hollows).
   moveTargets?: MoveTarget[];
   onMoveTo?: (scope: Scope) => void;
+  // Places a copy could go (here, the Hearth, other Hollows).
+  copyTargets?: MoveTarget[];
+  onCopyTo?: (scope: Scope) => void;
 }) {
   const [text, setText] = useState("");
 
@@ -273,6 +279,29 @@ export function ItemOptions({
                   </Chip>
                 ))}
               </View>
+            </>
+          ) : null}
+
+          {copyTargets.length && onCopyTo && shown.kind !== "hollow" ? (
+            <>
+              <Text style={ui.label}>Make a copy</Text>
+              <View style={ui.chips}>
+                {copyTargets.map((target) => (
+                  <Chip
+                    key={target.scope ?? "hearth"}
+                    icon="copy"
+                    onPress={() => {
+                      tap("success");
+                      onCopyTo(target.scope);
+                    }}
+                  >
+                    {target.label}
+                  </Chip>
+                ))}
+              </View>
+              {shown.kind === "nook" ? (
+                <Text style={ui.muted}>Every copy opens the same {nook?.title ?? "Nook"} — style each one your own way.</Text>
+              ) : null}
             </>
           ) : null}
 
