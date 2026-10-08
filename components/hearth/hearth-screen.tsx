@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import Animated, { FadeIn, FadeOut, ZoomIn, useSharedValue } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { tap } from "../../lib/feedback";
 import {
@@ -39,7 +39,7 @@ import { supabase } from "../../lib/supabase";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { touchesGuarded } from "../../lib/touch-guard";
 import { widgetKindInfo, type WidgetConfig } from "../../lib/widgets";
-import { Firelight } from "../firelight";
+import { Firelight, GlowVeil } from "../firelight";
 import { Icon, IconBadge } from "../icon";
 import { Skeleton, Tap } from "../motion";
 import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from "../tour";
@@ -79,7 +79,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const navigation = useNavigation();
   const tourScroll = useTourScrollArea();
   const { profile } = useMyProfile();
-  const [scrolled, setScrolled] = useState(false);
+  const insets = useSafeAreaInsets();
+  const [barHeight, setBarHeight] = useState(0);
 
   // Auto-scroll while dragging (CORE-029): hold an item near the top or
   // bottom of the screen and the page scrolls along with it. The grid
@@ -150,7 +151,6 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     ...tourScroll.scrollProps,
     onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const y = event.nativeEvent.contentOffset.y;
-      setScrolled(y > 4);
       if (edgeSpeed.current !== 0) return;
       tourScroll.scrollProps.onScroll(event);
       if (!draggingNow.current) scrollY.value = y;
@@ -379,12 +379,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         <StatusBar style={layout.theme === "dusk" ? "light" : "dark"} />
         {/* The top bar stays put while the Hearth scrolls beneath it, so the
             inbox and Edit are always in reach. */}
-        <View
-          style={[
-            styles.topBar,
-            scrolled && { backgroundColor: theme.background, boxShadow: `0px 8px 14px -10px rgba(${theme.shade}, 0.45)` },
-          ]}
-        >
+        <View style={styles.topBar} onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
           {scope ? (
             <Tap
               onPress={() => router.back()}
@@ -590,6 +585,16 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         </TourScrollArea>
       </SafeAreaView>
 
+      {/* Content melts away under the top bar instead of meeting a hard edge. */}
+      {barHeight > 0 ? (
+        <GlowVeil
+          top={insets.top + barHeight}
+          background={theme.background}
+          color={theme.glow}
+          strength={layout.theme === "dusk" ? 0.34 : 0.26}
+        />
+      ) : null}
+
       {/* Sheets sit inside the screen (not system pop-ups) so opening another
           screen from them can't collide with a half-dismissed pop-up. */}
       <ItemOptions
@@ -735,8 +740,8 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: "#ffffff", fontSize: 10.5, fontWeight: "800" },
   center: { alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
-  container: { padding: PADDING, paddingTop: 8, gap: 16, paddingBottom: 32 },
-  topBar: { paddingHorizontal: PADDING, paddingTop: 6, paddingBottom: 12, zIndex: 5 },
+  container: { padding: PADDING, paddingTop: 22, gap: 16, paddingBottom: 32 },
+  topBar: { paddingHorizontal: PADDING, paddingTop: 6, paddingBottom: 4, zIndex: 5 },
   back: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginBottom: 6 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
