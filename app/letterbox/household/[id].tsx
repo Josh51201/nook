@@ -133,7 +133,7 @@ export default function HouseholdPage() {
 
       {/* The envelope: name and address, like it'll be written. */}
       <Appear>
-        <View style={[styles.envelope, shadow, { backgroundColor: colors.dark ? `${nook.iconColor}26` : nook.color }]}>
+        <View style={[styles.envelope, { boxShadow: shadow.boxShadow }, { backgroundColor: colors.dark ? `${nook.iconColor}26` : nook.color }]}>
           <View style={styles.stamp}>
             <Icon name="mail" size={22} color={nook.iconColor} />
           </View>

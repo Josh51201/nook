@@ -142,7 +142,7 @@ export default function CardSeason() {
       ) : null}
 
       <Appear>
-        <View style={[styles.hero, shadow, { backgroundColor: colors.dark ? `${nook.iconColor}26` : nook.color }]}>
+        <View style={[styles.hero, { boxShadow: shadow.boxShadow }, { backgroundColor: colors.dark ? `${nook.iconColor}26` : nook.color }]}>
           <View style={styles.watermark} pointerEvents="none">
             <Icon name="christmas" size={150} color={nook.iconColor} />
           </View>
