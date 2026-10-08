@@ -19,10 +19,10 @@ import type { Condition, WindowFrame } from "../../lib/weather";
 // flash of lightning — live from a place you picked, or a sky you chose.
 // Holds still while you're editing, and if the phone's Reduce Motion is on.
 
-const FRAMES: Record<WindowFrame, { frame: string; edge: string; sill: string; curtain: string; tie: string }> = {
-  wood: { frame: "#8a5a3b", edge: "#5e3b22", sill: "#a06c47", curtain: "#e8c9a8", tie: "#b07a52" },
-  white: { frame: "#f7f3ee", edge: "#d8d0c6", sill: "#ffffff", curtain: "#d9e4ef", tie: "#9fb6cf" },
-  sage: { frame: "#7d9471", edge: "#55684c", sill: "#93a988", curtain: "#f3e6b8", tie: "#c9a94f" },
+const FRAMES: Record<WindowFrame, { frame: string; edge: string; sill: string }> = {
+  wood: { frame: "#8a5a3b", edge: "#5e3b22", sill: "#a06c47" },
+  white: { frame: "#f7f3ee", edge: "#d8d0c6", sill: "#ffffff" },
+  sage: { frame: "#7d9471", edge: "#55684c", sill: "#93a988" },
 };
 
 function sky(condition: Condition, isDay: boolean): [string, string] {
@@ -59,7 +59,6 @@ export function WindowScene({
   condition,
   isDay,
   frame = "wood",
-  curtains = true,
   radius = 24,
   still = false,
 }: {
@@ -68,7 +67,6 @@ export function WindowScene({
   condition: Condition;
   isDay: boolean;
   frame?: WindowFrame;
-  curtains?: boolean;
   radius?: number;
   still?: boolean;
 }) {
@@ -136,17 +134,6 @@ export function WindowScene({
         {/* Window bars. */}
         <View style={[styles.barV, { backgroundColor: colors.frame, borderColor: colors.edge }]} />
         <View style={[styles.barH, { backgroundColor: colors.frame, borderColor: colors.edge }]} />
-
-        {curtains ? (
-          <>
-            <View style={[styles.curtain, { left: 0, width: openW * 0.2, backgroundColor: colors.curtain, borderBottomRightRadius: openW * 0.2 }]}>
-              <View style={[styles.tie, { right: 0, top: openH * 0.55, backgroundColor: colors.tie }]} />
-            </View>
-            <View style={[styles.curtain, { right: 0, width: openW * 0.2, backgroundColor: colors.curtain, borderBottomLeftRadius: openW * 0.2 }]}>
-              <View style={[styles.tie, { left: 0, top: openH * 0.55, backgroundColor: colors.tie }]} />
-            </View>
-          </>
-        ) : null}
       </View>
       {/* The sill. */}
       <View style={[styles.sill, { height: sillHeight, backgroundColor: colors.sill, borderTopColor: colors.edge }]} />
@@ -247,7 +234,5 @@ const styles = StyleSheet.create({
   body: { position: "absolute", borderRadius: 999 },
   barV: { position: "absolute", top: 0, bottom: 0, left: "50%", width: 6, marginLeft: -3, borderLeftWidth: 1, borderRightWidth: 1 },
   barH: { position: "absolute", left: 0, right: 0, top: "50%", height: 6, marginTop: -3, borderTopWidth: 1, borderBottomWidth: 1 },
-  curtain: { position: "absolute", top: 0, bottom: "18%" },
-  tie: { position: "absolute", width: "60%", height: 5, borderRadius: 3 },
   sill: { position: "absolute", left: 0, right: 0, bottom: 0, borderTopWidth: 1.5 },
 });

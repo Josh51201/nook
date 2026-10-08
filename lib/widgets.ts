@@ -81,7 +81,6 @@ export type WidgetSettings = {
     condition: Condition;
     time: "auto" | "day" | "night";
     frame: WindowFrame;
-    curtains: boolean;
     showTemp: boolean;
   };
 };
@@ -202,7 +201,7 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
         ...base,
         kind,
         showTitle: false,
-        settings: { source: "pick", place: null, unit: "f", condition: "rain", time: "auto", frame: "wood", curtains: true, showTemp: false },
+        settings: { source: "pick", place: null, unit: "f", condition: "rain", time: "auto", frame: "wood", showTemp: false },
       };
   }
 }

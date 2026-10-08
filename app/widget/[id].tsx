@@ -553,7 +553,6 @@ function WindowSettings({
           </Chip>
         ))}
       </View>
-      <SwitchRow label="Curtains" value={s.curtains} onChange={(curtains) => setSettings({ curtains })} />
       <Text style={ui.muted}>
         The rain, snow and clouds hold still while you're editing your Hearth, and if your phone's Reduce Motion is on.
       </Text>

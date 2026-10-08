@@ -64,7 +64,7 @@ Josh wants the Hearth to be truly one of a kind for anyone who puts in the time,
 - **CORE-054** A shared Home Hearth: a Hollow everyone in your Home (HOME-001, capped at 6) sees and arranges together, like the household bulletin board.
 - **CORE-055** Share a look: send a layout or theme to family as a code so they can copy it and then change it.
 - **CORE-056** A Weather widget: the weather now and the next few days for a place. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
-- **CORE-057** A Window widget: a little window on the Hearth with the weather outside it. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
+- **CORE-057** A Window widget: a little window on the Hearth with the weather outside it. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_ Curtains removed 2026-10-08 (they looked wrong on wide or rectangular windows).
 - **CORE-058** Ambience that matches the weather outside. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-059** The Add sheet groups widgets into categories instead of one long list. _(Built 2026-10-08 (proposed details): From your Nooks, Lists & routines, Time & weather, Cozy touches; Ideas stay at the bottom. Which widget is in which group is one list in `lib/widgets.ts`.)_
 

@@ -1332,7 +1332,6 @@ function WindowWidget({
         condition={sky.condition}
         isDay={sky.isDay}
         frame={settings.frame}
-        curtains={settings.curtains}
         radius={radius}
         still={still}
       />
