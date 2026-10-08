@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
@@ -38,6 +38,7 @@ import { touchesGuarded } from "../../lib/touch-guard";
 import { widgetKindInfo, type WidgetConfig } from "../../lib/widgets";
 import { Icon, IconBadge } from "../icon";
 import { Skeleton, Tap } from "../motion";
+import { TourTarget, useTourAutoStart } from "../tour";
 import { AddSheet } from "./add-sheet";
 import { GRID_GAP, HearthGrid } from "./hearth-grid";
 import { HollowFace } from "./hollow-face";
@@ -71,6 +72,17 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   // Inside a Hollow: the sheet for the Hollow itself (name, look, color, size).
   const [hollowOptions, setHollowOptions] = useState(false);
   const entering = useRef(false);
+  const navigation = useNavigation();
+
+  // The first time someone lands on their Hearth, show them around (CORE-026).
+  useTourAutoStart("hearth", !scope && !isLoading && !error);
+
+  // On the Hearth, tuck the tab bar away while a sheet is open so the sheet
+  // reaches the bottom of the screen (CORE-025).
+  const sheetOpen = adding || optionsFor !== null;
+  useEffect(() => {
+    if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
+  }, [scope, sheetOpen, navigation]);
 
   // Each time this screen comes back into view: refresh widgets, close any
   // Hollow door we walked through, and (on the Hearth) make sure upcoming
@@ -315,38 +327,35 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                 </Tap>
               ) : null}
               {!isEmpty ? (
-                <Tap
-                  onPress={() => {
-                    tap();
-                    setEditing((e) => !e);
-                  }}
-                  hitSlop={10}
-                  style={[
-                    styles.editButton,
-                    { backgroundColor: editing ? theme.accent : "transparent", borderColor: theme.accent },
-                  ]}
-                >
-                  <Text style={[styles.headerButton, { color: editing ? theme.background : theme.accent }]}>
-                    {editing ? "Done" : "Edit"}
-                  </Text>
-                </Tap>
-              ) : null}
-              {scope ? (
-                hollow ? (
+                <TourTarget id="hearth-edit">
                   <Tap
-                    onPress={() => setHollowOptions(true)}
+                    onPress={() => {
+                      tap();
+                      setEditing((e) => !e);
+                    }}
                     hitSlop={10}
-                    pressedScale={0.85}
-                    accessibilityLabel={`${hollow.name} settings`}
+                    style={[
+                      styles.editButton,
+                      { backgroundColor: editing ? theme.accent : "transparent", borderColor: theme.accent },
+                    ]}
                   >
-                    <Icon name="settings" size={24} color={theme.accent} />
+                    <Text style={[styles.headerButton, { color: editing ? theme.background : theme.accent }]}>
+                      {editing ? "Done" : "Edit"}
+                    </Text>
                   </Tap>
-                ) : null
-              ) : (
-                <Tap onPress={() => router.push("/settings")} hitSlop={10} pressedScale={0.85} accessibilityLabel="Settings">
+                </TourTarget>
+              ) : null}
+              {/* The Hearth's own settings are in the Settings tab. */}
+              {hollow ? (
+                <Tap
+                  onPress={() => setHollowOptions(true)}
+                  hitSlop={10}
+                  pressedScale={0.85}
+                  accessibilityLabel={`${hollow.name} settings`}
+                >
                   <Icon name="settings" size={24} color={theme.accent} />
                 </Tap>
-              )}
+              ) : null}
             </View>
           </View>
 
@@ -390,15 +399,25 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                     ? "Add widgets or text here, or go back to your Hearth and drag Nooks and widgets onto this Hollow."
                     : "Add a Nook from the Market, or a widget — a countdown, reminders, a note — and arrange it all however you like."}
                 </Text>
-                <Tap
-                  style={[styles.addButton, { backgroundColor: theme.accent, alignSelf: "stretch" }]}
-                  onPress={() => setAdding(true)}
-                >
-                  <Icon name="add" size={18} color={theme.background} />
-                  <Text style={[styles.addButtonText, { color: theme.background }]}>
-                    {scope ? "Add something" : "Add to your Hearth"}
-                  </Text>
-                </Tap>
+                <TourTarget id="hearth-add" style={{ alignSelf: "stretch" }}>
+                  <Tap style={[styles.addButton, { backgroundColor: theme.accent }]} onPress={() => setAdding(true)}>
+                    <Icon name="add" size={18} color={theme.background} />
+                    <Text style={[styles.addButtonText, { color: theme.background }]}>
+                      {scope ? "Add something" : "Add to your Hearth"}
+                    </Text>
+                  </Tap>
+                </TourTarget>
+                {scope ? null : (
+                  <TourTarget id="hearth-market" style={{ alignSelf: "stretch" }}>
+                    <Tap
+                      style={[styles.outlineButton, { borderColor: theme.accent }]}
+                      onPress={() => router.push("/market")}
+                    >
+                      <Icon name="market" size={18} color={theme.accent} />
+                      <Text style={{ color: theme.accent, fontWeight: "600" }}>Visit the Market</Text>
+                    </Tap>
+                  </TourTarget>
+                )}
               </Animated.View>
             ) : (
               <HearthGrid
@@ -426,18 +445,22 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 
           {!isEmpty && !isLoading ? (
             <View style={[styles.footerRow, { marginTop: 8 }]}>
-              <Tap style={[styles.addButton, { backgroundColor: theme.accent, flex: 1 }]} onPress={() => setAdding(true)}>
-                <Icon name="widgets" size={18} color={theme.background} />
-                <Text style={[styles.addButtonText, { color: theme.background }]}>Add</Text>
-              </Tap>
-              {scope ? null : (
-                <Tap
-                  style={[styles.outlineButton, { borderColor: theme.accent, flex: 1 }]}
-                  onPress={() => router.push("/market")}
-                >
-                  <Icon name="market" size={18} color={theme.accent} />
-                  <Text style={{ color: theme.accent, fontWeight: "600" }}>Market</Text>
+              <TourTarget id="hearth-add" style={{ flex: 1 }}>
+                <Tap style={[styles.addButton, { backgroundColor: theme.accent }]} onPress={() => setAdding(true)}>
+                  <Icon name="widgets" size={18} color={theme.background} />
+                  <Text style={[styles.addButtonText, { color: theme.background }]}>Add</Text>
                 </Tap>
+              </TourTarget>
+              {scope ? null : (
+                <TourTarget id="hearth-market" style={{ flex: 1 }}>
+                  <Tap
+                    style={[styles.outlineButton, { borderColor: theme.accent }]}
+                    onPress={() => router.push("/market")}
+                  >
+                    <Icon name="market" size={18} color={theme.accent} />
+                    <Text style={{ color: theme.accent, fontWeight: "600" }}>Market</Text>
+                  </Tap>
+                </TourTarget>
               )}
             </View>
           ) : null}
@@ -513,7 +536,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
-  container: { padding: PADDING, gap: 16, paddingBottom: 60 },
+  container: { padding: PADDING, gap: 16, paddingBottom: 32 },
   back: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginTop: 4 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 12 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },

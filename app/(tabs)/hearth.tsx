@@ -1,10 +1,10 @@
 import { Redirect } from "expo-router";
 import { View } from "react-native";
 
-import { HearthScreen } from "../components/hearth/hearth-screen";
-import { useAuth } from "../lib/auth-context";
-import { hearthThemes, useHearthLayout } from "../lib/hearth";
-import { useMyProfile } from "../lib/profile";
+import { HearthScreen } from "../../components/hearth/hearth-screen";
+import { useAuth } from "../../lib/auth-context";
+import { hearthThemes, useHearthLayout } from "../../lib/hearth";
+import { useMyProfile } from "../../lib/profile";
 
 // CORE-002/003/006-010/018/019/022-024: the Hearth — your home screen. All
 // the designing (and Hollows) lives in HearthScreen, which also draws the

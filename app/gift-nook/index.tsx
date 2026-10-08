@@ -1,6 +1,6 @@
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { Avatar } from "../../components/avatar";
 import { IconBadge, type IconName } from "../../components/icon";
@@ -15,7 +15,7 @@ import {
   SectionHeader,
 } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
-import { friendlyError, guarded } from "../../lib/feedback";
+import { guarded } from "../../lib/feedback";
 import {
   countdown,
   displayName,
@@ -48,8 +48,9 @@ type Upcoming = {
 };
 
 // Gift Nook home: your Wishbook and tucks, kids you manage, "did you get
-// these?" prompts after Gatherings, your Burrows, and one box for any code
-// (a Knock or a hand-off). GIFT-001/011/019/023/026/029.
+// these?" prompts after Gatherings, and your Burrows' Gatherings.
+// Starting/joining Burrows and using codes live in the Burrows tab
+// (CORE-025). GIFT-011/019/023/026/029.
 export default function GiftNookHome() {
   const router = useRouter();
   const { session } = useAuth();
@@ -61,10 +62,7 @@ export default function GiftNookHome() {
   const [openTucks, setOpenTucks] = useState(0);
   const [unread, setUnread] = useState(0);
   const [upcoming, setUpcoming] = useState<Upcoming[]>([]);
-  const [newBurrowName, setNewBurrowName] = useState("");
-  const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [busy, setBusy] = useState<"create" | "code" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
@@ -193,53 +191,6 @@ export default function GiftNookHome() {
     }, [load]),
   );
 
-  async function createBurrow() {
-    if (!newBurrowName.trim()) {
-      setError("Give your Burrow a name first.");
-      return;
-    }
-    setBusy("create");
-    setError(null);
-    const { data, error: rpcError } = await supabase.rpc("create_burrow", {
-      burrow_name: newBurrowName.trim(),
-    });
-    setBusy(null);
-    if (rpcError) {
-      setError(rpcError.message);
-      return;
-    }
-    setNewBurrowName("");
-    router.push(`/gift-nook/burrow/${data}`);
-  }
-
-  // A Knock joins a Burrow; a hand-off code takes over a kid's Wishbook.
-  async function answerCode() {
-    if (!code.trim()) {
-      setError("Enter the code someone sent you.");
-      return;
-    }
-    setBusy("code");
-    setError(null);
-    const { data, error: rpcError } = await supabase.rpc("answer_code", {
-      any_code: code.trim(),
-    });
-    setBusy(null);
-    if (rpcError) {
-      Alert.alert("Couldn't use that code", friendlyError(rpcError));
-      return;
-    }
-    setCode("");
-    if (data?.kind === "burrow") {
-      router.push(`/gift-nook/burrow/${data.id}`);
-    } else {
-      Alert.alert(
-        "It's yours now!",
-        "Your Wishbook moved onto your account. Welcome to Nook.",
-      );
-      router.push("/gift-nook/wishbook");
-    }
-  }
-
   if (isLoading) return <LoadingScreen cards={4} />;
 
   return (
@@ -331,7 +282,7 @@ export default function GiftNookHome() {
         <EmptyState
           icon="burrow"
           title="No Burrows yet"
-          body="Start one for your family below, or join one with a Knock code."
+          body="Burrows are your family groups. Start one, or join one with a Knock code, in the Burrows tab."
         />
       ) : (
         burrows.map((burrow, i) => (
@@ -344,6 +295,13 @@ export default function GiftNookHome() {
           />
         ))
       )}
+
+      <Button
+        title={burrows.length ? "Start or join another Burrow" : "Start or join a Burrow"}
+        icon="burrow"
+        variant="secondary"
+        onPress={() => router.dismissTo("/burrows")}
+      />
 
       <SectionHeader title="Little ones you manage" icon="kid" />
       {kids.map((kid, i) => (
@@ -363,58 +321,6 @@ export default function GiftNookHome() {
         icon="add"
         variant="secondary"
         onPress={() => router.push("/gift-nook/managed-form")}
-      />
-
-      <SectionHeader title="Start a Burrow" icon="add" />
-      <TextInput
-        style={ui.input}
-        value={newBurrowName}
-        onChangeText={setNewBurrowName}
-        placeholder="e.g. The Collinses"
-        placeholderTextColor={colors.muted}
-        returnKeyType="done"
-        onSubmitEditing={createBurrow}
-      />
-      <Button
-        title="Start Burrow"
-        icon="burrow"
-        onPress={createBurrow}
-        loading={busy === "create"}
-        disabled={busy !== null}
-      />
-
-      <SectionHeader title="Got a code?" icon="door" />
-      <Text style={ui.muted}>
-        A Knock from family joins their Burrow. A hand-off code gives you the
-        Wishbook a parent made for you.
-      </Text>
-      <TextInput
-        style={[
-          ui.input,
-          {
-            fontSize: 22,
-            letterSpacing: 6,
-            textAlign: "center",
-            fontWeight: "600",
-          },
-        ]}
-        value={code}
-        onChangeText={(text) => setCode(text.toUpperCase().replace(/\s/g, ""))}
-        placeholder="ABC123"
-        placeholderTextColor={colors.border}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        maxLength={6}
-        returnKeyType="go"
-        onSubmitEditing={answerCode}
-      />
-      <Button
-        title="Use code"
-        icon="door"
-        variant="secondary"
-        onPress={answerCode}
-        loading={busy === "code"}
-        disabled={busy !== null || code.trim().length < 6}
       />
     </NookScroll>
   );

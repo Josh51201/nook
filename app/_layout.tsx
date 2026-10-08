@@ -19,13 +19,18 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <AuthProvider>
             <Stack screenOptions={{ headerShown: false, animation: "ios_from_right" }}>
+              {/* The Hearth, Burrows and Settings tabs (CORE-025). */}
+              <Stack.Screen name="(tabs)" />
               <Stack.Screen
-                name="settings"
-                options={{ ...headerOptions, title: "Settings" }}
+                name="burrow/[id]"
+                options={{ ...headerOptions, title: "Burrow", headerBackTitle: "Back" }}
               />
               <Stack.Screen name="hollow/[id]" options={{ animation: "fade", animationDuration: 250 }} />
               <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: "fade" }} />
-              <Stack.Screen name="profile" options={{ ...headerOptions, title: "Your profile" }} />
+              <Stack.Screen
+                name="profile"
+                options={{ ...headerOptions, title: "Your profile", headerBackTitle: "Settings" }}
+              />
               <Stack.Screen
                 name="market"
                 options={{ ...headerOptions, title: "The Market" }}

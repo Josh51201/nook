@@ -136,7 +136,7 @@ export default function ManageProfile() {
     if (!code) return;
     const message =
       `${savedName}, your Nook Wishbook is ready for you! 🎁\n\n` +
-      `Sign up for Nook with your own email, open Gift Nook → "Got a code?", and enter:\n\n${code}\n\n` +
+      `Sign up for Nook with your own email, open Burrows → "Got a code?", and enter:\n\n${code}\n\n` +
       `Everything on your list comes with you. (Works for 7 days.)`;
     Alert.alert(
       `Hand-off code: ${code}`,

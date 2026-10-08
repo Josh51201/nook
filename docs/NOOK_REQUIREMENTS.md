@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 19)_
+_Last updated: 2026-10-07 (rev 20)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -15,7 +15,7 @@ _Last updated: 2026-10-07 (rev 19)_
 - **CORE-010** Users can create widgets on the Hearth that show live info from a Nook (e.g. an upcoming Gathering). _(First version built: Wide/Large Gift Nook tiles show upcoming Gatherings, never anything about claims.)_
 - **CORE-011** Users choose what they get notified about and what's shown on their Hearth. _(Gift Nook notifications are now chosen per person — GIFT-029. Hearth-level choices still later.)_
 - **CORE-012** Each Nook has its own settings page for customizing that Nook.
-- **CORE-013** The Hearth has a settings page for account-wide things: account info, setting your name, signing out, and anything else important.
+- **CORE-013** The Hearth has a settings page for account-wide things: account info, setting your name, signing out, and anything else important. _(Now the Settings tab — CORE-025.)_
 - **CORE-014** Every Nook has a clear way back to the Hearth.
 - **CORE-016** Whatever you're typing in is never hidden behind the phone's keyboard, and every keyboard has a way to close it.
 - **CORE-017** The app should feel alive and flow nicely — motion and animation, not static screens — and use a proper icon set instead of emoji. _(Built (proposed details): SF Symbols on iPhone / Material Symbols on Android via expo-symbols; press-in springs on everything tappable; lists that flow in and glide when they change; placeholder cards while loading; wiggling Hearth tiles in edit mode with smoother drag; iPhone large titles; respects the phone's Reduce Motion setting.)_
@@ -26,6 +26,8 @@ _Last updated: 2026-10-07 (rev 19)_
 - **CORE-023** What's inside a house is as customizable as the Hearth itself: Nook tiles, widgets and text laid out however the person likes, with their own drag-and-drop design. _(Built: the inside of a Hollow is the same designable grid as the Hearth — Nooks, widgets, text; add, drag, resize.)_
 - **CORE-024** Each house/stump can be customized — its name, its look (house, stump, …), its color — and putting things in or taking them out should be easy and friendly, e.g. dragging a tile or widget onto it. _(Built: name; look — a little house or a tree stump; color; size. Drag anything onto a Hollow on the Hearth and it lights up "Put in …"; let go and it's inside. Every tile and widget also has "Move to" (the Hearth or any Hollow). Removing a Hollow never deletes what's in it — everything moves back onto the Hearth. A ⚙︎ inside a Hollow edits the Hollow itself.)_
 - **CORE-019** Users design their own Hearth layout — everyone's looks different. _(Built (proposed details): a 4-column grid where Nooks, widgets and text can go anywhere, gaps allowed; hold to drag (an outline shows where it'll land), drag a corner to resize, and anything in the way slides down. Older section-based Hearths convert automatically.)_
+- **CORE-025** A bar of icons along the bottom of the screen, with a tab for creating and managing families (Burrows) — the same things the Gift Nook offered (start one, join with a Knock, invite, admins, leave, delete) — moved out of the Gift Nook so any Nook that shares with other people can use the same Burrows. _(Built (proposed details): three tabs — Hearth, Burrows, Settings; Nooks and Hollows open on top of the bar. Each Burrow has its own page with "In your Nooks" links, e.g. Gift Nook → its Gatherings and Wishbooks. The Gift Nook keeps each Burrow's Gatherings and links to the Burrows tab for starting, joining and inviting. Knock and hand-off codes are now entered in the Burrows tab. The Hearth's ⚙︎ moved to the Settings tab. See Q-027.)_
+- **CORE-026** A short tutorial the first time someone enters: pop-ups with guides pointing at how things work, like adding things to the Hearth and creating Burrows. _(Built (proposed details): a dimmed screen with a spotlight on the thing being explained and a bubble pointing at it, with Next/Skip. The Hearth tour covers Add, the Market, Edit/drag (if anything's on the Hearth yet), the Burrows tab and Settings; the first visit to Burrows covers starting one and entering a Knock. Shown once per account (it follows you to a new phone); Settings → "Show me around again" replays it.)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
 ## 1a. Accounts & Login
@@ -38,7 +40,7 @@ _Last updated: 2026-10-07 (rev 19)_
 - **PROF-003** A kid's managers can set up the kid's profile too — picture, birthday and "about me" — from Manage. Only their managers can (and their family sees it, like anyone's).
 
 ## 2. Gift Nook (first Nook)
-- **GIFT-001** Users create families and invite others to join.
+- **GIFT-001** Users create families and invite others to join. _(Now in the Burrows tab, shared by every Nook — CORE-025.)_
 - **GIFT-002** Users add gifts they want to their own list.
 - **GIFT-003** Gifts belong to categories; each category asks the right questions (e.g. Clothes → sizes).
 - **GIFT-004** Gifts can include an Amazon link; direct Amazon integration if feasible.
@@ -86,6 +88,7 @@ _Last updated: 2026-10-07 (rev 19)_
 - **Q-023** Emailed sign-in codes: Resend without a verified domain only delivers to its owner's own address, so family members can't receive codes. Which domain should Nook send email from (a domain must be bought, about $10–15/year, then verified in Resend and set as the sender in Supabase)? Needed before anyone besides Josh uses the app.
 
 - **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
+- **Q-027** Which tabs belong on the bottom bar? Built for now *(proposed)*: Hearth, Burrows, Settings. The Market could become a tab too, or an Inbox for notifications across every Nook.
 - **Q-025** The app ID (bundle identifier) is currently `com.josh51201.nook`. It is permanent once the app is published. Should it use the domain Josh buys for email (Q-023) instead?
 
 ## 4. Decision Log
@@ -122,6 +125,7 @@ _Last updated: 2026-10-07 (rev 19)_
 - **2026-10-07 — More Nooks for the backlog:** After asking for ideas that are "very useful ones that not many people have apps for," Josh picked: potluck, card/contact list, pet care, lent out, yearly rhythms, house binder, sitter sheet, idea stash, quote jar, and fridge door. Idea Stash became a Gift Nook requirement. → Nook Backlog (section 6), GIFT-036
 - **2026-10-07 — Hearth organization is next:** "I want to add to the requirements to do next about adding more organization to the hearth, cause right now with all the widgets we add and 4 slots per row, can easily become a very long list of things. So I want to somehow build into this Nook theme and create like houses or stumps to enter that has these user customized/organized screens within with a door animation or something along the lines, so just more built out organization that is user friendly!" → CORE-022, CORE-023, CORE-024, Q-026, section 7
 - **2026-10-07 — Q-026 answered:** "I love that! Hollow is a great name for it. But yes I want those to be built out." — approving the name Hollow and Claude's suggested defaults: one level deep (a Hollow holds Nooks, widgets and text but not other Hollows), a house and a stump to start, and a door that swings open as the screen zooms in. → CORE-022, CORE-023, CORE-024
+- **2026-10-07 — Burrows tab + first-time tour:** "Move the burrows (family) outside of the gift nook and at a tab that shows up in the bottom, like icons at the bottom of the screen and one is for creating and managing families exactly how it is in the gift nook but this will allow you to manage families for other nooks that require sharing with other people other than just the gift nook. Also it would be nice to have a short tutorial that shows up on users first time enter, just pop ups with some guides pointing at how some of it works with creating icons and creating burrows (families)." The other tabs (Hearth, Settings) and the tour's exact steps are Claude's picks, for Josh to confirm. → CORE-025, CORE-026, GIFT-001, CORE-013, Q-027
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |

@@ -15,6 +15,10 @@ export type NookDefinition = {
   route: string | null;
   available: boolean;
   color: string;
+  // Nooks that share with people use Burrows (CORE-025). Where this Nook
+  // shows one Burrow's things, and what it shows there — linked from that
+  // Burrow's page.
+  burrow?: { route: (burrowId: string) => string; blurb: string };
 };
 
 export const nookCatalog: NookDefinition[] = [
@@ -29,6 +33,10 @@ export const nookCatalog: NookDefinition[] = [
     route: "/gift-nook",
     available: true,
     color: "#f6d9c4",
+    burrow: {
+      route: (burrowId) => `/gift-nook/burrow/${burrowId}`,
+      blurb: "Gatherings and everyone's Wishbooks",
+    },
   },
   {
     id: "food-tracker",

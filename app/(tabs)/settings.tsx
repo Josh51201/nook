@@ -3,30 +3,32 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 
-import { Avatar } from "../components/avatar";
-import { Button, NavCard, SectionHeader } from "../components/ui";
-import { NookScroll } from "../components/nook-scroll";
-import { useAuth } from "../lib/auth-context";
+import { Avatar } from "../../components/avatar";
+import { Button, NavCard, SectionHeader } from "../../components/ui";
+import { NookScroll } from "../../components/nook-scroll";
+import { useTour } from "../../components/tour";
+import { useAuth } from "../../lib/auth-context";
 import {
   hearthThemes,
   useHearthLayout,
   type HearthThemeKey,
-} from "../lib/hearth";
-import { formatDate } from "../lib/gift-nook";
-import { hasRealName, useMyProfile } from "../lib/profile";
-import { supabase } from "../lib/supabase";
-import { colors, ui } from "../lib/theme";
-import { Tap } from "../components/motion";
+} from "../../lib/hearth";
+import { formatDate } from "../../lib/gift-nook";
+import { hasRealName, useMyProfile } from "../../lib/profile";
+import { supabase } from "../../lib/supabase";
+import { colors, ui } from "../../lib/theme";
+import { Tap } from "../../components/motion";
 
-// Hearth settings (CORE-013): account-wide things — who you are, your name,
-// how your Hearth looks (CORE-008), signing out. Each Nook has its own
-// settings page for Nook-specific options.
+// Settings tab (CORE-013/025): account-wide things — who you are, your name,
+// how your Hearth looks (CORE-008), the tour again (CORE-026), signing out.
+// Each Nook has its own settings page for Nook-specific options.
 export default function HearthSettings() {
   const router = useRouter();
   const { session } = useAuth();
   const user = session?.user;
 
   const { profile } = useMyProfile();
+  const tour = useTour();
   const {
     layout,
     save: saveHearth,
@@ -146,6 +148,18 @@ export default function HearthSettings() {
           </Text>
         </>
       )}
+
+      <NavCard
+        icon="sparkles"
+        title="Show me around again"
+        subtitle="Replay the little tour of the Hearth and Burrows"
+        onPress={() =>
+          tour
+            ?.replay()
+            .then(() => router.navigate("/hearth"))
+            .catch((replayError: Error) => Alert.alert("Couldn't start the tour", replayError.message))
+        }
+      />
 
       <Text style={ui.sectionTitle}>Account</Text>
       <View style={ui.card}>

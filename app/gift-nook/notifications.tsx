@@ -87,7 +87,7 @@ export default function Notifications() {
     } else if (notice.kind === "gathering_soon" && notice.data.gathering_id) {
       router.push(`/gift-nook/gathering/${notice.data.gathering_id}`);
     } else if (notice.kind === "member_joined" && notice.data.burrow_id) {
-      router.push(`/gift-nook/burrow/${notice.data.burrow_id}`);
+      router.push(`/burrow/${notice.data.burrow_id}`);
     }
   }
 
