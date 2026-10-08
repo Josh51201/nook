@@ -19,6 +19,8 @@ import { NookScroll } from "../../components/nook-scroll";
 import { DateField } from "../../components/date-field";
 import { Banner, Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
+import { bedStyles, critterForSpecies, critterInfo, critters } from "../../lib/hearth-pet";
+import { usePets } from "../../lib/pets-data";
 import { cornerChoices, liftChoices } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { conditions, windowFrames, type Place, type Unit } from "../../lib/weather";
@@ -236,7 +238,7 @@ export default function WidgetEditor() {
       </Animated.View>
 
       <SectionHeader title="What it shows" icon={info.icon} />
-      <KindSettings widget={widget} setSettings={setSettings} />
+      <KindSettings widget={widget} setSettings={setSettings} setWidget={setWidget} />
 
       {hollowsOf(layout).length ? (
         <>
@@ -286,6 +288,7 @@ export default function WidgetEditor() {
           </Chip>
         ))}
       </View>
+      {widget.kind === "companion" ? <Text style={ui.muted}>Outline leaves out the card, so the bed sits right on your Hearth. The title switch shows or hides the pet's name.</Text> : null}
 
       {widget.kind === "frame" || widget.kind === "window" ? null : (
         <>
@@ -616,16 +619,116 @@ function WindowSettings({
   );
 }
 
+// --- Hearth pet (CORE-048) ------------------------------------------------------------
+
+function CompanionSettings({
+  widget,
+  setSettings,
+  setWidget,
+}: {
+  widget: WidgetOf<"companion">;
+  setSettings: (changes: Record<string, unknown>) => void;
+  setWidget: (changes: Partial<WidgetConfig>) => void;
+}) {
+  const { session } = useAuth();
+  const { data } = usePets(session?.user.id);
+  const s = widget.settings;
+  const pets = data?.pets ?? [];
+  const linked = pets.find((p) => p.id === s.petId) ?? null;
+
+  function choosePet(pet: (typeof pets)[number] | null) {
+    tap();
+    if (!pet) return setSettings({ petId: null });
+    const critter = critterForSpecies(pet.species);
+    setSettings({ petId: pet.id, name: pet.name, critter, fur: critterInfo(critter).fur, photo: Boolean(pet.photo_path) });
+    setWidget({ title: pet.name });
+  }
+
+  return (
+    <>
+      <Text style={ui.label}>Who lives here</Text>
+      <View style={ui.chips}>
+        {pets.map((pet) => (
+          <Chip key={pet.id} icon="paw" selected={s.petId === pet.id} onPress={() => choosePet(pet)}>
+            {pet.name}
+          </Chip>
+        ))}
+        <Chip icon="sparkles" selected={!s.petId} onPress={() => choosePet(null)}>
+          {pets.length ? "Make one up" : "A pet of my own"}
+        </Chip>
+      </View>
+      {pets.length ? null : <Text style={ui.muted}>Pets you add in Pet Care can live here too, with their own name and photo.</Text>}
+      {s.petId && !linked && data ? <Text style={ui.muted}>That pet isn't in your Pet Care any more, so the name below is used.</Text> : null}
+
+      {s.petId && linked ? null : (
+        <>
+          <Text style={ui.label}>Name</Text>
+          <TextInput
+            style={ui.input}
+            value={s.name}
+            onChangeText={(name) => {
+              setSettings({ name: name.slice(0, 20) });
+              setWidget({ title: name.slice(0, 20) || "Hearth pet" });
+            }}
+            placeholder="e.g. Biscuit"
+            placeholderTextColor={colors.muted}
+          />
+        </>
+      )}
+
+      <Text style={ui.label}>What kind</Text>
+      <View style={ui.chips}>
+        {critters.map((c) => (
+          <Chip
+            key={c.key}
+            selected={s.critter === c.key}
+            onPress={() => setSettings(s.critter === c.key ? {} : { critter: c.key, fur: c.fur })}
+          >
+            {c.label}
+          </Chip>
+        ))}
+      </View>
+      {linked?.photo_path ? (
+        <SwitchRow label="Use their photo as the face" value={s.photo} onChange={(photo) => setSettings({ photo })} />
+      ) : null}
+      <Text style={ui.label}>{s.critter === "turtle" ? "Shell color" : s.critter === "bird" ? "Feather color" : s.critter === "fish" ? "Scale color" : "Fur color"}</Text>
+      <ColorPicker value={s.fur} fallback={critterInfo(s.critter).fur} onChange={(fur) => setSettings({ fur })} />
+
+      <Text style={ui.label}>Bed</Text>
+      <View style={ui.chips}>
+        {bedStyles.map((b) => (
+          <Chip key={b.key} selected={s.bed === b.key} onPress={() => setSettings({ bed: b.key })}>
+            {b.label}
+          </Chip>
+        ))}
+      </View>
+
+      <SwitchRow label="Wanders around your Hearth" value={s.wanders} onChange={(wanders) => setSettings({ wanders })} />
+      <Text style={ui.muted}>
+        {s.wanders
+          ? "Now and then it hops out to sit on your other widgets and Nooks, sometimes naps there, then comes home. Tap it to say hi."
+          : "It stays in its bed. Tap it to say hi."}{" "}
+        It sleeps in its bed at night, and stays put while you're editing or if your phone's Reduce Motion is on.
+        {s.petId ? " If a meal in Pet Care is late, it waits by its bowl." : ""}
+      </Text>
+    </>
+  );
+}
+
 // --- Per-kind settings --------------------------------------------------------
 
 function KindSettings({
   widget,
   setSettings,
+  setWidget,
 }: {
   widget: WidgetConfig;
   setSettings: (changes: Record<string, unknown>) => void;
+  setWidget: (changes: Partial<WidgetConfig>) => void;
 }) {
   switch (widget.kind) {
+    case "companion":
+      return <CompanionSettings widget={widget} setSettings={setSettings} setWidget={setWidget} />;
     case "countdown":
       return <CountdownSettings widget={widget} setSettings={setSettings} />;
     case "gatherings":

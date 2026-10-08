@@ -2,7 +2,7 @@
 
 _Fine print for built features is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 45)_
+_Last updated: 2026-10-08 (rev 46)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -55,7 +55,7 @@ Josh wants the Hearth to be truly one of a kind for anyone who puts in the time,
 - **CORE-045** Decor pieces *(proposed name: Trinkets)*: little non-clickable objects placed anywhere on the Hearth or in a Hollow, like a plant, lantern, sleeping cat, rug or stack of books. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_ Josh wants Trinkets to be movable anywhere. _(Built 2026-10-08: Trinkets float. They land exactly where you let go, even between grid cells, can overlap other things, and are never pushed by them or counted as taking up a cell. Tidy up leaves them alone. Stored as two extra decimals per Trinket, about 100 bytes each.)_
 - **CORE-046** A photo frame widget showing your own pictures in a frame, rotating through them. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-047** Ambience that follows the date and time of day (falling leaves, snow, fireflies), plus an optional soft fireplace sound that is off by default. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
-- **CORE-048** A pet that lives on your Hearth, made from the photos in Pet Care (PET-006).
+- **CORE-048** A pet that lives on your Hearth, made from the photos in Pet Care (PET-006). Josh wants it to live somewhere or in a widget and venture out onto other widgets and Nooks. _(Built 2026-10-08 (proposed details): a **Hearth pet** widget (Cozy touches) holds its bed; the pet is a Pet Care pet (name, photo as its face, hungry when a meal is late) or one you make up (cat, dog, bunny, bird, fish in a bowl, turtle, hamster, any color). Now and then it hops out to sit on top of other tiles and widgets, sometimes naps there, then goes home; tap it for a heart and a little line. It stays in bed at night, while editing, with Reduce Motion, or if set to stay home. Outline drops the card so the bed sits right on the Hearth.)_
 - **CORE-049** More widget kinds: photo, clock/date, weather, quote of the day (pairs with the Quote Jar idea), quick-launch buttons, and a habit streak counter. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-050** Widget stacks: several widgets in one spot that you swipe through. _(Built 2026-10-08 (proposed details): in a widget's editor, "Stack" puts another widget of any kind in the same spot and size; up to 6. Swipe sideways on it (or tap a dot) to flip through; the stack moves, resizes and sits as one thing. "Take it out of the stack" sets one free. A copy or a move to a Hollow leaves the stack. Edit mode shows one at a time too.)_
 - **CORE-051** More than one Hearth page, swiped between, such as "Everyday" and "Holidays". _(Built 2026-10-08 (proposed details): swipe the Hearth sideways, or tap a page name in the strip under the top bar (shown once there are two or more). Edit → **Pages** adds, renames (up to 20 letters) and removes pages, up to 6. Removing a page moves what's on it to the first page. Hollows have just one page. Nooks, photos and the weather town are found across every page.)_ Josh also wants to drag a widget onto a page tab to move it there. _(Built (proposed details): while dragging in Edit, the page tabs light up under your finger; let go on one to move the item there, with "Moved … Undo". In Edit there is also a **New page** tab: drop on it to make a page and move the item onto it. Hollows have no tabs.)_
@@ -148,6 +148,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The paid subscription, per Home | Nook Plus | proposed |
 | A decorative object placed on the Hearth | Trinket | proposed |
 | A saved whole-Hearth setup | Scene | proposed |
+| The pet that lives on your Hearth (CORE-048) | Hearth pet | proposed |
 | The people you live with, shared by Nooks | Home | proposed |
 | One entry in the Letterbox (one mailing address) | Contact | proposed |
 | Homepage | The Hearth | proposed |
@@ -184,4 +185,4 @@ Josh's stated priority, in order:
 3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).
 4. ~~**Pet Care Nook**~~ — built 2026-10-08 (section 2d).
 5. ~~**Rhythms Nook**~~ — built 2026-10-08 (section 2e).
-6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. Still to do: 048, 054, 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 built 2026-10-08: lock (061), tidy up (062), find (063). Round 3 built 2026-10-08: dividers (064), Scenes (052), tags (065).
+6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. 048 built 2026-10-08. Still to do: 054, 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 built 2026-10-08: lock (061), tidy up (062), find (063). Round 3 built 2026-10-08: dividers (064), Scenes (052), tags (065).

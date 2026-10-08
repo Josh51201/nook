@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useContext, useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, Line } from "react-native-svg";
 import { Text } from "../text";
@@ -11,11 +11,13 @@ import { cornerRadius, type Corners } from "../../lib/decor";
 import { usePhotoUrls } from "../../lib/hearth-photos";
 import { tap } from "../../lib/feedback";
 import { countdown, displayName, formatDate, gatheringKindInfo, type TuckStatus } from "../../lib/gift-nook";
+import { shade } from "../../lib/colors";
 import { deepColor, tileBevel, tilePalette } from "../../lib/hearth-layout";
 import { noticeIcon } from "../../lib/inbox";
 import { supabase } from "../../lib/supabase";
 import { daysToDue } from "../../lib/pets";
-import { usePetsSummary } from "../../lib/pets-data";
+import { useHearthPetInfo, usePetsSummary } from "../../lib/pets-data";
+import { bedLayout, isNight, petSizeForBox } from "../../lib/hearth-pet";
 import { useRhythmsSummary } from "../../lib/rhythms-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
@@ -32,6 +34,7 @@ import {
 } from "../../lib/widgets";
 import { Icon, IconBadge, type IconName } from "../icon";
 import { Tap } from "../motion";
+import { BedArt, BowlArt, CritterArt, PetStageContext, Snooze } from "./pet-art";
 import { WindowScene } from "./window-scene";
 
 // Renders any Hearth widget (CORE-018) in its chosen look, laid out for the
@@ -110,6 +113,21 @@ export function WidgetView({
   const radius = cornerRadius(corners, width, height);
   if (widget.kind === "frame") {
     return <PhotoFrame settings={widget.settings} width={width} height={height} radius={radius} />;
+  }
+  if (widget.kind === "companion") {
+    return (
+      <PetBedWidget
+        widget={widget}
+        color={color}
+        width={width}
+        height={height}
+        radius={radius}
+        border={border}
+        refreshKey={refreshKey}
+        themeText={themeText}
+        still={still}
+      />
+    );
   }
   if (widget.kind === "window") {
     return <WindowWidget settings={widget.settings} width={width} height={height} radius={radius} still={still} refreshKey={refreshKey} />;
@@ -206,6 +224,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <WeatherWidget {...props} widget={widget} />;
     case "window":
       return null; // drawn whole by WindowWidget, above
+    case "companion":
+      return null; // drawn whole by PetBedWidget, below
   }
 }
 
@@ -1029,6 +1049,103 @@ function PetCare({ widget, palette, refreshKey, height, shape, icon }: BodyProps
       <Panel palette={palette} style={{ flex: 1 }}>
         {list}
       </Panel>
+    </View>
+  );
+}
+
+// --- Hearth pet (CORE-048) ---------------------------------------------------------
+
+// The pet's bed, its bowl and its name. The pet itself is drawn here only
+// when it isn't out on the Hearth (pet-roamer.tsx): while you're editing,
+// in previews, and with Reduce Motion on. "Outline" drops the card, so the
+// bed sits right on your Hearth.
+function PetBedWidget({
+  widget,
+  color,
+  width,
+  height,
+  radius,
+  border,
+  refreshKey,
+  themeText,
+  still,
+}: {
+  widget: WidgetOf<"companion">;
+  color?: string;
+  width: number;
+  height: number;
+  radius: number;
+  border?: boolean;
+  refreshKey: number;
+  themeText: string;
+  still: boolean;
+}) {
+  const stage = useContext(PetStageContext);
+  const s = widget.settings;
+  const info = useHearthPetInfo(s.petId, refreshKey);
+  const name = (info?.name ?? s.name).trim() || "Your pet";
+  const soft = color ?? tilePalette[0];
+  const deep = deepColor(soft);
+  const look = widget.look;
+  const palette = widgetPalette(look, soft, themeText);
+  const pet = stage.pet ?? petSizeForBox(width, height);
+  const spots = bedLayout(width, height, pet);
+  const night = isNight();
+  const hungry = info?.hungryFor ?? null;
+  const bedColor = look === "bold" ? soft : deep;
+  const status = hungry
+    ? `Waiting for ${hungry.toLowerCase()}`
+    : night
+      ? "Fast asleep"
+      : s.wanders
+        ? "Likes to wander"
+        : "A homebody";
+  const side = spots.text && spots.text.x > spots.bed.x + spots.bed.w - 1;
+
+  return (
+    <View
+      style={[
+        { width, height, borderRadius: radius },
+        look === "soft" && { backgroundColor: soft, boxShadow: tileBevel },
+        look === "bold" && { backgroundColor: deep, boxShadow: tileBevel },
+        border && { borderWidth: 2.5, borderColor: look === "bold" ? "rgba(255,255,255,0.6)" : deep },
+      ]}
+    >
+      {widget.showTitle && spots.text ? (
+        <View style={{ position: "absolute", left: spots.text.x, top: spots.text.y, width: spots.text.w, height: spots.text.h, justifyContent: side ? "center" : "flex-start" }}>
+          <Text style={{ color: look === "outline" ? themeText : palette.text, fontSize: side ? 20 : 15, fontWeight: "800" }} numberOfLines={1}>
+            {name}
+          </Text>
+          <Text style={{ color: look === "outline" ? `${themeText}99` : palette.muted, fontSize: 12, fontWeight: hungry ? "700" : "500" }} numberOfLines={side ? 2 : 1}>
+            {status}
+          </Text>
+        </View>
+      ) : null}
+      <View style={{ position: "absolute", left: spots.bed.x, top: spots.bed.y }}>
+        <BedArt style={s.bed} color={bedColor} width={spots.bed.w} height={spots.bed.h} />
+      </View>
+      {spots.bowl ? (
+        <View style={{ position: "absolute", left: spots.bowl.x, top: spots.bowl.y }}>
+          <BowlArt full={!hungry} width={spots.bowl.w} height={spots.bowl.h} color={shade(bedColor, 0.25)} />
+        </View>
+      ) : null}
+      {stage.roaming ? null : (
+        <View style={{ position: "absolute", left: spots.pet.x, top: spots.pet.y }}>
+          <CritterArt
+            critter={s.critter}
+            fur={s.fur}
+            width={spots.pet.w}
+            height={spots.pet.h}
+            eyesClosed={night}
+            photoUrl={s.photo ? info?.photoUrl ?? null : null}
+          />
+          {night ? (
+            <View style={{ position: "absolute", right: -spots.pet.w * 0.2, top: -spots.pet.h * 0.3 }}>
+              <Snooze size={spots.pet.w * 0.5} color={look === "bold" ? "#ffffff" : themeText} still={still} />
+            </View>
+          ) : null}
+        </View>
+      )}
     </View>
   );
 }

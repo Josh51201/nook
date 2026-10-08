@@ -1,9 +1,11 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 
+import { useAuth } from "./auth-context";
 import { guarded } from "./feedback";
 import { displayName } from "./gift-nook";
-import { healthNeedingAttention, localDay, mealStatus, type CareEntry, type HealthItem, type Meal } from "./pets";
+import { hungryMeal } from "./hearth-pet";
+import { healthNeedingAttention, localDay, mealStatus, toTimeOfDay, type CareEntry, type HealthItem, type Meal } from "./pets";
 import { supabase } from "./supabase";
 
 // Loads the pets you look after (PET-001..007) with everything their screens
@@ -209,4 +211,70 @@ export function usePetsSummary(userId: string | undefined, refreshKey: number) {
   }, [userId, refreshKey]);
 
   return summary;
+}
+
+// --- The Hearth pet (CORE-048) --------------------------------------------------------------
+
+// A pet's bed widget and the pet wandering out of it both want the same Pet
+// Care pet, so one load is shared for a minute (or until the screen
+// refreshes).
+let shared: { userId: string; key: number; at: number; data: Promise<PetsData> } | null = null;
+const photoCache = new Map<string, { url: string; at: number }>();
+
+function loadPetsShared(userId: string, refreshKey: number) {
+  if (!shared || shared.userId !== userId || shared.key !== refreshKey || Date.now() - shared.at > 60_000) {
+    const data = loadPets(userId);
+    shared = { userId, key: refreshKey, at: Date.now(), data };
+    data.catch(() => {
+      if (shared?.data === data) shared = null;
+    });
+  }
+  return shared.data;
+}
+
+export type HearthPetInfo = {
+  name: string;
+  species: string;
+  photoUrl: string | null;
+  // A meal that's late (PET-003), or null.
+  hungryFor: string | null;
+};
+
+// The Pet Care pet behind a Hearth pet, or null while loading, if it isn't
+// linked, or if it's no longer yours to see.
+export function useHearthPetInfo(petId: string | null, refreshKey: number) {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const [info, setInfo] = useState<HearthPetInfo | null>(null);
+
+  useEffect(() => {
+    if (!userId || !petId) {
+      setInfo(null);
+      return;
+    }
+    let live = true;
+    loadPetsShared(userId, refreshKey)
+      .then(async (data) => {
+        const pet = data.pets.find((p) => p.id === petId);
+        if (!pet) return live && setInfo(null);
+        let photoUrl: string | null = null;
+        if (pet.photo_path) {
+          const cached = photoCache.get(pet.photo_path);
+          if (cached && Date.now() - cached.at < 50 * 60_000) photoUrl = cached.url;
+          else {
+            photoUrl = (await petPhotoUrls([pet.photo_path])).get(pet.photo_path) ?? null;
+            if (photoUrl) photoCache.set(pet.photo_path, { url: photoUrl, at: Date.now() });
+          }
+        }
+        const log = data.log.filter((entry) => entry.pet_id === pet.id);
+        const hungryFor = hungryMeal(pet.pet_meals, log, localDay(), toTimeOfDay(new Date()));
+        if (live) setInfo({ name: pet.name, species: pet.species, photoUrl, hungryFor });
+      })
+      .catch(() => live && setInfo(null));
+    return () => {
+      live = false;
+    };
+  }, [userId, petId, refreshKey]);
+
+  return info;
 }

@@ -96,6 +96,9 @@ import { Skeleton, Tap } from "../motion";
 import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from "../tour";
 import { AddSheet } from "./add-sheet";
 import { GRID_GAP, HearthGrid } from "./hearth-grid";
+import { PetStageContext } from "./pet-art";
+import { isPetBed, PetRoamers, strideFor } from "./pet-roamer";
+import { petSizeForStride } from "../../lib/hearth-pet";
 import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { nookRadii } from "./tile-face";
@@ -559,6 +562,10 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         return router.push("/rhythms");
       case "greeting":
         return;
+      case "companion":
+        // A pet from Pet Care opens its page there (CORE-048).
+        if (item.widget.settings.petId) return router.push(`/pets/${item.widget.settings.petId}`);
+        return router.push(`/widget/view/${item.id}`);
       default:
         return router.push(`/widget/view/${item.id}`);
     }
@@ -1003,6 +1010,11 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   // Folding and hidden tags only apply when you are looking, not designing.
   const visibleItems = editing ? inSeasonItems : foldItems(hideTagged(inSeasonItems, hiddenTags), folded);
 
+  // The Hearth pet (CORE-048) wanders the grid while you're just looking:
+  // not while editing, and not with Reduce Motion on.
+  const petsOut = !editing && !reduceMotion && gridWidth > 0 && visibleItems.some(isPetBed);
+  const petStage = { roaming: petsOut, pet: gridWidth ? petSizeForStride(strideFor(gridWidth)) : null };
+
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
     const inner = renderInner(item, size);
     return editing && !inSeason(item.showIn, today) ? <View style={{ opacity: 0.4 }}>{inner}</View> : inner;
@@ -1379,6 +1391,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
                   )}
                 </Animated.View>
               ) : (
+                <PetStageContext.Provider value={petStage}>
                 <Animated.View key={layout.activePage} entering={FadeIn.duration(180)}>
                 <HearthGrid
                   items={visibleItems}
@@ -1412,7 +1425,9 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
                   dragScroll={dragScroll}
                   renderItem={renderItem}
                 />
+                {petsOut ? <PetRoamers items={visibleItems} gridWidth={gridWidth} refreshKey={refreshKey} themeText={theme.text} /> : null}
                 </Animated.View>
+                </PetStageContext.Provider>
               )}
             </View>
 

@@ -1,5 +1,6 @@
 import type { IconName } from "../components/icon";
 import type { GatheringKind } from "./gift-nook";
+import type { BedStyle, CritterKind } from "./hearth-pet";
 import type { QuoteSource } from "./widget-extras";
 import type { Condition, Place, Unit, WindowFrame } from "./weather";
 
@@ -8,7 +9,7 @@ import type { Condition, Place, Unit, WindowFrame } from "./weather";
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window";
+export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -83,6 +84,19 @@ export type WidgetSettings = {
     frame: WindowFrame;
     showTemp: boolean;
   };
+  // The Hearth pet (CORE-048): one of your Pet Care pets (`petId`) or one you
+  // made up, drawn as a `critter` with `fur` color, living in a `bed`.
+  companion: {
+    petId: string | null;
+    name: string;
+    critter: CritterKind;
+    fur: string;
+    // Use the pet's Pet Care photo as its face.
+    photo: boolean;
+    bed: BedStyle;
+    // Hops out to visit your other widgets and Nooks now and then.
+    wanders: boolean;
+  };
 };
 
 export type WidgetConfig = {
@@ -123,6 +137,7 @@ export const widgetKinds: {
   { kind: "streak", label: "Habit streak", description: "Tap each day you do something and watch the streak grow.", icon: "flame", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "weather", label: "Weather", description: "The weather now and the next few days, for a town you pick.", icon: "cloud", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "window", label: "Window", description: "A little window with the weather outside: live from a town, or a sky you choose.", icon: "sun", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "companion", label: "Hearth pet", description: "A little pet in its own bed that hops out to visit your widgets and Nooks. Bring one from Pet Care or make one up.", icon: "paw", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 1, h: 1 } },
 ];
 
@@ -132,7 +147,7 @@ export const widgetCategories: { id: string; label: string; blurb: string; icon:
   { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["gatherings", "tucks", "inbox", "cards", "pets", "rhythms"] },
   { id: "lists", label: "Lists & routines", blurb: "Things to remember, tick off and jump to", icon: "todo", kinds: ["reminders", "note", "streak", "launch"] },
   { id: "time", label: "Time & weather", blurb: "Dates, the clock and the sky", icon: "clock", kinds: ["countdown", "clock", "weather", "window"] },
-  { id: "cozy", label: "Cozy touches", blurb: "Pictures, words and a warm hello", icon: "sparkles", kinds: ["frame", "quote", "greeting"] },
+  { id: "cozy", label: "Cozy touches", blurb: "Pictures, words and a warm hello", icon: "sparkles", kinds: ["companion", "frame", "quote", "greeting"] },
 ];
 
 // Every widget can be any size, down to a single icon (CORE-030). Its
@@ -202,6 +217,12 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
         kind,
         showTitle: false,
         settings: { source: "pick", place: null, unit: "f", condition: "rain", time: "auto", frame: "wood", showTemp: false },
+      };
+    case "companion":
+      return {
+        ...base,
+        kind,
+        settings: { petId: null, name: "Biscuit", critter: "cat", fur: "#e8b98a", photo: false, bed: "cushion", wanders: true },
       };
   }
 }
