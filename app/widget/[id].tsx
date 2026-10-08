@@ -51,16 +51,19 @@ import {
   widgetKindInfo,
   type Reminder,
   type ReminderSchedule,
+  widgetKinds,
   type WidgetConfig,
+  type WidgetKind,
   type WidgetLook,
   type WidgetOf,
 } from "../../lib/widgets";
+import { addToStack, MAX_STACK, stackMates, unstack } from "../../lib/hearth-stacks";
 
 // Customize one Hearth widget (CORE-018): what it shows and how it looks,
 // with a live preview at its real size. Nothing is saved until "Save".
 export default function WidgetEditor() {
   const router = useRouter();
-  const { id, copied } = useLocalSearchParams<{ id: string; copied?: string }>();
+  const { id, copied, stacked } = useLocalSearchParams<{ id: string; copied?: string; stacked?: string }>();
   const { layout, save, isLoading } = useHearthLayout();
   const { width: screenWidth } = useWindowDimensions();
   // Hooks first: the screen returns early below while it loads.
@@ -100,7 +103,9 @@ export default function WidgetEditor() {
   }
 
   // Saves, then (with `copyTo`) makes a copy there and opens it (CORE-039).
-  async function saveWidget(copyTo?: Scope) {
+  // `stackWith` puts a new widget of that kind in this one's stack and opens
+  // it; "out" takes this one out of its stack (CORE-050).
+  async function saveWidget(copyTo?: Scope, stackWith?: WidgetKind | "out") {
     if (!draft || !original || isSaving) return;
     setIsSaving(true);
     try {
@@ -131,6 +136,12 @@ export default function WidgetEditor() {
       }
       let copyId: string | null = null;
       if (copyTo !== undefined) ({ items, copyId } = copyItem({ ...layout, items }, draft.id, copyTo));
+      let stackedId: string | null = null;
+      if (stackWith === "out") items = unstack({ items }, draft.id);
+      else if (stackWith) {
+        const joined = addToStack({ items }, draft.id, stackWith);
+        if (joined) ({ items, id: stackedId } = joined);
+      }
       // Your Hearth updates instantly; the cloud save finishes in the
       // background, so closing never waits on the network.
       const pending = save({ items });
@@ -140,7 +151,8 @@ export default function WidgetEditor() {
         if (removed.length) pending.then(() => removeUnusedPhotos(removed, { ...layout, items })).catch(() => {});
       }
       tap("success");
-      if (copyId) router.replace({ pathname: "/widget/[id]", params: { id: copyId, copied: "1" } });
+      if (stackedId) router.replace({ pathname: "/widget/[id]", params: { id: stackedId, stacked: "1" } });
+      else if (copyId) router.replace({ pathname: "/widget/[id]", params: { id: copyId, copied: "1" } });
       else router.back();
       pending.catch((error: Error) => Alert.alert("Couldn't save your widget", error.message));
     } catch (error) {
@@ -184,6 +196,15 @@ export default function WidgetEditor() {
           tone="sky"
           title="Copied!"
           body={`You're now changing the copy${home ? ` in “${hollowsOf(layout).find((h) => h.id === home)?.name ?? "a Hollow"}”` : " on your Hearth"}. The original stays as it was.`}
+        />
+      ) : null}
+
+      {stacked ? (
+        <Banner
+          icon="widgets"
+          tone="sky"
+          title="Added to the stack"
+          body="This widget now shares a spot with the one you came from. Swipe on the Hearth to flip between them."
         />
       ) : null}
 
@@ -332,6 +353,28 @@ export default function WidgetEditor() {
         Saves this one, then opens the copy so you can make it its own.
         {widget.kind === "reminders" ? " The copy's list starts without phone alerts, so nothing rings twice." : ""}
       </Text>
+
+      <SectionHeader title="Stack" icon="widgets" />
+      <Text style={ui.muted}>
+        A stack keeps several widgets in one spot: swipe sideways on the Hearth to flip through them.
+        {original.stack ? ` This one is in a stack of ${stackMates(layout.items, original).length}.` : ""}
+      </Text>
+      {stackMates(layout.items, original).length < MAX_STACK ? (
+        <>
+          <Text style={ui.label}>Put another widget in the stack</Text>
+          <View style={ui.chips}>
+            {widgetKinds.map((kind) => (
+              <Chip key={kind.kind} icon={kind.icon} onPress={() => saveWidget(undefined, kind.kind)}>
+                {kind.label}
+              </Chip>
+            ))}
+          </View>
+          <Text style={ui.muted}>Saves this one, then opens the new widget so you can set it up.</Text>
+        </>
+      ) : (
+        <Text style={ui.muted}>That's as many as a stack holds ({MAX_STACK}).</Text>
+      )}
+      {original.stack ? <Button title="Take it out of the stack" icon="close" variant="secondary" onPress={() => saveWidget(undefined, "out")} /> : null}
 
       <Button title="Save" icon="check" onPress={() => saveWidget()} loading={isSaving} style={{ marginTop: 8 }} />
       <Button title="Remove widget" icon="trash" variant="danger" onPress={confirmRemove} />

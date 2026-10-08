@@ -32,6 +32,9 @@ type ItemBase = GridRect & {
   border?: boolean;
   // Only shown in these months (CORE-053); always shown if unset.
   showIn?: ShowIn;
+  // Widgets that share a stack (CORE-050) sit in the same spot and the same
+  // size; you swipe between them. Items in one stack have the same id here.
+  stack?: string;
 };
 
 // Nook tiles come in the same three looks as widgets (CORE-030).
@@ -300,21 +303,24 @@ export function settle(items: HearthItem[], fixedId: string): HearthItem[] {
   const result = items.map((item) => ({ ...item }));
   const fixed = result.find((item) => item.id === fixedId);
   if (!fixed) return result;
+  // Widgets in a stack (CORE-050) are one thing: they don't push each other,
+  // and they move as a group.
+  const isFixed = (item: HearthItem) => item.id === fixedId || (!!fixed.stack && item.stack === fixed.stack);
   const order = () =>
-    [...result].sort((a, b) =>
-      a.id === fixedId ? -1 : b.id === fixedId ? 1 : a.y - b.y || a.x - b.x
-    );
+    [...result].sort((a, b) => (isFixed(a) ? 0 : 1) - (isFixed(b) ? 0 : 1) || a.y - b.y || a.x - b.x);
 
   for (let guard = 0; guard < 500; guard++) {
     let moved = false;
     const sorted = order();
     for (let i = 1; i < sorted.length; i++) {
       const item = sorted[i];
+      if (isFixed(item)) continue;
       for (let j = 0; j < i; j++) {
         const above = sorted[j];
-        if (overlaps(item, above)) {
+        if (overlaps(item, above) && !(item.stack && item.stack === above.stack)) {
           item.y = above.y + above.h;
           moved = true;
+          if (item.stack) for (const mate of result) if (mate.stack === item.stack) mate.y = item.y;
         }
       }
     }
@@ -339,14 +345,34 @@ export function newItemId(prefix = "i") {
 
 // --- Editing ----------------------------------------------------------------------
 
+// The item, and anything stacked with it (CORE-050), which goes along.
+function withStackMates(items: HearthItem[], id: string) {
+  const stack = items.find((item) => item.id === id)?.stack;
+  return (item: HearthItem) => item.id === id || (!!stack && item.stack === stack);
+}
+
 export function moveItem(layout: HearthLayout, id: string, x: number, y: number): HearthItem[] {
-  const items = layout.items.map((item) => (item.id === id ? clampRect({ ...item, x, y }) : item));
+  const goes = withStackMates(layout.items, id);
+  const items = layout.items.map((item) => (goes(item) ? clampRect({ ...item, x, y }) : item));
   return settle(items, id);
 }
 
 export function resizeItem(layout: HearthLayout, id: string, w: number, h: number): HearthItem[] {
-  const items = layout.items.map((item) => (item.id === id ? clampRect({ ...item, w, h }) : item));
+  const goes = withStackMates(layout.items, id);
+  const items = layout.items.map((item) => (goes(item) ? clampRect({ ...item, w, h }) : item));
   return settle(items, id);
+}
+
+// A stack that's down to one widget isn't a stack any more.
+export function normalizeStacks(items: HearthItem[]): HearthItem[] {
+  const counts = new Map<string, number>();
+  for (const item of items) if (item.stack) counts.set(item.stack, (counts.get(item.stack) ?? 0) + 1);
+  if (![...counts.values()].some((n) => n < 2)) return items;
+  return items.map((item) => {
+    if (!item.stack || (counts.get(item.stack) ?? 0) >= 2) return item;
+    const { stack: _stack, ...rest } = item;
+    return rest as HearthItem;
+  });
 }
 
 export function updateItem(layout: HearthLayout, id: string, changes: Partial<HearthItem>): HearthItem[] {
@@ -354,7 +380,7 @@ export function updateItem(layout: HearthLayout, id: string, changes: Partial<He
 }
 
 export function removeItem(layout: HearthLayout, id: string): HearthItem[] {
-  return layout.items.filter((item) => item.id !== id);
+  return normalizeStacks(layout.items.filter((item) => item.id !== id));
 }
 
 // Adds at the first free spot of its size.
@@ -423,7 +449,8 @@ export function copyItem(layout: HearthLayout, id: string, to: Scope): { items: 
   if (!found || found.item.kind === "hollow" || (to && !findHollow(layout, to))) {
     return { items: layout.items, copyId: null };
   }
-  const { x: _x, y: _y, id: _id, ...rest } = JSON.parse(JSON.stringify(found.item)) as HearthItem;
+  // A copy stands on its own: it doesn't join the stack it was copied from.
+  const { x: _x, y: _y, id: _id, stack: _stack, ...rest } = JSON.parse(JSON.stringify(found.item)) as HearthItem;
   if (rest.kind === "widget" && rest.widget.kind === "reminders") {
     rest.widget.settings.items = rest.widget.settings.items.map(({ notificationId: _n, schedule: _s, ...reminder }) => ({
       ...reminder,
@@ -584,7 +611,7 @@ export function moveToScope(layout: HearthLayout, id: string, to: Scope): Hearth
   if (to && !findHollow(layout, to)) return layout.items;
 
   const removed = { ...layout, items: inScope(layout, found.scope, (inner) => removeItem(inner, id)) };
-  const { x: _x, y: _y, ...rest } = found.item;
+  const { x: _x, y: _y, stack: _stack, ...rest } = found.item;
   return inScope(removed, to, (inner) => addItem(inner, rest as Omit<HearthItem, "x" | "y"> as never));
 }
 

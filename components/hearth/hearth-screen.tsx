@@ -22,6 +22,7 @@ import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type 
 import { tap } from "../../lib/feedback";
 import { removeUnusedPhotos } from "../../lib/hearth-photos";
 import { addPage, neighbourPage, removePage, renamePage, switchPage } from "../../lib/hearth-pages";
+import { stackPosition, visibleItems as oneOfEachStack } from "../../lib/hearth-stacks";
 import { trinketInfo, type TrinketKey } from "../../lib/trinkets";
 import { inSeason } from "../../lib/widget-extras";
 import { colors, useTheme } from "../../lib/theme";
@@ -81,6 +82,7 @@ import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { nookRadii } from "./tile-face";
 import { PagesSheet, PageStrip } from "./pages-sheet";
+import { StackShell } from "./stack-shell";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WidgetView } from "./widgets";
@@ -110,6 +112,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const [adding, setAdding] = useState(false);
   const [decorating, setDecorating] = useState(false);
   const [pagesOpen, setPagesOpen] = useState(false);
+  // Which widget of each stack is showing (CORE-050).
+  const [stackShown, setStackShown] = useState<Record<string, number>>({});
   const [dragging, setDragging] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [openingHollow, setOpeningHollow] = useState<string | null>(null);
@@ -610,7 +614,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   // Things set to show only in some months (CORE-053) are hidden out of
   // season, but stay (dimmed) while you're editing so you can find them.
   const today = new Date();
-  const visibleItems = editing ? items : items.filter((item) => inSeason(item.showIn, today));
+  const inSight = oneOfEachStack(items, stackShown);
+  const visibleItems = editing ? inSight : inSight.filter((item) => inSeason(item.showIn, today));
 
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
     const inner = renderInner(item, size);
@@ -642,7 +647,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       );
     }
     if (item.kind === "widget") {
-      return (
+      const place = stackPosition(items, item);
+      const view = (
         <WidgetView
           widget={item.widget}
           color={item.color}
@@ -655,6 +661,23 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           still={editing}
           onChange={editing ? undefined : (widget) => changeWidget(item, widget)}
         />
+      );
+      if (!place || !item.stack) return view;
+      const stack = item.stack;
+      return (
+        <StackShell
+          width={size.width}
+          height={size.height}
+          count={place[1]}
+          index={place[0]}
+          color={item.widget.look === "bold" ? "#ffffff" : theme.text}
+          onSelect={(i) => {
+            tap();
+            setStackShown((prev) => ({ ...prev, [stack]: i }));
+          }}
+        >
+          {view}
+        </StackShell>
       );
     }
     if (item.kind === "trinket") {
