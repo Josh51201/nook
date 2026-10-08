@@ -22,12 +22,15 @@ const ease = { duration: 240, easing: Easing.out(Easing.cubic) };
 // The free-form Hearth canvas (CORE-006/019). Items sit at exact grid cells;
 // in edit mode you hold one to drag it anywhere (an outline shows where it
 // will land), or drag its corner handle to resize it. Calm, eased motion
-// throughout — no springs (the Hearth felt too bouncy).
+// throughout — no springs (the Hearth felt too bouncy). Tiles and widgets
+// rest on a soft shadow, sink a touch when pressed, and lift higher while
+// dragged, so the Hearth has some depth.
 export function HearthGrid({
   items,
   width,
   editing,
   accent,
+  shadow,
   onMove,
   onResize,
   onPressItem,
@@ -40,6 +43,8 @@ export function HearthGrid({
   width: number;
   editing: boolean;
   accent: string;
+  // The resting shadow under tiles and widgets (a CSS box-shadow).
+  shadow?: string;
   onMove: (id: string, x: number, y: number) => void;
   onResize: (id: string, w: number, h: number) => void;
   onPressItem: (item: HearthItem) => void;
@@ -146,6 +151,7 @@ export function HearthGrid({
           seed={index}
           active={activeId === item.id}
           accent={accent}
+          shadow={isRaised(item) ? shadow : undefined}
           onPress={() => onPressItem(item)}
           onLongPress={onLongPress}
           onBegin={() => begin(item.id)}
@@ -186,6 +192,14 @@ export function HearthGrid({
   );
 }
 
+// Text labels and see-through (outline) widgets float flat on the Hearth;
+// everything solid gets a shadow.
+function isRaised(item: HearthItem) {
+  if (item.kind === "label") return false;
+  if (item.kind === "widget") return item.widget.look !== "outline";
+  return true;
+}
+
 function GridItem({
   item,
   stride,
@@ -193,6 +207,7 @@ function GridItem({
   seed,
   active,
   accent,
+  shadow,
   onPress,
   onLongPress,
   onBegin,
@@ -207,6 +222,7 @@ function GridItem({
   seed: number;
   active: boolean;
   accent: string;
+  shadow?: string;
   onPress: () => void;
   onLongPress: () => void;
   onBegin: () => void;
@@ -221,6 +237,7 @@ function GridItem({
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
   const lifted = useSharedValue(0);
+  const pressed = useSharedValue(0);
   const dropping = useSharedValue(false);
   const targetX = useSharedValue(item.x);
   const targetY = useSharedValue(item.y);
@@ -276,9 +293,16 @@ function GridItem({
 
   const { x, y, w, h } = item;
   const moveGesture = useMemo(() => {
-    const tapGesture = Gesture.Tap().onEnd((_e, success) => {
-      if (success) scheduleOnRN(press);
-    });
+    const tapGesture = Gesture.Tap()
+      .onBegin(() => {
+        pressed.value = withTiming(1, { duration: 90 });
+      })
+      .onEnd((_e, success) => {
+        if (success) scheduleOnRN(press);
+      })
+      .onFinalize(() => {
+        pressed.value = withTiming(0, { duration: 180 });
+      });
     if (!editing) {
       const longPress = Gesture.LongPress()
         .minDuration(400)
@@ -326,7 +350,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, dragX, dragY, lifted, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY]);
+  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY]);
 
   const resizeGesture = useMemo(
     () =>
@@ -356,14 +380,18 @@ function GridItem({
   const style = useAnimatedStyle(() => ({
     left: left.value,
     top: top.value,
-    transform: [{ translateX: dragX.value }, { translateY: dragY.value }, { scale: 1 + lifted.value * 0.04 }],
+    transform: [
+      { translateX: dragX.value },
+      { translateY: dragY.value },
+      { scale: 1 + lifted.value * 0.04 - pressed.value * 0.03 },
+    ],
     shadowOpacity: lifted.value * 0.22,
   }));
 
   return (
     <Animated.View style={[styles.item, { zIndex: active ? 100 : 1, elevation: active ? 12 : 0 }, style]}>
       <GestureDetector gesture={moveGesture}>
-        <Animated.View style={wiggle}>{children}</Animated.View>
+        <Animated.View style={[shadow ? { borderRadius: 24, boxShadow: shadow } : null, wiggle]}>{children}</Animated.View>
       </GestureDetector>
       {editing ? (
         <GestureDetector gesture={resizeGesture}>

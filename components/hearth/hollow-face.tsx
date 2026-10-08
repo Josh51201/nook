@@ -4,7 +4,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { itemColor, type HollowItem } from "../../lib/hearth-layout";
+import { itemColor, tileBevel, type HollowItem } from "../../lib/hearth-layout";
 
 const TEXT = "#2a2420";
 const MUTED = "#6f625a";
@@ -171,6 +171,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(0,0,0,0.06)",
+    boxShadow: tileBevel,
   },
   tall: { alignItems: "center", justifyContent: "center", gap: 4 },
   wide: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16 },

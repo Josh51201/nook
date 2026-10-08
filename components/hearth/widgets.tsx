@@ -6,7 +6,7 @@ import { useAuth } from "../../lib/auth-context";
 import { tap } from "../../lib/feedback";
 import { guardTouches } from "../../lib/touch-guard";
 import { countdown, displayName, gatheringKindInfo, type TuckStatus } from "../../lib/gift-nook";
-import { deepColor, tilePalette } from "../../lib/hearth-layout";
+import { deepColor, tileBevel, tilePalette } from "../../lib/hearth-layout";
 import { supabase } from "../../lib/supabase";
 import { describeSchedule, widgetKindInfo, type WidgetConfig, type WidgetOf } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
@@ -53,8 +53,8 @@ export function WidgetView({
       style={[
         styles.frame,
         { width, height },
-        look === "bold" && { backgroundColor: deep },
-        look === "soft" && { backgroundColor: soft },
+        look === "bold" && { backgroundColor: deep, boxShadow: tileBevel },
+        look === "soft" && { backgroundColor: soft, boxShadow: tileBevel },
         look === "outline" && { borderWidth: 2, borderColor: deep, backgroundColor: "transparent" },
       ]}
     >

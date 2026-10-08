@@ -5,7 +5,7 @@ import { Alert, Text, TextInput, View } from "react-native";
 import { Avatar } from "../../components/avatar";
 import { LoadingScreen } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
-import { TourTarget, useTourAutoStart } from "../../components/tour";
+import { TourTarget, useTourAutoStart, useTourScrollArea } from "../../components/tour";
 import { Button, EmptyState, NavCard, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, guarded } from "../../lib/feedback";
@@ -58,6 +58,7 @@ export default function Burrows() {
   );
 
   useTourAutoStart("burrows", !isLoading);
+  const tourScroll = useTourScrollArea();
 
   async function createBurrow() {
     if (!newBurrowName.trim()) {
@@ -106,7 +107,7 @@ export default function Burrows() {
   if (isLoading) return <LoadingScreen cards={3} />;
 
   return (
-    <NookScroll onRefresh={load}>
+    <NookScroll onRefresh={load} tour={tourScroll}>
       <Text style={ui.muted}>
         Your family and groups. Every Nook that shares with people — like the Gift Nook — uses these same
         Burrows.

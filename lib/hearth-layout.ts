@@ -63,15 +63,64 @@ export function deepColor(soft: string | undefined) {
 
 export type HearthThemeKey = "hearth" | "ember" | "sage" | "dusk";
 
+// `shade` tints the shadows under tiles (as "r, g, b"), and `glow` is the
+// firelight behind the top of the Hearth — both chosen per theme so the
+// depth reads on light and dark Hearths alike.
 export const hearthThemes: Record<
   HearthThemeKey,
-  { label: string; background: string; text: string; muted: string; accent: string }
+  { label: string; background: string; text: string; muted: string; accent: string; shade: string; glow: string }
 > = {
-  hearth: { label: "Hearth", background: "#fbf7f2", text: "#222222", muted: "#777777", accent: "#8a5a3b" },
-  ember: { label: "Ember", background: "#fbefe4", text: "#3a2418", muted: "#8a6a58", accent: "#b0552d" },
-  sage: { label: "Sage", background: "#eef3ea", text: "#23301f", muted: "#6b7a64", accent: "#4f6b45" },
-  dusk: { label: "Dusk", background: "#2a2330", text: "#f4ece6", muted: "#b9adb4", accent: "#f0b98d" },
+  hearth: {
+    label: "Hearth",
+    background: "#fbf7f2",
+    text: "#222222",
+    muted: "#777777",
+    accent: "#8a5a3b",
+    shade: "74, 44, 22",
+    glow: "#f5b97c",
+  },
+  ember: {
+    label: "Ember",
+    background: "#fbefe4",
+    text: "#3a2418",
+    muted: "#8a6a58",
+    accent: "#b0552d",
+    shade: "110, 48, 20",
+    glow: "#f49a5c",
+  },
+  sage: {
+    label: "Sage",
+    background: "#eef3ea",
+    text: "#23301f",
+    muted: "#6b7a64",
+    accent: "#4f6b45",
+    shade: "38, 58, 32",
+    glow: "#d9e3a4",
+  },
+  dusk: {
+    label: "Dusk",
+    background: "#2a2330",
+    text: "#f4ece6",
+    muted: "#b9adb4",
+    accent: "#f0b98d",
+    shade: "0, 0, 0",
+    glow: "#f09a52",
+  },
 };
+
+// The soft, layered shadow that lifts Hearth tiles and widgets off the page
+// (CORE-008): a tight contact shadow plus a wide, gentle one, like light
+// from above. Dark themes need it stronger to show at all.
+export function tileShadow(themeKey: HearthThemeKey) {
+  const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
+  const k = themeKey === "dusk" ? 2.6 : 1;
+  const a = (alpha: number) => `rgba(${theme.shade}, ${Math.min(1, alpha * k).toFixed(3)})`;
+  return `0px 1px 2px ${a(0.08)}, 0px 6px 14px -2px ${a(0.1)}, 0px 18px 30px -14px ${a(0.16)}`;
+}
+
+// A thin lit edge along the top of a tile and a whisper of shade along its
+// bottom, drawn inside it, so it looks gently raised rather than flat.
+export const tileBevel = "inset 0px 1.5px 0px rgba(255, 255, 255, 0.55), inset 0px -2px 0px rgba(0, 0, 0, 0.04)";
 
 export const defaultHearthLayout: HearthLayout = {
   version: 2,

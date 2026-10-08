@@ -1,10 +1,11 @@
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { tap } from "../../lib/feedback";
 import {
@@ -22,6 +23,7 @@ import {
   removeItem,
   resizeItem,
   scopeItems,
+  tileShadow,
   updateItem,
   useHearthLayout,
   type HearthItem,
@@ -33,12 +35,13 @@ import {
 } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
 import { planBirthdays } from "../../lib/plan-birthdays";
+import { supabase } from "../../lib/supabase";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { touchesGuarded } from "../../lib/touch-guard";
 import { widgetKindInfo, type WidgetConfig } from "../../lib/widgets";
 import { Icon, IconBadge } from "../icon";
 import { Skeleton, Tap } from "../motion";
-import { TourTarget, useTourAutoStart } from "../tour";
+import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from "../tour";
 import { AddSheet } from "./add-sheet";
 import { GRID_GAP, HearthGrid } from "./hearth-grid";
 import { HollowFace } from "./hollow-face";
@@ -73,6 +76,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const [hollowOptions, setHollowOptions] = useState(false);
   const entering = useRef(false);
   const navigation = useNavigation();
+  const tourScroll = useTourScrollArea();
+  const unread = useUnreadCount(!scope, refreshKey);
 
   // The first time someone lands on their Hearth, show them around (CORE-026).
   useTourAutoStart("hearth", !scope && !isLoading && !error);
@@ -290,181 +295,201 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 
   return (
     <View style={[styles.fill, { backgroundColor: theme.background }]}>
-      <SafeAreaView style={[styles.fill, { backgroundColor: theme.background }]} edges={["top", "left", "right"]}>
+      <Firelight color={theme.glow} strength={layout.theme === "dusk" ? 0.34 : 0.26} />
+      <SafeAreaView style={styles.fill} edges={["top", "left", "right"]}>
         <StatusBar style={layout.theme === "dusk" ? "light" : "dark"} />
-        <ScrollView contentContainerStyle={styles.container} scrollEnabled={!dragging} keyboardShouldPersistTaps="handled">
-          {scope ? (
-            <Tap
-              onPress={() => router.back()}
-              hitSlop={12}
-              pressedScale={0.9}
-              style={[styles.back]}
-              accessibilityLabel="Back to the Hearth"
-            >
-              <Icon name="hearth" size={18} color={theme.accent} />
-              <Text style={{ color: theme.accent, fontSize: 16, fontWeight: "600" }}>Hearth</Text>
-            </Tap>
-          ) : null}
+        <TourScrollArea area={tourScroll.area}>
+          <ScrollView
+            ref={tourScroll.scrollRef as never}
+            {...tourScroll.scrollProps}
+            contentContainerStyle={styles.container}
+            scrollEnabled={!dragging}
+            keyboardShouldPersistTaps="handled"
+          >
+            {scope ? (
+              <Tap
+                onPress={() => router.back()}
+                hitSlop={12}
+                pressedScale={0.9}
+                style={[styles.back]}
+                accessibilityLabel="Back to the Hearth"
+              >
+                <Icon name="hearth" size={18} color={theme.accent} />
+                <Text style={{ color: theme.accent, fontSize: 16, fontWeight: "600" }}>Hearth</Text>
+              </Tap>
+            ) : null}
 
-          <View style={styles.header}>
-            <View style={[styles.titleRow]}>
-              {hollow ? (
-                <IconBadge
-                  name={hollow.look === "stump" ? "leaf" : "burrow"}
-                  size={40}
-                  color={deepColor(itemColor(hollow))}
-                  background={itemColor(hollow)}
-                />
-              ) : null}
-              <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-                {title}
-              </Text>
-            </View>
-            <View style={styles.headerButtons}>
-              {editing ? (
-                <Tap onPress={() => setAdding(true)} hitSlop={10} pressedScale={0.85} accessibilityLabel="Add">
-                  <Icon name="add" size={24} color={theme.accent} />
-                </Tap>
-              ) : null}
-              {!isEmpty ? (
-                <TourTarget id="hearth-edit">
-                  <Tap
-                    onPress={() => {
-                      tap();
-                      setEditing((e) => !e);
-                    }}
-                    hitSlop={10}
-                    style={[
-                      styles.editButton,
-                      { backgroundColor: editing ? theme.accent : "transparent", borderColor: theme.accent },
-                    ]}
-                  >
-                    <Text style={[styles.headerButton, { color: editing ? theme.background : theme.accent }]}>
-                      {editing ? "Done" : "Edit"}
-                    </Text>
+            <View style={styles.header}>
+              <View style={[styles.titleRow]}>
+                {hollow ? (
+                  <IconBadge
+                    name={hollow.look === "stump" ? "leaf" : "burrow"}
+                    size={40}
+                    color={deepColor(itemColor(hollow))}
+                    background={itemColor(hollow)}
+                  />
+                ) : null}
+                <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+                  {title}
+                </Text>
+              </View>
+              <View style={styles.headerButtons}>
+                {editing ? (
+                  <Tap onPress={() => setAdding(true)} hitSlop={10} pressedScale={0.85} accessibilityLabel="Add">
+                    <Icon name="add" size={24} color={theme.accent} />
                   </Tap>
-                </TourTarget>
-              ) : null}
-              {/* The Hearth's own settings are in the Settings tab. */}
-              {hollow ? (
-                <Tap
-                  onPress={() => setHollowOptions(true)}
-                  hitSlop={10}
-                  pressedScale={0.85}
-                  accessibilityLabel={`${hollow.name} settings`}
-                >
-                  <Icon name="settings" size={24} color={theme.accent} />
-                </Tap>
-              ) : null}
+                ) : null}
+                {!isEmpty ? (
+                  <TourTarget id="hearth-edit">
+                    <Tap
+                      onPress={() => {
+                        tap();
+                        setEditing((e) => !e);
+                      }}
+                      hitSlop={10}
+                      style={[
+                        styles.editButton,
+                        { backgroundColor: editing ? theme.accent : "transparent", borderColor: theme.accent },
+                      ]}
+                    >
+                      <Text style={[styles.headerButton, { color: editing ? theme.background : theme.accent }]}>
+                        {editing ? "Done" : "Edit"}
+                      </Text>
+                    </Tap>
+                  </TourTarget>
+                ) : null}
+                {scope ? null : (
+                  <TourTarget id="hearth-inbox">
+                    <InboxBell
+                      unread={unread}
+                      color={theme.accent}
+                      background={theme.background}
+                      onPress={() => router.push("/gift-nook/notifications")}
+                    />
+                  </TourTarget>
+                )}
+                {/* The Hearth's own settings are in the Settings tab. */}
+                {hollow ? (
+                  <Tap
+                    onPress={() => setHollowOptions(true)}
+                    hitSlop={10}
+                    pressedScale={0.85}
+                    accessibilityLabel={`${hollow.name} settings`}
+                  >
+                    <Icon name="settings" size={24} color={theme.accent} />
+                  </Tap>
+                ) : null}
+              </View>
             </View>
-          </View>
 
-          {editing ? (
-            <Animated.View
-              entering={FadeIn.duration(200)}
-              exiting={FadeOut.duration(150)}
-              style={[styles.hint, { backgroundColor: `${theme.accent}18` }]}
-            >
-              <Icon name="drag" size={18} color={theme.accent} />
-              <Text style={{ color: theme.text, flex: 1 }}>
-                {scope
-                  ? "Hold anything and drag it anywhere. Drag a corner to resize. Tap to customize or move it back to the Hearth."
-                  : "Hold anything and drag it anywhere — or onto a Hollow to put it inside. Drag a corner to resize. Tap to customize, or + to add."}
-              </Text>
-            </Animated.View>
-          ) : null}
-
-          <View onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
-            {error ? (
-              <View style={{ gap: 8 }}>
-                <Text style={{ color: "#c0392b" }}>Couldn't load your Hearth: {error}</Text>
-                <Tap onPress={reload} style={[styles.outlineButton, { borderColor: theme.accent }]}>
-                  <Text style={{ color: theme.accent, fontWeight: "600" }}>Try again</Text>
-                </Tap>
-              </View>
-            ) : isLoading ? (
-              <View style={styles.skeletons}>
-                {[0, 1, 2, 3].map((i) => (
-                  <Skeleton key={i} height={gridWidth ? (gridWidth - GRID_GAP) / 2 : 160} width="48%" radius={24} />
-                ))}
-              </View>
-            ) : isEmpty ? (
-              <Animated.View entering={FadeIn.duration(250)} style={[styles.emptyCard, { borderColor: theme.muted }]}>
-                <IconBadge name={scope ? "burrow" : "hearth"} size={72} color={theme.accent} background={`${theme.accent}1f`} />
-                <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                  {scope ? "Nothing in here yet" : "Make this place yours"}
-                </Text>
-                <Text style={{ color: theme.muted, textAlign: "center" }}>
+            {editing ? (
+              <Animated.View
+                entering={FadeIn.duration(200)}
+                exiting={FadeOut.duration(150)}
+                style={[styles.hint, { backgroundColor: `${theme.accent}18` }]}
+              >
+                <Icon name="drag" size={18} color={theme.accent} />
+                <Text style={{ color: theme.text, flex: 1 }}>
                   {scope
-                    ? "Add widgets or text here, or go back to your Hearth and drag Nooks and widgets onto this Hollow."
-                    : "Add a Nook from the Market, or a widget — a countdown, reminders, a note — and arrange it all however you like."}
+                    ? "Hold anything and drag it anywhere. Drag a corner to resize. Tap to customize or move it back to the Hearth."
+                    : "Hold anything and drag it anywhere — or onto a Hollow to put it inside. Drag a corner to resize. Tap to customize, or + to add."}
                 </Text>
-                <TourTarget id="hearth-add" style={{ alignSelf: "stretch" }}>
+              </Animated.View>
+            ) : null}
+
+            <View onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
+              {error ? (
+                <View style={{ gap: 8 }}>
+                  <Text style={{ color: "#c0392b" }}>Couldn't load your Hearth: {error}</Text>
+                  <Tap onPress={reload} style={[styles.outlineButton, { borderColor: theme.accent }]}>
+                    <Text style={{ color: theme.accent, fontWeight: "600" }}>Try again</Text>
+                  </Tap>
+                </View>
+              ) : isLoading ? (
+                <View style={styles.skeletons}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <Skeleton key={i} height={gridWidth ? (gridWidth - GRID_GAP) / 2 : 160} width="48%" radius={24} />
+                  ))}
+                </View>
+              ) : isEmpty ? (
+                <Animated.View entering={FadeIn.duration(250)} style={[styles.emptyCard, { borderColor: theme.muted }]}>
+                  <IconBadge name={scope ? "burrow" : "hearth"} size={72} color={theme.accent} background={`${theme.accent}1f`} />
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                    {scope ? "Nothing in here yet" : "Make this place yours"}
+                  </Text>
+                  <Text style={{ color: theme.muted, textAlign: "center" }}>
+                    {scope
+                      ? "Add widgets or text here, or go back to your Hearth and drag Nooks and widgets onto this Hollow."
+                      : "Add a Nook from the Market, or a widget — a countdown, reminders, a note — and arrange it all however you like."}
+                  </Text>
+                  <TourTarget id="hearth-add" style={{ alignSelf: "stretch" }}>
+                    <Tap style={[styles.addButton, { backgroundColor: theme.accent }]} onPress={() => setAdding(true)}>
+                      <Icon name="add" size={18} color={theme.background} />
+                      <Text style={[styles.addButtonText, { color: theme.background }]}>
+                        {scope ? "Add something" : "Add to your Hearth"}
+                      </Text>
+                    </Tap>
+                  </TourTarget>
+                  {scope ? null : (
+                    <TourTarget id="hearth-market" style={{ alignSelf: "stretch" }}>
+                      <Tap
+                        style={[styles.outlineButton, { borderColor: theme.accent }]}
+                        onPress={() => router.push("/market")}
+                      >
+                        <Icon name="market" size={18} color={theme.accent} />
+                        <Text style={{ color: theme.accent, fontWeight: "600" }}>Visit the Market</Text>
+                      </Tap>
+                    </TourTarget>
+                  )}
+                </Animated.View>
+              ) : (
+                <HearthGrid
+                  items={items}
+                  width={gridWidth}
+                  editing={editing}
+                  accent={theme.accent}
+                  shadow={tileShadow(layout.theme)}
+                  onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
+                  onResize={(id, w, h) => persistHere((inner) => resizeItem(inner, id, w, h))}
+                  onDropIntoHollow={
+                    scope
+                      ? undefined
+                      : (id, hollowId) => {
+                          tap("success");
+                          persist(moveToScope(layout, id, hollowId));
+                        }
+                  }
+                  onPressItem={onPressItem}
+                  onLongPress={() => setEditing(true)}
+                  onDraggingChange={setDragging}
+                  renderItem={renderItem}
+                />
+              )}
+            </View>
+
+            {!isEmpty && !isLoading ? (
+              <View style={[styles.footerRow, { marginTop: 8 }]}>
+                <TourTarget id="hearth-add" style={{ flex: 1 }}>
                   <Tap style={[styles.addButton, { backgroundColor: theme.accent }]} onPress={() => setAdding(true)}>
-                    <Icon name="add" size={18} color={theme.background} />
-                    <Text style={[styles.addButtonText, { color: theme.background }]}>
-                      {scope ? "Add something" : "Add to your Hearth"}
-                    </Text>
+                    <Icon name="widgets" size={18} color={theme.background} />
+                    <Text style={[styles.addButtonText, { color: theme.background }]}>Add</Text>
                   </Tap>
                 </TourTarget>
                 {scope ? null : (
-                  <TourTarget id="hearth-market" style={{ alignSelf: "stretch" }}>
+                  <TourTarget id="hearth-market" style={{ flex: 1 }}>
                     <Tap
                       style={[styles.outlineButton, { borderColor: theme.accent }]}
                       onPress={() => router.push("/market")}
                     >
                       <Icon name="market" size={18} color={theme.accent} />
-                      <Text style={{ color: theme.accent, fontWeight: "600" }}>Visit the Market</Text>
+                      <Text style={{ color: theme.accent, fontWeight: "600" }}>Market</Text>
                     </Tap>
                   </TourTarget>
                 )}
-              </Animated.View>
-            ) : (
-              <HearthGrid
-                items={items}
-                width={gridWidth}
-                editing={editing}
-                accent={theme.accent}
-                onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
-                onResize={(id, w, h) => persistHere((inner) => resizeItem(inner, id, w, h))}
-                onDropIntoHollow={
-                  scope
-                    ? undefined
-                    : (id, hollowId) => {
-                        tap("success");
-                        persist(moveToScope(layout, id, hollowId));
-                      }
-                }
-                onPressItem={onPressItem}
-                onLongPress={() => setEditing(true)}
-                onDraggingChange={setDragging}
-                renderItem={renderItem}
-              />
-            )}
-          </View>
-
-          {!isEmpty && !isLoading ? (
-            <View style={[styles.footerRow, { marginTop: 8 }]}>
-              <TourTarget id="hearth-add" style={{ flex: 1 }}>
-                <Tap style={[styles.addButton, { backgroundColor: theme.accent }]} onPress={() => setAdding(true)}>
-                  <Icon name="widgets" size={18} color={theme.background} />
-                  <Text style={[styles.addButtonText, { color: theme.background }]}>Add</Text>
-                </Tap>
-              </TourTarget>
-              {scope ? null : (
-                <TourTarget id="hearth-market" style={{ flex: 1 }}>
-                  <Tap
-                    style={[styles.outlineButton, { borderColor: theme.accent }]}
-                    onPress={() => router.push("/market")}
-                  >
-                    <Icon name="market" size={18} color={theme.accent} />
-                    <Text style={{ color: theme.accent, fontWeight: "600" }}>Market</Text>
-                  </Tap>
-                </TourTarget>
-              )}
-            </View>
-          ) : null}
-        </ScrollView>
+              </View>
+            ) : null}
+          </ScrollView>
+        </TourScrollArea>
       </SafeAreaView>
 
       {/* Sheets sit inside the screen (not system pop-ups) so opening another
@@ -533,8 +558,97 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   );
 }
 
+// How many unread notices are waiting, for the Hearth's inbox bell.
+function useUnreadCount(enabled: boolean, refreshKey: number) {
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .is("read_at", null)
+      .then(({ count }) => {
+        if (!cancelled) setUnread(count ?? 0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, refreshKey]);
+  return unread;
+}
+
+// The inbox, top right of the Hearth: a bell with a little count when
+// there's something new to look at.
+function InboxBell({
+  unread,
+  color,
+  background,
+  onPress,
+}: {
+  unread: number;
+  color: string;
+  background: string;
+  onPress: () => void;
+}) {
+  return (
+    <Tap
+      onPress={onPress}
+      hitSlop={10}
+      pressedScale={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={unread ? `Inbox, ${unread} unread` : "Inbox"}
+    >
+      <Icon name="bell" size={24} color={color} bounce={unread || undefined} />
+      {unread > 0 ? (
+        <Animated.View
+          key={unread}
+          entering={ZoomIn.springify().damping(12)}
+          style={[styles.badge, { borderColor: background }]}
+        >
+          <Text style={styles.badgeText}>{unread > 9 ? "9+" : unread}</Text>
+        </Animated.View>
+      ) : null}
+    </Tap>
+  );
+}
+
+// Warm light from the fire, glowing behind the top of the Hearth — gives
+// the page some depth instead of a flat color.
+function Firelight({ color, strength }: { color: string; strength: number }) {
+  const { width } = useWindowDimensions();
+  const height = Math.round(width * 1.1);
+  return (
+    <Svg width={width} height={height} style={styles.firelight} pointerEvents="none">
+      <Defs>
+        <RadialGradient id="firelight" cx="50%" cy="0%" rx="80%" ry="100%" fx="50%" fy="0%">
+          <Stop offset="0" stopColor={color} stopOpacity={strength} />
+          <Stop offset="0.55" stopColor={color} stopOpacity={strength * 0.35} />
+          <Stop offset="1" stopColor={color} stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Rect x={0} y={0} width={width} height={height} fill="url(#firelight)" />
+    </Svg>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  firelight: { position: "absolute", top: 0, left: 0 },
+  badge: {
+    position: "absolute",
+    top: -6,
+    right: -9,
+    minWidth: 19,
+    height: 19,
+    borderRadius: 10,
+    borderWidth: 2,
+    paddingHorizontal: 4,
+    backgroundColor: "#c2415a",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { color: "#ffffff", fontSize: 10.5, fontWeight: "800" },
   center: { alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
   container: { padding: PADDING, gap: 16, paddingBottom: 32 },
   back: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginTop: 4 },

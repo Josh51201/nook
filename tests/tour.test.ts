@@ -4,14 +4,16 @@ import {
   BUBBLE_MARGIN,
   HOLE_PADDING,
   holePath,
-  isOnScreen,
+  isWithin,
   placeBubble,
   resolveSteps,
+  revealOffset,
   tours,
   type TourStep,
 } from "../lib/tour";
 
 const phone = { width: 390, height: 844 };
+const phoneBounds = { x: 0, y: 0, ...phone };
 
 describe("resolveSteps", () => {
   const steps: TourStep[] = [
@@ -41,16 +43,53 @@ describe("resolveSteps", () => {
   });
 });
 
-describe("isOnScreen", () => {
+describe("isWithin", () => {
   it("accepts a target that's fully visible", () => {
-    expect(isOnScreen({ x: 20, y: 700, width: 100, height: 48 }, phone)).toBe(true);
+    expect(isWithin({ x: 20, y: 700, width: 100, height: 48 }, phoneBounds)).toBe(true);
   });
 
   it("rejects targets scrolled off screen, missing, or collapsed", () => {
-    expect(isOnScreen({ x: 20, y: 900, width: 100, height: 48 }, phone)).toBe(false);
-    expect(isOnScreen({ x: 20, y: -30, width: 100, height: 48 }, phone)).toBe(false);
-    expect(isOnScreen(null, phone)).toBe(false);
-    expect(isOnScreen({ x: 20, y: 20, width: 0, height: 0 }, phone)).toBe(false);
+    expect(isWithin({ x: 20, y: 900, width: 100, height: 48 }, phoneBounds)).toBe(false);
+    expect(isWithin({ x: 20, y: -30, width: 100, height: 48 }, phoneBounds)).toBe(false);
+    expect(isWithin(null, phoneBounds)).toBe(false);
+    expect(isWithin({ x: 20, y: 20, width: 0, height: 0 }, phoneBounds)).toBe(false);
+  });
+
+  it("treats a target hidden behind the tab bar as out of view", () => {
+    // The Hearth's list ends at the tab bar (y = 760); the Add button is under it.
+    const list = { x: 0, y: 60, width: 390, height: 700 };
+    expect(isWithin({ x: 20, y: 740, width: 170, height: 50 }, list)).toBe(false);
+  });
+});
+
+describe("revealOffset", () => {
+  const list = { x: 0, y: 60, width: 390, height: 700 };
+
+  it("leaves the list alone when the target is already comfortably in view", () => {
+    expect(revealOffset({ x: 20, y: 300, width: 170, height: 50 }, list, 0, 2000)).toBeNull();
+  });
+
+  it("scrolls down to an Add button below a full Hearth, bringing it to the middle", () => {
+    const addButton = { x: 20, y: 1500, width: 170, height: 50 };
+    const next = revealOffset(addButton, list, 0, 2000);
+    expect(next).toBe(1500 + 25 - (60 + 350));
+    // ...after which it's in view.
+    const moved = { ...addButton, y: addButton.y - next! };
+    expect(isWithin(moved, list)).toBe(true);
+  });
+
+  it("never scrolls past the end of the list", () => {
+    const next = revealOffset({ x: 20, y: 1900, width: 170, height: 50 }, list, 0, 2000);
+    expect(next).toBe(2000 - 700);
+  });
+
+  it("scrolls back up to something above the view, but never past the top", () => {
+    expect(revealOffset({ x: 300, y: 20, width: 60, height: 30 }, list, 900, 2000)).toBe(900 + 35 - 410);
+    expect(revealOffset({ x: 300, y: -200, width: 60, height: 30 }, list, 100, 2000)).toBe(0);
+  });
+
+  it("gives up (null) when the list can't move any closer", () => {
+    expect(revealOffset({ x: 20, y: 740, width: 170, height: 50 }, list, 1300, 2000)).toBeNull();
   });
 });
 

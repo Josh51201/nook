@@ -13,11 +13,12 @@ export type TourStep = {
   icon: IconName;
   title: string;
   body: string;
-  // A <TourTarget id> to point at. No target (or one that isn't on screen
-  // right now) shows the bubble in the middle of the screen.
+  // A <TourTarget id> to point at. If it's scrolled out of view, the tour
+  // scrolls to it first. No target (or one that can't be shown) puts the
+  // bubble in the middle of the screen.
   target?: string;
-  // Skip this step entirely when its target isn't on screen — e.g. the Edit
-  // button, which only exists once something is on the Hearth.
+  // Skip this step entirely when its target doesn't exist — e.g. the Edit
+  // button, which only appears once something is on the Hearth.
   optional?: boolean;
 };
 
@@ -27,6 +28,19 @@ export const tours: Record<TourKey, TourStep[]> = {
       icon: "hearth",
       title: "Welcome to your Hearth",
       body: "This is home — everything in Nook starts here. Here's a quick look around.",
+    },
+    {
+      icon: "bell",
+      target: "hearth-inbox",
+      title: "Your inbox",
+      body: "News from your Nooks lands here — a Gathering coming up, someone joining your Burrow. A little number shows when there's something new.",
+    },
+    {
+      icon: "drag",
+      target: "hearth-edit",
+      optional: true,
+      title: "Make it yours",
+      body: "Tap Edit, or hold anything, to drag it around, resize it from its corner, or drop it onto a Hollow.",
     },
     {
       icon: "add",
@@ -40,13 +54,6 @@ export const tours: Record<TourKey, TourStep[]> = {
       optional: true,
       title: "The Market",
       body: "Nooks live here — little apps like the Gift Nook. Add one and it shows up as a tile on your Hearth.",
-    },
-    {
-      icon: "drag",
-      target: "hearth-edit",
-      optional: true,
-      title: "Make it yours",
-      body: "Tap Edit, or hold anything, to drag it around, resize it from its corner, or drop it onto a Hollow.",
     },
     {
       icon: "burrow",
@@ -85,17 +92,38 @@ export const tours: Record<TourKey, TourStep[]> = {
 export type Rect = { x: number; y: number; width: number; height: number };
 export type Screen = { width: number; height: number };
 
-// The steps that will actually show, given which targets are on screen.
-export function resolveSteps(steps: TourStep[], onScreen: Set<string>): TourStep[] {
+// The steps that will actually show, given which targets exist right now.
+export function resolveSteps(steps: TourStep[], present: Set<string>): TourStep[] {
   return steps
-    .filter((step) => !step.optional || (step.target && onScreen.has(step.target)))
-    .map((step) => (step.target && !onScreen.has(step.target) ? { ...step, target: undefined } : step));
+    .filter((step) => !step.optional || (step.target && present.has(step.target)))
+    .map((step) => (step.target && !present.has(step.target) ? { ...step, target: undefined } : step));
 }
 
-// Is a measured target fully visible (and big enough to point at)?
-export function isOnScreen(rect: Rect | null | undefined, screen: Screen): rect is Rect {
+// Is a measured target fully inside `bounds` (the screen, or the visible
+// part of a scrolling list) and big enough to point at?
+export function isWithin(rect: Rect | null | undefined, bounds: Rect): rect is Rect {
   if (!rect || rect.width < 4 || rect.height < 4) return false;
-  return rect.x >= 0 && rect.y >= 0 && rect.x + rect.width <= screen.width && rect.y + rect.height <= screen.height;
+  return (
+    rect.x >= bounds.x &&
+    rect.y >= bounds.y &&
+    rect.x + rect.width <= bounds.x + bounds.width &&
+    rect.y + rect.height <= bounds.y + bounds.height
+  );
+}
+
+const REVEAL_MARGIN = 24;
+
+// Where to scroll a list so a target that's out of view sits in the middle
+// of it — or null if it's already comfortably in view (or the list can't
+// scroll any further toward it). `offset` is how far the list is scrolled
+// now; `contentHeight` is the full height of what's in it.
+export function revealOffset(target: Rect, viewport: Rect, offset: number, contentHeight: number): number | null {
+  const top = viewport.y + REVEAL_MARGIN;
+  const bottom = viewport.y + viewport.height - REVEAL_MARGIN;
+  if (target.y >= top && target.y + target.height <= bottom) return null;
+  const centered = offset + (target.y + target.height / 2) - (viewport.y + viewport.height / 2);
+  const next = Math.round(clamp(centered, 0, Math.max(0, contentHeight - viewport.height)));
+  return Math.abs(next - offset) < 1 ? null : next;
 }
 
 export const HOLE_PADDING = 8;

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { itemColor, nookLabel, type NookItem } from "../../lib/hearth";
+import { itemColor, nookLabel, tileBevel, type NookItem } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
 import { IconBadge } from "../icon";
 import { nookWidgets } from "./nook-widgets";
@@ -100,6 +100,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(0,0,0,0.06)",
+    boxShadow: tileBevel,
   },
   iconOnly: { padding: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
