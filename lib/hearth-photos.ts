@@ -42,10 +42,18 @@ export async function removePhotos(paths: string[]) {
   if (unique.length) await supabase.storage.from(BUCKET).remove(unique);
 }
 
+// Photos that scenes (CORE-052) that aren't showing still need. The Hearth
+// screen keeps this up to date, so they aren't cleaned up as unused.
+let keptForScenes = new Set<string>();
+export function keepPhotosForScenes(paths: string[]) {
+  keptForScenes = new Set(paths);
+}
+
 // Delete photos that nothing uses any more (a copied widget shares its
 // photos, so a photo is only deleted once no copy still shows it).
-export async function removeUnusedPhotos(candidates: string[], layout: Pick<HearthLayout, "wallpaper" | "items">) {
+export async function removeUnusedPhotos(candidates: string[], layout: Pick<HearthLayout, "wallpaper" | "items"> & { otherPages?: HearthLayout["otherPages"] }) {
   const used = photoPathsInUse(layout);
+  for (const path of keptForScenes) used.add(path);
   await removePhotos(candidates.filter((path) => !used.has(path)));
 }
 

@@ -20,7 +20,20 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAuth } from "../../lib/auth-context";
 import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type Corners, type TileShape, type Wallpaper } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
-import { removeUnusedPhotos } from "../../lib/hearth-photos";
+import { keepPhotosForScenes, removeUnusedPhotos } from "../../lib/hearth-photos";
+import {
+  defaultScenes,
+  removeScene,
+  renameScene,
+  saveScene,
+  sceneForNow,
+  scenePhotoPaths,
+  setSchedule,
+  switchScene,
+  type SceneSchedule,
+  type ScenesState,
+} from "../../lib/hearth-scenes";
+import { useNookSettings } from "../../lib/nook-settings";
 import { addEmptyPage, addPage, neighbourPage, removePage, renamePage, switchPage } from "../../lib/hearth-pages";
 import { foldItems, hiddenBy } from "../../lib/hearth-folds";
 import { allTags, hideTagged, tagMany } from "../../lib/hearth-tags";
@@ -87,6 +100,7 @@ import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { nookRadii } from "./tile-face";
 import { FindSheet } from "./find-sheet";
+import { ScenesSheet } from "./scenes-sheet";
 import { PagesSheet, PageStrip } from "./pages-sheet";
 import { ColorManySheet, MoveManySheet, SelectionBar, TagManySheet, type SelectionAction, type SelectionTarget } from "./selection";
 import { TagBar } from "./tag-bar";
@@ -121,6 +135,12 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   const [decorating, setDecorating] = useState(false);
   const [pagesOpen, setPagesOpen] = useState(false);
   const [finding, setFinding] = useState(false);
+  const [scenesOpen, setScenesOpen] = useState(false);
+  // Scenes (CORE-052) are kept in their own saved row.
+  const scenesStore = useNookSettings<ScenesState>("hearth-scenes", defaultScenes);
+  const scenes = scenesStore.settings;
+  const scenesReady = !scenesStore.isLoading && !scenesStore.error;
+  const lastAutoScene = useRef<string | null>(null);
   // Section dividers folded shut right now (CORE-064): just how it is drawn.
   const [folded, setFolded] = useState<string[]>([]);
   // Tags switched off right now (CORE-065): also just how it is drawn.
@@ -291,7 +311,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   const gridRef = useRef<View>(null);
   const reduceMotion = useReducedMotion();
 
-  const sheetOpen = adding || decorating || pagesOpen || finding || pickSheet !== null || optionsFor !== null || zoom !== null;
+  const sheetOpen = adding || decorating || pagesOpen || finding || scenesOpen || pickSheet !== null || optionsFor !== null || zoom !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -327,6 +347,76 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     setPagesOpen(false);
     save(changes).catch((saveError: Error) => Alert.alert("Couldn't change page", saveError.message));
   }
+  // Photos that other scenes still need must not be cleaned up.
+  useEffect(() => {
+    if (scenesReady) keepPhotosForScenes(scenePhotoPaths(scenes));
+  }, [scenesReady, scenes]);
+
+  // Swap in a scene: the Hearth you're leaving is stored back into its scene
+  // first, so nothing is lost (CORE-052).
+  async function useScene(id: string, automatic = false) {
+    if (!scenesReady || isLoading) return;
+    if (scenes.active === id) return;
+    const result = switchScene(scenes, layout, id);
+    if (!result) {
+      if (!automatic) {
+        Alert.alert("Can't switch yet", "You have the most scenes there can be. Remove one first, so this Hearth can be kept.");
+      }
+      return;
+    }
+    const before = scenes;
+    try {
+      // The scenes are written first, so the Hearth you're leaving is safe.
+      await scenesStore.update({ scenes: result.state.scenes, active: result.state.active });
+      await save({ ...result.show });
+    } catch (switchError) {
+      scenesStore.update({ scenes: before.scenes, active: before.active }).catch(() => {});
+      Alert.alert("Couldn't switch scenes", (switchError as Error).message);
+      return;
+    }
+    stopSelecting();
+    setFolded([]);
+    tap("success");
+    setScenesOpen(false);
+    settleToast();
+    const name = result.state.scenes.find((s) => s.id === id)?.name ?? "Scene";
+    const back = before.active;
+    showToast(
+      automatic ? `${name} is on` : `Switched to ${name}`,
+      back ? { label: "Switch back", run: () => (settleToast(), void useScene(back)) } : undefined,
+      5000
+    );
+  }
+
+  // A scene with a schedule switches on by itself when you open the Hearth
+  // in its time slot, once per change, so a scene you pick by hand stays.
+  useFocusEffect(
+    useCallback(() => {
+      if (scope || !scenesReady || isLoading || editing) return;
+      const match = sceneForNow(scenes, new Date());
+      if (!match) return;
+      if (match.id === scenes.active) {
+        lastAutoScene.current = match.id;
+        return;
+      }
+      if (lastAutoScene.current === match.id) return;
+      lastAutoScene.current = match.id;
+      void useScene(match.id, true);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [scope, scenesReady, isLoading, editing, scenes, layout])
+  );
+
+  function saveCurrentScene(name: string) {
+    const saved = saveScene(scenes, layout, name);
+    if (!saved) return Alert.alert("That's the most scenes", "Remove one to save another.");
+    tap("success");
+    scenesStore
+      .update({ scenes: saved.state.scenes, active: saved.state.active })
+      .catch((saveError: Error) => Alert.alert("Couldn't save the scene", saveError.message));
+  }
+  const changeScenes = (next: ScenesState) =>
+    scenesStore.update({ scenes: next.scenes, active: next.active }).catch((saveError: Error) => Alert.alert("Couldn't save that", saveError.message));
+
   // An item dropped on a page tab moves to that page; the "New page" tab
   // makes one first (CORE-051).
   function dropOnTab(item: HearthItem, tabId: string) {
@@ -1223,6 +1313,9 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
                           setPicked([]);
                         }}
                       />
+                      {scope ? null : (
+                        <Pill icon="sparkles" label="Scenes" accent={theme.accent} background={theme.background} onPress={() => setScenesOpen(true)} />
+                      )}
                       <Pill icon="tidy" label="Tidy up" accent={theme.accent} background={theme.background} onPress={tidyUp} />
                       {scope ? null : (
                         <Pill icon="search" label="Find" accent={theme.accent} background={theme.background} onPress={() => setFinding(true)} />
@@ -1546,6 +1639,24 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
           stopSelecting();
         }}
         onClose={() => setPickSheet(null)}
+      />
+
+      <ScenesSheet
+        visible={scenesOpen}
+        onClose={() => setScenesOpen(false)}
+        state={scenes}
+        ready={scenesReady}
+        onSave={saveCurrentScene}
+        onUse={(id) => void useScene(id)}
+        onRename={(id, name) => changeScenes(renameScene(scenes, id, name))}
+        onSchedule={(id, schedule: SceneSchedule | undefined) => changeScenes(setSchedule(scenes, id, schedule))}
+        onRemove={(id) => {
+          const scene = scenes.scenes.find((s) => s.id === id);
+          Alert.alert(`Remove “${scene?.name}”?`, "The Hearth you're looking at stays as it is.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Remove", style: "destructive", onPress: () => changeScenes(removeScene(scenes, id)) },
+          ]);
+        }}
       />
 
       <FindSheet visible={finding} onClose={() => setFinding(false)} layout={layout} onPick={goToFound} />
