@@ -16,6 +16,7 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 
 import { tap } from "../../lib/feedback";
+import { cornerRadius, liftLevel } from "../../lib/decor";
 import { COLUMNS, edgeScrollSpeed, minSize, rowsUsed, type GridRect, type HearthItem, type HollowItem } from "../../lib/hearth-layout";
 import { Icon } from "../icon";
 import { Tap, useWiggle } from "../motion";
@@ -57,8 +58,7 @@ export function HearthGrid({
   width,
   editing,
   accent,
-  shadow,
-  nookShadow,
+  shadowAt,
   dragScroll,
   onMove,
   onResize,
@@ -77,10 +77,9 @@ export function HearthGrid({
   width: number;
   editing: boolean;
   accent: string;
-  // The resting shadow under tiles and widgets (a CSS box-shadow), and the
-  // deeper one Nook tiles sit on.
-  shadow?: string;
-  nookShadow?: string;
+  // The resting shadow under tiles and widgets (a CSS box-shadow) at each
+  // level: 0 none, 1 widgets' usual, 2 Nook tiles' usual, 3 floating (CORE-042).
+  shadowAt?: (level: 0 | 1 | 2 | 3) => string | undefined;
   dragScroll: DragScroll;
   onMove: (id: string, x: number, y: number) => void;
   onResize: (id: string, w: number, h: number) => void;
@@ -198,7 +197,7 @@ export function HearthGrid({
           seed={index}
           active={activeId === item.id}
           accent={accent}
-          shadow={isRaised(item) ? (item.kind === "nook" ? nookShadow ?? shadow : shadow) : undefined}
+          shadow={isRaised(item) ? shadowAt?.(liftLevel(item.lift, item.kind === "nook")) : undefined}
           dragScroll={dragScroll}
           onPress={() => onPressItem(item)}
           onLongPress={onLongPress}
@@ -272,8 +271,11 @@ const ItemContent = memo(
 
 // The shadow follows the item's outline: Nook tiles are arched (CORE-036).
 function shadowShape(item: HearthItem, stride: number) {
+  const width = item.w * stride - GRID_GAP;
+  const height = item.h * stride - GRID_GAP;
+  if (item.kind === "widget") return { borderRadius: cornerRadius(item.corners, width, height) };
   if (item.kind !== "nook") return { borderRadius: 24 };
-  const { top, bottom } = nookRadii(item.w * stride - GRID_GAP, item.h * stride - GRID_GAP);
+  const { top, bottom } = nookRadii(width, height, item.corners);
   return {
     borderTopLeftRadius: top,
     borderTopRightRadius: top,
@@ -285,7 +287,9 @@ function shadowShape(item: HearthItem, stride: number) {
 // Text labels and see-through (outline) widgets float flat on the Hearth;
 // everything solid gets a shadow.
 function isRaised(item: HearthItem) {
-  if (item.kind === "label") return false;
+  if (item.kind === "label" || item.kind === "trinket") return false;
+  // A shadow you asked for is always drawn, even under an outline.
+  if (item.lift) return true;
   if (item.kind === "widget") return item.widget.look !== "outline";
   if (item.kind === "nook") return item.look !== "outline";
   return true;

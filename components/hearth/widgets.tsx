@@ -1,9 +1,12 @@
+import { Image } from "expo-image";
 import { useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Text } from "../text";
 import Animated, { FadeIn, FadeInRight, LinearTransition, ZoomIn } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
+import { cornerRadius, type Corners } from "../../lib/decor";
+import { usePhotoUrls } from "../../lib/hearth-photos";
 import { tap } from "../../lib/feedback";
 import { countdown, displayName, formatDate, gatheringKindInfo, type TuckStatus } from "../../lib/gift-nook";
 import { deepColor, tileBevel, tilePalette } from "../../lib/hearth-layout";
@@ -78,6 +81,8 @@ export function WidgetView({
   refreshKey,
   themeText,
   onChange,
+  corners,
+  border,
 }: {
   widget: WidgetConfig;
   color?: string;
@@ -89,7 +94,14 @@ export function WidgetView({
   themeText: string;
   // Lets interactive widgets (reminders) save changes, e.g. ticking an item.
   onChange?: (widget: WidgetConfig) => void;
+  // Shape tweaks (CORE-042): how round the corners are, and a border.
+  corners?: Corners;
+  border?: boolean;
 }) {
+  const radius = cornerRadius(corners, width, height);
+  if (widget.kind === "frame") {
+    return <PhotoFrame settings={widget.settings} width={width} height={height} radius={radius} />;
+  }
   const soft = color ?? tilePalette[0];
   const deep = deepColor(soft);
   const look = widget.look;
@@ -102,12 +114,13 @@ export function WidgetView({
     <View
       style={[
         styles.frame,
-        { width, height },
+        { width, height, borderRadius: radius },
         shape === "icon" && { padding: 8 },
         shape === "strip" && { paddingVertical: 10, paddingHorizontal: 14 },
         look === "bold" && { backgroundColor: deep, boxShadow: tileBevel },
         look === "soft" && { backgroundColor: soft, boxShadow: tileBevel },
         look === "outline" && { borderWidth: 2, borderColor: deep, backgroundColor: "transparent" },
+        border && look !== "outline" && { borderWidth: 2.5, borderColor: look === "bold" ? "rgba(255,255,255,0.6)" : deep },
       ]}
     >
       {showTitle ? (
@@ -167,6 +180,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <PetCare {...props} widget={widget} />;
     case "rhythms":
       return <Rhythms {...props} widget={widget} />;
+    case "frame":
+      return null; // drawn whole by PhotoFrame, above
   }
 }
 
@@ -1087,6 +1102,102 @@ function Rhythms({ widget, palette, refreshKey, height, shape, icon }: BodyProps
   );
 }
 
+// --- Photo frame (CORE-046) -----------------------------------------------------------
+
+const FRAMES = {
+  wood: { outer: "#8a5a3b", inner: "#5e3b22", highlight: "#b07a52" },
+  gold: { outer: "#d4a63c", inner: "#9a7418", highlight: "#f3d98a" },
+  white: { outer: "#fbf7f2", inner: "#d9d2c9", highlight: "#ffffff" },
+  polaroid: { outer: "#fdfbf7", inner: "#e4ddd3", highlight: "#ffffff" },
+} as const;
+
+// Your own pictures in a frame, one after another.
+function PhotoFrame({
+  settings,
+  width,
+  height,
+  radius,
+}: {
+  settings: WidgetOf<"frame">["settings"];
+  width: number;
+  height: number;
+  radius: number;
+}) {
+  const urls = usePhotoUrls(settings.photos);
+  const ready = settings.photos.filter((path) => urls.has(path));
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (ready.length < 2) return;
+    const timer = setInterval(() => setIndex((i) => i + 1), Math.max(3, settings.seconds) * 1000);
+    return () => clearInterval(timer);
+  }, [ready.length, settings.seconds]);
+
+  const uri = ready.length ? urls.get(ready[index % ready.length]) : undefined;
+  const style = settings.style;
+  const frame = style === "none" ? null : FRAMES[style];
+  const margin = Math.max(4, Math.min(14, Math.min(width, height) * 0.075));
+  const polaroid = style === "polaroid";
+  const bottom = polaroid ? Math.min(margin * 3.6, height * 0.28) : margin;
+  const innerRadius = frame ? Math.max(2, radius - margin) / (polaroid ? 4 : 2.5) : radius;
+
+  return (
+    <View
+      style={{
+        width,
+        height,
+        borderRadius: radius,
+        overflow: "hidden",
+        backgroundColor: frame?.outer ?? "transparent",
+        paddingTop: frame ? margin : 0,
+        paddingHorizontal: frame ? margin : 0,
+        paddingBottom: frame ? bottom : 0,
+        boxShadow: frame ? `${tileBevel}, inset 0px 0px 0px 1px ${frame.highlight}` : undefined,
+      }}
+    >
+      <View
+        style={{
+          flex: 1,
+          borderRadius: innerRadius,
+          overflow: "hidden",
+          backgroundColor: "rgba(120,100,90,0.14)",
+          borderWidth: frame ? 1.5 : 0,
+          borderColor: frame?.inner,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {uri ? (
+          <Image source={{ uri }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={700} />
+        ) : (
+          <View style={{ alignItems: "center", gap: 4, padding: 6 }}>
+            <Icon name="camera" size={Math.min(28, Math.min(width, height) * 0.3)} color="#8a7a70" />
+            {Math.min(width, height) > 110 ? (
+              <Text style={{ color: "#8a7a70", fontSize: 12, textAlign: "center" }} numberOfLines={2}>
+                {settings.photos.length ? "Loading your photos…" : "Tap Edit, then the frame, to add photos"}
+              </Text>
+            ) : null}
+          </View>
+        )}
+        {settings.caption && !polaroid && uri ? (
+          <View style={styles.captionPill}>
+            <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "700" }} numberOfLines={1}>
+              {settings.caption}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      {polaroid && settings.caption ? (
+        <View style={{ position: "absolute", left: margin, right: margin, bottom: 0, height: bottom, justifyContent: "center" }}>
+          <Text style={{ color: "#5b4f46", fontSize: Math.min(15, bottom * 0.5), fontWeight: "600", textAlign: "center" }} numberOfLines={1}>
+            {settings.caption}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 // --- Greeting -------------------------------------------------------------------
 
 function timeOfDay() {
@@ -1176,6 +1287,16 @@ function Greeting({ widget, palette, refreshKey, shape, height, width }: BodyPro
 }
 
 const styles = StyleSheet.create({
+  captionPill: {
+    position: "absolute",
+    left: 8,
+    bottom: 8,
+    maxWidth: "85%",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(40,30,24,0.55)",
+  },
   frame: { borderRadius: 24, padding: 14, overflow: "hidden" },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
   title: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6, flex: 1 },

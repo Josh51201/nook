@@ -1,9 +1,11 @@
+import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Switch, useWindowDimensions, View } from "react-native";
 import { Text, TextInput } from "../../components/text";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
+import { ColorPicker } from "../../components/hearth/color-picker";
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
 import { IconPicker } from "../../components/hearth/icon-picker";
 import { WidgetView } from "../../components/hearth/widgets";
@@ -12,12 +14,14 @@ import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
 import { DateField } from "../../components/date-field";
 import { Banner, Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
+import { useAuth } from "../../lib/auth-context";
+import { cornerChoices, liftChoices } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
+import { pickAndUploadPhoto, removeUnusedPhotos, usePhotoUrls } from "../../lib/hearth-photos";
 import { formatDate, gatheringKinds, type GatheringKind } from "../../lib/gift-nook";
 import {
   COLUMNS,
   copyItem,
-  deepColor,
   hearthThemes,
   hollowsOf,
   inScope,
@@ -26,7 +30,6 @@ import {
   removeItem,
   resizeItem,
   sizePresets,
-  tilePalette,
   updateItem,
   useHearthLayout,
   type Scope,
@@ -37,6 +40,9 @@ import { supabase } from "../../lib/supabase";
 import { colors, themed, ui, useTheme } from "../../lib/theme";
 import {
   describeSchedule,
+  frameStyles,
+  frameTimings,
+  MAX_FRAME_PHOTOS,
   newReminderId,
   widgetKindInfo,
   type Reminder,
@@ -102,7 +108,14 @@ export default function WidgetEditor() {
         next = { ...next, settings: { ...next.settings, items: synced } };
       }
       let items = inScope(layout, home, (inner) =>
-        updateItem(inner, draft.id, { widget: next, color: draft.color, icon: draft.icon } as Partial<WidgetItem>)
+        updateItem(inner, draft.id, {
+          widget: next,
+          color: draft.color,
+          icon: draft.icon,
+          corners: draft.corners,
+          lift: draft.lift,
+          border: draft.border,
+        } as Partial<WidgetItem>)
       );
       if (draft.w !== original.w || draft.h !== original.h) {
         items = inScope({ ...layout, items }, home, (inner) => resizeItem(inner, draft.id, draft.w, draft.h));
@@ -116,6 +129,11 @@ export default function WidgetEditor() {
       // Your Hearth updates instantly; the cloud save finishes in the
       // background, so closing never waits on the network.
       const pending = save({ items });
+      // Photos taken out of a frame are deleted once nothing else shows them.
+      if (next.kind === "frame" && original.widget.kind === "frame") {
+        const removed = original.widget.settings.photos.filter((path) => !(next as WidgetOf<"frame">).settings.photos.includes(path));
+        if (removed.length) pending.then(() => removeUnusedPhotos(removed, { ...layout, items })).catch(() => {});
+      }
       tap("success");
       if (copyId) router.replace({ pathname: "/widget/[id]", params: { id: copyId, copied: "1" } });
       else router.back();
@@ -177,6 +195,8 @@ export default function WidgetEditor() {
           height={draft.h * stride - GRID_GAP}
           refreshKey={0}
           themeText={theme.text}
+          corners={draft.corners}
+          border={draft.border}
           onChange={(changed) => setWidget(changed)}
         />
       </Animated.View>
@@ -233,35 +253,42 @@ export default function WidgetEditor() {
         ))}
       </View>
 
-      <Text style={ui.label}>Color</Text>
+      {widget.kind === "frame" ? null : (
+        <>
+          <Text style={ui.label}>Color</Text>
+          <ColorPicker value={draft.color} onChange={(color) => setDraft({ ...draft, color })} />
+        </>
+      )}
+
+      <Text style={ui.label}>Corners</Text>
       <View style={ui.chips}>
-        {tilePalette.map((color) => {
-          const selected = (draft.color ?? tilePalette[0]) === color;
-          return (
-            <Tap
-              key={color}
-              pressedScale={0.85}
-              onPress={() => {
-                tap();
-                setDraft({ ...draft, color });
-              }}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: widget.look === "bold" ? deepColor(color) : color,
-                borderWidth: selected ? 2.5 : 1,
-                borderColor: selected ? colors.bark : "rgba(0,0,0,0.08)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              accessibilityLabel={selected ? "Selected color" : "Pick this color"}
-            >
-              {selected ? <Icon name="check" size={18} color={widget.look === "bold" ? "#fff" : colors.bark} /> : null}
-            </Tap>
-          );
-        })}
+        {cornerChoices.map((c) => (
+          <Chip key={c.key} selected={(draft.corners ?? "soft") === c.key} onPress={() => setDraft({ ...draft, corners: c.key })}>
+            {c.label}
+          </Chip>
+        ))}
       </View>
+      <Text style={ui.label}>Shadow</Text>
+      <View style={ui.chips}>
+        {liftChoices.map((c) => (
+          <Chip key={c.key} selected={(draft.lift ?? "soft") === c.key} onPress={() => setDraft({ ...draft, lift: c.key })}>
+            {c.label}
+          </Chip>
+        ))}
+      </View>
+      {widget.kind === "frame" ? null : (
+        <>
+          <Text style={ui.label}>Border</Text>
+          <View style={ui.chips}>
+            <Chip selected={!draft.border} onPress={() => setDraft({ ...draft, border: false })}>
+              None
+            </Chip>
+            <Chip selected={Boolean(draft.border)} onPress={() => setDraft({ ...draft, border: true })}>
+              Outlined
+            </Chip>
+          </View>
+        </>
+      )}
 
       <Text style={ui.label}>Icon</Text>
       <IconPicker value={draft.icon} fallback={info.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
@@ -301,6 +328,93 @@ export default function WidgetEditor() {
       <Button title="Save" icon="check" onPress={() => saveWidget()} loading={isSaving} style={{ marginTop: 8 }} />
       <Button title="Remove widget" icon="trash" variant="danger" onPress={confirmRemove} />
     </NookScroll>
+  );
+}
+
+// --- Photo frame (CORE-046) ------------------------------------------------------------
+
+function FrameSettings({
+  widget,
+  setSettings,
+}: {
+  widget: WidgetOf<"frame">;
+  setSettings: (changes: Record<string, unknown>) => void;
+}) {
+  const { session } = useAuth();
+  const [uploading, setUploading] = useState(false);
+  const { photos, style, seconds, caption } = widget.settings;
+  const urls = usePhotoUrls(photos);
+
+  async function add() {
+    const userId = session?.user.id;
+    if (!userId || uploading || photos.length >= MAX_FRAME_PHOTOS) return;
+    setUploading(true);
+    const path = await pickAndUploadPhoto(userId);
+    setUploading(false);
+    if (path) setSettings({ photos: [...photos, path] });
+  }
+
+  return (
+    <>
+      <Text style={ui.label}>
+        Pictures ({photos.length}/{MAX_FRAME_PHOTOS})
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+        {photos.map((path) => (
+          <View key={path} style={{ width: 84, height: 84, borderRadius: 14, overflow: "hidden", backgroundColor: colors.barkSoft }}>
+            {urls.get(path) ? <Image source={{ uri: urls.get(path) }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : null}
+            <Tap
+              onPress={() => setSettings({ photos: photos.filter((p) => p !== path) })}
+              hitSlop={6}
+              style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }}
+              accessibilityLabel="Remove this picture"
+            >
+              <Icon name="close" size={12} color="#ffffff" />
+            </Tap>
+          </View>
+        ))}
+      </View>
+      <Button
+        title={photos.length ? "Add another picture" : "Add a picture"}
+        icon="camera"
+        variant="secondary"
+        onPress={add}
+        loading={uploading}
+        disabled={photos.length >= MAX_FRAME_PHOTOS}
+      />
+
+      <Text style={ui.label}>Frame</Text>
+      <View style={ui.chips}>
+        {frameStyles.map((f) => (
+          <Chip key={f.key} selected={style === f.key} onPress={() => setSettings({ style: f.key })}>
+            {f.label}
+          </Chip>
+        ))}
+      </View>
+
+      <Text style={ui.label}>Caption (optional)</Text>
+      <TextInput
+        style={ui.input}
+        value={caption}
+        onChangeText={(text) => setSettings({ caption: text.slice(0, 40) })}
+        placeholder={style === "polaroid" ? "e.g. Summer at the lake" : "e.g. Our family"}
+        placeholderTextColor={colors.muted}
+      />
+
+      {photos.length > 1 ? (
+        <>
+          <Text style={ui.label}>Change picture</Text>
+          <View style={ui.chips}>
+            {frameTimings.map((t) => (
+              <Chip key={t.seconds} selected={seconds === t.seconds} onPress={() => setSettings({ seconds: t.seconds })}>
+                {t.label}
+              </Chip>
+            ))}
+          </View>
+        </>
+      ) : null}
+      <Text style={ui.muted}>Your pictures are private to you. They're kept safe and only shown on your own Hearth.</Text>
+    </>
   );
 }
 
@@ -371,6 +485,8 @@ function KindSettings({
           <Text style={ui.muted}>Who still needs feeding today, and what's coming due at the vet, from your Pet Care Nook.</Text>
         </>
       );
+    case "frame":
+      return <FrameSettings widget={widget} setSettings={setSettings} />;
     case "rhythms":
       return (
         <>

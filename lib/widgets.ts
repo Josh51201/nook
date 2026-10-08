@@ -6,7 +6,7 @@ import type { GatheringKind } from "./gift-nook";
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms";
+export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "frame";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -25,6 +25,27 @@ export type Reminder = {
   notificationId?: string;
 };
 
+// The frame around a Photo frame widget's pictures (CORE-046).
+export type FrameStyle = "wood" | "gold" | "white" | "polaroid" | "none";
+
+export const frameStyles: { key: FrameStyle; label: string }[] = [
+  { key: "wood", label: "Wood" },
+  { key: "gold", label: "Gold" },
+  { key: "white", label: "White mat" },
+  { key: "polaroid", label: "Polaroid" },
+  { key: "none", label: "No frame" },
+];
+
+// How long each picture stays up, in seconds.
+export const frameTimings = [
+  { seconds: 6, label: "Quick" },
+  { seconds: 12, label: "Relaxed" },
+  { seconds: 30, label: "Slow" },
+];
+
+// At most this many pictures in one frame.
+export const MAX_FRAME_PHOTOS = 8;
+
 export type WidgetSettings = {
   countdown: {
     source: "next" | "gathering" | "custom";
@@ -42,6 +63,7 @@ export type WidgetSettings = {
   cards: { count: number };
   pets: { count: number };
   rhythms: { count: number; mineOnly: boolean };
+  frame: { photos: string[]; style: FrameStyle; seconds: number; caption: string };
 };
 
 export type WidgetConfig = {
@@ -75,6 +97,7 @@ export const widgetKinds: {
   { kind: "cards", label: "Card season", description: "Holiday cards left to send, from your Letterbox Nook.", icon: "mail", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "pets", label: "Pet care", description: "Who still needs feeding today and what's due at the vet, from your Pet Care Nook.", icon: "paw", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "rhythms", label: "Due soon", description: "Home chores overdue or coming up, from your Rhythms Nook.", icon: "rhythm", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "frame", label: "Photo frame", description: "Your own pictures in a frame, one after another.", icon: "camera", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 1, h: 1 } },
 ];
 
@@ -127,6 +150,8 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
       return { ...base, kind, settings: { count: 3 } };
     case "rhythms":
       return { ...base, kind, settings: { count: 3, mineOnly: false } };
+    case "frame":
+      return { ...base, kind, showTitle: false, settings: { photos: [], style: "wood", seconds: 12, caption: "" } };
   }
 }
 

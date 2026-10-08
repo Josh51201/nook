@@ -2,12 +2,14 @@ import { ScrollView, View } from "react-native";
 import { Text } from "../text";
 import Animated, { FadeIn } from "react-native-reanimated";
 
+import { trinkets, type TrinketKey } from "../../lib/trinkets";
 import { colors, ui } from "../../lib/theme";
 import { defaultWidget, widgetKinds, widgetTemplates, type WidgetConfig } from "../../lib/widgets";
 import { BottomSheet } from "../bottom-sheet";
 import { IconBadge, type IconName } from "../icon";
 import { Tap } from "../motion";
 import { SectionHeader } from "../ui";
+import { TrinketThumb } from "./trinket-art";
 
 // "Add to your Hearth": widgets (CORE-018), ready-made ideas, a text label
 // for designing your layout, a Hollow to organize things into (CORE-022),
@@ -20,6 +22,7 @@ export function AddSheet({
   onAddLabel,
   onOpenMarket,
   onAddHollow,
+  onAddTrinket,
   hollowName,
 }: {
   visible: boolean;
@@ -29,6 +32,8 @@ export function AddSheet({
   onOpenMarket: () => void;
   // Only on the Hearth itself.
   onAddHollow?: () => void;
+  // A decoration to scatter around (CORE-045).
+  onAddTrinket?: (piece: TrinketKey) => void;
   // Set when adding inside a Hollow.
   hollowName?: string;
 }) {
@@ -62,6 +67,29 @@ export function AddSheet({
           />
         ) : null}
         <Row icon="text" title="Text" subtitle="A title or heading to label part of this space" onPress={onAddLabel} index={2} />
+
+        {onAddTrinket ? (
+          <>
+            <SectionHeader title="Trinkets" icon="sparkles" />
+            <Text style={ui.muted}>Little decorations to make the place feel lived in. They can't be tapped; they just sit there being cozy.</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {trinkets.map((t) => (
+                <Tap
+                  key={t.key}
+                  onPress={() => onAddTrinket(t.key)}
+                  style={[ui.card, { width: "30.5%", alignItems: "center", gap: 6, paddingVertical: 12, paddingHorizontal: 6 }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${t.label}`}
+                >
+                  <TrinketThumb piece={t.key} color={t.color} size={52} />
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, textAlign: "center" }} numberOfLines={2}>
+                    {t.label}
+                  </Text>
+                </Tap>
+              ))}
+            </View>
+          </>
+        ) : null}
 
         <SectionHeader title="Widgets" icon="widgets" />
         {widgetKinds.map((kind, i) => (

@@ -1,33 +1,34 @@
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { Text, TextInput } from "../text";
-import Animated, { ZoomIn } from "react-native-reanimated";
 
+import { cornerChoices, liftChoices } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import {
-  deepColor,
   hollowDecors,
   hollowLookInfo,
   hollowLooks,
   itemColor,
   nookLabel,
   sizePresets,
-  tilePalette,
   type HearthItem,
   type HollowItem,
   type LabelItem,
   type NookItem,
   type Scope,
+  type TrinketItem,
 } from "../../lib/hearth";
+import { trinketInfo, trinkets } from "../../lib/trinkets";
 import { findNook } from "../../lib/nooks";
-import { colors, themed, ui } from "../../lib/theme";
+import { colors, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
-import { Icon, IconBadge } from "../icon";
-import { Tap } from "../motion";
+import { IconBadge } from "../icon";
 import { Button, Chip } from "../ui";
+import { ColorPicker } from "./color-picker";
 import { IconPicker } from "./icon-picker";
+import { TrinketThumb } from "./trinket-art";
 
-type Editable = NookItem | LabelItem | HollowItem;
+type Editable = NookItem | LabelItem | HollowItem | TrinketItem;
 
 export type MoveTarget = { scope: Scope; label: string };
 
@@ -71,11 +72,11 @@ export function ItemOptions({
 
   useEffect(() => {
     if (!item) return;
-    setText(item.kind === "nook" ? item.label ?? "" : item.kind === "hollow" ? item.name : item.text);
+    setText(item.kind === "nook" ? item.label ?? "" : item.kind === "hollow" ? item.name : item.kind === "trinket" ? "" : item.text);
   }, [item?.id]);
 
   function commitText() {
-    if (!item) return;
+    if (!item || item.kind === "trinket") return;
     if (item.kind === "nook") {
       const trimmed = text.trim();
       if (trimmed !== (item.label ?? "")) onChange({ label: trimmed || undefined } as Partial<NookItem>);
@@ -109,11 +110,19 @@ export function ItemOptions({
               />
             ) : shown.kind === "hollow" ? (
               <IconBadge name={hollowLookInfo(shown.look).icon} size={44} background={itemColor(shown)} />
+            ) : shown.kind === "trinket" ? (
+              <TrinketThumb piece={shown.piece} color={itemColor(shown)} size={44} />
             ) : (
               <IconBadge name="text" size={44} />
             )}
             <Text style={[ui.sectionTitle, { marginTop: 0, flex: 1 }]} numberOfLines={1}>
-              {shown.kind === "nook" ? nookLabel(shown) : shown.kind === "hollow" ? shown.name : "Text"}
+              {shown.kind === "nook"
+                ? nookLabel(shown)
+                : shown.kind === "hollow"
+                  ? shown.name
+                  : shown.kind === "trinket"
+                    ? trinketInfo(shown.piece).label
+                    : "Text"}
             </Text>
           </View>
         ) : null
@@ -125,18 +134,52 @@ export function ItemOptions({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={ui.label}>
-            {shown.kind === "nook" ? "Name on your Hearth" : shown.kind === "hollow" ? "Name" : "Words"}
-          </Text>
-          <TextInput
-            style={ui.input}
-            value={text}
-            onChangeText={setText}
-            onEndEditing={commitText}
-            placeholder={nook?.title ?? (shown.kind === "hollow" ? "e.g. Family stuff" : "e.g. Family")}
-            placeholderTextColor={colors.muted}
-            returnKeyType="done"
-          />
+          {shown.kind === "trinket" ? null : (
+            <>
+              <Text style={ui.label}>
+                {shown.kind === "nook" ? "Name on your Hearth" : shown.kind === "hollow" ? "Name" : "Words"}
+              </Text>
+              <TextInput
+                style={ui.input}
+                value={text}
+                onChangeText={setText}
+                onEndEditing={commitText}
+                placeholder={nook?.title ?? (shown.kind === "hollow" ? "e.g. Family stuff" : "e.g. Family")}
+                placeholderTextColor={colors.muted}
+                returnKeyType="done"
+              />
+            </>
+          )}
+
+          {shown.kind === "trinket" ? (
+            <>
+              <Text style={ui.label}>Which one</Text>
+              <View style={ui.chips}>
+                {trinkets.map((t) => (
+                  <Chip
+                    key={t.key}
+                    selected={shown.piece === t.key}
+                    onPress={() => onChange({
+                        piece: t.key,
+                        // Keep a color you picked; otherwise take the new piece's own.
+                        color: !shown.color || shown.color === trinketInfo(shown.piece).color ? t.color : shown.color,
+                      } as Partial<TrinketItem>)}
+                  >
+                    {t.label}
+                  </Chip>
+                ))}
+              </View>
+              <Text style={ui.label}>Facing</Text>
+              <View style={ui.chips}>
+                <Chip selected={!shown.flip} onPress={() => onChange({ flip: false } as Partial<TrinketItem>)}>
+                  As drawn
+                </Chip>
+                <Chip selected={Boolean(shown.flip)} onPress={() => onChange({ flip: true } as Partial<TrinketItem>)}>
+                  Flipped
+                </Chip>
+              </View>
+            </>
+          ) : null}
 
           {shown.kind === "hollow" ? (
             <>
@@ -236,31 +279,55 @@ export function ItemOptions({
           </View>
           <Text style={ui.muted}>Or drag the corner handle on the Hearth for any size.</Text>
 
-          <Text style={ui.label}>Color</Text>
-          <View style={ui.chips}>
-            {tilePalette.map((color) => {
-              const swatch = shown.kind === "label" ? deepColor(color) : color;
-              const selected = shown.kind === "label" ? shown.color === color : itemColor(shown) === color;
-              return (
-                <Tap
-                  key={color}
-                  pressedScale={0.85}
-                  onPress={() => {
-                    tap();
-                    onChange({ color });
-                  }}
-                  style={[styles.swatch, { backgroundColor: swatch }, selected && styles.swatchSelected]}
-                  accessibilityLabel={selected ? "Selected color" : "Pick this color"}
-                >
-                  {selected ? (
-                    <Animated.View entering={ZoomIn.duration(180)}>
-                      <Icon name="check" size={18} color={shown.kind === "label" ? "#ffffff" : colors.bark} />
-                    </Animated.View>
-                  ) : null}
-                </Tap>
-              );
-            })}
-          </View>
+          <Text style={ui.label}>{shown.kind === "trinket" ? "Main color" : "Color"}</Text>
+          <ColorPicker
+            value={shown.kind === "label" ? shown.color : itemColor(shown)}
+            onChange={(color) => onChange({ color })}
+            deep={shown.kind === "label"}
+            fallback={shown.kind === "label" ? "" : itemColor(shown)}
+          />
+
+          {shown.kind === "nook" || shown.kind === "hollow" ? (
+            <>
+              {shown.kind === "nook" ? (
+                <>
+                  <Text style={ui.label}>Corners</Text>
+                  <View style={ui.chips}>
+                    {cornerChoices.map((c) => (
+                      <Chip key={c.key} selected={(shown.corners ?? "soft") === c.key} onPress={() => onChange({ corners: c.key })}>
+                        {c.label}
+                      </Chip>
+                    ))}
+                  </View>
+                </>
+              ) : null}
+              <Text style={ui.label}>Shadow</Text>
+              <View style={ui.chips}>
+                {liftChoices.map((c) => (
+                  <Chip
+                    key={c.key}
+                    selected={(shown.lift ?? (shown.kind === "nook" ? "raised" : "soft")) === c.key}
+                    onPress={() => onChange({ lift: c.key })}
+                  >
+                    {c.label}
+                  </Chip>
+                ))}
+              </View>
+              {shown.kind === "nook" ? (
+                <>
+                  <Text style={ui.label}>Border</Text>
+                  <View style={ui.chips}>
+                    <Chip selected={!shown.border} onPress={() => onChange({ border: false })}>
+                      None
+                    </Chip>
+                    <Chip selected={Boolean(shown.border)} onPress={() => onChange({ border: true })}>
+                      Outlined
+                    </Chip>
+                  </View>
+                </>
+              ) : null}
+            </>
+          ) : null}
 
           {moveTargets.length && onMoveTo && shown.kind !== "hollow" ? (
             <>
@@ -312,7 +379,15 @@ export function ItemOptions({
             <Button title="Done" icon="check" style={{ flex: 1 }} onPress={close} />
           </View>
           <Button
-            title={shown.kind === "nook" ? "Remove from Hearth" : shown.kind === "hollow" ? "Remove this Hollow" : "Remove text"}
+            title={
+              shown.kind === "nook"
+                ? "Remove from Hearth"
+                : shown.kind === "hollow"
+                  ? "Remove this Hollow"
+                  : shown.kind === "trinket"
+                    ? "Remove this"
+                    : "Remove text"
+            }
             icon="trash"
             variant="danger"
             onPress={onRemove}
@@ -328,17 +403,3 @@ export function ItemOptions({
   );
 }
 
-const styles = themed(() =>
-  StyleSheet.create({
-    swatch: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: "rgba(0,0,0,0.08)",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    swatchSelected: { borderWidth: 2.5, borderColor: colors.bark },
-  })
-);

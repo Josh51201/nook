@@ -17,7 +17,11 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAuth } from "../../lib/auth-context";
+import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type Corners, type Wallpaper } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
+import { removeUnusedPhotos } from "../../lib/hearth-photos";
+import { trinketInfo, type TrinketKey } from "../../lib/trinkets";
 import { colors, useTheme } from "../../lib/theme";
 import {
   addItem,
@@ -40,7 +44,7 @@ import {
   removeItem,
   resizeItem,
   scopeItems,
-  tileShadow,
+  shadowAtLevel,
   updateItem,
   useHearthLayout,
   type HearthItem,
@@ -49,6 +53,7 @@ import {
   type LabelItem,
   type NookItem,
   type Scope,
+  type TrinketItem,
 } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
 import { planBirthdays } from "../../lib/plan-birthdays";
@@ -58,6 +63,10 @@ import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { touchesGuarded } from "../../lib/touch-guard";
 import { widgetKindInfo, type WidgetConfig } from "../../lib/widgets";
 import { Firelight, GlowVeil } from "../firelight";
+import { AmbienceLayer } from "./ambience";
+import { DecorateSheet } from "./decorate-sheet";
+import { TrinketArt } from "./trinket-art";
+import { WallpaperLayer } from "./wallpaper";
 import { Icon, IconBadge, type IconName } from "../icon";
 import { Skeleton, Tap } from "../motion";
 import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from "../tour";
@@ -93,6 +102,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const [gridWidth, setGridWidth] = useState(0);
   const [optionsFor, setOptionsFor] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [decorating, setDecorating] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [openingHollow, setOpeningHollow] = useState<string | null>(null);
@@ -102,6 +112,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const navigation = useNavigation();
   const tourScroll = useTourScrollArea();
   const { profile } = useMyProfile();
+  const { session } = useAuth();
   const insets = useSafeAreaInsets();
   const [barHeight, setBarHeight] = useState(0);
 
@@ -210,6 +221,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     color: string;
     icon: IconName;
     iconColor: string;
+    corners?: Corners;
     route: string;
     direction: "in" | "out";
     pushed: boolean;
@@ -219,7 +231,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const gridRef = useRef<View>(null);
   const reduceMotion = useReducedMotion();
 
-  const sheetOpen = adding || optionsFor !== null || zoom !== null;
+  const sheetOpen = adding || decorating || optionsFor !== null || zoom !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -268,6 +280,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         color: look === "bold" ? deep : look === "outline" ? theme.background : itemColor(item),
         icon: item.icon ?? nook.icon,
         iconColor: look === "bold" ? "#ffffff" : deep,
+        corners: item.corners,
         route,
         direction: "in",
         pushed: false,
@@ -392,6 +405,36 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     setOptionsFor(id); // name it and pick its look straight away
   }
 
+  // A Trinket (CORE-045): a little decoration, added and ready to customize.
+  function addTrinket(piece: TrinketKey) {
+    setAdding(false);
+    const info = trinketInfo(piece);
+    const id = newItemId("t");
+    persistHere((inner) => addItem(inner, { id, kind: "trinket", piece, color: info.color, ...info.size }));
+    tap("success");
+    setEditing(true);
+    setOptionsFor(id);
+  }
+
+  // Wallpaper for this space and ambience for the whole Hearth (CORE-041, 047).
+  // A photo that's no longer used anywhere is deleted from storage.
+  function changeWallpaper(next: Wallpaper | undefined) {
+    const previous = wallpaperPath(scope ? hollow?.wallpaper : layout.wallpaper);
+    const nextLayout: HearthLayout = scope
+      ? { ...layout, items: updateItem(layout, scope, { wallpaper: next } as Partial<HearthItem>) }
+      : { ...layout, wallpaper: next ?? { kind: "none" } };
+    const saving = scope ? save({ items: nextLayout.items }) : save({ wallpaper: nextLayout.wallpaper });
+    saving
+      .then(async () => {
+        if (previous) await removeUnusedPhotos([previous], nextLayout);
+      })
+      .catch((saveError: Error) => Alert.alert("Couldn't save that", saveError.message));
+  }
+
+  function changeAmbience(next: Ambience) {
+    save({ ambience: next }).catch((saveError: Error) => Alert.alert("Couldn't save that", saveError.message));
+  }
+
   // Clear the bottom message; anything thrown away is now gone for good.
   function settleToast() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -410,6 +453,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     if (item.kind === "widget") return item.widget.title || widgetKindInfo(item.widget.kind).label;
     if (item.kind === "nook") return nookLabel(item);
     if (item.kind === "hollow") return item.name;
+    if (item.kind === "trinket") return trinketInfo(item.piece).label;
     return item.text;
   }
 
@@ -453,6 +497,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     | NookItem
     | LabelItem
     | HollowItem
+    | TrinketItem
     | null;
 
   // Where the item in the options sheet could move to.
@@ -527,7 +572,21 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           {...size}
           refreshKey={refreshKey}
           themeText={theme.text}
+          corners={item.corners}
+          border={item.border}
           onChange={editing ? undefined : (widget) => changeWidget(item, widget)}
+        />
+      );
+    }
+    if (item.kind === "trinket") {
+      return (
+        <TrinketArt
+          piece={item.piece}
+          color={item.color ?? trinketInfo(item.piece).color}
+          flip={item.flip}
+          width={size.width}
+          height={size.height}
+          still={editing}
         />
       );
     }
@@ -564,9 +623,12 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   }
 
   const title = scope ? hollow?.name ?? "" : layout.title || "The Hearth";
+  const wallpaper = effectiveWallpaper(layout.wallpaper, hollow?.wallpaper, Boolean(scope));
+  const ambienceKind = activeAmbience(layout.ambience, new Date());
 
   return (
     <View style={[styles.fill, { backgroundColor: theme.background }]}>
+      <WallpaperLayer wallpaper={wallpaper} background={theme.background} dark={themeKey === "dusk"} />
       <Firelight variant="hearth" color={theme.glow} strength={themeKey === "dusk" ? 0.34 : 0.26} />
       <SafeAreaView style={styles.fill} edges={["top", "left", "right"]}>
         <StatusBar style={themeKey === "dusk" ? "light" : "dark"} />
@@ -679,6 +741,15 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                     ? "Hold anything and drag it anywhere, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."
                     : "Hold anything and drag it anywhere — onto a Hollow to put it inside, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."}
                 </Text>
+                <Tap
+                  onPress={() => setDecorating(true)}
+                  hitSlop={8}
+                  style={[styles.decorateButton, { backgroundColor: theme.accent }]}
+                  accessibilityLabel="Decorate"
+                >
+                  <Icon name="palette" size={14} color={theme.background} />
+                  <Text style={{ color: theme.background, fontWeight: "700", fontSize: 13 }}>Decorate</Text>
+                </Tap>
               </Animated.View>
             ) : null}
 
@@ -740,8 +811,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   width={gridWidth}
                   editing={editing}
                   accent={theme.accent}
-                  shadow={tileShadow(themeKey)}
-                nookShadow={tileShadow(themeKey, true)}
+                  shadowAt={(level) => shadowAtLevel(themeKey, level)}
                   onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
                   onResize={(id, w, h) => persistHere((inner) => resizeItem(inner, id, w, h))}
                   onDropIntoHollow={
@@ -790,6 +860,9 @@ export function HearthScreen({ scope }: { scope: Scope }) {
           </AnimatedScrollView>
         </TourScrollArea>
       </SafeAreaView>
+
+      {/* The weather in the air (CORE-047), paused while editing. */}
+      {ambienceKind && !editing && !zoom ? <AmbienceLayer kind={ambienceKind} /> : null}
 
       {/* The trash can, while dragging (CORE-040). */}
       {dragging ? (
@@ -856,7 +929,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         <NookZoom
           key={`${zoom.route}-${zoom.direction}`}
           rect={zoom.rect}
-          radii={nookRadii(zoom.rect.width, zoom.rect.height)}
+          radii={nookRadii(zoom.rect.width, zoom.rect.height, zoom.corners)}
           color={zoom.color}
           background={theme.background}
           icon={zoom.icon}
@@ -922,12 +995,25 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         />
       ) : null}
 
+      <DecorateSheet
+        visible={decorating}
+        onClose={() => setDecorating(false)}
+        userId={session?.user.id}
+        inHollow={Boolean(scope)}
+        hollowName={hollow?.name}
+        wallpaper={scope ? hollow?.wallpaper : layout.wallpaper}
+        onWallpaper={changeWallpaper}
+        ambience={layout.ambience}
+        onAmbience={changeAmbience}
+      />
+
       <AddSheet
         visible={adding}
         onClose={() => setAdding(false)}
         onAddWidget={addWidget}
         onAddLabel={addLabel}
         onAddHollow={scope ? undefined : addHollow}
+        onAddTrinket={addTrinket}
         hollowName={hollow?.name}
         onOpenMarket={() => {
           setAdding(false);
@@ -1041,6 +1127,7 @@ const styles = StyleSheet.create({
   headerButton: { fontSize: 15, fontWeight: "700" },
   editButton: { borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 5 },
   hint: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 16 },
+  decorateButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
   skeletons: { flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP },
   emptyCard: { alignItems: "center", gap: 10, padding: 24, borderWidth: 1, borderStyle: "dashed", borderRadius: 24 },
   emptyTitle: { fontSize: 19, fontWeight: "800" },

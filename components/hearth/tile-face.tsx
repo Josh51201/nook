@@ -12,6 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 
+import type { Corners } from "../../lib/decor";
 import { deepColor, itemColor, nookLabel, tileBevel, type NookItem } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
 import { IconBadge } from "../icon";
@@ -24,10 +25,14 @@ const MUTED = "#6f625a";
 // The arch of a Nook tile: a rounded top like an alcove, softer at the
 // bottom. Shared with the grid (for the shadow's shape) and the zoom into a
 // Nook (CORE-034/036).
-export function nookRadii(width: number, height: number) {
+export function nookRadii(width: number, height: number, corners?: Corners) {
   const short = Math.min(width, height);
   const top = Math.min(58, short * (short < 110 ? 0.42 : 0.32));
-  return { top, bottom: short < 110 ? 16 : 20 };
+  const bottom = short < 110 ? 16 : 20;
+  // Square: a barely-there arch. Round: a full dome and a soft base (CORE-042).
+  if (corners === "square") return { top: Math.min(top, 14), bottom: 8 };
+  if (corners === "round") return { top: Math.min(short / 2, top * 1.5), bottom: Math.min(short / 2, 32) };
+  return { top, bottom };
 }
 
 // A Nook tile (CORE-007/019/036). Nooks are the heart of the app, so they
@@ -57,7 +62,7 @@ export function TileFace({
   const icon = item.icon ?? nook?.icon ?? "category";
   const soft = itemColor(item);
   const look = item.look ?? "soft";
-  const { top, bottom } = nookRadii(width, height);
+  const { top, bottom } = nookRadii(width, height, item.corners);
 
   // Colors for this look. The deep color is the chosen color's partner, or
   // the Nook's own icon color if no color was picked.
@@ -84,6 +89,8 @@ export function TileFace({
     bold && { backgroundColor: tileDeep, boxShadow: tileBevel },
     look === "soft" && { backgroundColor: soft, boxShadow: tileBevel },
     outline && { borderWidth: 2, borderColor: tileDeep, backgroundColor: "transparent" },
+    // A border you asked for on a solid tile (CORE-042).
+    item.border && !outline && { borderWidth: 2.5, borderColor: bold ? "rgba(255,255,255,0.6)" : tileDeep },
   ];
   const widgetProps = { refreshKey, textColor: text, mutedColor: muted, accentColor: bold ? "#ffffff" : tileDeep };
 

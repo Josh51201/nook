@@ -1,5 +1,8 @@
 import type { IconName } from "../components/icon";
+import { deepOf } from "./colors";
+import { wallpaperPath, type Ambience, type Corners, type Lift, type Wallpaper } from "./decor";
 import { findNook } from "./nooks";
+import { trinketInfo, type TrinketKey } from "./trinkets";
 import { newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
 
 // Pure Hearth layout logic (no React/Supabase, so it's unit-testable).
@@ -17,7 +20,15 @@ export type GridRect = { x: number; y: number; w: number; h: number };
 
 // `icon` is a person's own pick for a tile or widget (CORE-030); when unset
 // it shows the Nook's or widget's usual icon.
-type ItemBase = GridRect & { id: string; color?: string; icon?: IconName };
+// `corners`, `lift` (shadow) and `border` are shape tweaks (CORE-042).
+type ItemBase = GridRect & {
+  id: string;
+  color?: string;
+  icon?: IconName;
+  corners?: Corners;
+  lift?: Lift;
+  border?: boolean;
+};
 
 // Nook tiles come in the same three looks as widgets (CORE-030).
 export type NookItem = ItemBase & { kind: "nook"; nookId: string; label?: string; look?: WidgetLook };
@@ -39,8 +50,13 @@ export type HollowItem = ItemBase & {
   name: string;
   look: HollowLook;
   decor?: HollowDecor;
+  // Its own wallpaper (CORE-041); none set means the Hearth's.
+  wallpaper?: Wallpaper;
   items: HearthItem[];
 };
+// A little decoration (CORE-045): can't be tapped, just there. Its `color` is
+// the main color of the drawing.
+export type TrinketItem = ItemBase & { kind: "trinket"; piece: TrinketKey; flip?: boolean };
 
 export const hollowLooks: { look: HollowLook; label: string; icon: IconName; color: string }[] = [
   { look: "house", label: "A little house", icon: "burrow", color: "#f6d9c4" },
@@ -59,7 +75,7 @@ export const hollowDecors: { decor: HollowDecor; label: string; icon: IconName }
   { decor: "snow", label: "Snowy", icon: "christmas" },
   { decor: "flowers", label: "Flowers", icon: "flower" },
 ];
-export type HearthItem = NookItem | WidgetItem | LabelItem | HollowItem;
+export type HearthItem = NookItem | WidgetItem | LabelItem | HollowItem | TrinketItem;
 
 export type HearthLayout = {
   version: 2;
@@ -69,6 +85,9 @@ export type HearthLayout = {
   followPhone: boolean;
   // The app's typeface (CORE-035).
   font: FontKey;
+  // Behind everything (CORE-041), and the weather in the air (CORE-047).
+  wallpaper: Wallpaper;
+  ambience: Ambience;
   items: HearthItem[];
 };
 
@@ -88,9 +107,12 @@ export const tilePalette = [
 ];
 const deepPalette = ["#8a5a3b", "#b0552d", "#9a7a1c", "#4f6b45", "#3f6a96", "#6a4f96", "#a3425f"];
 
+// The deep partner of a soft color: hand-picked for the seven classics,
+// worked out for any other color picked (CORE-042).
 export function deepColor(soft: string | undefined) {
   const index = tilePalette.indexOf(soft ?? "");
-  return deepPalette[index >= 0 ? index : 0];
+  if (index >= 0) return deepPalette[index];
+  return soft && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(soft) ? deepOf(soft) : deepPalette[0];
 }
 
 export type HearthThemeKey = "hearth" | "ember" | "sage" | "dusk";
@@ -145,9 +167,17 @@ export const hearthThemes: Record<
 // from above. Dark themes need it stronger to show at all.
 // Nook tiles (`raised`) sit a little higher than widgets (CORE-036).
 export function tileShadow(themeKey: HearthThemeKey, raised = false) {
+  return shadowAtLevel(themeKey, raised ? 2 : 1) as string;
+}
+
+// 0 = none, 1 = widgets' usual, 2 = Nook tiles' usual, 3 = floating high.
+export function shadowAtLevel(themeKey: HearthThemeKey, level: 0 | 1 | 2 | 3): string | undefined {
   const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
   const k = themeKey === "dusk" ? 2.6 : 1;
   const a = (alpha: number) => `rgba(${theme.shade}, ${Math.min(1, alpha * k).toFixed(3)})`;
+  if (level === 0) return undefined;
+  if (level === 3) return `0px 3px 5px ${a(0.12)}, 0px 18px 30px -6px ${a(0.2)}, 0px 40px 60px -20px ${a(0.32)}`;
+  const raised = level === 2;
   if (raised) return `0px 2px 3px ${a(0.1)}, 0px 10px 20px -4px ${a(0.15)}, 0px 26px 40px -16px ${a(0.24)}`;
   return `0px 1px 2px ${a(0.08)}, 0px 6px 14px -2px ${a(0.1)}, 0px 18px 30px -14px ${a(0.16)}`;
 }
@@ -162,6 +192,8 @@ export const defaultHearthLayout: HearthLayout = {
   theme: "hearth",
   followPhone: true,
   font: "classic",
+  wallpaper: { kind: "none" },
+  ambience: "off",
   items: [],
 };
 
@@ -190,6 +222,14 @@ export const sizePresets: Record<HearthItem["kind"], { label: string; w: number;
     { label: "Icon", w: 1, h: 1 },
     { label: "Small", w: 2, h: 2 },
     { label: "Wide", w: 4, h: 2 },
+    { label: "Large", w: 4, h: 3 },
+  ],
+  trinket: [
+    { label: "Tiny", w: 1, h: 1 },
+    { label: "Small", w: 2, h: 1 },
+    { label: "Medium", w: 2, h: 2 },
+    { label: "Tall", w: 1, h: 2 },
+    { label: "Wide", w: 4, h: 1 },
     { label: "Large", w: 4, h: 3 },
   ],
 };
@@ -290,9 +330,34 @@ export function addItem(
     | Omit<WidgetItem, "x" | "y">
     | Omit<LabelItem, "x" | "y">
     | Omit<HollowItem, "x" | "y">
+    | Omit<TrinketItem, "x" | "y">
 ): HearthItem[] {
   const spot = findFreeSpot(layout.items, item.w, item.h);
   return [...layout.items, { ...item, ...spot } as HearthItem];
+}
+
+// --- Photos (CORE-041, CORE-046) -------------------------------------------------------
+
+// Every photo the Hearth uses, wherever it is: the wallpapers (Hearth and
+// Hollows) and Photo frame widgets. A photo is only deleted from storage once
+// nothing in this set shows it.
+export function photoPathsInUse(layout: Pick<HearthLayout, "wallpaper" | "items">): Set<string> {
+  const used = new Set<string>();
+  const hearthPhoto = wallpaperPath(layout.wallpaper);
+  if (hearthPhoto) used.add(hearthPhoto);
+  const walk = (items: HearthItem[]) => {
+    for (const item of items) {
+      if (item.kind === "hollow") {
+        const own = wallpaperPath(item.wallpaper);
+        if (own) used.add(own);
+        walk(item.items);
+      } else if (item.kind === "widget" && item.widget.kind === "frame") {
+        for (const path of item.widget.settings.photos) used.add(path);
+      }
+    }
+  };
+  walk(layout.items);
+  return used;
 }
 
 // --- Nooks -------------------------------------------------------------------------
@@ -330,7 +395,7 @@ export function copyItem(layout: HearthLayout, id: string, to: Scope): { items: 
       id: newReminderId(),
     }));
   }
-  const copyId = newItemId(rest.kind === "nook" ? "n" : rest.kind === "widget" ? "w" : "l");
+  const copyId = newItemId(rest.kind === "nook" ? "n" : rest.kind === "widget" ? "w" : rest.kind === "trinket" ? "t" : "l");
   return { items: inScope(layout, to, (inner) => addItem(inner, { ...rest, id: copyId } as never)), copyId };
 }
 
@@ -345,10 +410,15 @@ export function nookLabel(item: NookItem) {
   return item.label?.trim() || findNook(item.nookId)?.title || "Nook";
 }
 
+function trinketColorFallback(item: TrinketItem) {
+  return trinketInfo(item.piece).color;
+}
+
 export function itemColor(item: HearthItem) {
   if (item.color) return item.color;
   if (item.kind === "hollow") return hollowLookInfo(item.look).color;
   if (item.kind === "nook") return findNook(item.nookId)?.color ?? tilePalette[0];
+  if (item.kind === "trinket") return trinketColorFallback(item);
   return tilePalette[0];
 }
 
@@ -366,6 +436,8 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
     theme: saved.theme ?? defaultHearthLayout.theme,
     followPhone: saved.followPhone ?? defaultHearthLayout.followPhone,
     font: saved.font ?? defaultHearthLayout.font,
+    wallpaper: saved.wallpaper ?? defaultHearthLayout.wallpaper,
+    ambience: saved.ambience ?? defaultHearthLayout.ambience,
   };
   // Saved settings are merged over defaults (items: []), so an old Hearth
   // shows up as "sections present, no items".
