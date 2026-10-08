@@ -44,6 +44,7 @@ export function ItemOptions({
   onChange,
   onResize,
   onOpen,
+  onDivider,
   onRemove,
   onClose,
   moveTargets = [],
@@ -55,6 +56,8 @@ export function ItemOptions({
   onChange: (changes: Partial<HearthItem>) => void;
   onResize: (w: number, h: number) => void;
   onOpen?: () => void;
+  // Make a text label a full-width fold-away divider, or a plain label again.
+  onDivider?: (on: boolean) => void;
   onRemove: () => void;
   onClose: () => void;
   // Places this item could move to (the Hearth, or other Hollows).
@@ -252,6 +255,15 @@ export function ItemOptions({
                   </Chip>
                 ))}
               </View>
+              {onDivider ? (
+                <View style={[ui.row, { justifyContent: "space-between" }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={ui.cardTitle}>Fold-away divider</Text>
+                    <Text style={ui.muted}>Tap it on your Hearth to fold away everything under it, down to the next divider.</Text>
+                  </View>
+                  <Switch value={Boolean(shown.divider)} onValueChange={onDivider} trackColor={{ true: colors.bark }} />
+                </View>
+              ) : null}
               <Text style={ui.label}>Line up</Text>
               <View style={ui.chips}>
                 {(["left", "center", "right"] as const).map((align) => (

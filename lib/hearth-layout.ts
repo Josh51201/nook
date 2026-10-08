@@ -48,6 +48,9 @@ export type LabelItem = ItemBase & {
   text: string;
   size: "title" | "heading" | "caption";
   align: "left" | "center" | "right";
+  // A full-width divider you can fold shut to hide the section under it
+  // (CORE-064).
+  divider?: boolean;
 };
 // A Hollow (CORE-022..024): a little place on the Hearth that you step
 // into. It holds its own grid of items. One level only: a Hollow never

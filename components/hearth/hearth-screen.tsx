@@ -22,6 +22,7 @@ import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type 
 import { tap } from "../../lib/feedback";
 import { removeUnusedPhotos } from "../../lib/hearth-photos";
 import { addEmptyPage, addPage, neighbourPage, removePage, renamePage, switchPage } from "../../lib/hearth-pages";
+import { foldItems, hiddenBy } from "../../lib/hearth-folds";
 import { stackMates, stackPosition, visibleItems as oneOfEachStack } from "../../lib/hearth-stacks";
 import type { FoundItem } from "../../lib/hearth-find";
 import { copyMany, lockMany, moveManyToPage, moveManyToScope, recolorMany, removeMany } from "../../lib/hearth-select";
@@ -118,6 +119,8 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   const [decorating, setDecorating] = useState(false);
   const [pagesOpen, setPagesOpen] = useState(false);
   const [finding, setFinding] = useState(false);
+  // Section dividers folded shut right now (CORE-064): just how it is drawn.
+  const [folded, setFolded] = useState<string[]>([]);
   // Dragging onto a page tab (CORE-051): where the tabs are, and which one
   // the dragged item is over.
   const tabRects = useSharedValue<{ id: string; x: number; y: number; w: number; h: number }[]>([]);
@@ -480,6 +483,11 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   function onPressItem(item: HearthItem) {
     // A checkbox inside a widget was just pressed; that's not an "open".
     if (touchesGuarded()) return;
+    if (item.kind === "label" && item.divider && !editing && !selecting) {
+      tap();
+      setFolded((prev) => (prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id]));
+      return;
+    }
     if (selecting) {
       tap();
       setPicked((prev) => (prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id]));
@@ -894,7 +902,9 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   // season, but stay (dimmed) while you're editing so you can find them.
   const today = new Date();
   const inSight = oneOfEachStack(items, stackShown);
-  const visibleItems = editing ? inSight : inSight.filter((item) => inSeason(item.showIn, today));
+  const inSeasonItems = editing ? inSight : inSight.filter((item) => inSeason(item.showIn, today));
+  // Folding only applies when you are looking, not designing.
+  const visibleItems = editing ? inSeasonItems : foldItems(inSeasonItems, folded);
 
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
     const inner = renderInner(item, size);
@@ -972,6 +982,25 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
       );
     }
     const fontSize = { title: 30, heading: 19, caption: 14 }[item.size];
+    if (item.divider) {
+      const isFolded = folded.includes(item.id) && !editing;
+      const hidden = hiddenBy(items, item.id);
+      const tint = item.color ? deepColor(item.color) : theme.text;
+      return (
+        <View style={[size, { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 4, paddingBottom: 4 }]}>
+          <Text numberOfLines={1} style={{ fontSize, fontWeight: "800", color: tint, flexShrink: 1 }}>
+            {item.text}
+          </Text>
+          <View style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: `${tint}33`, marginBottom: fontSize * 0.32 }} />
+          {isFolded && hidden ? (
+            <Text style={{ color: theme.muted, fontSize: 13, marginBottom: 1 }}>{hidden} hidden</Text>
+          ) : null}
+          <View style={{ transform: [{ rotate: isFolded ? "0deg" : "90deg" }], marginBottom: 1 }}>
+            <Icon name="chevron" size={16} color={tint} />
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={[size, { justifyContent: "flex-end", paddingHorizontal: 4, paddingBottom: 2 }]}>
         <Text
@@ -1411,6 +1440,17 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
                   setOpeningHollow(id);
                 }
               : undefined
+        }
+        onDivider={
+          optionsItem?.kind === "label"
+            ? (on) => {
+                const id = optionsItem.id;
+                persistHere((inner) => {
+                  const next = updateItem(inner, id, { divider: on || undefined } as Partial<HearthItem>);
+                  return on ? resizeItem({ ...inner, items: next }, id, COLUMNS, 1) : next;
+                });
+              }
+            : undefined
         }
         onRemove={() => {
           const item = optionsItem;
