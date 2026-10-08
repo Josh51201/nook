@@ -17,25 +17,54 @@ import { Button, Chip } from "../ui";
 export function PageStrip({
   pages,
   activeId,
+  accent,
+  text,
+  background,
   onSwitch,
 }: {
   pages: HearthPage[];
   activeId: string;
+  accent: string;
+  text: string;
+  background: string;
   onSwitch: (id: string) => void;
 }) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingBottom: 8 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      {pages.map((page) => (
-        <Chip key={page.id} selected={page.id === activeId} onPress={() => onSwitch(page.id)}>
-          {page.name}
-        </Chip>
-      ))}
-    </ScrollView>
+    // flexGrow 0: a scroll view would otherwise stretch to fill the screen.
+    <View style={{ flexGrow: 0, flexShrink: 0 }}>
+      <ScrollView
+        horizontal
+        style={{ flexGrow: 0 }}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingTop: 2, paddingBottom: 10, alignItems: "center" }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {pages.map((page) => {
+          const on = page.id === activeId;
+          return (
+            <Tap
+              key={page.id}
+              onPress={() => onSwitch(page.id)}
+              pressedScale={0.94}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: on ? accent : `${accent}14`,
+                borderWidth: 1,
+                borderColor: on ? accent : `${accent}33`,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: on ? "800" : "600", color: on ? background : text }} numberOfLines={1}>
+                {page.name}
+              </Text>
+            </Tap>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 

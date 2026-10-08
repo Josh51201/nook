@@ -955,7 +955,14 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         </View>
 
         {!scope && layout.pages.length > 1 ? (
-          <PageStrip pages={layout.pages} activeId={layout.activePage} onSwitch={goToPage} />
+          <PageStrip
+            pages={layout.pages}
+            activeId={layout.activePage}
+            accent={theme.accent}
+            text={theme.text}
+            background={theme.background}
+            onSwitch={goToPage}
+          />
         ) : null}
 
         <GestureDetector gesture={pageSwipe}>
