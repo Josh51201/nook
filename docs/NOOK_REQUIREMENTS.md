@@ -2,7 +2,7 @@
 
 _Fine print for built features is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 39)_
+_Last updated: 2026-10-08 (rev 40)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -67,6 +67,15 @@ Josh wants the Hearth to be truly one of a kind for anyone who puts in the time,
 - **CORE-057** A Window widget: a little window on the Hearth with the weather outside it. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_ Curtains removed 2026-10-08 (they looked wrong on wide or rectangular windows).
 - **CORE-058** Ambience that matches the weather outside. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-059** The Add sheet groups widgets into categories instead of one long list. _(Built 2026-10-08 (proposed details): From your Nooks, Lists & routines, Time & weather, Cozy touches; Ideas stay at the bottom. Which widget is in which group is one list in `lib/widgets.ts`.)_
+
+### Hearth organization, round three
+Josh wants every organization idea below ("I think all of them"). None are built yet; every detail is Claude's proposal until Josh confirms it. Pages, stacks and Scenes were already wanted (CORE-050..052).
+- **CORE-060** Select many: in Edit, tap to pick several tiles, widgets and Trinkets, then move, copy, Move to a Hollow, recolor or delete them together.
+- **CORE-061** Lock in place: pin an item so it can't be dragged, resized or deleted by accident; unlock it from its Edit sheet.
+- **CORE-062** Tidy up: one button closes gaps and lines things up, with an Undo.
+- **CORE-063** Find in Edit: a search box that highlights a widget or Nook and opens the Hollow it's in.
+- **CORE-064** Section dividers: a labelled divider you can fold shut to hide the band of the grid under it, until the next divider.
+- **CORE-065** Tags and filters: tag any item (e.g. Kids, Home, Gifts) and show or hide a tag with one tap.
 
 ## 1a. Accounts & Login
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.
@@ -175,4 +184,4 @@ Josh's stated priority, in order:
 3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).
 4. ~~**Pet Care Nook**~~ — built 2026-10-08 (section 2d).
 5. ~~**Rhythms Nook**~~ — built 2026-10-08 (section 2e).
-6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. Still to do: 048, 050, 051, 052, 054, 055 and the fireplace sound.
+6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. Still to do: 048, 050, 051, 052, 054, 055 and the fireplace sound. Organization round three (CORE-060..065) is wanted too; Claude suggests pages (051), stacks (050), then select-many (060).
