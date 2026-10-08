@@ -264,3 +264,19 @@ export function weeksAndDays(days: number) {
   if (!weeks) return plural(rest, "day");
   return rest ? `${plural(weeks, "week")} and ${plural(rest, "day")}` : plural(weeks, "week");
 }
+
+// --- Fitting lines into a tile ------------------------------------------------------
+
+// How many lines, in order, fit in `space` points with `gap` between them.
+// Used so tiles show as much as their size allows and never spill over.
+export function fitCount(heights: number[], space: number, gap: number) {
+  let used = 0;
+  let count = 0;
+  for (const height of heights) {
+    const need = (count ? gap : 0) + height;
+    if (used + need > space) break;
+    used += need;
+    count++;
+  }
+  return count;
+}

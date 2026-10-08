@@ -175,7 +175,11 @@ const isBig = (shape: WidgetShape) => shape === "wide" || shape === "tall" || sh
 // --- Shared building blocks -------------------------------------------------
 
 function Muted({ children, palette }: { children: ReactNode; palette: Palette }) {
-  return <Text style={[styles.small, { color: palette.muted }]}>{children}</Text>;
+  return (
+    <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+      {children}
+    </Text>
+  );
 }
 
 function Panel({ palette, children, style }: { palette: Palette; children: ReactNode; style?: StyleProp<ViewStyle> }) {
@@ -248,7 +252,9 @@ function Empty({ icon, palette, text }: { icon: IconName; palette: Palette; text
   return (
     <View style={[styles.centerFill, { gap: 6 }]}>
       <Icon name={icon} size={22} color={palette.muted} />
-      <Text style={[styles.small, { color: palette.muted, textAlign: "center" }]}>{text}</Text>
+      <Text style={[styles.small, { color: palette.muted, textAlign: "center" }]} numberOfLines={3}>
+        {text}
+      </Text>
     </View>
   );
 }
@@ -367,37 +373,57 @@ function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyPro
   }
 
   const Number = ({ size }: { size: number }) => (
-    <Text style={{ fontSize: size, fontWeight: "800", color: palette.text, letterSpacing: -1.5 }} numberOfLines={1}>
+    <Text
+      style={{ fontSize: size, fontWeight: "800", color: palette.text, letterSpacing: -1.5 }}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.5}
+    >
       {number}
     </Text>
   );
 
   if (shape === "wide") {
     const page = Math.min(height - 6, 110);
+    const number = Math.min(46, Math.max(26, height * 0.42));
     return (
       <Animated.View entering={FadeIn.duration(250)} style={[styles.row, { flex: 1, gap: 16 }]}>
         <CalendarPage date={when} palette={palette} size={page} />
         <View style={{ flex: 1, gap: 2 }}>
-          <Number size={46} />
-          <Text style={[styles.body, { color: palette.text }]} numberOfLines={2}>
+          <Number size={number} />
+          <Text style={[styles.body, { color: palette.text }]} numberOfLines={height > 110 ? 2 : 1}>
             {words}
           </Text>
-          <Muted palette={palette}>{fullDate}</Muted>
+          {height > 100 ? (
+            <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+              {fullDate}
+            </Text>
+          ) : null}
         </View>
       </Animated.View>
     );
   }
   if (shape === "tall" || shape === "large") {
+    // Shrink the calendar page and number to the room there is, so the words
+    // under them always fit.
     const big = shape === "large";
+    const showDate = big && height > 260;
+    const textRoom = 40 + (showDate ? 18 : 0);
+    const page = Math.max(60, Math.min(big ? 120 : 96, (height - textRoom) * 0.55));
+    const number = Math.max(28, Math.min(big ? 64 : 48, (height - textRoom) * 0.33));
     return (
-      <Animated.View entering={FadeIn.duration(250)} style={[styles.centerFill, { gap: 10 }]}>
-        <CalendarPage date={when} palette={palette} size={big ? 120 : 96} />
-        <View style={{ alignItems: "center" }}>
-          <Number size={big ? 64 : 48} />
+      <Animated.View entering={FadeIn.duration(250)} style={[styles.centerFill, { gap: 8 }]}>
+        <CalendarPage date={when} palette={palette} size={page} />
+        <View style={{ alignItems: "center", alignSelf: "stretch" }}>
+          <Number size={number} />
           <Text style={[styles.body, { color: palette.text, textAlign: "center" }]} numberOfLines={2}>
             {words}
           </Text>
-          {big ? <Muted palette={palette}>{fullDate}</Muted> : null}
+          {showDate ? (
+            <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+              {fullDate}
+            </Text>
+          ) : null}
         </View>
       </Animated.View>
     );
@@ -518,7 +544,8 @@ function Reminders({ widget, palette, height, shape, icon, onChange }: BodyProps
 
   const big = isBig(shape);
   const fit = rowsThatFit(height, big ? 34 : 30, big ? 74 : 52);
-  const shown = visible.slice(0, fit);
+  // Leave a row for "+N more" when not everything fits.
+  const shown = visible.slice(0, visible.length > fit ? Math.max(1, fit - 1) : fit);
   const list = (
     <View style={{ gap: big ? 6 : 4 }}>
       {shown.map((item) => (
@@ -701,6 +728,8 @@ function Note({ widget, palette, height, shape, icon }: BodyProps<"note">) {
         </View>
       ) : null}
       <Text
+        numberOfLines={Math.max(1, Math.floor((height - 4) / lineHeight))}
+        ellipsizeMode="tail"
         style={{
           color: text ? palette.text : palette.muted,
           fontSize,
@@ -865,7 +894,7 @@ function timeOfDay() {
   return { hello: "Good evening", icon: "moon" as IconName };
 }
 
-function Greeting({ widget, palette, refreshKey, shape }: BodyProps<"greeting">) {
+function Greeting({ widget, palette, refreshKey, shape, height, width }: BodyProps<"greeting">) {
   const { session } = useAuth();
   const { message, showName, showDate } = widget.settings;
   const [name, setName] = useState<string | null>(null);
@@ -906,20 +935,34 @@ function Greeting({ widget, palette, refreshKey, shape }: BodyProps<"greeting">)
     );
   }
   const row = shape === "wide" || shape === "large";
+  const badge = shape === "large" ? 64 : row ? 48 : Math.min(48, Math.max(30, height * 0.22));
+  const fontSize = shape === "small" || width < 200 ? 19 : 26;
+  // What the greeting itself takes; the message gets whatever's left.
+  const used = (row ? Math.max(badge, fontSize * 2.6) : badge + 10 + fontSize * 2.6) + (showDate ? 18 : 0);
+  const messageLines = Math.floor((height - used - 12 - 24) / 19);
   return (
     <View style={{ flex: 1, gap: 12, justifyContent: "center" }}>
       <View style={row ? [styles.row, { gap: 14 }] : { gap: 10 }}>
-        <IconBadge name={icon} size={shape === "large" ? 64 : 48} color={palette.deep} background="rgba(255,255,255,0.7)" />
+        <IconBadge name={icon} size={badge} color={palette.deep} background="rgba(255,255,255,0.7)" />
         <View style={{ flex: row ? 1 : undefined }}>
-          <Text style={{ fontSize: shape === "small" ? 20 : 26, fontWeight: "800", color: palette.text, letterSpacing: -0.4 }} numberOfLines={2}>
+          <Text
+            style={{ fontSize, fontWeight: "800", color: palette.text, letterSpacing: -0.4 }}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+          >
             {line}
           </Text>
-          {showDate ? <Muted palette={palette}>{date}</Muted> : null}
+          {showDate ? (
+            <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+              {date}
+            </Text>
+          ) : null}
         </View>
       </View>
-      {message ? (
+      {message && messageLines > 0 ? (
         <Panel palette={palette}>
-          <Text style={[styles.body, { color: palette.text }]} numberOfLines={4}>
+          <Text style={[styles.body, { color: palette.text, lineHeight: 19 }]} numberOfLines={Math.min(4, messageLines)}>
             {message}
           </Text>
         </Panel>

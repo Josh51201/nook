@@ -136,6 +136,9 @@ export function TileFace({
 
   const wide = item.w >= 3;
   const tall = item.h >= 3;
+  // The room left for the Nook's live info in each layout below, so it
+  // shows only what fits (padding, icon, name and panel taken off).
+  const PAD = 14;
 
   if (tall) {
     return (
@@ -148,13 +151,21 @@ export function TileFace({
               <Text style={[styles.title, { fontSize: 19, color: text }]} numberOfLines={1}>
                 {label}
               </Text>
-              <Text style={[styles.tagline, { color: muted }]}>{nook?.tagline}</Text>
+              <Text style={[styles.tagline, { color: muted }]} numberOfLines={1}>
+                {nook?.tagline}
+              </Text>
             </View>
           </View>
           {Widget ? (
             <View style={[styles.widgetArea, { backgroundColor: panel }]}>
-              <Text style={[styles.widgetLabel, { color: muted }]}>{widget.label}</Text>
-              <Widget size="large" {...widgetProps} />
+              <Text style={[styles.widgetLabel, { color: muted }]} numberOfLines={1}>
+                {widget.label}
+              </Text>
+              <Widget
+                size="large"
+                space={{ width: width - PAD * 2 - 24, height: height - 24 - PAD - 52 - 12 - 24 - 14 - 8 }}
+                {...widgetProps}
+              />
             </View>
           ) : null}
         </View>
@@ -172,9 +183,11 @@ export function TileFace({
             {label}
           </Text>
           {Widget ? (
-            <Widget size="wide" {...widgetProps} />
+            <Widget size="wide" space={{ width: width - 40 - 56 - 12, height: height - PAD * 2 - 21 - 4 }} {...widgetProps} />
           ) : (
-            <Text style={[styles.tagline, { color: muted }]}>{nook?.tagline}</Text>
+            <Text style={[styles.tagline, { color: muted }]} numberOfLines={2}>
+              {nook?.tagline}
+            </Text>
           )}
         </View>
       </View>
@@ -192,7 +205,7 @@ export function TileFace({
         </Text>
         {Widget ? (
           <View style={{ alignItems: "center", alignSelf: "stretch" }}>
-            <Widget size="small" {...widgetProps} />
+            <Widget size="small" space={{ width: width - PAD * 2, height: height - 20 - PAD - 50 - 8 - 21 - 1 }} {...widgetProps} />
           </View>
         ) : null}
       </View>
@@ -285,13 +298,14 @@ const styles = StyleSheet.create({
   },
   sheen: { position: "absolute", left: 0 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  title: { fontSize: 16, fontWeight: "800", color: TEXT },
+  title: { fontSize: 16, lineHeight: 21, fontWeight: "800", color: TEXT },
   tagline: { fontSize: 13, color: MUTED },
   widgetArea: {
     flex: 1,
     borderRadius: 16,
     padding: 12,
     gap: 8,
+    overflow: "hidden",
   },
-  widgetLabel: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6 },
+  widgetLabel: { fontSize: 11, lineHeight: 14, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6 },
 });

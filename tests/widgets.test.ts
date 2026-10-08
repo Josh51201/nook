@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { daysUntil, timeUntil, weekendsUntil, weeksAndDays } from "../lib/widgets";
+import { daysUntil, fitCount, timeUntil, weekendsUntil, weeksAndDays } from "../lib/widgets";
 
 // Wednesday, Dec 2 2026, 6:30 pm local.
 const now = new Date(2026, 11, 2, 18, 30, 0);
@@ -32,5 +32,17 @@ describe("countdown math", () => {
     expect(weeksAndDays(14)).toBe("2 weeks");
     expect(weeksAndDays(23)).toBe("3 weeks and 2 days");
     expect(weeksAndDays(8)).toBe("1 week and 1 day");
+  });
+});
+
+describe("fitting lines into a tile", () => {
+  it("keeps only the lines that fit, in order", () => {
+    expect(fitCount([21, 18, 18, 18], 60, 7)).toBe(2); // 21 + 7 + 18 = 46; one more needs 71
+    expect(fitCount([21, 18, 18, 18], 71, 7)).toBe(3);
+    expect(fitCount([21, 18], 500, 7)).toBe(2);
+  });
+  it("shows nothing rather than half a line", () => {
+    expect(fitCount([21], 20, 7)).toBe(0);
+    expect(fitCount([21], -5, 7)).toBe(0);
   });
 });
