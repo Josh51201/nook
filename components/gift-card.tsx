@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import type { ReactNode } from "react";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
+import { Text } from "./text";
 
 import {
   displayName,

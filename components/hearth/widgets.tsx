@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { Text } from "../text";
 import Animated, { FadeIn, FadeInRight, LinearTransition, ZoomIn } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";

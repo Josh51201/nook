@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "../../components/text";
 
 import { guarded } from "../../lib/feedback";
 import { Icon, type IconName } from "../../components/icon";

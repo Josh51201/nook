@@ -5,7 +5,7 @@ import {
   useRouter,
 } from "expo-router";
 import { useCallback, useState } from "react";
-import { Text } from "react-native";
+import { Text } from "../../../components/text";
 
 import { Avatar } from "../../../components/avatar";
 import { LoadingScreen } from "../../../components/motion";

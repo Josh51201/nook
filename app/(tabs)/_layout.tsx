@@ -1,6 +1,7 @@
 import { Redirect, Tabs } from "expo-router";
 import type { BottomTabBarProps } from "expo-router/tabs";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "../../components/text";
 import Animated, { useAnimatedStyle, withSpring } from "react-native-reanimated";
 
 import { Icon, type IconName } from "../../components/icon";
@@ -9,7 +10,7 @@ import { themedScreenLayout } from "../../components/themed-screen";
 import { TourProvider, TourTarget } from "../../components/tour";
 import { useAuth } from "../../lib/auth-context";
 import { tap } from "../../lib/feedback";
-import { colors, themed, useTheme } from "../../lib/theme";
+import { colors, headerFont, themed, useTheme } from "../../lib/theme";
 
 // CORE-025: the bar along the bottom of the app — the Hearth, Burrows
 // (families, shared by every Nook) and Settings. Nooks, Hollows and other
@@ -22,7 +23,7 @@ const headerOptions = themed(() => ({
   headerShown: true,
   headerStyle: { backgroundColor: colors.background },
   headerShadowVisible: false,
-  headerTitleStyle: { fontWeight: "700" as const, color: colors.text },
+  headerTitleStyle: { fontWeight: "700" as const, color: colors.text, ...headerFont(700) },
   headerTintColor: colors.bark,
 }));
 

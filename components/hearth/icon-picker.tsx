@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "../text";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { tap } from "../../lib/feedback";

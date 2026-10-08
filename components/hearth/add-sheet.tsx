@@ -1,4 +1,5 @@
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
+import { Text } from "../text";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { colors, ui } from "../../lib/theme";

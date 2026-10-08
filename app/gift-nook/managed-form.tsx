@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { View } from "react-native";
+import { Text, TextInput } from "../../components/text";
 
 import { NookScroll } from "../../components/nook-scroll";
 import { supabase } from "../../lib/supabase";

@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from "react";
 import { Appearance, Platform, StyleSheet } from "react-native";
 
+import { familyFor, type FontKey } from "./fonts";
+
 // The whole app wears your Hearth's theme (CORE-032): Hearth (cream and
 // bark), Ember, Sage, or Dusk (dark). With "Go dark with my phone" on, it
 // switches to Dusk whenever the phone is in dark mode.
@@ -11,6 +13,8 @@ import { Appearance, Platform, StyleSheet } from "react-native";
 // nothing is left showing the old colors.
 
 export type ThemeKey = "hearth" | "ember" | "sage" | "dusk";
+
+export type { FontKey } from "./fonts";
 
 type Palette = {
   dark: boolean;
@@ -150,12 +154,42 @@ export function themed<T extends object>(build: () => T): T {
   });
 }
 
+function bump() {
+  version += 1;
+  listeners.forEach((listener) => listener());
+}
+
 export function applyTheme(key: ThemeKey) {
   if (key === current) return;
   current = key;
   Object.assign(colors, palettes[key]);
-  version += 1;
-  listeners.forEach((listener) => listener());
+  bump();
+}
+
+// --- The live font (CORE-035) ------------------------------------------------
+// Custom fonts only switch on once they've loaded; until then everything
+// uses the phone's own font.
+let font: FontKey = "classic";
+let fontsReady = false;
+
+export function applyFont(key: FontKey) {
+  if (key === font) return;
+  font = key;
+  if (fontsReady) bump();
+}
+
+export function markFontsReady() {
+  if (fontsReady) return;
+  fontsReady = true;
+  if (font !== "classic") bump();
+}
+
+export function currentFont(): FontKey {
+  return fontsReady ? font : "classic";
+}
+
+export function fontsAreReady() {
+  return fontsReady;
 }
 
 function subscribe(listener: () => void) {
@@ -273,13 +307,20 @@ export const stackScreenOptions = themed(() => ({
   headerTintColor: colors.bark,
   headerStyle: { backgroundColor: colors.background },
   headerShadowVisible: false,
-  headerTitleStyle: { fontWeight: "700" as const, color: colors.text },
+  headerTitleStyle: { fontWeight: "700" as const, color: colors.text, ...headerFont(700) },
   headerLargeTitleShadowVisible: false,
-  headerLargeTitleStyle: { color: colors.text },
+  headerLargeTitleStyle: { color: colors.text, ...headerFont(800) },
   headerBackTitle: "Back",
   contentStyle: { backgroundColor: colors.background },
   animation: "ios_from_right" as const,
 }));
+
+// Screen titles in the chosen font (they're drawn by the system, outside
+// our Text).
+export function headerFont(weight: number) {
+  const family = familyFor(currentFont(), weight);
+  return family ? { fontFamily: family } : {};
+}
 
 // Big iPhone-style titles that shrink as you scroll (main screens only).
 export const largeTitle = { headerLargeTitle: Platform.OS === "ios" };

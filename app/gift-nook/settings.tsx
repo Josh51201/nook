@@ -1,4 +1,5 @@
-import { Alert, Switch, Text, View } from "react-native";
+import { Alert, Switch, View } from "react-native";
+import { Text } from "../../components/text";
 
 import { IconBadge, type IconName } from "../../components/icon";
 import { Appear, LoadingScreen } from "../../components/motion";

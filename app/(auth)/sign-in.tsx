@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, TextInput } from "react-native";
+import { StyleSheet } from "react-native";
+import { Text, TextInput } from "../../components/text";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 

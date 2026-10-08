@@ -1,7 +1,8 @@
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Platform, Text, TextInput, View } from "react-native";
+import { Platform, View } from "react-native";
+import { Text, TextInput } from "../../components/text";
 
 import { Icon } from "../../components/icon";
 import { Appear } from "../../components/motion";

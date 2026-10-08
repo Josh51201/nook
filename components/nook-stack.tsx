@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Text } from "react-native";
+import { Text } from "./text";
 
 import { colors, stackScreenOptions, ui } from "../lib/theme";
 import { Icon, type IconName } from "./icon";

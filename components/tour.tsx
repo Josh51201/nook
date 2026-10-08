@@ -11,16 +11,8 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import {
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
+import { StyleSheet, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent, type StyleProp, type ViewStyle } from "react-native";
+import { Text } from "./text";
 import Animated, {
   Easing,
   FadeIn,

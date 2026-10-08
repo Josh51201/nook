@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { Alert, View } from "react-native";
+import { Text, TextInput } from "../../components/text";
 
 import { Avatar } from "../../components/avatar";
 import { LoadingScreen } from "../../components/motion";

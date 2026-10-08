@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
+import { Text, TextInput } from "../../components/text";
 
 import { DateField } from "../../components/date-field";
 import { Icon } from "../../components/icon";

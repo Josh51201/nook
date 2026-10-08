@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Image, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Image, Switch, View } from "react-native";
+import { Text, TextInput } from "../../components/text";
 
 import { Icon } from "../../components/icon";
 import { NookScroll } from "../../components/nook-scroll";

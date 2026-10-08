@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Alert, View } from "react-native";
+import { Text } from "./text";
 
 import { friendlyError, tap } from "../lib/feedback";
 import { allergens, diets, type Needs } from "../lib/potluck";

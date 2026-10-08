@@ -1,7 +1,8 @@
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Switch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Switch, Text as PlainText, View } from "react-native";
+import { Text, TextInput } from "../../components/text";
 
 import { Avatar } from "../../components/avatar";
 import { Button, NavCard, SectionHeader } from "../../components/ui";
@@ -13,10 +14,11 @@ import {
   useHearthLayout,
   type HearthThemeKey,
 } from "../../lib/hearth";
+import { fontChoices, familyFor } from "../../lib/fonts";
 import { formatDate } from "../../lib/gift-nook";
 import { hasRealName, useMyProfile } from "../../lib/profile";
 import { supabase } from "../../lib/supabase";
-import { colors, ui } from "../../lib/theme";
+import { colors, fontsAreReady, ui } from "../../lib/theme";
 import { Tap } from "../../components/motion";
 
 // Settings tab (CORE-013/025): account-wide things — who you are, your name,
@@ -146,6 +148,40 @@ export default function HearthSettings() {
           <Text style={ui.muted}>
             Your theme dresses the whole app, not just the Hearth.
           </Text>
+          <Text style={ui.label}>Font</Text>
+          {fontChoices.map((choice) => {
+            const selected = layout.font === choice.key;
+            // Each sample is drawn in its own font, whatever's chosen now.
+            const family = (weight: number) =>
+              fontsAreReady() ? familyFor(choice.key, weight) ?? undefined : undefined;
+            return (
+              <Tap
+                key={choice.key}
+                onPress={() => saveHearthChanges({ font: choice.key })}
+                style={[
+                  ui.card,
+                  { gap: 2, borderWidth: selected ? 2 : undefined, borderColor: selected ? colors.bark : undefined },
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <PlainText
+                  style={{
+                    fontSize: 22,
+                    color: colors.text,
+                    fontFamily: family(800),
+                    fontWeight: family(800) ? "normal" : "800",
+                  }}
+                >
+                  Good evening
+                </PlainText>
+                <PlainText style={{ fontSize: 14, color: colors.muted, fontFamily: family(400) }}>
+                  {choice.label} · {choice.description}
+                </PlainText>
+              </Tap>
+            );
+          })}
+
           <View style={[ui.card, ui.row, { gap: 12 }]}>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={ui.cardTitle}>Go dark with my phone</Text>

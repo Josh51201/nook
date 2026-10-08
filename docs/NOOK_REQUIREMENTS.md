@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 27)_
+_Last updated: 2026-10-07 (rev 28)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -36,6 +36,7 @@ _Last updated: 2026-10-07 (rev 27)_
 - **CORE-032** Your Hearth theme dresses the whole app — every Nook, Burrows, Settings, sheets and pop-ups — not just the Hearth, and the app supports the phone's dark mode. _(Built (proposed details): Hearth, Ember and Sage are light, Dusk is dark; "Go dark with my phone" (on by default) switches to Dusk whenever the phone is in dark mode.)_
 - **CORE-033** Each Nook's home greets you with some of the Hearth's personality instead of opening straight onto a list. _(Built (proposed details): a header card in the Nook's own color with its icon glowing, a big faint copy of the icon in the corner, a headline about what's next ("Christmas in 12 days") and a few quick facts (gifts to get, what you're bringing, who's coming). The Burrows tab has one too.)_
 - **CORE-034** Opening a Nook from the Hearth feels like stepping into it, the way Hollows do. _(Built (proposed details): the tile grows to fill the screen, melting from its color into the Nook's background while its icon swells and fades, then the Nook fades in; coming back, it shrinks into the tile again. Skipped with Reduce Motion.)_
+- **CORE-035** A cozier font, chosen by Josh after comparing options. _(Built for comparing: Settings → Font offers Classic (the phone's own, still the default), Rounded (Nunito) and Storybook (Fraunces headings over Nunito), each previewed in its own font; the whole app — screen titles included — switches instantly. Which one becomes the default is up to Josh.)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
 ## 1a. Accounts & Login

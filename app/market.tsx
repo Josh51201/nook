@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
-import { Alert, Text, View } from "react-native";
+import { Alert, View } from "react-native";
+import { Text } from "../components/text";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { Icon, IconBadge } from "../components/icon";

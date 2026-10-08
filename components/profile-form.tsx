@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text, TextInput } from "./text";
 import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 
 import { tap } from "../lib/feedback";

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Text, TextInput } from "../text";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { tap } from "../../lib/feedback";

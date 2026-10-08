@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "../components/text";
 
 // Shown instead of crashing when .env hasn't been filled in yet (see .env.example).
 export default function SetupNeeded() {

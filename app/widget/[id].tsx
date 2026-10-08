@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Switch, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Alert, Switch, useWindowDimensions, View } from "react-native";
+import { Text, TextInput } from "../../components/text";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 import { GRID_GAP } from "../../components/hearth/hearth-grid";

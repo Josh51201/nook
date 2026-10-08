@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text, TextInput } from "./text";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { friendlyError } from "../lib/feedback";

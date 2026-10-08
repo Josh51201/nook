@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "../text";
 
 import { deepColor, itemColor, nookLabel, tileBevel, type NookItem } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";

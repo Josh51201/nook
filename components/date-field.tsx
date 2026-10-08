@@ -1,5 +1,6 @@
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
-import { Platform, Text, View } from "react-native";
+import { Platform, View } from "react-native";
+import { Text } from "./text";
 
 import { formatDate } from "../lib/gift-nook";
 import { colors, ui } from "../lib/theme";

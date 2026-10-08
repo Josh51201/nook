@@ -1,4 +1,5 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "./text";
 
 import { avatarColors, initialsOf } from "../lib/profile";
 import { Icon, type IconName } from "./icon";

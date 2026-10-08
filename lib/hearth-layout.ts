@@ -72,7 +72,8 @@ export type HearthLayout = {
   items: HearthItem[];
 };
 
-export type FontKey = "classic" | "rounded" | "storybook";
+export type { FontKey } from "./fonts";
+import type { FontKey } from "./fonts";
 
 // Soft tile colors that all work with dark text, each with a deep partner
 // for "bold" widgets and outlines.

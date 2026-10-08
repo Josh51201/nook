@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { ActivityIndicator, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { ActivityIndicator, View, type StyleProp, type ViewStyle } from "react-native";
+import { Text } from "./text";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { colors, themed, ui } from "../lib/theme";

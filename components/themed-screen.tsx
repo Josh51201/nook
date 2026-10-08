@@ -3,7 +3,7 @@ import { Fragment, useLayoutEffect, type ReactElement, type ReactNode } from "re
 import { useColorScheme } from "react-native";
 
 import { useHearthLayout } from "../lib/hearth";
-import { applyTheme, useTheme, type ThemeKey } from "../lib/theme";
+import { applyFont, applyTheme, useTheme, type ThemeKey } from "../lib/theme";
 
 // The theme the whole app should wear right now (CORE-032): your Hearth's
 // theme, or Dusk while the phone is in dark mode if "Go dark with my phone"
@@ -23,6 +23,9 @@ export function ThemeGate({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     applyTheme(key);
   }, [key]);
+  useLayoutEffect(() => {
+    applyFont(layout.font);
+  }, [layout.font]);
 
   return (
     <>

@@ -5,7 +5,8 @@ import {
   useRouter,
 } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Alert, View } from "react-native";
+import { Text } from "../../../components/text";
 
 import { guarded } from "../../../lib/feedback";
 import { Avatar } from "../../../components/avatar";

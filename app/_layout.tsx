@@ -1,4 +1,8 @@
+import * as Fraunces from "@expo-google-fonts/fraunces";
+import * as Nunito from "@expo-google-fonts/nunito";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -6,12 +10,24 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeGate, themedScreenLayout } from "../components/themed-screen";
 import { AuthProvider } from "../lib/auth-context";
 import { configureReminders } from "../lib/reminders";
-import { colors, stackScreenOptions, useTheme } from "../lib/theme";
+import { fontFiles } from "../lib/fonts";
+import { colors, markFontsReady, stackScreenOptions, useTheme } from "../lib/theme";
 
 // Let Hearth reminders show up even while Nook is open.
 configureReminders();
 
+// The font choices' files (CORE-035), by name.
+const fontSources = Object.fromEntries(
+  fontFiles.map((name) => [name, (Nunito as Record<string, unknown>)[name] ?? (Fraunces as Record<string, unknown>)[name]])
+) as Record<string, number>;
+
 export default function RootLayout() {
+  // Until these load (a moment at start-up), text uses the phone's own font.
+  const [fontsLoaded] = useFonts(fontSources);
+  useEffect(() => {
+    if (fontsLoaded) markFontsReady();
+  }, [fontsLoaded]);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
