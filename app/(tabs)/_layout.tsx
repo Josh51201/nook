@@ -39,7 +39,9 @@ export default function TabsLayout() {
         tabBar={(props) => <NookTabBar {...props} />}
         screenOptions={{
           headerShown: false,
-          animation: "fade",
+          // No fade between tabs: a fade interrupted by a quick second tap can
+          // stick at invisible and leave a blank page.
+          animation: "none",
           sceneStyle: { backgroundColor: colors.background },
         }}
       >

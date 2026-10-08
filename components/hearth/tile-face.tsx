@@ -73,6 +73,11 @@ export function TileFace({
   // room at the sides.
   const short = Math.min(width, height);
   const extra = shape === "window" ? short * 0.14 : shape === "door" ? short * 0.05 : 0;
+  // Window bars only suit a window that is roughly square; stretched into a
+  // wide or tall pill they'd cut straight through the writing.
+  const barsFit = Math.max(width, height) / Math.max(1, short) <= 1.5;
+  // Ids for the shared gradients must be unique per tile.
+  const gid = item.id.replace(/[^a-zA-Z0-9]/g, "");
 
   // Colors for this look. The deep color is the chosen color's partner, or
   // the Nook's own icon color if no color was picked.
@@ -106,7 +111,7 @@ export function TileFace({
 
   const decoration = (
     <>
-      <Lantern width={width} height={height} color={lantern} strength={bold ? 0.22 : outline ? 0.1 : 0.6} />
+      <Lantern id={gid} width={width} height={height} color={lantern} strength={bold ? 0.22 : outline ? 0.1 : 0.6} />
       <View
         pointerEvents="none"
         style={[
@@ -123,7 +128,7 @@ export function TileFace({
       {shape === "arch" ? (
         <View style={[styles.keystone, { backgroundColor: bold ? "rgba(255,255,255,0.55)" : tileDeep }]} />
       ) : null}
-      {shape === "window" ? (
+      {shape === "window" && barsFit ? (
         <>
           <View pointerEvents="none" style={[styles.mullionV, { backgroundColor: frameLine }]} />
           <View pointerEvents="none" style={[styles.mullionH, { backgroundColor: frameLine }]} />
@@ -143,7 +148,7 @@ export function TileFace({
           <View pointerEvents="none" style={[styles.grain, { top: "66%", backgroundColor: frameLine }]} />
         </>
       ) : null}
-      <Sheen width={width} height={height} seed={item.id} />
+      <Sheen id={gid} width={width} height={height} seed={item.id} />
     </>
   );
 
@@ -181,7 +186,7 @@ export function TileFace({
 
   if (tall) {
     return (
-      <View style={[frame, { paddingTop: 24, paddingHorizontal: 14 + extra }]}>
+      <View style={[frame, { paddingTop: 24 + extra * 0.6, paddingHorizontal: 14 + extra }]}>
         {decoration}
         <View style={{ flex: 1, gap: 12 }}>
           <View style={[styles.row, { paddingHorizontal: 6 }]}>
@@ -253,23 +258,23 @@ export function TileFace({
 }
 
 // Lantern light glowing down from the top of the arch.
-function Lantern({ width, height, color, strength }: { width: number; height: number; color: string; strength: number }) {
+function Lantern({ id, width, height, color, strength }: { id: string; width: number; height: number; color: string; strength: number }) {
   return (
     <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
-        <RadialGradient id="lantern" cx="50%" cy="0%" rx="70%" ry="62%" fx="50%" fy="0%">
+        <RadialGradient id={`lantern${id}`} cx="50%" cy="0%" rx="70%" ry="62%" fx="50%" fy="0%">
           <Stop offset="0" stopColor={color} stopOpacity={strength} />
           <Stop offset="1" stopColor={color} stopOpacity={0} />
         </RadialGradient>
       </Defs>
-      <Rect x={0} y={0} width={width} height={height} fill="url(#lantern)" />
+      <Rect x={0} y={0} width={width} height={height} fill={`url(#lantern${id})`} />
     </Svg>
   );
 }
 
 // Every so often a soft band of light drifts across the tile. Each tile
 // starts at its own moment (from its id), so they never shimmer in unison.
-function Sheen({ width, height, seed }: { width: number; height: number; seed: string }) {
+function Sheen({ id, width, height, seed }: { id: string; width: number; height: number; seed: string }) {
   const reduceMotion = useReducedMotion();
   const p = useSharedValue(0);
   const delay = useMemo(() => {
@@ -303,13 +308,13 @@ function Sheen({ width, height, seed }: { width: number; height: number; seed: s
     <Animated.View pointerEvents="none" style={[styles.sheen, { width: band, height: height * 1.8, top: -height * 0.4 }, style]}>
       <Svg width={band} height={height * 1.8}>
         <Defs>
-          <LinearGradient id="sheen" x1="0" y1="0" x2="1" y2="0">
+          <LinearGradient id={`sheen${id}`} x1="0" y1="0" x2="1" y2="0">
             <Stop offset="0" stopColor="#ffffff" stopOpacity={0} />
             <Stop offset="0.5" stopColor="#ffffff" stopOpacity={0.28} />
             <Stop offset="1" stopColor="#ffffff" stopOpacity={0} />
           </LinearGradient>
         </Defs>
-        <Rect x={0} y={0} width={band} height={height * 1.8} fill="url(#sheen)" />
+        <Rect x={0} y={0} width={band} height={height * 1.8} fill={`url(#sheen${id})`} />
       </Svg>
     </Animated.View>
   );

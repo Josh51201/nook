@@ -570,7 +570,19 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   }
 
   function renderInner(item: HearthItem, size: { width: number; height: number }) {
-    if (item.kind === "nook") return <TileFace item={item} {...size} refreshKey={refreshKey} themeText={theme.text} />;
+    // Keyed by the look of its shape, so changing the shape rebuilds the whole
+    // tile (its clipping and decoration) rather than patching it in place.
+    if (item.kind === "nook") {
+      return (
+        <TileFace
+          key={`${item.shape ?? "arch"}-${item.corners ?? "soft"}`}
+          item={item}
+          {...size}
+          refreshKey={refreshKey}
+          themeText={theme.text}
+        />
+      );
+    }
     if (item.kind === "hollow") {
       return (
         <HollowFace
