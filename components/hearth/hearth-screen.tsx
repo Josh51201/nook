@@ -1,10 +1,20 @@
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { Text } from "../text";
 import { ScrollView } from "react-native-gesture-handler";
-import Animated, { FadeIn, FadeOut, ZoomIn, useReducedMotion, useSharedValue } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  ZoomIn,
+  scrollTo,
+  useAnimatedRef,
+  useFrameCallback,
+  useReducedMotion,
+  useScrollOffset,
+  useSharedValue,
+} from "react-native-reanimated";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { tap } from "../../lib/feedback";
@@ -61,6 +71,7 @@ import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WidgetView } from "./widgets";
 
 const PADDING = 20;
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 // One screen for the Hearth and for the inside of every Hollow
 // (CORE-002/003/006-010/018/019/022-024). `scope` is null for the Hearth, or
@@ -98,7 +109,14 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   // bottom of the screen and the page scrolls along with it. The grid
   // reports how fast (onEdge); this runs the scrolling frame by frame and
   // tells dragged items how far the page has moved.
-  const scrollY = useSharedValue(0);
+  // The page is scrolled on the UI thread, in step with the dragged item, so
+  // the item doesn't bounce against it: the frame callback below moves the
+  // page, and the item follows the page's real offset.
+  const scrollView = useAnimatedRef<Animated.ScrollView>();
+  const scrollY = useScrollOffset(scrollView);
+  const edgeSpeed = useSharedValue(0);
+  const viewHeight = useSharedValue(0);
+  const contentHeight = useSharedValue(0);
   const viewTop = useSharedValue(0);
   const viewBottom = useSharedValue(0);
   // The trash can while dragging (CORE-040): where it is, whether something
@@ -115,55 +133,44 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const gridTop = useRef(0);
   // Reminder alerts are only cancelled once the chance to undo has passed.
   const pendingCancel = useRef<(() => void) | null>(null);
-  const viewHeight = useRef(0);
-  const edgeSpeed = useRef(0);
-  const frame = useRef<number | null>(null);
   const draggingNow = useRef(false);
 
   const measureViewport = useCallback(() => {
     tourScroll.area.viewport.current?.measureInWindow((_x, y, _width, height) => {
       viewTop.value = y;
       viewBottom.value = y + height;
-      viewHeight.current = height;
+      viewHeight.value = height;
     });
-  }, [tourScroll.area.viewport, viewTop, viewBottom]);
+  }, [tourScroll.area.viewport, viewTop, viewBottom, viewHeight]);
 
   const setEdge = useCallback(
     (speed: number) => {
-      edgeSpeed.current = speed;
-      if (speed === 0 || frame.current !== null) return;
-      // Speeds are "pixels per 60 Hz frame"; scale by the real time between
-      // frames so the page glides at the same pace however busy the phone is.
-      let last = 0;
-      const tick = (now: number) => {
-        const dt = last ? Math.min(48, now - last) : 16.7;
-        last = now;
-        if (!edgeSpeed.current) {
-          frame.current = null;
-          return;
-        }
-        const step = (edgeSpeed.current * dt) / 16.7;
-        const metrics = tourScroll.area.metrics.current;
-        const max = Math.max(0, metrics.content - viewHeight.current);
-        const next = Math.min(max, Math.max(0, metrics.offset + step));
-        if (next !== metrics.offset) {
-          metrics.offset = next;
-          scrollY.value = next;
-          tourScroll.scrollRef.current?.scrollTo({ y: next, animated: false });
-        }
-        frame.current = requestAnimationFrame(tick);
-      };
-      frame.current = requestAnimationFrame(tick);
+      edgeSpeed.value = speed;
     },
-    [tourScroll.area.metrics, tourScroll.scrollRef, scrollY]
+    [edgeSpeed]
   );
-  useEffect(
-    () => () => {
-      edgeSpeed.current = 0;
-      if (frame.current !== null) cancelAnimationFrame(frame.current);
-    },
-    []
-  );
+
+  // Speeds are "pixels per 60 Hz frame"; scale by the real time between
+  // frames so the page glides at the same pace however busy the phone is.
+  useFrameCallback((frame) => {
+    "worklet";
+    const speed = edgeSpeed.value;
+    if (!speed) return;
+    const dt = Math.min(48, frame.timeSincePreviousFrame ?? 16.7);
+    const max = Math.max(0, contentHeight.value - viewHeight.value);
+    const next = Math.min(max, Math.max(0, scrollY.value + (speed * dt) / 16.7));
+    if (next !== scrollY.value) scrollTo(scrollView, 0, next, false);
+  });
+
+  // The tour and "scroll to the copy" scroll the page by asking this ref.
+  useEffect(() => {
+    tourScroll.scrollRef.current = {
+      scrollTo: (options) =>
+        (scrollView.current as unknown as { scrollTo?: (o: { y: number; animated?: boolean }) => void } | null)?.scrollTo?.(
+          options
+        ),
+    };
+  }, [scrollView, tourScroll.scrollRef]);
   const dragScroll = useMemo(
     () => ({ scrollY, top: viewTop, bottom: viewBottom, onEdge: setEdge, trash: trashRect }),
     [scrollY, viewTop, viewBottom, setEdge, trashRect]
@@ -181,15 +188,13 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     }
   }
 
-  // While the page is being scrolled for a drag, its own scroll events lag
-  // behind and would only fight us; otherwise they keep everything in sync.
   const scrollProps = {
     ...tourScroll.scrollProps,
-    onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const y = event.nativeEvent.contentOffset.y;
-      if (edgeSpeed.current !== 0) return;
-      tourScroll.scrollProps.onScroll(event);
-      if (!draggingNow.current) scrollY.value = y;
+    // Frequent enough for the dragged item to follow the page smoothly.
+    scrollEventThrottle: 16,
+    onContentSizeChange: (width: number, height: number) => {
+      tourScroll.scrollProps.onContentSizeChange(width, height);
+      contentHeight.value = height;
     },
   };
   const unread = useUnreadCount(!scope, refreshKey);
@@ -653,8 +658,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         </View>
 
         <TourScrollArea area={tourScroll.area}>
-          <ScrollView
-            ref={tourScroll.scrollRef as never}
+          <AnimatedScrollView
+            ref={scrollView}
             {...scrollProps}
             contentContainerStyle={styles.container}
             scrollEnabled={!dragging}
@@ -780,7 +785,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                 )}
               </View>
             ) : null}
-          </ScrollView>
+          </AnimatedScrollView>
         </TourScrollArea>
       </SafeAreaView>
 
