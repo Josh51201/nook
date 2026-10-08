@@ -616,8 +616,15 @@ function GridItem({
 
   return (
     <Animated.View style={[styles.item, { zIndex: active ? 100 : 1, elevation: active ? 12 : 0 }, style]}>
+      {/* Keyed by shape: the phone doesn't redraw a shadow when only the corner
+          radii change, so a new shape gets a fresh view. */}
       <GestureDetector gesture={moveGesture}>
-        <Animated.View style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, wiggle]}>{children}</Animated.View>
+        <Animated.View
+          key={`${item.kind === "nook" ? (item.shape ?? "arch") : ""}-${item.corners ?? ""}-${shadow ?? ""}`}
+          style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, wiggle]}
+        >
+          {children}
+        </Animated.View>
       </GestureDetector>
       <Animated.View
         pointerEvents="none"
