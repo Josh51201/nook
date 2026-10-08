@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { Text } from "../text";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -38,8 +38,11 @@ export type DragScroll = {
   trash: SharedValue<{ x: number; y: number; w: number; h: number } | null>;
 };
 
-// How far around the trash can still counts as over it.
-const TRASH_SLOP = 16;
+// How far around the trash can still counts as over it, and how long an item
+// has to be held there before letting go removes it (CORE-040) - so brushing
+// past on the way somewhere else never deletes anything.
+const TRASH_SLOP = 6;
+const TRASH_ARM_MS = 450;
 
 // The free-form Hearth canvas (CORE-006/019). Items sit at exact grid cells;
 // in edit mode you hold one to drag it anywhere (an outline shows where it
@@ -66,6 +69,7 @@ export function HearthGrid({
   onCopy,
   onTrash,
   onTrashHover,
+  onTrashArmed,
   flashId,
   renderItem,
 }: {
@@ -92,6 +96,8 @@ export function HearthGrid({
   // item is over it right now.
   onTrash?: (item: HearthItem) => void;
   onTrashHover?: (over: boolean) => void;
+  // Held there long enough that letting go will remove it.
+  onTrashArmed?: (armed: boolean) => void;
   // An item to make glow for a moment, e.g. a copy just made (CORE-039).
   flashId?: string | null;
   renderItem: (item: HearthItem, size: { width: number; height: number }) => ReactNode;
@@ -198,10 +204,12 @@ export function HearthGrid({
           onLongPress={onLongPress}
           onCopy={onCopy && item.kind !== "hollow" ? () => onCopy(item) : undefined}
           onTrashHover={(over) => onTrashHover?.(over)}
+          onTrashArmed={(armed) => onTrashArmed?.(armed)}
           flash={flashId === item.id}
           onTrash={() => {
             finish();
             onTrashHover?.(false);
+            onTrashArmed?.(false);
             onTrash?.(item);
           }}
           onBegin={() => begin(item.id)}
@@ -235,12 +243,32 @@ export function HearthGrid({
             if (w !== item.w || h !== item.h) onResize(item.id, w, h);
           }}
         >
-          {renderItem(item, { width: item.w * stride - GRID_GAP, height: item.h * stride - GRID_GAP })}
+          <ItemContent item={item} width={item.w * stride - GRID_GAP} height={item.h * stride - GRID_GAP} render={renderItem} />
         </GridItem>
       ))}
     </View>
   );
 }
+
+// What's drawn inside a tile or widget. While you drag, the grid re-renders
+// every time the outline moves to a new cell; this keeps the insides from
+// being redrawn each time, which is what made dragging choppy.
+const ItemContent = memo(
+  function ItemContent({
+    item,
+    width,
+    height,
+    render,
+  }: {
+    item: HearthItem;
+    width: number;
+    height: number;
+    render: (item: HearthItem, size: { width: number; height: number }) => ReactNode;
+  }) {
+    return <>{render(item, { width, height })}</>;
+  },
+  (a, b) => a.item === b.item && a.width === b.width && a.height === b.height && a.render === b.render
+);
 
 // The shadow follows the item's outline: Nook tiles are arched (CORE-036).
 function shadowShape(item: HearthItem, stride: number) {
@@ -277,6 +305,7 @@ function GridItem({
   onCopy,
   onTrash,
   onTrashHover,
+  onTrashArmed,
   flash,
   onBegin,
   onGhost,
@@ -297,6 +326,7 @@ function GridItem({
   onCopy?: () => void;
   onTrash: () => void;
   onTrashHover: (over: boolean) => void;
+  onTrashArmed: (armed: boolean) => void;
   flash?: boolean;
   onBegin: () => void;
   onGhost: (rect: GridRect, finger: { x: number; y: number } | null) => void;
@@ -337,6 +367,8 @@ function GridItem({
   // Held over the trash can: it shrinks away a little, ready to go.
   const overTrash = useSharedValue(false);
   const doomed = useSharedValue(0);
+  // 0 until the item has been held over the trash long enough, then 1.
+  const armed = useSharedValue(0);
   // A ring of light that pulses once around a new copy.
   const glow = useSharedValue(0);
   useEffect(() => {
@@ -370,8 +402,12 @@ function GridItem({
   }, [item.x, item.y, stride, left, top, dragX, dragY, dropping]);
 
   // Latest callbacks without rebuilding gestures mid-drag.
-  const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover });
-  handlers.current = { onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover };
+  const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover, onTrashArmed });
+  handlers.current = { onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover, onTrashArmed };
+  const trashArmed = useCallback((on: boolean) => {
+    if (on) tap("success");
+    handlers.current.onTrashArmed(on);
+  }, []);
   const trashDrop = useCallback(() => handlers.current.onTrash(), []);
   const trashHover = useCallback((over: boolean) => {
     if (over) tap();
@@ -475,7 +511,22 @@ function GridItem({
           event.absoluteY <= bin.y + bin.h + TRASH_SLOP;
         if (over !== overTrash.value) {
           overTrash.value = over;
-          doomed.value = withTiming(over ? 1 : 0, { duration: 160 });
+          if (over) {
+            doomed.value = withTiming(0.3, { duration: 160 });
+            armed.value = withDelay(
+              TRASH_ARM_MS,
+              withTiming(1, { duration: 1 }, (finished) => {
+                if (finished) {
+                  doomed.value = withTiming(1, { duration: 160 });
+                  scheduleOnRN(trashArmed, true);
+                }
+              })
+            );
+          } else {
+            if (armed.value === 1) scheduleOnRN(trashArmed, false);
+            armed.value = 0;
+            doomed.value = withTiming(0, { duration: 160 });
+          }
           scheduleOnRN(trashHover, over);
         }
         // Near the top or bottom of the screen? Scroll that way (not while
@@ -487,7 +538,7 @@ function GridItem({
         }
       })
       .onEnd(() => {
-        if (overTrash.value) {
+        if (overTrash.value && armed.value === 1) {
           dropping.value = false;
           scheduleOnRN(trashDrop);
           return;
@@ -500,6 +551,8 @@ function GridItem({
         dragging.value = false;
         if (overTrash.value) {
           overTrash.value = false;
+          if (armed.value === 1) scheduleOnRN(trashArmed, false);
+          armed.value = 0;
           scheduleOnRN(trashHover, false);
         }
         doomed.value = withTiming(0, { duration: 200 });
@@ -514,7 +567,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, edge, trash, trashDrop, trashHover, overTrash, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [editing, x, y, w, h, stride, press, hold, begin, ghost, drop, edge, trash, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>

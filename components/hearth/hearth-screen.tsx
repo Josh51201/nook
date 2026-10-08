@@ -106,6 +106,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const trashRect = useSharedValue<{ x: number; y: number; w: number; h: number } | null>(null);
   const trashRef = useRef<View>(null);
   const [overTrash, setOverTrash] = useState(false);
+  const [trashArmed, setTrashArmed] = useState(false);
   // A short message along the bottom ("Removed …  Undo", "Copied …").
   const [toast, setToast] = useState<{ text: string; action?: { label: string; run: () => void } } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,12 +132,17 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     (speed: number) => {
       edgeSpeed.current = speed;
       if (speed === 0 || frame.current !== null) return;
-      const tick = () => {
-        const step = edgeSpeed.current;
-        if (!step) {
+      // Speeds are "pixels per 60 Hz frame"; scale by the real time between
+      // frames so the page glides at the same pace however busy the phone is.
+      let last = 0;
+      const tick = (now: number) => {
+        const dt = last ? Math.min(48, now - last) : 16.7;
+        last = now;
+        if (!edgeSpeed.current) {
           frame.current = null;
           return;
         }
+        const step = (edgeSpeed.current * dt) / 16.7;
         const metrics = tourScroll.area.metrics.current;
         const max = Math.max(0, metrics.content - viewHeight.current);
         const next = Math.min(max, Math.max(0, metrics.offset + step));
@@ -171,6 +177,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
       setEdge(0);
       trashRect.value = null;
       setOverTrash(false);
+      setTrashArmed(false);
     }
   }
 
@@ -743,6 +750,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   onCopy={(item) => copyTo(item.id, scope)}
                   onTrash={trash}
                   onTrashHover={setOverTrash}
+                  onTrashArmed={setTrashArmed}
                   flashId={flashId}
                   onDraggingChange={onDraggingChange}
                   dragScroll={dragScroll}
@@ -791,15 +799,16 @@ export function HearthScreen({ scope }: { scope: Scope }) {
               style={[
                 styles.trash,
                 {
-                  backgroundColor: overTrash ? colors.error : theme.background,
+                  backgroundColor: trashArmed ? colors.error : theme.background,
                   borderColor: overTrash ? colors.error : `${theme.text}33`,
-                  transform: [{ scale: overTrash ? 1.08 : 1 }],
+                  borderStyle: overTrash && !trashArmed ? "dashed" : "solid",
+                  transform: [{ scale: trashArmed ? 1.1 : overTrash ? 1.04 : 1 }],
                 },
               ]}
             >
-              <Icon name="trash" size={20} color={overTrash ? "#ffffff" : theme.text} />
-              <Text style={{ color: overTrash ? "#ffffff" : theme.text, fontWeight: "700" }}>
-                {overTrash ? "Let go to remove" : "Drag here to remove"}
+              <Icon name="trash" size={20} color={trashArmed ? "#ffffff" : overTrash ? colors.error : theme.text} />
+              <Text style={{ color: trashArmed ? "#ffffff" : overTrash ? colors.error : theme.text, fontWeight: "700" }}>
+                {trashArmed ? "Let go to remove" : overTrash ? "Hold..." : "Hold here to remove"}
               </Text>
             </View>
           </Animated.View>
