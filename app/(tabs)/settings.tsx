@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Switch, Text as PlainText, View } from "react-native";
+import { ActivityIndicator, Alert, Switch, Text as PlainText, useColorScheme, View } from "react-native";
 import { Text, TextInput } from "../../components/text";
 
 import { Avatar } from "../../components/avatar";
@@ -37,6 +37,17 @@ export default function HearthSettings() {
     isLoading: hearthLoading,
   } = useHearthLayout();
   const [hearthTitle, setHearthTitle] = useState<string | null>(null);
+  // Is Dusk showing only because the phone is in dark mode (CORE-032)?
+  const phoneIsDark = useColorScheme() === "dark";
+  const duskFromPhone = phoneIsDark && layout.followPhone && layout.theme !== "dusk";
+
+  // Picking a theme always shows it straight away: if the phone's dark mode
+  // was overriding it, stop following the phone (the switch is right below).
+  function pickTheme(theme: HearthThemeKey) {
+    saveHearthChanges(
+      phoneIsDark && layout.followPhone && theme !== "dusk" ? { theme, followPhone: false } : { theme }
+    );
+  }
 
   function saveHearthChanges(changes: Parameters<typeof saveHearth>[0]) {
     saveHearth(changes).catch((saveError: Error) =>
@@ -123,7 +134,7 @@ export default function HearthSettings() {
               return (
                 <Tap
                   key={key}
-                  onPress={() => saveHearthChanges({ theme: key })}
+                  onPress={() => pickTheme(key)}
                   style={[
                     ui.chip,
                     {
@@ -146,7 +157,9 @@ export default function HearthSettings() {
             })}
           </View>
           <Text style={ui.muted}>
-            Your theme dresses the whole app, not just the Hearth.
+            {duskFromPhone
+              ? "Your phone is in dark mode, so Nook is wearing Dusk. Pick a theme to switch to it now."
+              : "Your theme dresses the whole app, not just the Hearth."}
           </Text>
           <Text style={ui.label}>Font</Text>
           {fontChoices.map((choice) => {
