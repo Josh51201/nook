@@ -7,7 +7,9 @@ import { countdown, gatheringKindInfo } from "../../lib/gift-nook";
 import { headcount, slotRoom, type Rsvp, type Slot } from "../../lib/potluck";
 import { formatWhen } from "../../lib/potluck-data";
 import { supabase } from "../../lib/supabase";
+import { daysToDue } from "../../lib/pets";
 import { usePetsSummary } from "../../lib/pets-data";
+import { useRhythmsSummary } from "../../lib/rhythms-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
@@ -282,9 +284,33 @@ function PetCareWidget({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// Rhythms: what needs doing now, then what's coming up this month.
+function RhythmsWidget({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const summary = useRhythmsSummary(session?.user.id, refreshKey);
+  if (!summary) return null;
+  if (!summary.total) return <Facts facts={[{ kind: "note", text: "Pick your Home's chores" }]} {...props} />;
+
+  const inDays = (day: string) => {
+    const days = daysToDue(day, summary.today);
+    return days === 1 ? "tomorrow" : `in ${days} days`;
+  };
+  const facts: Fact[] = summary.now.length
+    ? [{ kind: "headline", text: `${summary.now.length} need${summary.now.length === 1 ? "s" : ""} doing` }]
+    : summary.soon.length
+      ? [{ kind: "headline", text: summary.soon[0].title, trailing: inDays(summary.soon[0].due_on) }]
+      : [{ kind: "headline", text: "All caught up" }];
+  for (const r of summary.now) facts.push({ kind: "detail", icon: "warning", text: r.title, trailing: r.overdue ? "late" : "today", strong: true });
+  for (const r of summary.now.length ? summary.soon : summary.soon.slice(1)) {
+    facts.push({ kind: "detail", icon: "rhythm", text: r.title, trailing: inDays(r.due_on) });
+  }
+  return <Facts facts={facts} {...props} />;
+}
+
 export const nookWidgets: Record<string, NookWidget> = {
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
   potluck: { label: "Next Potluck", Component: PotluckWidget },
   letterbox: { label: "Cards & birthdays", Component: LetterboxWidget },
   pets: { label: "Today", Component: PetCareWidget },
+  rhythms: { label: "Due soon", Component: RhythmsWidget },
 };

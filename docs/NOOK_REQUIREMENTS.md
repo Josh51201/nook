@@ -133,6 +133,16 @@ _Last updated: 2026-10-08 (rev 38)_
 - **PET-006** A pet profile and records in one place: photo, breed, birthday, microchip number, vet name and number, food, and notes (allergies and the like). _(Built: photo from camera or library, tap-to-call on the vet's number, age worked out from the birthday.)_
 - **PET-007** Reminders: if a meal hasn't been fed by a time you pick, the Home is nudged; a heads-up a week before a vet visit, vaccine or refill is due; and a notice when someone feeds the pet (off by default, since it could get noisy). Each can be turned off in Pet Care settings. _(Built (proposed details): the meal nudge goes to the Home and active helpers once a day per meal; due-date nudges go out a week ahead and again once overdue, but not for things that come round more often than monthly, like a daily pill. A "Pet care" Hearth widget and the Nook's tile show who still needs feeding and what's due.)_
 
+## 2e. Rhythms Nook
+- **RHY-001** A Rhythms Nook for the chores that come round each year or season (furnace filter, smoke-detector batteries, gutters, flu shots, car registration), so none of them get forgotten. Each chore is a **rhythm** *(proposed)*. _(Built 2026-10-08, in the Market. The home splits rhythms into Needs doing, This month, Later and Done for good, each with a one-tap Done; a "Mine" filter shows once your Home has more than one person.)_
+- **RHY-002** Rhythms belong to your Home (HOME-001, HOME-005): everyone in it can see, add, change and mark them done.
+- **RHY-003** The first time you open it, you pick from a starter list of common chores and set their dates. You can also add your own any time. _(Built (proposed details): 28 common chores grouped by area (heating & cooling, safety, around the house, outdoors, car, health, paperwork), each with a suggested repeat. Tick the ones you want, then check the dates: seasonal chores default to the start of their month (gutters in October), the rest to a few weeks out. Ones you already have are left off, and "More from the starter list" brings it back later.)_
+- **RHY-004** Each rhythm has a next due date and a repeat. Marking it done rolls the date forward. _(Built (proposed details): the repeats are monthly, every 3 months, every 6 months, yearly, every 2 years and once. The next date counts from the day it was done. You can mark it done today, or on an earlier day with a note. Overdue and due-today items show in red. A one-off that's done moves to "Done for good".)_
+- **RHY-005** A rhythm can have an owner, who is one person in the Home, or nobody so anyone can do it. Anyone can mark it done either way. _(Built: the owner has to live in the Home, enforced in the database. If they leave the Home, their rhythms go back to "anyone".)_
+- **RHY-006** A log of who did each rhythm and when. _(Built (proposed details): an optional note per entry, such as "used 16x25 filter". Five years are kept. Each rhythm shows "Last done March 2025 by Sam", and the latest entry can be undone, which puts the due date back. Entries are only written by the database, so nobody can log a chore as someone else.)_
+- **RHY-007** Reminders: a heads-up before a rhythm is due, a nudge on the day, a nudge once it's overdue, and a notice when someone does one. Each can be turned on or off in the Rhythms Nook's settings. _(Built (proposed details): the heads-up goes a week ahead, except for monthly chores, which would get noisy. Nudges go to the owner if there is one, or to the whole Home if not, from 8 AM local time, once per due date. The "someone did it" notice is off by default.)_
+- **RHY-008** _(Proposed.)_ A "Due soon" Hearth widget, and the Nook's tile, show what's coming up next. Opening the widget shows the full list. _(Built: any size down to an icon with a count of what needs doing now. It lists what's overdue or due today, then the next month, and can be set to "Just mine". Tapping it opens the Rhythms Nook.)_
+
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
   - _Built for now (proposed):_ honorees are optional when creating a Gathering. If any are picked, the Gathering links to their Wishbooks; if none, to everyone in the Burrow. Anniversaries can pick both people.
@@ -194,6 +204,7 @@ _Last updated: 2026-10-08 (rev 38)_
 - **2026-10-08 — Copy button and drag to trash:** "A copy button from the main page as well when in edit mode rather than having to go into the widget and scroll all the way down." "Also need a drag to a trash functionality in edit mode to delete widgets." "Also needs to say somewhere that the widget was copied (maybe say at the bottom of the page or something to signify it was copied, maybe scroll down to it.)" → CORE-039, CORE-040
 - **2026-10-08 — Home, outside the Letterbox:** "I say we change up the households a little bit to be done outside of the letterbox since its going to be used for multiple things. Not sure if it should be done within the Burrows or in another tab or what is best for the app. Will leave you to think of where to best put it." Claude picked a "Your Home" card at the top of the Burrows tab; Josh chose the name "Home" and Pet Care as the next Nook. → HOME-001..005, LET-002, LET-003, Glossary
 - **2026-10-08 — Pet Care Nook:** Josh picked Pet Care next. Sharing: Home plus helpers. Tracks: feeding check-offs, vet/vaccines/meds, walks and potty/litter, and a pet profile with records. Feeding: set meals per pet. Nudges: meal not fed yet, vet and vaccine due dates, and fed notices. → PET-001..007
+- **2026-10-08 — Rhythms Nook:** Yearly Rhythms is next ("Yes I agree"). Josh picked: the name Rhythms Nook; a starter list to pick from; an optional owner per chore; and all four reminders (heads-up, due day, overdue, someone did it), but "they should all be optional and a toggle in the individual nook settings." → RHY-001..008, Glossary, section 7
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -204,6 +215,8 @@ _Last updated: 2026-10-08 (rev 38)_
 | The who-brings-what Nook | Potluck Nook | approved |
 | The card & contact list Nook | Letterbox Nook | approved |
 | The pet-care Nook | Pet Care Nook | approved |
+| The yearly-chores Nook | Rhythms Nook | approved |
+| One recurring chore in the Rhythms Nook | Rhythm | proposed |
 | The people you live with, shared by Nooks | Home | proposed |
 | One entry in the Letterbox (one mailing address) | Contact | proposed |
 | Homepage | The Hearth | proposed |
@@ -222,7 +235,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **Card & Contact List** — now being built as the Letterbox Nook: see section 2c (LET-001..011).
 - **Pet Care** — now being built as the Pet Care Nook: see section 2d (PET-001..007).
 - **Lent Out** — track things you've lent or borrowed (the drill, the casserole dish), to or from whom, with gentle reminders to ask for them back.
-- **Yearly Rhythms** — recurring annual and seasonal home chores (furnace filter, smoke-detector batteries, flu shots, gutters, car registration) with reminders and a log of who did what.
+- **Yearly Rhythms** — now being built as the Rhythms Nook: see section 2e (RHY-001..008).
 - **House Binder** — home info in one place: paint colors, appliance models, warranty dates, filter sizes, trusted contacts like the plumber, and service history.
 - **Sitter Sheet** — one page for babysitters, grandparents or house-sitters: allergies, bedtime, house rules, emergency numbers and the doctor. Shareable by link without them needing the app.
 - **Quote Jar** — save funny things people say, with the date and who said it; a Hearth widget shows a random one each day.
@@ -238,3 +251,5 @@ Josh's stated priority, in order:
 1. ~~**Hearth organization (CORE-022..024)**~~ — built 2026-10-07 as Hollows.
 2. ~~**Potluck Nook**~~ — built 2026-10-07 (section 2b).
 3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).
+4. ~~**Pet Care Nook**~~ — built 2026-10-08 (section 2d).
+5. ~~**Rhythms Nook**~~ — built 2026-10-08 (section 2e).

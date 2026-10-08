@@ -105,6 +105,15 @@ export const petSettingDefaults = {
   notifyFed: false, // PET-007: someone fed a pet (off unless turned on)
 };
 
+// Rhythms settings. The notify* keys are also read by the database
+// (public.wants_rhythm_notice) — rename them in both places or not at all.
+export const rhythmSettingDefaults = {
+  notifyHeadsUp: true, // RHY-007: a week before it's due
+  notifyDueDay: true, // RHY-007: on the day
+  notifyOverdue: true, // RHY-007: once it's overdue
+  notifyDone: false, // RHY-007: someone did one (off unless turned on)
+};
+
 // Letterbox settings. notifyBirthdays is also read by the database
 // (public.wants_letterbox_reminder) — rename it in both places or not at all.
 export const letterboxSettingDefaults = {

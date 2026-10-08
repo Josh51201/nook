@@ -111,6 +111,11 @@ const icons = {
   game: { ios: "dice.fill", android: "casino" },
   baby: { ios: "stroller.fill", android: "child_friendly" },
   church: { ios: "building.columns.fill", android: "account_balance" },
+  rhythm: { ios: "arrow.triangle.2.circlepath", android: "autorenew" },
+  tools: { ios: "wrench.and.screwdriver.fill", android: "build" },
+  shield: { ios: "checkmark.shield.fill", android: "verified_user" },
+  thermo: { ios: "thermometer.medium", android: "thermostat" },
+  doc: { ios: "doc.text.fill", android: "description" },
 } satisfies Record<string, { ios: SymbolViewProps["name"] & string; android: AndroidName }>;
 
 type AndroidName = Exclude<Extract<SymbolViewProps["name"], object>["android"], undefined>;

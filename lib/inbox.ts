@@ -19,6 +19,7 @@ export type Notice = {
     potluck_id?: string;
     contact_id?: string;
     pet_id?: string;
+    rhythm_id?: string;
     invite_id?: string;
   };
   created_at: string;
@@ -53,6 +54,12 @@ const kinds: Record<string, Record<string, KindInfo>> = {
     pet_fed: { icon: "paw", route: (data) => (data.pet_id ? `/pets/${data.pet_id}` : "/pets") },
     meal_missed: { icon: "paw", route: (data) => (data.pet_id ? `/pets/${data.pet_id}` : "/pets") },
     health_due: { icon: "pill", route: (data) => (data.pet_id ? `/pets/${data.pet_id}` : "/pets") },
+  },
+  rhythms: {
+    rhythm_heads_up: { icon: "calendar", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
+    rhythm_due: { icon: "rhythm", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
+    rhythm_overdue: { icon: "warning", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
+    rhythm_done: { icon: "check", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
   },
   home: {
     home_invite: { icon: "hearth", route: () => "/home" },

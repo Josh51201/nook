@@ -79,6 +79,18 @@ export const nookCatalog: NookDefinition[] = [
     color: "#d9e4ef",
   },
   {
+    id: "rhythms",
+    title: "Rhythms Nook",
+    icon: "rhythm",
+    iconColor: "#8a6420",
+    tagline: "Filters, gutters, flu shots",
+    description:
+      "The chores your Home does every season or year — furnace filters, smoke detectors, gutters, car registration, flu shots — with a heads-up before each comes round and a log of who did it last.",
+    route: "/rhythms",
+    available: true,
+    color: "#f1e4c8",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

@@ -371,6 +371,22 @@ function KindSettings({
           <Text style={ui.muted}>Who still needs feeding today, and what's coming due at the vet, from your Pet Care Nook.</Text>
         </>
       );
+    case "rhythms":
+      return (
+        <>
+          <Stepper label="Chores to list" value={widget.settings.count} min={0} max={6} onChange={(count) => setSettings({ count })} />
+          <Text style={ui.label}>Show</Text>
+          <View style={ui.chips}>
+            <Chip selected={!widget.settings.mineOnly} onPress={() => setSettings({ mineOnly: false })}>
+              Everything
+            </Chip>
+            <Chip icon="person" selected={widget.settings.mineOnly} onPress={() => setSettings({ mineOnly: true })}>
+              Just mine
+            </Chip>
+          </View>
+          <Text style={ui.muted}>What's overdue or due today, then what's coming in the next month, from your Rhythms Nook.</Text>
+        </>
+      );
     case "cards":
       return (
         <>

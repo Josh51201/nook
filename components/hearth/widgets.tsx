@@ -9,7 +9,9 @@ import { countdown, displayName, formatDate, gatheringKindInfo, type TuckStatus 
 import { deepColor, tileBevel, tilePalette } from "../../lib/hearth-layout";
 import { noticeIcon } from "../../lib/inbox";
 import { supabase } from "../../lib/supabase";
+import { daysToDue } from "../../lib/pets";
 import { usePetsSummary } from "../../lib/pets-data";
+import { useRhythmsSummary } from "../../lib/rhythms-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
 import {
@@ -163,6 +165,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <Cards {...props} widget={widget} />;
     case "pets":
       return <PetCare {...props} widget={widget} />;
+    case "rhythms":
+      return <Rhythms {...props} widget={widget} />;
   }
 }
 
@@ -983,6 +987,99 @@ function PetCare({ widget, palette, refreshKey, height, shape, icon }: BodyProps
     <View style={{ gap: 10, flex: 1 }}>
       <Count />
       {bar}
+      <Panel palette={palette} style={{ flex: 1 }}>
+        {list}
+      </Panel>
+    </View>
+  );
+}
+
+// --- Due soon (RHY-008) -----------------------------------------------------------
+
+function Rhythms({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"rhythms">) {
+  const { session } = useAuth();
+  const summary = useRhythmsSummary(session?.user.id, refreshKey);
+  if (!summary) return null;
+
+  const mine = widget.settings.mineOnly;
+  const now = summary.now.filter((r) => !mine || r.mine);
+  const soon = summary.soon.filter((r) => !mine || r.mine);
+  const inDays = (day: string) => {
+    const days = daysToDue(day, summary.today);
+    return days === 1 ? "tmrw" : days < 7 ? `${days}d` : `${Math.round(days / 7)}w`;
+  };
+
+  if (shape === "icon") {
+    return now.length ? <IconFace icon={icon} palette={palette} badge={now.length} /> : <IconFace icon="check" palette={palette} />;
+  }
+  if (!summary.total) return <Empty icon="rhythm" palette={palette} text="Pick your Home's chores in Rhythms" />;
+  if (shape === "strip") {
+    return (
+      <Strip
+        icon={now.length ? icon : "check"}
+        palette={palette}
+        text={now.length ? `${now[0].title}${now[0].overdue ? " · overdue" : " · today"}` : soon.length ? `Next: ${soon[0].title}` : "All caught up"}
+        sub={now.length > 1 ? `${now.length} need doing` : soon.length && now.length ? `Then ${soon[0].title}` : soon[0] ? `In ${inDays(soon[0].due_on)}` : null}
+      />
+    );
+  }
+
+  const rows = [
+    ...now.map((r) => ({ id: r.id, title: r.title, trailing: r.overdue ? "late" : "today", strong: true })),
+    ...soon.map((r) => ({ id: r.id, title: r.title, trailing: inDays(r.due_on), strong: false })),
+  ].slice(0, Math.min(widget.settings.count, rowsThatFit(height, 24, shape === "small" ? 110 : 120)));
+
+  const Count = () => (
+    <View>
+      {now.length ? (
+        <Text style={{ fontSize: isBig(shape) ? 44 : 34, fontWeight: "800", color: palette.text, letterSpacing: -1 }}>
+          {now.length}
+        </Text>
+      ) : (
+        <Icon name="check" size={isBig(shape) ? 40 : 32} color={palette.accent} />
+      )}
+      <Muted palette={palette}>{now.length ? (now.length === 1 ? "needs doing" : "need doing") : "all caught up"}</Muted>
+    </View>
+  );
+  const list = rows.length ? (
+    <View style={{ gap: 6 }}>
+      {rows.map((r) => (
+        <View key={r.id} style={styles.row}>
+          <Icon name={r.strong ? "warning" : "rhythm"} size={13} color={palette.accent} />
+          <Text style={[styles.body, { color: palette.text, flex: 1, fontWeight: r.strong ? "700" : "500" }]} numberOfLines={1}>
+            {r.title}
+          </Text>
+          <Text style={[styles.small, { color: palette.muted }]}>{r.trailing}</Text>
+        </View>
+      ))}
+    </View>
+  ) : (
+    <Muted palette={palette}>Nothing this month</Muted>
+  );
+
+  if (shape === "small") {
+    return (
+      <View style={{ gap: 8, flex: 1 }}>
+        <Count />
+        {list}
+      </View>
+    );
+  }
+  if (shape === "wide") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 14, alignItems: "stretch" }]}>
+        <View style={{ justifyContent: "center", minWidth: 110 }}>
+          <Count />
+        </View>
+        <Panel palette={palette} style={{ flex: 1, justifyContent: "center" }}>
+          {list}
+        </Panel>
+      </View>
+    );
+  }
+  return (
+    <View style={{ gap: 10, flex: 1 }}>
+      <Count />
       <Panel palette={palette} style={{ flex: 1 }}>
         {list}
       </Panel>

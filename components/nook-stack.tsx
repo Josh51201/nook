@@ -23,6 +23,7 @@ const places: Record<string, { label: string; icon: IconName }> = {
   potluck: { label: "Potluck Nook", icon: "potluck" },
   letterbox: { label: "Letterbox Nook", icon: "mail" },
   pets: { label: "Pet Care Nook", icon: "paw" },
+  rhythms: { label: "Rhythms Nook", icon: "rhythm" },
 };
 
 function cameFrom(navigation: Navigation) {
