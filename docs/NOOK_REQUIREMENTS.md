@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-07 (rev 28)_
+_Last updated: 2026-10-07 (rev 29)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -37,6 +37,8 @@ _Last updated: 2026-10-07 (rev 28)_
 - **CORE-033** Each Nook's home greets you with some of the Hearth's personality instead of opening straight onto a list. _(Built (proposed details): a header card in the Nook's own color with its icon glowing, a big faint copy of the icon in the corner, a headline about what's next ("Christmas in 12 days") and a few quick facts (gifts to get, what you're bringing, who's coming). The Burrows tab has one too.)_
 - **CORE-034** Opening a Nook from the Hearth feels like stepping into it, the way Hollows do. _(Built (proposed details): the tile grows to fill the screen, melting from its color into the Nook's background while its icon swells and fades, then the Nook fades in; coming back, it shrinks into the tile again. Skipped with Reduce Motion.)_
 - **CORE-035** A cozier font, chosen by Josh after comparing options. _(Built for comparing: Settings → Font offers Classic (the phone's own, still the default), Rounded (Nunito) and Storybook (Fraunces headings over Nunito), each previewed in its own font; the whole app — screen titles included — switches instantly. Which one becomes the default is up to Josh.)_
+- **CORE-036** Nooks are the special thing about the app, so the Nooks you add stand out from widgets on the Hearth. _(Built (proposed details): Nook tiles are little arched alcoves — a rounded arch top with a keystone, a carved inner frame, lantern light glowing down from the arch, a slow shimmer of light now and then, the icon centered in the alcove, and a deeper shadow than widgets. Widgets stay plain rounded cards. Opening a Nook grows it from its arch.)_
+- **CORE-037** Every Nook is named "___ Nook" (Gift Nook, Potluck Nook, …). Each get-together inside the Potluck Nook is still "a Potluck".
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
 
 ## 1a. Accounts & Login
@@ -152,11 +154,15 @@ _Last updated: 2026-10-07 (rev 28)_
 - **2026-10-07 — Hearth top bar, title, and drag-scroll:** "The bar at the top should always remain, so that the inbox and edit are always there. The top should have something more appealing as the title of The Hearth, kind of plain. Also when I am dragging and dropping with a full screen, and I am dragging towards the top or bottom, it needs to scroll with me so that I can drag and drop onto like hollows." → CORE-029
 - **2026-10-07 — Livelier widgets, Hollows, customization:** "Make the inside of the widgets a little better, kinda boring, but still like the simpleness but lots of blank space especially when you make them bigger, so maybe more dynamic changes, and like the look of the gift nook when its bigger with the white box... Even the hollow looks great with the animation but maybe something to make it more exciting and fun. And the pot luck nook has nothing on it even when bigger so needs something there. More things should also be allowed to be an icon. I just want more customization in general and just making your hearth your home." Josh left the details to Claude. → CORE-030, CORE-031
 - **2026-10-07 — Design pass:** Josh agreed to all four suggestions: the Hearth theme across the whole app plus dark mode, Hearth-like headers on each Nook's home, opening a Nook as if stepping into it, and a cozier font (with options to compare). → CORE-032, CORE-033, CORE-034, CORE-035
+- **2026-10-07 — Nooks stand out; naming:** "The Nooks that we create are the special thing about this app so I want those added nooks to stand out amongst the other widgets. Also their names should be better, gift nook is fine... but potluck should at least have Potluck Nook." Josh picked "Potluck Nook" and the rule that every Nook is named "___ Nook". → CORE-036, CORE-037, Glossary
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
 |---|---|---|
 | A mini-app | Nook | approved |
+| How Nooks are named | "___ Nook" (Gift Nook, Potluck Nook, …) | approved |
+| The gift-list Nook | Gift Nook | approved |
+| The who-brings-what Nook | Potluck Nook | approved |
 | Homepage | The Hearth | proposed |
 | A family group | Burrow | proposed |
 | Invite | Knock | proposed |

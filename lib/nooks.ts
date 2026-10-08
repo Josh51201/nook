@@ -40,7 +40,7 @@ export const nookCatalog: NookDefinition[] = [
   },
   {
     id: "potluck",
-    title: "Potluck",
+    title: "Potluck Nook",
     icon: "potluck",
     iconColor: "#4f6b45",
     tagline: "Who's bringing what",

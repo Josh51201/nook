@@ -20,6 +20,7 @@ export type ZoomRect = { x: number; y: number; width: number; height: number };
 // tile again. `direction` "in" grows, "out" shrinks; onDone fires at the end.
 export function NookZoom({
   rect,
+  radii = { top: 24, bottom: 24 },
   color,
   background,
   icon,
@@ -28,6 +29,8 @@ export function NookZoom({
   onDone,
 }: {
   rect: ZoomRect;
+  // The tile's corners to start from (Nook tiles are arched).
+  radii?: { top: number; bottom: number };
   color: string;
   background: string;
   icon: IconName;
@@ -53,7 +56,10 @@ export function NookZoom({
     top: interpolate(p.value, [0, 1], [rect.y, 0]),
     width: interpolate(p.value, [0, 1], [rect.width, width]),
     height: interpolate(p.value, [0, 1], [rect.height, height]),
-    borderRadius: interpolate(p.value, [0, 1], [24, 0]),
+    borderTopLeftRadius: interpolate(p.value, [0, 1], [radii.top, 0]),
+    borderTopRightRadius: interpolate(p.value, [0, 1], [radii.top, 0]),
+    borderBottomLeftRadius: interpolate(p.value, [0, 1], [radii.bottom, 0]),
+    borderBottomRightRadius: interpolate(p.value, [0, 1], [radii.bottom, 0]),
     backgroundColor: interpolateColor(p.value, [0, 0.55, 1], [color, color, background]),
     // Coming back out, the tile fades away once it's home.
     opacity: direction === "out" ? interpolate(p.value, [0, 0.12], [0, 1], "clamp") : 1,

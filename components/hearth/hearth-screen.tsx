@@ -52,6 +52,7 @@ import { AddSheet } from "./add-sheet";
 import { GRID_GAP, HearthGrid } from "./hearth-grid";
 import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
+import { nookRadii } from "./tile-face";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WidgetView } from "./widgets";
@@ -602,6 +603,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   editing={editing}
                   accent={theme.accent}
                   shadow={tileShadow(themeKey)}
+                nookShadow={tileShadow(themeKey, true)}
                   onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
                   onResize={(id, w, h) => persistHere((inner) => resizeItem(inner, id, w, h))}
                   onDropIntoHollow={
@@ -661,6 +663,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         <NookZoom
           key={`${zoom.route}-${zoom.direction}`}
           rect={zoom.rect}
+          radii={nookRadii(zoom.rect.width, zoom.rect.height)}
           color={zoom.color}
           background={theme.background}
           icon={zoom.icon}

@@ -19,7 +19,7 @@ const places: Record<string, { label: string; icon: IconName }> = {
   "burrow/[id]": { label: "Burrow", icon: "burrow" },
   inbox: { label: "Inbox", icon: "bell" },
   "gift-nook": { label: "Gift Nook", icon: "gift" },
-  potluck: { label: "Potluck", icon: "potluck" },
+  potluck: { label: "Potluck Nook", icon: "potluck" },
 };
 
 function cameFrom(navigation: Navigation) {

@@ -119,9 +119,9 @@ export default function PotluckHome() {
     <NookScroll onRefresh={load}>
       <Stack.Screen
         options={{
-          title: burrowName ? `${burrowName} Potlucks` : "Potluck",
+          title: burrowName ? `${burrowName} Potlucks` : "Potluck Nook",
           headerRight: () => (
-            <HeaderIcon icon="settings" label="Potluck settings" onPress={() => router.push("/potluck/settings")} />
+            <HeaderIcon icon="settings" label="Potluck Nook settings" onPress={() => router.push("/potluck/settings")} />
           ),
         }}
       />

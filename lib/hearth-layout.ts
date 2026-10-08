@@ -143,10 +143,12 @@ export const hearthThemes: Record<
 // The soft, layered shadow that lifts Hearth tiles and widgets off the page
 // (CORE-008): a tight contact shadow plus a wide, gentle one, like light
 // from above. Dark themes need it stronger to show at all.
-export function tileShadow(themeKey: HearthThemeKey) {
+// Nook tiles (`raised`) sit a little higher than widgets (CORE-036).
+export function tileShadow(themeKey: HearthThemeKey, raised = false) {
   const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
   const k = themeKey === "dusk" ? 2.6 : 1;
   const a = (alpha: number) => `rgba(${theme.shade}, ${Math.min(1, alpha * k).toFixed(3)})`;
+  if (raised) return `0px 2px 3px ${a(0.1)}, 0px 10px 20px -4px ${a(0.15)}, 0px 26px 40px -16px ${a(0.24)}`;
   return `0px 1px 2px ${a(0.08)}, 0px 6px 14px -2px ${a(0.1)}, 0px 18px 30px -14px ${a(0.16)}`;
 }
 

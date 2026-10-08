@@ -17,6 +17,7 @@ import { tap } from "../../lib/feedback";
 import { COLUMNS, edgeScrollSpeed, minSize, rowsUsed, type GridRect, type HearthItem, type HollowItem } from "../../lib/hearth-layout";
 import { Icon } from "../icon";
 import { useWiggle } from "../motion";
+import { nookRadii } from "./tile-face";
 
 export const GRID_GAP = 12;
 const EXTRA_EDIT_ROWS = 3; // empty rows to drop into while designing
@@ -47,6 +48,7 @@ export function HearthGrid({
   editing,
   accent,
   shadow,
+  nookShadow,
   dragScroll,
   onMove,
   onResize,
@@ -60,8 +62,10 @@ export function HearthGrid({
   width: number;
   editing: boolean;
   accent: string;
-  // The resting shadow under tiles and widgets (a CSS box-shadow).
+  // The resting shadow under tiles and widgets (a CSS box-shadow), and the
+  // deeper one Nook tiles sit on.
   shadow?: string;
+  nookShadow?: string;
   dragScroll: DragScroll;
   onMove: (id: string, x: number, y: number) => void;
   onResize: (id: string, w: number, h: number) => void;
@@ -169,7 +173,7 @@ export function HearthGrid({
           seed={index}
           active={activeId === item.id}
           accent={accent}
-          shadow={isRaised(item) ? shadow : undefined}
+          shadow={isRaised(item) ? (item.kind === "nook" ? nookShadow ?? shadow : shadow) : undefined}
           dragScroll={dragScroll}
           onPress={() => onPressItem(item)}
           onLongPress={onLongPress}
@@ -209,6 +213,18 @@ export function HearthGrid({
       ))}
     </View>
   );
+}
+
+// The shadow follows the item's outline: Nook tiles are arched (CORE-036).
+function shadowShape(item: HearthItem, stride: number) {
+  if (item.kind !== "nook") return { borderRadius: 24 };
+  const { top, bottom } = nookRadii(item.w * stride - GRID_GAP, item.h * stride - GRID_GAP);
+  return {
+    borderTopLeftRadius: top,
+    borderTopRightRadius: top,
+    borderBottomLeftRadius: bottom,
+    borderBottomRightRadius: bottom,
+  };
 }
 
 // Text labels and see-through (outline) widgets float flat on the Hearth;
@@ -460,7 +476,7 @@ function GridItem({
   return (
     <Animated.View style={[styles.item, { zIndex: active ? 100 : 1, elevation: active ? 12 : 0 }, style]}>
       <GestureDetector gesture={moveGesture}>
-        <Animated.View style={[shadow ? { borderRadius: 24, boxShadow: shadow } : null, wiggle]}>{children}</Animated.View>
+        <Animated.View style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, wiggle]}>{children}</Animated.View>
       </GestureDetector>
       {editing ? (
         <GestureDetector gesture={resizeGesture}>
