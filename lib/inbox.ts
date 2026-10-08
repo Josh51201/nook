@@ -17,7 +17,7 @@ export type Notice = {
     burrow_id?: string;
     gathering_id?: string;
     potluck_id?: string;
-    household_id?: string;
+    contact_id?: string;
     invite_id?: string;
   };
   created_at: string;
@@ -48,12 +48,14 @@ const kinds: Record<string, Record<string, KindInfo>> = {
       route: (data) => (data.potluck_id ? `/potluck/${data.potluck_id}` : null),
     },
   },
+  home: {
+    home_invite: { icon: "hearth", route: () => "/home" },
+    home_joined: { icon: "group", route: () => "/home" },
+  },
   letterbox: {
-    letterbox_invite: { icon: "mail", route: () => "/letterbox/settings" },
-    letterbox_joined: { icon: "group", route: () => "/letterbox" },
     birthday_card: {
       icon: "birthday",
-      route: (data) => (data.household_id ? `/letterbox/household/${data.household_id}` : "/letterbox"),
+      route: (data) => (data.contact_id ? `/letterbox/contact/${data.contact_id}` : "/letterbox"),
     },
   },
 };

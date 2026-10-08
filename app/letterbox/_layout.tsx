@@ -5,7 +5,7 @@ import { themedScreenLayout } from "../../components/themed-screen";
 import { useAuth } from "../../lib/auth-context";
 import { largeTitle, useTheme } from "../../lib/theme";
 
-// The Letterbox Nook (LET-001..011): a household's card list and address book.
+// The Letterbox Nook (LET-001..011): the card list and address book you share with your Home.
 export default function LetterboxLayout() {
   const { session, isLoading } = useAuth();
   useTheme();
@@ -17,8 +17,8 @@ export default function LetterboxLayout() {
   return (
     <Stack screenLayout={themedScreenLayout} screenOptions={nookStackOptions as never}>
       <Stack.Screen name="index" options={{ title: "Letterbox Nook", ...largeTitle }} />
-      <Stack.Screen name="household/[id]" options={{ title: "Household" }} />
-      <Stack.Screen name="household-form" options={{ title: "Household", presentation: "modal" }} />
+      <Stack.Screen name="contact/[id]" options={{ title: "Contact" }} />
+      <Stack.Screen name="contact-form" options={{ title: "Contact", presentation: "modal" }} />
       <Stack.Screen name="card-form" options={{ title: "A card", presentation: "modal" }} />
       <Stack.Screen name="season" options={{ title: "Card season" }} />
       <Stack.Screen name="thanks" options={{ title: "Thank-yous" }} />

@@ -22,15 +22,15 @@ import { useLetterbox } from "../../lib/use-letterbox";
 type Photo = { uri: string; mimeType?: string | null; isNew: boolean } | null;
 
 // Log a card sent or received (LET-005/006), with a photo if you like
-// (LET-007). Opened from a household, card season, or to change one.
+// (LET-007). Opened from a contact, card season, or to change one.
 export default function CardForm() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ householdId?: string; direction?: string; occasion?: string; cardId?: string }>();
+  const params = useLocalSearchParams<{ contactId?: string; direction?: string; occasion?: string; cardId?: string }>();
   const { data, isLoading } = useLetterbox();
   const existing = params.cardId ? data?.cards.find((c) => c.id === params.cardId) : undefined;
 
   const [ready, setReady] = useState(false);
-  const [householdId, setHouseholdId] = useState<string | null>(params.householdId ?? null);
+  const [contactId, setContactId] = useState<string | null>(params.contactId ?? null);
   const [direction, setDirection] = useState<"sent" | "received">(params.direction === "received" ? "received" : "sent");
   const [occasion, setOccasion] = useState<Occasion>((params.occasion as Occasion) ?? "holiday");
   const [date, setDate] = useState(new Date());
@@ -43,7 +43,7 @@ export default function CardForm() {
     if (ready || !data) return;
     if (params.cardId && !existing) return;
     if (existing) {
-      setHouseholdId(existing.household_id);
+      setContactId(existing.contact_id);
       setDirection(existing.direction);
       setOccasion(existing.occasion);
       setDate(parseDateString(existing.on_date));
@@ -64,9 +64,9 @@ export default function CardForm() {
   if (isLoading || !data || (!ready && !(params.cardId && !existing))) return <LoadingScreen cards={2} />;
   if (params.cardId && !existing) return <EmptyState icon="mail" title="That card is gone" />;
 
-  const household = data.households.find((h) => h.id === householdId);
+  const contact = data.contacts.find((h) => h.id === contactId);
   const query = search.trim().toLowerCase();
-  const choices = data.households.filter((h) => !query || h.name.toLowerCase().includes(query));
+  const choices = data.contacts.filter((h) => !query || h.name.toLowerCase().includes(query));
 
   async function pickPhoto(from: "camera" | "library") {
     const permission =
@@ -89,14 +89,14 @@ export default function CardForm() {
   }
 
   async function save() {
-    if (!household) return Alert.alert("Who's it for?", "Pick a household first.");
+    if (!contact) return Alert.alert("Who's it for?", "Pick a contact first.");
     setSaving(true);
     try {
       let photoPath = existing?.photo_path ?? null;
-      if (photo?.isNew) photoPath = await uploadCardPhoto(data!.boxId, photo.uri, photo.mimeType);
+      if (photo?.isNew) photoPath = await uploadCardPhoto(data!.homeId, photo.uri, photo.mimeType);
       else if (!photo) photoPath = null;
       const row = {
-        household_id: household.id,
+        contact_id: contact.id,
         direction,
         occasion,
         season: seasonFor(occasion, date),
@@ -106,7 +106,7 @@ export default function CardForm() {
       };
       const { error } = existing
         ? await supabase.from("letterbox_cards").update(row).eq("id", existing.id)
-        : await supabase.from("letterbox_cards").insert({ ...row, letterbox_id: data!.boxId });
+        : await supabase.from("letterbox_cards").insert({ ...row, home_id: data!.homeId });
       if (error) throw error;
       if (existing?.photo_path && existing.photo_path !== photoPath) removeCardPhoto(existing.photo_path);
       tap("success");
@@ -146,32 +146,32 @@ export default function CardForm() {
         }}
       />
 
-      {params.householdId || existing ? (
-        household ? (
-          <Text style={[ui.sectionTitle, { marginTop: 0 }]}>{household.name}</Text>
+      {params.contactId || existing ? (
+        contact ? (
+          <Text style={[ui.sectionTitle, { marginTop: 0 }]}>{contact.name}</Text>
         ) : null
       ) : (
         <>
           <Text style={ui.label}>{direction === "sent" ? "Sent to" : "From"}</Text>
-          {data.households.length > 8 ? (
+          {data.contacts.length > 8 ? (
             <TextInput
               style={ui.input}
               value={search}
               onChangeText={setSearch}
-              placeholder="Find a household…"
+              placeholder="Find a contact…"
               placeholderTextColor={colors.muted}
             />
           ) : null}
-          {data.households.length ? (
+          {data.contacts.length ? (
             <View style={ui.chips}>
               {choices.map((h) => (
-                <Chip key={h.id} selected={householdId === h.id} onPress={() => setHouseholdId(h.id)}>
+                <Chip key={h.id} selected={contactId === h.id} onPress={() => setContactId(h.id)}>
                   {h.name}
                 </Chip>
               ))}
             </View>
           ) : (
-            <Text style={ui.muted}>Add a household to your Letterbox first.</Text>
+            <Text style={ui.muted}>Add a contact to your Letterbox first.</Text>
           )}
         </>
       )}

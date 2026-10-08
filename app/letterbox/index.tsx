@@ -11,11 +11,11 @@ import { useAuth } from "../../lib/auth-context";
 import { cardSeason, nextBirthday, seasonStatus } from "../../lib/letterbox";
 import {
   addressUnavailable,
-  householdAddress,
+  contactAddress,
   loadReceivedGifts,
   personBirthday,
   personName,
-  type Household,
+  type Contact,
 } from "../../lib/letterbox-data";
 import { findNook } from "../../lib/nooks";
 import { supabase } from "../../lib/supabase";
@@ -25,7 +25,7 @@ import { useLetterbox } from "../../lib/use-letterbox";
 const nook = findNook("letterbox")!;
 
 // Letterbox home (LET-001): card season at a glance, thank-yous owed,
-// birthdays coming up, and every household in your address book.
+// birthdays coming up, and every contact in your address book.
 export default function LetterboxHome() {
   const router = useRouter();
   const { session } = useAuth();
@@ -41,7 +41,7 @@ export default function LetterboxHome() {
       if (!userId) return;
       Promise.all([
         supabase.from("profile_addresses").select("profile_id").eq("profile_id", userId).maybeSingle(),
-        supabase.from("letterbox_invites").select("id", { count: "exact", head: true }).eq("invited", userId),
+        supabase.from("home_invites").select("id", { count: "exact", head: true }).eq("invited", userId),
         supabase.from("letterbox_thanks").select("gift_id, thanked_at"),
         loadReceivedGifts(userId).catch(() => []),
       ]).then(([address, invites, thanks, gifts]) => {
@@ -66,16 +66,16 @@ export default function LetterboxHome() {
   }
 
   const season = cardSeason();
-  const status = seasonStatus(data.households, data.cards, season);
+  const status = seasonStatus(data.contacts, data.cards, season);
   const inSeason = [9, 10, 11, 0].includes(new Date().getMonth());
 
   // Birthdays in the next six weeks, soonest first.
-  const birthdays = data.households
-    .flatMap((household) =>
-      household.letterbox_people.map((person) => {
+  const birthdays = data.contacts
+    .flatMap((contact) =>
+      contact.letterbox_people.map((person) => {
         const birthday = personBirthday(person, data);
         if (!birthday || person.profile_id === userId) return null;
-        return { household, name: personName(person, data), ...nextBirthday(birthday) };
+        return { contact, name: personName(person, data), ...nextBirthday(birthday) };
       })
     )
     .filter((b): b is NonNullable<typeof b> => Boolean(b) && b!.days <= 42)
@@ -83,13 +83,13 @@ export default function LetterboxHome() {
 
   const query = search.trim().toLowerCase();
   const shown = query
-    ? data.households.filter(
+    ? data.contacts.filter(
         (h) =>
           h.name.toLowerCase().includes(query) ||
           h.letterbox_people.some((p) => personName(p, data).toLowerCase().includes(query)) ||
-          (householdAddress(h, data)?.city ?? "").toLowerCase().includes(query)
+          (contactAddress(h, data)?.city ?? "").toLowerCase().includes(query)
       )
-    : data.households;
+    : data.contacts;
 
   const when = (days: number) => (days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`);
   const headline =
@@ -99,15 +99,15 @@ export default function LetterboxHome() {
         : "All your holiday cards are out!"
       : birthdays[0]
         ? `${birthdays[0].name}'s birthday ${when(birthdays[0].days)}`
-        : data.households.length
+        : data.contacts.length
           ? "Your Letterbox"
           : "Start your Letterbox";
   const shared = data.members.length > 1;
 
-  function subtitle(household: Household) {
-    const address = householdAddress(household, data!);
+  function subtitle(contact: Contact) {
+    const address = contactAddress(contact, data!);
     if (address) return [address.line1, address.city].filter(Boolean).join(" · ");
-    return addressUnavailable(household, data!) ? "Their address isn't shared with you" : "No address yet";
+    return addressUnavailable(contact, data!) ? "Their address isn't shared with you" : "No address yet";
   }
 
   return (
@@ -118,7 +118,7 @@ export default function LetterboxHome() {
             <HeaderIcon
               icon="settings"
               label="Letterbox Nook settings"
-              badge={extras?.invites ?? 0}
+              
               onPress={() => router.push("/letterbox/settings")}
             />
           ),
@@ -133,7 +133,7 @@ export default function LetterboxHome() {
         facts={[
           {
             icon: "group",
-            text: `${data.households.length} household${data.households.length === 1 ? "" : "s"}${shared ? ` · shared with ${data.members.length - 1}` : ""}`,
+            text: `${data.contacts.length} contact${data.contacts.length === 1 ? "" : "s"}${shared ? ` · shared with ${data.members.length - 1}` : ""}`,
           },
           ...(birthdays[0] && (inSeason || birthdays.length > 1)
             ? [{ icon: "birthday" as const, text: `${birthdays[0].name}'s birthday ${when(birthdays[0].days)}` }]
@@ -146,9 +146,9 @@ export default function LetterboxHome() {
         <Banner
           icon="mail"
           tone="sky"
-          title="Someone wants to share a Letterbox"
-          body="One card list for your household. Tap to answer."
-          onPress={() => router.push("/letterbox/settings")}
+          title="Someone wants to share a Home with you"
+          body="The people you live with, and everything you keep together. Tap to answer."
+          onPress={() => router.push("/home")}
         />
       ) : null}
       {extras && !extras.hasAddress ? (
@@ -189,19 +189,19 @@ export default function LetterboxHome() {
           <SectionHeader title="Birthdays coming up" icon="birthday" />
           {birthdays.slice(0, 4).map((b, i) => (
             <NavCard
-              key={`${b.household.id}-${b.name}`}
+              key={`${b.contact.id}-${b.name}`}
               index={i + 2}
               icon="birthday"
               title={b.name}
               subtitle={`${b.date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${when(b.days)}${b.days <= 7 ? " · time to mail a card" : ""}`}
-              onPress={() => router.push(`/letterbox/household/${b.household.id}`)}
+              onPress={() => router.push(`/letterbox/contact/${b.contact.id}`)}
             />
           ))}
         </>
       ) : null}
 
-      <SectionHeader title="Households" icon="mail" />
-      {data.households.length > 6 ? (
+      <SectionHeader title="Contacts" icon="mail" />
+      {data.contacts.length > 6 ? (
         <TextInput
           style={ui.input}
           value={search}
@@ -211,7 +211,7 @@ export default function LetterboxHome() {
           clearButtonMode="while-editing"
         />
       ) : null}
-      {data.households.length === 0 ? (
+      {data.contacts.length === 0 ? (
         <EmptyState
           icon="mail"
           title="Nobody here yet"
@@ -220,21 +220,21 @@ export default function LetterboxHome() {
       ) : shown.length === 0 ? (
         <Text style={[ui.muted, { textAlign: "center" }]}>No one matches “{search.trim()}”.</Text>
       ) : (
-        shown.map((household, i) => (
+        shown.map((contact, i) => (
           <NavCard
-            key={household.id}
+            key={contact.id}
             index={Math.min(i + 3, 8)}
-            icon={household.letterbox_people.length > 1 ? "group" : "person"}
-            title={household.name}
-            subtitle={subtitle(household)}
-            onPress={() => router.push(`/letterbox/household/${household.id}`)}
+            icon={contact.letterbox_people.length > 1 ? "group" : "person"}
+            title={contact.name}
+            subtitle={subtitle(contact)}
+            onPress={() => router.push(`/letterbox/contact/${contact.id}`)}
           />
         ))
       )}
 
       <View style={{ gap: 10 }}>
         <Button title="Add family from your Burrows" icon="burrow" onPress={() => router.push("/letterbox/add-family")} />
-        <Button title="Add someone else" icon="add" variant="secondary" onPress={() => router.push("/letterbox/household-form")} />
+        <Button title="Add someone else" icon="add" variant="secondary" onPress={() => router.push("/letterbox/contact-form")} />
       </View>
     </NookScroll>
   );

@@ -6,7 +6,7 @@ import {
   cardSeason,
   cleanAddress,
   hasAddress,
-  householdNameFor,
+  contactNameFor,
   labelSheetHtml,
   nextBirthday,
   seasonFor,
@@ -33,14 +33,14 @@ describe("addresses", () => {
   });
 });
 
-describe("household names", () => {
-  it("names a household from its people", () => {
-    expect(householdNameFor(["Mia Johnson"])).toBe("Mia Johnson");
-    expect(householdNameFor(["Mia Johnson", "Sam Johnson"])).toBe("Mia & Sam Johnson");
-    expect(householdNameFor(["Mia Johnson", "Sam Lee"])).toBe("Mia Johnson & Sam Lee");
-    expect(householdNameFor(["Mia Johnson", "Sam Johnson", "Ava Johnson"])).toBe("The Johnson family");
-    expect(householdNameFor(["Mia", "Sam", "Ava"])).toBe("Mia & family");
-    expect(householdNameFor([" "])).toBe("");
+describe("contact names", () => {
+  it("names a contact from its people", () => {
+    expect(contactNameFor(["Mia Johnson"])).toBe("Mia Johnson");
+    expect(contactNameFor(["Mia Johnson", "Sam Johnson"])).toBe("Mia & Sam Johnson");
+    expect(contactNameFor(["Mia Johnson", "Sam Lee"])).toBe("Mia Johnson & Sam Lee");
+    expect(contactNameFor(["Mia Johnson", "Sam Johnson", "Ava Johnson"])).toBe("The Johnson family");
+    expect(contactNameFor(["Mia", "Sam", "Ava"])).toBe("Mia & family");
+    expect(contactNameFor([" "])).toBe("");
   });
 });
 
@@ -53,20 +53,20 @@ describe("seasons", () => {
   });
 
   it("splits the holiday list into to-send and sent", () => {
-    const households = [
+    const contacts = [
       { id: "a", on_holiday_list: true },
       { id: "b", on_holiday_list: true },
       { id: "c", on_holiday_list: false },
       { id: "d", on_holiday_list: false },
     ];
     const cards = [
-      { household_id: "a", direction: "sent" as const, occasion: "holiday", season: 2026 },
-      { household_id: "b", direction: "sent" as const, occasion: "holiday", season: 2025 },
-      { household_id: "b", direction: "sent" as const, occasion: "birthday", season: 2026 },
-      { household_id: "c", direction: "received" as const, occasion: "holiday", season: 2026 },
-      { household_id: "d", direction: "sent" as const, occasion: "holiday", season: 2026 },
+      { contact_id: "a", direction: "sent" as const, occasion: "holiday", season: 2026 },
+      { contact_id: "b", direction: "sent" as const, occasion: "holiday", season: 2025 },
+      { contact_id: "b", direction: "sent" as const, occasion: "birthday", season: 2026 },
+      { contact_id: "c", direction: "received" as const, occasion: "holiday", season: 2026 },
+      { contact_id: "d", direction: "sent" as const, occasion: "holiday", season: 2026 },
     ];
-    const status = seasonStatus(households, cards, 2026);
+    const status = seasonStatus(contacts, cards, 2026);
     expect(status.toSend.map((h) => h.id)).toEqual(["b"]);
     // d was sent one even though it's off the list, so it counts as done.
     expect(status.sent.map((h) => h.id)).toEqual(["a", "d"]);

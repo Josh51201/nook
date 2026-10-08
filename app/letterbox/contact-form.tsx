@@ -13,7 +13,7 @@ import { Button, Chip, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
 import { displayName } from "../../lib/gift-nook";
-import { addressLines, cleanAddress, emptyAddress, hasAddress, householdNameFor, type Address } from "../../lib/letterbox";
+import { addressLines, cleanAddress, emptyAddress, hasAddress, contactNameFor, type Address } from "../../lib/letterbox";
 import { parseDateString, toDateString } from "../../lib/profile";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
@@ -25,16 +25,16 @@ type Mate = { id: string; display_name: string | null; avatar_icon: string | nul
 let keySeed = 0;
 const newKey = () => `p${++keySeed}`;
 
-// Add or change a household (LET-003/004): its name, who lives there (with
+// Add or change a contact (LET-003/004): its name, who lives there (with
 // birthdays, or linked to family on Nook), and where to mail them — a
 // family member's own profile address, or one typed in.
-export default function HouseholdForm() {
+export default function ContactForm() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id;
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { data, isLoading } = useLetterbox();
-  const existing = id ? data?.households.find((h) => h.id === id) : undefined;
+  const existing = id ? data?.contacts.find((h) => h.id === id) : undefined;
 
   const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
@@ -100,9 +100,9 @@ export default function HouseholdForm() {
   if (isLoading || !ready || !data) return <LoadingScreen cards={2} />;
 
   const linkedIds = new Set(people.map((p) => p.profile_id).filter(Boolean));
-  const suggested = householdNameFor(people.map((p) => p.name));
+  const suggested = contactNameFor(people.map((p) => p.name));
   const shownName = nameTouched ? name : suggested;
-  // Linked people who share an address with you can be this household's address.
+  // Linked people who share an address with you can be this contact's address.
   const addressChoices = people.filter((p) => p.profile_id && shared.has(p.profile_id));
   const usingProfile = addressFrom !== null && (shared.has(addressFrom) || !hasAddress(address));
 
@@ -132,21 +132,21 @@ export default function HouseholdForm() {
     try {
       const typed = cleanAddress(address);
       const row = {
-        letterbox_id: data!.boxId,
+        home_id: data!.homeId,
         name: finalName,
         address_from: usingProfile ? addressFrom : null,
         ...(usingProfile ? cleanAddress(emptyAddress()) : typed),
         on_holiday_list: onList,
         notes: notes.trim() || null,
       };
-      let householdId = id;
+      let contactId = id;
       if (existing) {
-        const { error } = await supabase.from("letterbox_households").update(row).eq("id", existing.id);
+        const { error } = await supabase.from("letterbox_contacts").update(row).eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { data: created, error } = await supabase.from("letterbox_households").insert(row).select("id").single();
+        const { data: created, error } = await supabase.from("letterbox_contacts").insert(row).select("id").single();
         if (error) throw error;
-        householdId = created.id;
+        contactId = created.id;
       }
 
       const removed = (existing?.letterbox_people ?? []).filter((p) => !kept.some((k) => k.id === p.id)).map((p) => p.id);
@@ -162,12 +162,12 @@ export default function HouseholdForm() {
           ? await supabase.from("letterbox_people").update(fields).eq("id", person.id)
           : await supabase
               .from("letterbox_people")
-              .insert({ ...fields, household_id: householdId, letterbox_id: data!.boxId });
+              .insert({ ...fields, contact_id: contactId, home_id: data!.homeId });
         if (error) throw error;
       }
       tap("success");
       if (existing) router.back();
-      else router.replace(`/letterbox/household/${householdId}`);
+      else router.replace(`/letterbox/contact/${contactId}`);
     } catch (error) {
       setSaving(false);
       Alert.alert("Couldn't save", friendlyError(error as { message?: string }));
@@ -181,7 +181,7 @@ export default function HouseholdForm() {
         text: "Remove",
         style: "destructive",
         onPress: async () => {
-          const { error } = await supabase.from("letterbox_households").delete().eq("id", existing!.id);
+          const { error } = await supabase.from("letterbox_contacts").delete().eq("id", existing!.id);
           if (error) return Alert.alert("Couldn't remove them", friendlyError(error));
           router.dismissTo("/letterbox");
         },
@@ -204,7 +204,7 @@ export default function HouseholdForm() {
     <NookScroll>
       <Stack.Screen
         options={{
-          title: existing ? "Edit household" : "New household",
+          title: existing ? "Edit contact" : "New contact",
           headerRight: () => (
             <Tap onPress={save} disabled={saving} hitSlop={10}>
               <Text style={{ color: colors.bark, fontSize: 17, fontWeight: "700" }}>Save</Text>
@@ -359,7 +359,7 @@ export default function HouseholdForm() {
       />
 
       <Button title="Save" icon="check" onPress={save} loading={saving} style={{ marginTop: 8 }} />
-      {existing ? <Button title="Remove household" icon="trash" variant="danger" onPress={confirmDelete} /> : null}
+      {existing ? <Button title="Remove contact" icon="trash" variant="danger" onPress={confirmDelete} /> : null}
     </NookScroll>
   );
 }

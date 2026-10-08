@@ -34,6 +34,9 @@ export default function Burrows() {
   const [isLoading, setIsLoading] = useState(true);
   const [busy, setBusy] = useState<"create" | "code" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Your Home (HOME-001): how many others share it, and invites waiting.
+  const [homeMates, setHomeMates] = useState<number | null>(null);
+  const [homeInvites, setHomeInvites] = useState(0);
 
   const load = useCallback(
     () =>
@@ -45,12 +48,21 @@ export default function Burrows() {
             .order("name");
           if (loadError) setError(loadError.message);
           setBurrows((data ?? []) as unknown as BurrowRow[]);
+          // (Invites you've been sent also let you see who's in that Home,
+          // so count only the members of your own.)
+          const { data: homeId } = await supabase.rpc("my_home");
+          const [members, invites] = await Promise.all([
+            supabase.from("home_members").select("profile_id").eq("home_id", homeId),
+            supabase.from("home_invites").select("id", { count: "exact", head: true }).eq("invited", userId ?? ""),
+          ]);
+          setHomeMates(Math.max(0, (members.data?.length ?? 1) - 1));
+          setHomeInvites(invites.count ?? 0);
           setIsLoading(false);
         },
         setError,
         () => setIsLoading(false)
       ),
-    []
+    [userId]
   );
 
   useFocusEffect(
@@ -135,6 +147,21 @@ export default function Burrows() {
           },
           { icon: "sparkles", text: "Shared by every Nook" },
         ]}
+      />
+
+      <NavCard
+        index={0}
+        icon="hearth"
+        title="Your Home"
+        subtitle={
+          homeMates === null
+            ? "The people you live with"
+            : homeMates > 0
+              ? `You and ${homeMates} other${homeMates === 1 ? "" : "s"} · shared by every Nook`
+              : "Invite the people you live with"
+        }
+        right={homeInvites ? <Text style={[ui.link, { fontWeight: "700" }]}>{homeInvites} waiting</Text> : undefined}
+        onPress={() => router.push("/home")}
       />
 
       <SectionHeader title="Your Burrows" icon="burrow" />

@@ -14,7 +14,7 @@ import { friendlyError, tap } from "../../../lib/feedback";
 import { addressLines, nextBirthday, occasionInfo } from "../../../lib/letterbox";
 import {
   addressUnavailable,
-  householdAddress,
+  contactAddress,
   personBirthday,
   personName,
   photoUrls,
@@ -28,10 +28,10 @@ import { useLetterbox } from "../../../lib/use-letterbox";
 
 const nook = findNook("letterbox")!;
 
-// One household (LET-003): where to mail them, who lives there and their
+// One contact (LET-003): where to mail them, who lives there and their
 // birthdays, whether they're on the holiday list, and every card back and
 // forth, year by year (LET-005/006), with photos of the ones you got (LET-007).
-export default function HouseholdPage() {
+export default function ContactPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, reload } = useLetterbox();
@@ -39,8 +39,8 @@ export default function HouseholdPage() {
   const [viewing, setViewing] = useState<string | null>(null);
   const [onList, setOnList] = useState<boolean | null>(null);
 
-  const household = data?.households.find((h) => h.id === id);
-  const cards = data?.cards.filter((c) => c.household_id === id) ?? [];
+  const contact = data?.contacts.find((h) => h.id === id);
+  const cards = data?.cards.filter((c) => c.contact_id === id) ?? [];
   const photoKey = cards.map((c) => c.photo_path).filter(Boolean).join(",");
 
   useEffect(() => {
@@ -49,19 +49,19 @@ export default function HouseholdPage() {
   }, [photoKey]);
 
   if (isLoading && !data) return <LoadingScreen cards={3} />;
-  if (!data || !household) {
-    return <EmptyState icon="mail" title="That household is gone" body="It may have been removed from your Letterbox." />;
+  if (!data || !contact) {
+    return <EmptyState icon="mail" title="That contact is gone" body="It may have been removed from your Letterbox." />;
   }
 
-  const address = householdAddress(household, data);
+  const address = contactAddress(contact, data);
   const lines = addressLines(address);
-  const fromProfile = household.address_from && address !== household ? data.profiles.get(household.address_from) : null;
-  const listed = onList ?? household.on_holiday_list;
+  const fromProfile = contact.address_from && address !== contact ? data.profiles.get(contact.address_from) : null;
+  const listed = onList ?? contact.on_holiday_list;
 
   async function toggleList(next: boolean) {
     tap();
     setOnList(next);
-    const { error } = await supabase.from("letterbox_households").update({ on_holiday_list: next }).eq("id", id);
+    const { error } = await supabase.from("letterbox_contacts").update({ on_holiday_list: next }).eq("id", id);
     if (error) {
       setOnList(!next);
       Alert.alert("Couldn't change that", friendlyError(error));
@@ -69,7 +69,7 @@ export default function HouseholdPage() {
   }
 
   async function copyAddress() {
-    await Clipboard.setStringAsync([household!.name, ...lines].join("\n"));
+    await Clipboard.setStringAsync([contact!.name, ...lines].join("\n"));
     tap("success");
     Alert.alert("Address copied");
   }
@@ -117,10 +117,10 @@ export default function HouseholdPage() {
     <NookScroll onRefresh={reload}>
       <Stack.Screen
         options={{
-          title: household.name,
+          title: contact.name,
           headerRight: () => (
             <Tap
-              onPress={() => router.push({ pathname: "/letterbox/household-form", params: { id } })}
+              onPress={() => router.push({ pathname: "/letterbox/contact-form", params: { id } })}
               hitSlop={10}
               style={[ui.row, { gap: 5 }]}
             >
@@ -137,7 +137,7 @@ export default function HouseholdPage() {
           <View style={styles.stamp}>
             <Icon name="mail" size={22} color={nook.iconColor} />
           </View>
-          <Text style={[styles.envelopeName, { color: colors.text }]}>{household.name}</Text>
+          <Text style={[styles.envelopeName, { color: colors.text }]}>{contact.name}</Text>
           {lines.length ? (
             lines.map((line) => (
               <Text key={line} style={[styles.envelopeLine, { color: colors.text }]} selectable>
@@ -146,7 +146,7 @@ export default function HouseholdPage() {
             ))
           ) : (
             <Text style={[styles.envelopeLine, { color: colors.text, opacity: 0.6 }]}>
-              {addressUnavailable(household, data) ? "Their address isn't shared with you" : "No address yet"}
+              {addressUnavailable(contact, data) ? "Their address isn't shared with you" : "No address yet"}
             </Text>
           )}
           {fromProfile ? (
@@ -162,13 +162,13 @@ export default function HouseholdPage() {
 
       <View style={[ui.row, { gap: 10 }]}>
         {lines.length ? <Button title="Copy address" icon="copy" variant="secondary" style={{ flex: 1 }} onPress={copyAddress} /> : null}
-        {!lines.length && !household.address_from ? (
+        {!lines.length && !contact.address_from ? (
           <Button
             title="Add their address"
             icon="place"
             variant="secondary"
             style={{ flex: 1 }}
-            onPress={() => router.push({ pathname: "/letterbox/household-form", params: { id } })}
+            onPress={() => router.push({ pathname: "/letterbox/contact-form", params: { id } })}
           />
         ) : null}
       </View>
@@ -182,10 +182,10 @@ export default function HouseholdPage() {
         <Switch value={listed} onValueChange={toggleList} trackColor={{ true: colors.bark }} />
       </View>
 
-      {household.letterbox_people.length ? (
+      {contact.letterbox_people.length ? (
         <>
           <SectionHeader title="Who lives here" icon="group" />
-          {household.letterbox_people.map((person, i) => {
+          {contact.letterbox_people.map((person, i) => {
             const name = personName(person, data);
             const birthday = personBirthday(person, data);
             const linked = person.profile_id ? data.profiles.get(person.profile_id) : null;
@@ -208,11 +208,11 @@ export default function HouseholdPage() {
         </>
       ) : null}
 
-      {household.notes ? (
+      {contact.notes ? (
         <>
           <SectionHeader title="Notes" icon="edit" />
           <View style={ui.card}>
-            <Text style={[ui.muted, { color: colors.text }]}>{household.notes}</Text>
+            <Text style={[ui.muted, { color: colors.text }]}>{contact.notes}</Text>
           </View>
         </>
       ) : null}
@@ -223,14 +223,14 @@ export default function HouseholdPage() {
           title="I sent one"
           icon="arrowUp"
           style={{ flex: 1 }}
-          onPress={() => router.push({ pathname: "/letterbox/card-form", params: { householdId: id, direction: "sent" } })}
+          onPress={() => router.push({ pathname: "/letterbox/card-form", params: { contactId: id, direction: "sent" } })}
         />
         <Button
           title="They sent one"
           icon="arrowDown"
           variant="secondary"
           style={{ flex: 1 }}
-          onPress={() => router.push({ pathname: "/letterbox/card-form", params: { householdId: id, direction: "received" } })}
+          onPress={() => router.push({ pathname: "/letterbox/card-form", params: { contactId: id, direction: "received" } })}
         />
       </View>
       {years.length === 0 ? (

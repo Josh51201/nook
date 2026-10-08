@@ -15,9 +15,9 @@ describe("noticeRoute", () => {
   });
 
   it("sends Letterbox notices to the right place", () => {
-    expect(noticeRoute({ nook: "letterbox", kind: "letterbox_invite", data: { invite_id: "i1" } })).toBe("/letterbox/settings");
-    expect(noticeRoute({ nook: "letterbox", kind: "birthday_card", data: { household_id: "h1" } })).toBe(
-      "/letterbox/household/h1"
+    expect(noticeRoute({ nook: "home", kind: "home_invite", data: { invite_id: "i1" } })).toBe("/home");
+    expect(noticeRoute({ nook: "letterbox", kind: "birthday_card", data: { contact_id: "h1" } })).toBe(
+      "/letterbox/contact/h1"
     );
     expect(noticeRoute({ nook: "letterbox", kind: "birthday_card", data: {} })).toBe("/letterbox");
     expect(noticeIcon({ nook: "letterbox", kind: "birthday_card" })).toBe("birthday");

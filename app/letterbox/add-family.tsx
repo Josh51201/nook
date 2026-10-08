@@ -11,7 +11,7 @@ import { Button, EmptyState } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
 import { displayName } from "../../lib/gift-nook";
-import { householdNameFor } from "../../lib/letterbox";
+import { contactNameFor } from "../../lib/letterbox";
 import { findNook } from "../../lib/nooks";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
@@ -31,7 +31,7 @@ type Mate = {
 };
 
 // Add family from your Burrows in one go (LET-004): each becomes a
-// household linked to them, using their own address when they share it.
+// contact linked to them, using their own address when they share it.
 export default function AddFamily() {
   const router = useRouter();
   const { session } = useAuth();
@@ -79,7 +79,7 @@ export default function AddFamily() {
 
   // Already in your Letterbox (or sharing it with you): nothing to add.
   const inBox = new Set([
-    ...data.households.flatMap((h) => h.letterbox_people.map((p) => p.profile_id)),
+    ...data.contacts.flatMap((h) => h.letterbox_people.map((p) => p.profile_id)),
     ...data.members.map((m) => m.profile_id),
   ]);
   const available = mates.filter((m) => !inBox.has(m.id));
@@ -97,7 +97,7 @@ export default function AddFamily() {
   async function add() {
     setSaving(true);
     try {
-      // People who share an address become one household.
+      // People who share an address become one contact.
       const homes = new Map<string, Mate[]>();
       for (const mate of available.filter((m) => picked.has(m.id))) {
         const key = mate.home ?? mate.id;
@@ -105,11 +105,11 @@ export default function AddFamily() {
       }
       for (const group of homes.values()) {
         const withAddress = group.find((m) => m.hasAddress);
-        const { data: household, error } = await supabase
-          .from("letterbox_households")
+        const { data: contact, error } = await supabase
+          .from("letterbox_contacts")
           .insert({
-            letterbox_id: data!.boxId,
-            name: householdNameFor(group.map(displayName)),
+            home_id: data!.homeId,
+            name: contactNameFor(group.map(displayName)),
             address_from: withAddress?.id ?? null,
           })
           .select("id")
@@ -117,8 +117,8 @@ export default function AddFamily() {
         if (error) throw error;
         const { error: personError } = await supabase.from("letterbox_people").insert(
           group.map((mate, position) => ({
-            household_id: household.id,
-            letterbox_id: data!.boxId,
+            contact_id: contact.id,
+            home_id: data!.homeId,
             name: displayName(mate),
             profile_id: mate.id,
             position,
@@ -147,7 +147,7 @@ export default function AddFamily() {
         <>
           <Text style={ui.muted}>
             Pick who to add. Anyone sharing their address fills in on their own and stays up to date when they move.
-            People who share the same address become one household.
+            People who share the same address become one contact.
           </Text>
           {available.map((mate, i) => {
             const on = picked.has(mate.id);

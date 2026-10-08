@@ -14,7 +14,7 @@ import { colors, ui } from "../../lib/theme";
 import { useLetterbox } from "../../lib/use-letterbox";
 
 // One thank-you note owed (LET-011): what it's for and who it's to — a
-// household in your Letterbox, or just a name. For a gift from the Gift
+// contact in your Letterbox, or just a name. For a gift from the Gift
 // Nook, you're the one saying who it was from (GIFT-007).
 export default function ThanksForm() {
   const router = useRouter();
@@ -22,7 +22,7 @@ export default function ThanksForm() {
   const { data, isLoading } = useLetterbox();
   const [existing, setExisting] = useState<Thanks | null | undefined>(params.id ? undefined : null);
   const [what, setWhat] = useState(params.what ?? "");
-  const [householdId, setHouseholdId] = useState<string | null>(null);
+  const [contactId, setContactId] = useState<string | null>(null);
   const [fromName, setFromName] = useState("");
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
@@ -39,7 +39,7 @@ export default function ThanksForm() {
         setExisting(item);
         if (item) {
           setWhat(item.what);
-          setHouseholdId(item.household_id);
+          setContactId(item.contact_id);
           setFromName(item.from_name === NO_NOTE ? "" : (item.from_name ?? ""));
         }
       });
@@ -49,21 +49,21 @@ export default function ThanksForm() {
 
   const giftId = existing?.gift_id ?? params.giftId ?? null;
   const query = search.trim().toLowerCase();
-  const choices = data.households.filter((h) => !query || h.name.toLowerCase().includes(query));
+  const choices = data.contacts.filter((h) => !query || h.name.toLowerCase().includes(query));
 
   async function save(skip = false) {
     if (!what.trim()) return Alert.alert("What's it for?", "Like “the cozy scarf”.");
-    if (!skip && !householdId && !fromName.trim()) return Alert.alert("Who's it to?", "Pick a household or type a name.");
+    if (!skip && !contactId && !fromName.trim()) return Alert.alert("Who's it to?", "Pick a contact or type a name.");
     setSaving(true);
     const row = {
       what: what.trim(),
-      household_id: skip ? null : householdId,
-      from_name: skip ? NO_NOTE : householdId ? null : fromName.trim(),
+      contact_id: skip ? null : contactId,
+      from_name: skip ? NO_NOTE : contactId ? null : fromName.trim(),
       ...(skip ? { thanked_at: new Date().toISOString() } : {}),
     };
     const { error } = existing
       ? await supabase.from("letterbox_thanks").update(row).eq("id", existing.id)
-      : await supabase.from("letterbox_thanks").insert({ ...row, letterbox_id: data!.boxId, gift_id: giftId });
+      : await supabase.from("letterbox_thanks").insert({ ...row, home_id: data!.homeId, gift_id: giftId });
     if (error) {
       setSaving(false);
       return Alert.alert("Couldn't save", friendlyError(error));
@@ -110,23 +110,23 @@ export default function ThanksForm() {
       />
 
       <Text style={ui.label}>To</Text>
-      {data.households.length > 8 ? (
+      {data.contacts.length > 8 ? (
         <TextInput
           style={ui.input}
           value={search}
           onChangeText={setSearch}
-          placeholder="Find a household…"
+          placeholder="Find a contact…"
           placeholderTextColor={colors.muted}
         />
       ) : null}
-      {data.households.length ? (
+      {data.contacts.length ? (
         <View style={ui.chips}>
           {choices.map((h) => (
             <Chip
               key={h.id}
-              selected={householdId === h.id}
+              selected={contactId === h.id}
               onPress={() => {
-                setHouseholdId(householdId === h.id ? null : h.id);
+                setContactId(contactId === h.id ? null : h.id);
                 setFromName("");
               }}
             >
@@ -140,9 +140,9 @@ export default function ThanksForm() {
         value={fromName}
         onChangeText={(value) => {
           setFromName(value);
-          if (value) setHouseholdId(null);
+          if (value) setContactId(null);
         }}
-        placeholder={data.households.length ? "…or type a name" : "Their name"}
+        placeholder={data.contacts.length ? "…or type a name" : "Their name"}
         placeholderTextColor={colors.muted}
       />
 

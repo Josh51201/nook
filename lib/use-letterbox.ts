@@ -5,7 +5,7 @@ import { guarded } from "./feedback";
 import { cardSeason, nextBirthday, seasonStatus } from "./letterbox";
 import { loadLetterbox, personBirthday, personName, type LetterboxData } from "./letterbox-data";
 
-// The household's Letterbox for a screen, fresh each time it comes into view.
+// Your Home's Letterbox for a screen, fresh each time it comes into view.
 export function useLetterbox() {
   const [data, setData] = useState<LetterboxData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +52,9 @@ export function useLetterboxSummary(refreshKey: number) {
       .then((data) => {
         if (!live) return;
         const season = cardSeason();
-        const status = seasonStatus(data.households, data.cards, season);
+        const status = seasonStatus(data.contacts, data.cards, season);
         const members = new Set(data.members.map((m) => m.profile_id));
-        const birthdays = data.households
+        const birthdays = data.contacts
           .flatMap((h) =>
             h.letterbox_people
               .filter((p) => !p.profile_id || !members.has(p.profile_id))

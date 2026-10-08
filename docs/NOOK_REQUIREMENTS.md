@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-08 (rev 35)_
+_Last updated: 2026-10-08 (rev 36)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -55,6 +55,13 @@ _Last updated: 2026-10-08 (rev 35)_
 - **PROF-003** A kid's managers can set up the kid's profile too — picture, birthday and "about me" — from Manage. Only their managers can (and their family sees it, like anyone's).
 - **PROF-005** Each person can put their mailing address on their profile. It's optional but encouraged. Everyone in their Burrows can see it, except Burrows they choose to leave out (e.g. a work Burrow). It fills in family's Letterbox Nooks and stays current when they move (LET-004). _(Built: on your profile, with a chip per Burrow to leave any out. The Letterbox home nudges you to add it. Kept apart from the rest of the profile so it never reaches people outside the Burrows you chose.)_
 
+## 1c. Home
+- **HOME-001** Your **Home** is the people you live with, shared by every Nook that keeps things for a household (Letterbox now; Pet Care, Yearly Rhythms, House Binder and others later), so it's set up once and every Nook uses it. Each person is in one Home at a time. _(Built 2026-10-08. Lives at the top of the Burrows tab as a "Your Home" card, not a new tab and not a Burrow — a Burrow is a bigger group with invite codes and gift lists, a Home is the few people sharing one set of things.)_
+- **HOME-002** You invite someone you already share a Burrow with; once they accept, you share a Home. The invite arrives in their inbox and on the Home page. _(Moved out of the Letterbox's settings, where it was LET-002.)_
+- **HOME-003** If your own Home was only you, everything kept in it comes along when you join another; if you were in a shared one, you just leave it. Leaving gives you your own Home again with a copy of the Letterbox addresses; card history and anything else kept together stays with the people still there.
+- **HOME-004** Anyone in a Home can add and change what's kept there. Nobody outside it can see any of it.
+- **HOME-005** Each Nook that keeps things in a Home stores them against the Home, so they follow whoever lives there. _(Letterbox did; Pet Care will.)_
+
 ## 2. Gift Nook (first Nook)
 - **GIFT-001** Users create families and invite others to join. _(Now in the Burrows tab, shared by every Nook — CORE-025.)_
 - **GIFT-002** Users add gifts they want to their own list.
@@ -106,8 +113,9 @@ _Last updated: 2026-10-08 (rev 35)_
 
 ## 2c. Letterbox Nook
 - **LET-001** A Letterbox Nook: the holiday card list with addresses — who you sent cards to and who sent you one, each year — that doubles as a contact list for family and friends. _(Built 2026-10-08 — in the Market. Proposed details: a home with card season and thank-yous at a glance, birthdays in the next six weeks, and every household (searchable once there are more than six); each household's page looks like an envelope with a stamp, with the people, their birthdays, notes and every card year by year.)_
-- **LET-002** A Letterbox is shared by a household: you invite someone you already share a Burrow with, and once they accept it's one list for both of you. Either of you can mark a card sent. _(Built (proposed details): invites arrive in the inbox and in Letterbox settings. If your own Letterbox was only yours, its whole list comes along when you accept. Leaving gives you your own Letterbox again with a copy of the addresses; the card history stays with the household.)_
-- **LET-003** Each entry in the Letterbox is a household — one mailing address, like "The Johnson Family" — with the people who live there listed inside. One card goes to each. _(Built (proposed details): the envelope name is suggested from the people — "Mia & Sam Johnson", "The Johnson family" — and can be changed. "Add family from your Burrows" picks several people at once, and people who share an address become one household.)_
+Either of you can mark a card sent.
+- **LET-002** A Letterbox is shared by your Home (HOME-001): once someone shares your Home, it's one card list for both of you, and either of you can mark a card sent.
+- **LET-003** Each entry in the Letterbox is a **contact** — one mailing address, like "The Johnson Family" — with the people who live there listed inside. (Renamed from "household" 2026-10-08, now that Home means the people you live with.) One card goes to each. _(Built (proposed details): the envelope name is suggested from the people — "Mia & Sam Johnson", "The Johnson family" — and can be changed. "Add family from your Burrows" picks several people at once, and people who share an address become one household.)_
 - **LET-004** Addresses come from both places: family members' own profile addresses (PROF-005), which stay up to date, and addresses you type in for anyone not on the app (friends, neighbors, coworkers). _(Built: a household linked to family uses their profile address while they share it with you; otherwise the typed one.)_
 - **LET-005** It tracks holiday cards each year: who you sent to and who sent you one, so next year you know who to send to. _(Built (proposed details): a Card season page per year — tick each household off as its card goes out, see who sent you one, and anyone who sent one but isn't on your list gets a nudge to add them. Cards that arrive in January count toward the year before.)_
 - **LET-006** It tracks other cards too: birthday, thank-you, sympathy, wedding, graduation and more.
@@ -176,6 +184,7 @@ _Last updated: 2026-10-08 (rev 35)_
 - **2026-10-08 — Letterbox Nook:** Josh picked the card & contact list as the next Nook and chose: the name Letterbox Nook; shared by a household, invited from your Burrows; one entry per household; addresses from family profiles plus typed-in ones; tracking holiday cards each year, other cards, photos of cards received, and printable labels; nudges for card season, birthday cards and thank-you notes owed. On addresses: "everyone in the burrows but you can choose to not include it to everyone, so like if its a work burrow then you wont want to share it with everyone. And also not everyone HAS to put in an address, but its encouraged." → LET-001..011, PROF-005, Glossary
 - **2026-10-08 — Copies of widgets and Nooks:** "The ability to copy a widget so that I can put into different hollows or for people who just want to customize their page their own way, also I feel like you should have the ability to do add multiple nooks on your home pages or drop within hollows but they just go to the same place." No conflicts: a Nook's data lives on the account, not the tile. Copies being independent rather than mirrored is Claude's pick, for Josh to confirm. → CORE-039
 - **2026-10-08 — Copy button and drag to trash:** "A copy button from the main page as well when in edit mode rather than having to go into the widget and scroll all the way down." "Also need a drag to a trash functionality in edit mode to delete widgets." "Also needs to say somewhere that the widget was copied (maybe say at the bottom of the page or something to signify it was copied, maybe scroll down to it.)" → CORE-039, CORE-040
+- **2026-10-08 — Home, outside the Letterbox:** "I say we change up the households a little bit to be done outside of the letterbox since its going to be used for multiple things. Not sure if it should be done within the Burrows or in another tab or what is best for the app. Will leave you to think of where to best put it." Claude picked a "Your Home" card at the top of the Burrows tab; Josh chose the name "Home" and Pet Care as the next Nook. → HOME-001..005, LET-002, LET-003, Glossary
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -185,7 +194,8 @@ _Last updated: 2026-10-08 (rev 35)_
 | The gift-list Nook | Gift Nook | approved |
 | The who-brings-what Nook | Potluck Nook | approved |
 | The card & contact list Nook | Letterbox Nook | approved |
-| One entry in the Letterbox (one mailing address) | Household | proposed |
+| The people you live with, shared by Nooks | Home | proposed |
+| One entry in the Letterbox (one mailing address) | Contact | proposed |
 | Homepage | The Hearth | proposed |
 | A family group | Burrow | proposed |
 | Invite | Knock | proposed |

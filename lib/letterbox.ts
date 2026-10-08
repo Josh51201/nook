@@ -72,10 +72,10 @@ export function cleanAddress(address: Address): Address {
   };
 }
 
-// A household's name from the people in it, e.g. for a new entry:
+// A contact's name from the people in it, e.g. for a new entry:
 // "Mia Johnson" → "Mia Johnson"; two people → "Mia & Sam Johnson" if they
 // share a last name, otherwise "Mia Johnson & Sam Lee".
-export function householdNameFor(names: string[]) {
+export function contactNameFor(names: string[]) {
   const people = names.map((n) => n.trim()).filter(Boolean);
   if (people.length === 0) return "";
   if (people.length === 1) return people[0];
@@ -110,22 +110,22 @@ export function nextBirthday(birthday: string, now = new Date()) {
 
 // --- Card season (LET-005, LET-009) ------------------------------------------------
 
-export type SeasonCard = { household_id: string; direction: "sent" | "received"; occasion: string; season: number };
-export type SeasonHousehold = { id: string; on_holiday_list: boolean };
+export type SeasonCard = { contact_id: string; direction: "sent" | "received"; occasion: string; season: number };
+export type SeasonContact = { id: string; on_holiday_list: boolean };
 
 // Who's left to send a holiday card to this season, who's done, and who
-// sent one. Households that sent you one but aren't on your list are
+// sent one. Contacts that sent you one but aren't on your list are
 // "worth adding" — so next year nobody's missed.
-export function seasonStatus<H extends SeasonHousehold>(households: H[], cards: SeasonCard[], season: number) {
+export function seasonStatus<H extends SeasonContact>(contacts: H[], cards: SeasonCard[], season: number) {
   const holiday = cards.filter((c) => c.occasion === "holiday" && c.season === season);
-  const sentTo = new Set(holiday.filter((c) => c.direction === "sent").map((c) => c.household_id));
-  const gotFrom = new Set(holiday.filter((c) => c.direction === "received").map((c) => c.household_id));
-  const onList = households.filter((h) => h.on_holiday_list || sentTo.has(h.id));
+  const sentTo = new Set(holiday.filter((c) => c.direction === "sent").map((c) => c.contact_id));
+  const gotFrom = new Set(holiday.filter((c) => c.direction === "received").map((c) => c.contact_id));
+  const onList = contacts.filter((h) => h.on_holiday_list || sentTo.has(h.id));
   return {
     toSend: onList.filter((h) => !sentTo.has(h.id)),
     sent: onList.filter((h) => sentTo.has(h.id)),
-    gotFrom: households.filter((h) => gotFrom.has(h.id)),
-    worthAdding: households.filter((h) => gotFrom.has(h.id) && !h.on_holiday_list && !sentTo.has(h.id)),
+    gotFrom: contacts.filter((h) => gotFrom.has(h.id)),
+    worthAdding: contacts.filter((h) => gotFrom.has(h.id) && !h.on_holiday_list && !sentTo.has(h.id)),
     total: onList.length,
   };
 }
@@ -146,7 +146,7 @@ export function labelSheetHtml(labels: Label[]) {
     `<div class="label"><div class="name">${escape(l.name)}</div>${l.lines.map((line) => `<div>${escape(line)}</div>`).join("")}</div>`;
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 @page { size: 8.5in 11in; margin: 0; }
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { home-sizing: border-home; margin: 0; padding: 0; }
 body { font-family: -apple-system, Helvetica, Arial, sans-serif; }
 .page { width: 8.5in; height: 11in; padding: 0.5in 0.1875in 0; display: grid;
   grid-template-columns: repeat(3, 2.625in); grid-auto-rows: 1in; column-gap: 0.125in; page-break-after: always; }

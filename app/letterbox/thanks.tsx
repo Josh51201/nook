@@ -64,7 +64,7 @@ export default function ThankYous() {
   const owed = thanks.filter((t) => !t.thanked_at);
   const written = thanks.filter((t) => t.thanked_at).slice(0, 25);
   const toName = (t: Thanks) =>
-    (t.household_id ? data?.households.find((h) => h.id === t.household_id)?.name : null) ?? t.from_name ?? "Someone";
+    (t.contact_id ? data?.contacts.find((h) => h.id === t.contact_id)?.name : null) ?? t.from_name ?? "Someone";
 
   async function setThanked(item: Thanks, thanked: boolean) {
     tap(thanked ? "success" : "light");

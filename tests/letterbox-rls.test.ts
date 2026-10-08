@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-// Letterbox Nook (LET-002..011) and mailing addresses (PROF-005), enforced
+// Letterbox Nook (HOME-001..005, LET-002..011) and mailing addresses (PROF-005), enforced
 // in Postgres. Same setup as gift-nook-rls.test.ts (needs .env plus
 // SUPABASE_SERVICE_ROLE_KEY in .env.test.local); skipped without them.
 
@@ -11,7 +11,7 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const canRun = Boolean(SUPABASE_URL && ANON_KEY && SERVICE_ROLE_KEY);
 
-describe.runIf(canRun)("Letterbox: one list per household, addresses only where shared", () => {
+describe.runIf(canRun)("Letterbox: one Home shares one list, addresses only where shared", () => {
   let admin: SupabaseClient;
   const runId = Date.now();
   // josh and sarah are a couple; cousin shares the family Burrow with them.
@@ -25,7 +25,7 @@ describe.runIf(canRun)("Letterbox: one list per household, addresses only where 
   let workBurrow: string;
   let joshBox: string;
   let sarahBox: string;
-  let sarahHousehold: string;
+  let sarahContact: string;
   let joshGift: string;
 
   beforeAll(async () => {
@@ -62,20 +62,20 @@ describe.runIf(canRun)("Letterbox: one list per household, addresses only where 
     await clients.josh.from("profile_addresses").insert({ profile_id: ids.josh, line1: "1 Elm St", city: "Springfield" });
     await clients.josh.from("address_hidden_burrows").insert({ profile_id: ids.josh, burrow_id: workBurrow });
 
-    const { data: box1 } = await clients.josh.rpc("my_letterbox");
+    const { data: box1 } = await clients.josh.rpc("my_home");
     joshBox = box1;
-    const { data: box2 } = await clients.sarah.rpc("my_letterbox");
+    const { data: box2 } = await clients.sarah.rpc("my_home");
     sarahBox = box2;
 
-    const { data: household } = await clients.sarah
-      .from("letterbox_households")
-      .insert({ letterbox_id: sarahBox, name: "The Johnsons", line1: "9 Oak Ave", city: "Shelbyville" })
+    const { data: contact } = await clients.sarah
+      .from("letterbox_contacts")
+      .insert({ home_id: sarahBox, name: "The Johnsons", line1: "9 Oak Ave", city: "Shelbyville" })
       .select("id")
       .single();
-    sarahHousehold = household!.id;
+    sarahContact = contact!.id;
     await clients.sarah.from("letterbox_cards").insert({
-      letterbox_id: sarahBox,
-      household_id: sarahHousehold,
+      home_id: sarahBox,
+      contact_id: sarahContact,
       direction: "sent",
       occasion: "holiday",
       season: 2025,
@@ -119,79 +119,79 @@ describe.runIf(canRun)("Letterbox: one list per household, addresses only where 
     expect(error).not.toBeNull();
   });
 
-  it("nobody outside a household sees its Letterbox", async () => {
+  it("nobody outside a Home sees its Letterbox", async () => {
     for (const person of ["josh", "cousin", "outsider"] as const) {
-      const { data } = await clients[person].from("letterbox_households").select("id").eq("letterbox_id", sarahBox);
+      const { data } = await clients[person].from("letterbox_contacts").select("id").eq("home_id", sarahBox);
       expect(data).toEqual([]);
-      const { data: cards } = await clients[person].from("letterbox_cards").select("id").eq("letterbox_id", sarahBox);
+      const { data: cards } = await clients[person].from("letterbox_cards").select("id").eq("home_id", sarahBox);
       expect(cards).toEqual([]);
     }
     const { error } = await clients.cousin
-      .from("letterbox_households")
-      .insert({ letterbox_id: sarahBox, name: "Sneaky" });
+      .from("letterbox_contacts")
+      .insert({ home_id: sarahBox, name: "Sneaky" });
     expect(error).not.toBeNull();
   });
 
-  it("a household can't use an address it isn't allowed to see", async () => {
-    const { data: bossBox } = await clients.boss.rpc("my_letterbox");
+  it("a contact can't use an address it isn't allowed to see", async () => {
+    const { data: bossBox } = await clients.boss.rpc("my_home");
     const { error } = await clients.boss
-      .from("letterbox_households")
-      .insert({ letterbox_id: bossBox, name: "Josh", address_from: ids.josh });
+      .from("letterbox_contacts")
+      .insert({ home_id: bossBox, name: "Josh", address_from: ids.josh });
     expect(error).not.toBeNull();
   });
 
   it("you can only invite family from your Burrows", async () => {
-    const { error } = await clients.josh.rpc("invite_to_letterbox", { target: ids.outsider });
+    const { error } = await clients.josh.rpc("invite_to_home", { target: ids.outsider });
     expect(error).not.toBeNull();
   });
 
   it("you can't thank for a gift that isn't yours", async () => {
     const { error } = await clients.sarah
       .from("letterbox_thanks")
-      .insert({ letterbox_id: sarahBox, from_name: "Grandma", what: "Scarf", gift_id: joshGift });
+      .insert({ home_id: sarahBox, from_name: "Grandma", what: "Scarf", gift_id: joshGift });
     expect(error).not.toBeNull();
     const { error: ownError } = await clients.josh
       .from("letterbox_thanks")
-      .insert({ letterbox_id: joshBox, from_name: "Grandma", what: "Scarf", gift_id: joshGift });
+      .insert({ home_id: joshBox, from_name: "Grandma", what: "Scarf", gift_id: joshGift });
     expect(ownError).toBeNull();
   });
 
-  it("accepting an invite brings your list along into one shared Letterbox", async () => {
-    const { data: invite, error } = await clients.josh.rpc("invite_to_letterbox", { target: ids.sarah });
+  it("accepting a Home invite brings your list along into one shared Home", async () => {
+    const { data: invite, error } = await clients.josh.rpc("invite_to_home", { target: ids.sarah });
     expect(error).toBeNull();
 
     // Only the invitee can accept it.
-    const { error: wrongPerson } = await clients.cousin.rpc("accept_letterbox_invite", { invite_id: invite });
+    const { error: wrongPerson } = await clients.cousin.rpc("accept_home_invite", { invite_id: invite });
     expect(wrongPerson).not.toBeNull();
 
-    const { data: joined, error: acceptError } = await clients.sarah.rpc("accept_letterbox_invite", { invite_id: invite });
+    const { data: joined, error: acceptError } = await clients.sarah.rpc("accept_home_invite", { invite_id: invite });
     expect(acceptError).toBeNull();
     expect(joined).toBe(joshBox);
 
-    const { data: joshSees } = await clients.josh.from("letterbox_households").select("id").eq("letterbox_id", joshBox);
-    expect(joshSees?.map((h) => h.id)).toContain(sarahHousehold);
-    const { data: cards } = await clients.josh.from("letterbox_cards").select("id").eq("letterbox_id", joshBox);
+    const { data: joshSees } = await clients.josh.from("letterbox_contacts").select("id").eq("home_id", joshBox);
+    expect(joshSees?.map((h) => h.id)).toContain(sarahContact);
+    const { data: cards } = await clients.josh.from("letterbox_cards").select("id").eq("home_id", joshBox);
     expect(cards).toHaveLength(1);
 
     // Sarah's old, now-empty Letterbox is gone.
-    const { data: old } = await admin.from("letterboxes").select("id").eq("id", sarahBox);
+    const { data: old } = await admin.from("homes").select("id").eq("id", sarahBox);
     expect(old).toEqual([]);
 
     // Josh got a heads-up in the inbox.
-    const { data: notices } = await clients.josh.from("notifications").select("kind").eq("nook", "letterbox");
-    expect(notices?.map((n) => n.kind)).toContain("letterbox_joined");
+    const { data: notices } = await clients.josh.from("notifications").select("kind").eq("nook", "home");
+    expect(notices?.map((n) => n.kind)).toContain("home_joined");
   });
 
   it("leaving takes a copy of the addresses, not the cards", async () => {
-    const { data: newBox, error } = await clients.sarah.rpc("leave_letterbox");
+    const { data: newBox, error } = await clients.sarah.rpc("leave_home");
     expect(error).toBeNull();
     expect(newBox).not.toBe(joshBox);
-    const { data: copied } = await clients.sarah.from("letterbox_households").select("name").eq("letterbox_id", newBox);
+    const { data: copied } = await clients.sarah.from("letterbox_contacts").select("name").eq("home_id", newBox);
     expect(copied?.map((h) => h.name)).toContain("The Johnsons");
-    const { data: cards } = await clients.sarah.from("letterbox_cards").select("id").eq("letterbox_id", newBox);
+    const { data: cards } = await clients.sarah.from("letterbox_cards").select("id").eq("home_id", newBox);
     expect(cards).toEqual([]);
     // And she no longer sees the shared one.
-    const { data: shared } = await clients.sarah.from("letterbox_households").select("id").eq("letterbox_id", joshBox);
+    const { data: shared } = await clients.sarah.from("letterbox_contacts").select("id").eq("home_id", joshBox);
     expect(shared).toEqual([]);
   });
 });

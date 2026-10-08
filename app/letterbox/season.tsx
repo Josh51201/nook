@@ -12,7 +12,7 @@ import { Text } from "../../components/text";
 import { Banner, Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
 import { friendlyError, tap } from "../../lib/feedback";
 import { addressListText, cardSeason, labelSheetHtml, seasonStatus, type Label } from "../../lib/letterbox";
-import { householdAddress, labelFor, type Household } from "../../lib/letterbox-data";
+import { contactAddress, labelFor, type Contact } from "../../lib/letterbox-data";
 import { findNook } from "../../lib/nooks";
 import { supabase } from "../../lib/supabase";
 import { colors, shadow, ui } from "../../lib/theme";
@@ -33,22 +33,22 @@ export default function CardSeason() {
   if (isLoading && !data) return <LoadingScreen cards={4} />;
   if (!data) return <EmptyState icon="mail" title="Couldn't open your Letterbox" />;
 
-  const status = seasonStatus(data.households, data.cards, season);
+  const status = seasonStatus(data.contacts, data.cards, season);
   const seasons = [...new Set([current, current - 1, ...data.cards.filter((c) => c.occasion === "holiday").map((c) => c.season)])]
     .sort((a, b) => b - a)
     .slice(0, 4);
   const done = status.sent.length;
   const fraction = status.total ? done / status.total : 0;
   const labels = status.toSend.map((h) => labelFor(h, data)).filter(Boolean) as Label[];
-  const noAddress = status.toSend.filter((h) => !householdAddress(h, data));
+  const noAddress = status.toSend.filter((h) => !contactAddress(h, data));
 
-  async function markSent(household: Household) {
+  async function markSent(contact: Contact) {
     if (busy) return;
-    setBusy(household.id);
+    setBusy(contact.id);
     tap("success");
     const { error } = await supabase.from("letterbox_cards").insert({
-      letterbox_id: data!.boxId,
-      household_id: household.id,
+      home_id: data!.homeId,
+      contact_id: contact.id,
       direction: "sent",
       occasion: "holiday",
       season,
@@ -58,12 +58,12 @@ export default function CardSeason() {
     setBusy(null);
   }
 
-  async function unmarkSent(household: Household) {
+  async function unmarkSent(contact: Contact) {
     if (busy) return;
-    setBusy(household.id);
+    setBusy(contact.id);
     tap();
     const card = data!.cards.find(
-      (c) => c.household_id === household.id && c.direction === "sent" && c.occasion === "holiday" && c.season === season
+      (c) => c.contact_id === contact.id && c.direction === "sent" && c.occasion === "holiday" && c.season === season
     );
     if (card) {
       const { error } = await supabase.from("letterbox_cards").delete().eq("id", card.id);
@@ -73,9 +73,9 @@ export default function CardSeason() {
     setBusy(null);
   }
 
-  async function addToList(household: Household) {
+  async function addToList(contact: Contact) {
     tap();
-    const { error } = await supabase.from("letterbox_households").update({ on_holiday_list: true }).eq("id", household.id);
+    const { error } = await supabase.from("letterbox_contacts").update({ on_holiday_list: true }).eq("id", contact.id);
     if (error) Alert.alert("Couldn't add them", friendlyError(error));
     reload();
   }
@@ -96,27 +96,27 @@ export default function CardSeason() {
     Alert.alert(`${labels.length} address${labels.length === 1 ? "" : "es"} copied`, "Paste them anywhere, like a printing site or a note.");
   }
 
-  const row = (household: Household, sent: boolean) => {
-    const address = householdAddress(household, data);
-    const gotOne = status.gotFrom.some((h) => h.id === household.id);
+  const row = (contact: Contact, sent: boolean) => {
+    const address = contactAddress(contact, data);
+    const gotOne = status.gotFrom.some((h) => h.id === contact.id);
     return (
-      <Animated.View key={household.id} entering={FadeIn.duration(200)} layout={LinearTransition.springify().damping(20)}>
+      <Animated.View key={contact.id} entering={FadeIn.duration(200)} layout={LinearTransition.springify().damping(20)}>
         <View style={[ui.card, styles.row]}>
           <Tap
-            onPress={() => (sent ? unmarkSent(household) : markSent(household))}
-            disabled={busy === household.id}
+            onPress={() => (sent ? unmarkSent(contact) : markSent(contact))}
+            disabled={busy === contact.id}
             hitSlop={8}
             pressedScale={0.85}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: sent }}
-            accessibilityLabel={`${household.name}: ${sent ? "sent" : "not sent yet"}`}
+            accessibilityLabel={`${contact.name}: ${sent ? "sent" : "not sent yet"}`}
           >
             <View style={[styles.check, { borderColor: nook.iconColor }, sent && { backgroundColor: nook.iconColor }]}>
               {sent ? <Icon name="check" size={15} color="#ffffff" /> : null}
             </View>
           </Tap>
-          <Tap style={{ flex: 1, gap: 2 }} onPress={() => router.push(`/letterbox/household/${household.id}`)}>
-            <Text style={[ui.cardTitle, sent && styles.done]}>{household.name}</Text>
+          <Tap style={{ flex: 1, gap: 2 }} onPress={() => router.push(`/letterbox/contact/${contact.id}`)}>
+            <Text style={[ui.cardTitle, sent && styles.done]}>{contact.name}</Text>
             <Text style={[ui.muted, { fontSize: 13 }, !address && { color: colors.error }]} numberOfLines={1}>
               {address ? [address.line1, address.city].filter(Boolean).join(" · ") : "No address yet"}
             </Text>
@@ -202,14 +202,14 @@ export default function CardSeason() {
         </>
       ) : null}
 
-      {status.worthAdding.map((household) => (
+      {status.worthAdding.map((contact) => (
         <Banner
-          key={household.id}
+          key={contact.id}
           icon="arrowDown"
           tone="sky"
-          title={`${household.name} sent you one`}
+          title={`${contact.name} sent you one`}
           body="They're not on your holiday list. Tap to add them."
-          onPress={() => addToList(household)}
+          onPress={() => addToList(contact)}
         />
       ))}
 
