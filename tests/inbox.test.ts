@@ -14,6 +14,15 @@ describe("noticeRoute", () => {
     expect(noticeRoute({ nook: "gift-nook", kind: "member_joined", data: { burrow_id: "b1" } })).toBe("/burrow/b1");
   });
 
+  it("sends Letterbox notices to the right place", () => {
+    expect(noticeRoute({ nook: "letterbox", kind: "letterbox_invite", data: { invite_id: "i1" } })).toBe("/letterbox/settings");
+    expect(noticeRoute({ nook: "letterbox", kind: "birthday_card", data: { household_id: "h1" } })).toBe(
+      "/letterbox/household/h1"
+    );
+    expect(noticeRoute({ nook: "letterbox", kind: "birthday_card", data: {} })).toBe("/letterbox");
+    expect(noticeIcon({ nook: "letterbox", kind: "birthday_card" })).toBe("birthday");
+  });
+
   it("goes nowhere when the notice is missing what it needs to point at", () => {
     expect(noticeRoute({ nook: "gift-nook", kind: "gathering_soon", data: {} })).toBeNull();
   });

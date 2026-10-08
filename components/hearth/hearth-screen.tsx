@@ -256,7 +256,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
 
   // Tapping a widget outside edit mode opens it up to see everything in it
   // (CORE-038): widgets that are a window onto your own stuff (Inbox, Gifts
-  // to buy) open that list; the rest open their own page, with Edit there.
+  // to buy, Card season) open that list; the rest open their own page, with Edit there.
   // In edit mode a tap opens its settings instead.
   function openWidget(item: HearthItem & { kind: "widget" }) {
     switch (item.widget.kind) {
@@ -264,6 +264,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         return router.push("/gift-nook/my-tucks");
       case "inbox":
         return router.push("/inbox");
+      case "cards":
+        return router.push("/letterbox/season");
       case "greeting":
         return;
       default:

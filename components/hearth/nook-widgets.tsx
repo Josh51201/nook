@@ -8,6 +8,7 @@ import { countdown, gatheringKindInfo } from "../../lib/gift-nook";
 import { headcount, slotRoom, type Rsvp, type Slot } from "../../lib/potluck";
 import { formatWhen } from "../../lib/potluck-data";
 import { supabase } from "../../lib/supabase";
+import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { Icon } from "../icon";
 
 // Live info a Nook can show on its Hearth tile (CORE-010): one short line on
@@ -158,13 +159,71 @@ function PotluckWidget({ size, refreshKey, textColor, mutedColor, accentColor }:
   );
 }
 
+// Card season while it's on (Oct–Jan), otherwise the next birthday.
+function LetterboxWidget({ size, refreshKey, textColor, mutedColor, accentColor }: NookWidgetProps) {
+  const summary = useLetterboxSummary(refreshKey);
+  if (!summary) return null;
+
+  const inSeason = [9, 10, 11, 0].includes(new Date().getMonth()) && summary.total > 0;
+  const left = summary.toSend.length;
+  const cards = left ? `${left} card${left === 1 ? "" : "s"} to send` : summary.total ? "All cards sent!" : "No holiday list yet";
+  const [next, after] = summary.birthdays;
+  const when = (days: number) => (days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`);
+  const birthday = next ? `${next.name.split(" ")[0]}'s birthday ${when(next.days)}` : "No birthdays saved";
+
+  if (size === "small") {
+    return (
+      <Text style={{ color: mutedColor, fontSize: 12 }} numberOfLines={1}>
+        {inSeason ? cards : birthday}
+      </Text>
+    );
+  }
+  if (size === "wide") {
+    return (
+      <View style={{ gap: 2 }}>
+        <Text style={{ color: textColor, fontSize: 14, fontWeight: "700" }} numberOfLines={1}>
+          {inSeason ? cards : birthday}
+        </Text>
+        <Text style={{ color: mutedColor, fontSize: 13 }} numberOfLines={1}>
+          {inSeason ? birthday : summary.total ? `${summary.sent} of ${summary.total} holiday cards sent` : "Tap to add family"}
+        </Text>
+      </View>
+    );
+  }
+  const fraction = summary.total ? summary.sent / summary.total : 0;
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+        <Text style={{ color: textColor, fontSize: 16, fontWeight: "800", flex: 1 }} numberOfLines={1}>
+          {cards}
+        </Text>
+        {summary.total ? (
+          <Text style={{ color: accentColor, fontSize: 13, fontWeight: "800" }}>
+            {summary.sent}/{summary.total}
+          </Text>
+        ) : null}
+      </View>
+      {summary.total ? (
+        <View style={{ height: 6, borderRadius: 3, backgroundColor: "rgba(0,0,0,0.08)", overflow: "hidden" }}>
+          <View style={{ width: `${Math.round(fraction * 100)}%`, height: 6, borderRadius: 3, backgroundColor: accentColor }} />
+        </View>
+      ) : null}
+      {summary.toSend.slice(0, 2).map((h) => (
+        <Detail key={h.id} icon="mail" text={h.name} color={mutedColor} />
+      ))}
+      {next ? <Detail icon="birthday" text={birthday} color={textColor} bold /> : null}
+      {after ? <Detail icon="birthday" text={`${after.name.split(" ")[0]} ${when(after.days)}`} color={mutedColor} /> : null}
+    </View>
+  );
+}
+
 function Detail({
   icon,
   text,
   color,
   bold,
 }: {
-  icon: "clock" | "place" | "group" | "check" | "potluck";
+  icon: "clock" | "place" | "group" | "check" | "potluck" | "mail" | "birthday";
   text: string;
   color: string;
   bold?: boolean;
@@ -182,4 +241,5 @@ function Detail({
 export const nookWidgets: Record<string, NookWidget> = {
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
   potluck: { label: "Next Potluck", Component: PotluckWidget },
+  letterbox: { label: "Card season", Component: LetterboxWidget },
 };

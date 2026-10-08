@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-08 (rev 31)_
+_Last updated: 2026-10-08 (rev 32)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -19,8 +19,8 @@ _Last updated: 2026-10-08 (rev 31)_
 - **CORE-014** Every Nook has a clear way back to the Hearth.
 - **CORE-016** Whatever you're typing in is never hidden behind the phone's keyboard, and every keyboard has a way to close it.
 - **CORE-017** The app should feel alive and flow nicely — motion and animation, not static screens — and use a proper icon set instead of emoji. _(Built (proposed details): SF Symbols on iPhone / Material Symbols on Android via expo-symbols; press-in springs on everything tappable; lists that flow in and glide when they change; placeholder cards while loading; wiggling Hearth tiles in edit mode with smoother drag; iPhone large titles; respects the phone's Reduce Motion setting.)_
-- **CORE-018** Users can add widgets of different kinds to the Hearth, each completely customizable in what it shows and how it looks — e.g. reminders to log food, countdowns to holidays and events, things to buy. _(Built (proposed details): Countdown, Coming up, Reminders (checklists with phone reminders once/daily/weekly — work in Expo Go), Gifts to buy, Sticky note, Inbox, Greeting; each with title, Soft/Bold/Outline style, color, size, and its own settings, edited with a live preview. Ready-made ideas: Food log reminders, Holiday shopping list, Christmas countdown, Event reminders.)_
-- **CORE-020** In Edit mode, tapping a Hearth widget opens its settings. Outside Edit mode it opens the widget to see what's in it (CORE-038); the Inbox widget opens the inbox and Gifts to buy opens your shopping list. Every Gift Nook screen opened straight from the Hearth has a way back to it.
+- **CORE-018** Users can add widgets of different kinds to the Hearth, each completely customizable in what it shows and how it looks — e.g. reminders to log food, countdowns to holidays and events, things to buy. _(Built (proposed details): Countdown, Coming up, Reminders (checklists with phone reminders once/daily/weekly — work in Expo Go), Gifts to buy, Sticky note, Inbox, Greeting, Card season (LET-009); each with title, Soft/Bold/Outline style, color, size, and its own settings, edited with a live preview. Ready-made ideas: Food log reminders, Holiday shopping list, Christmas countdown, Event reminders.)_
+- **CORE-020** In Edit mode, tapping a Hearth widget opens its settings. Outside Edit mode it opens the widget to see what's in it (CORE-038); the Inbox widget opens the inbox, Gifts to buy opens your shopping list, and Card season opens the Letterbox's card list. Every Gift Nook screen opened straight from the Hearth has a way back to it.
 - **CORE-021** Nook ships as its own app with its own icon (not inside Expo Go). _(Prepared: icon set drawn (a cozy fireplace in an arch, proposed), app.json and eas.json set up, build guide in docs/BUILDING_THE_APP.md. Needs Josh's Expo and Apple Developer accounts to build — see Q-025.)_
 - **CORE-022** The Hearth gets built-out organization so it doesn't become one very long list as widgets pile up (a 4-column grid fills fast). Users can place houses or stumps on the Hearth; tapping one **enters** it — with a door-opening animation or similar — into its own user-organized screen. These are called **Hollows**. _(Built: tap a Hollow and its door swings open on its hinge, then you step inside as the screen grows into view. One level deep — a Hollow never holds another Hollow.)_
 - **CORE-023** What's inside a house is as customizable as the Hearth itself: Nook tiles, widgets and text laid out however the person likes, with their own drag-and-drop design. _(Built: the inside of a Hollow is the same designable grid as the Hearth — Nooks, widgets, text; add, drag, resize.)_
@@ -51,7 +51,7 @@ _Last updated: 2026-10-08 (rev 31)_
 - **PROF-002** A brand-new person is asked to set up their profile (name required, the rest optional) before they enter the Hearth, instead of showing their email as their name. New accounts start with no name rather than their email.
 - **PROF-004** Each person can list their allergies and dietary needs on their profile; a kid's managers set the kid's. Family in their Burrows can see them, like the rest of a profile. (For Potluck warnings — POT-005.) _(The choices — peanuts, tree nuts, dairy, eggs, gluten, shellfish, fish, soy, sesame; vegetarian, vegan, gluten-free, dairy-free, halal, kosher — are proposed.)_
 - **PROF-003** A kid's managers can set up the kid's profile too — picture, birthday and "about me" — from Manage. Only their managers can (and their family sees it, like anyone's).
-- **PROF-005** Each person can put their mailing address on their profile. It's optional but encouraged. Everyone in their Burrows can see it, except Burrows they choose to leave out (e.g. a work Burrow). It fills in family's Letterbox Nooks and stays current when they move (LET-004).
+- **PROF-005** Each person can put their mailing address on their profile. It's optional but encouraged. Everyone in their Burrows can see it, except Burrows they choose to leave out (e.g. a work Burrow). It fills in family's Letterbox Nooks and stays current when they move (LET-004). _(Built: on your profile, with a chip per Burrow to leave any out. The Letterbox home nudges you to add it. Kept apart from the rest of the profile so it never reaches people outside the Burrows you chose.)_
 
 ## 2. Gift Nook (first Nook)
 - **GIFT-001** Users create families and invite others to join. _(Now in the Burrows tab, shared by every Nook — CORE-025.)_
@@ -103,17 +103,17 @@ _Last updated: 2026-10-08 (rev 31)_
 - **POT-008** Whoever makes a Potluck is its host and can add co-hosts; hosts and co-hosts can change it (slots, date, details). Burrow admins can step in too.
 
 ## 2c. Letterbox Nook
-- **LET-001** A Letterbox Nook: the holiday card list with addresses — who you sent cards to and who sent you one, each year — that doubles as a contact list for family and friends.
-- **LET-002** A Letterbox is shared by a household: you invite someone you already share a Burrow with, and once they accept it's one list for both of you. Either of you can mark a card sent.
-- **LET-003** Each entry in the Letterbox is a household — one mailing address, like "The Johnson Family" — with the people who live there listed inside. One card goes to each.
-- **LET-004** Addresses come from both places: family members' own profile addresses (PROF-005), which stay up to date, and addresses you type in for anyone not on the app (friends, neighbors, coworkers).
-- **LET-005** It tracks holiday cards each year: who you sent to and who sent you one, so next year you know who to send to.
+- **LET-001** A Letterbox Nook: the holiday card list with addresses — who you sent cards to and who sent you one, each year — that doubles as a contact list for family and friends. _(Built 2026-10-08 — in the Market. Proposed details: a home with card season and thank-yous at a glance, birthdays in the next six weeks, and every household (searchable once there are more than six); each household's page looks like an envelope with a stamp, with the people, their birthdays, notes and every card year by year.)_
+- **LET-002** A Letterbox is shared by a household: you invite someone you already share a Burrow with, and once they accept it's one list for both of you. Either of you can mark a card sent. _(Built (proposed details): invites arrive in the inbox and in Letterbox settings. If your own Letterbox was only yours, its whole list comes along when you accept. Leaving gives you your own Letterbox again with a copy of the addresses; the card history stays with the household.)_
+- **LET-003** Each entry in the Letterbox is a household — one mailing address, like "The Johnson Family" — with the people who live there listed inside. One card goes to each. _(Built (proposed details): the envelope name is suggested from the people — "Mia & Sam Johnson", "The Johnson family" — and can be changed. "Add family from your Burrows" picks several people at once, and people who share an address become one household.)_
+- **LET-004** Addresses come from both places: family members' own profile addresses (PROF-005), which stay up to date, and addresses you type in for anyone not on the app (friends, neighbors, coworkers). _(Built: a household linked to family uses their profile address while they share it with you; otherwise the typed one.)_
+- **LET-005** It tracks holiday cards each year: who you sent to and who sent you one, so next year you know who to send to. _(Built (proposed details): a Card season page per year — tick each household off as its card goes out, see who sent you one, and anyone who sent one but isn't on your list gets a nudge to add them. Cards that arrive in January count toward the year before.)_
 - **LET-006** It tracks other cards too: birthday, thank-you, sympathy, wedding, graduation and more.
-- **LET-007** You can keep photos of cards you receive (like family photo cards).
-- **LET-008** This year's send list can be turned into printable mailing labels or a list to copy addresses from.
-- **LET-009** A Hearth widget for card season: how many holiday cards are left to send, opening the list.
-- **LET-010** A reminder about a week before a contact's birthday, so a card arrives on time.
-- **LET-011** Thank-you notes owed: after you mark gifts received in the Gift Nook, the Letterbox lists who you still owe a thank-you note. _(GIFT-007/GIFT-026 mean the app can never say who gave a gift, so you say who each one was from yourself — it's never filled in from tucks.)_
+- **LET-007** You can keep photos of cards you receive (like family photo cards). _(Built: take one or pick one from your photos when logging a card; stored privately for your household only.)_
+- **LET-008** This year's send list can be turned into printable mailing labels or a list to copy addresses from. _(Built (proposed details): labels for the households still to send, on standard 30-per-sheet address labels (Avery 5160 size), through the phone's print screen (which can also save a PDF); or copy all the addresses at once.)_
+- **LET-009** A Hearth widget for card season: how many holiday cards are left to send, opening the list. _(Built: a "Card season" widget, any size down to an icon with a count, listing who's still waiting. The Letterbox Nook's own tile shows card season from October through January and the next birthday the rest of the year.)_
+- **LET-010** A reminder about a week before a contact's birthday, so a card arrives on time. _(Built (proposed details): an inbox notice 7 days ahead, using the birthday on the person's Nook profile if they're linked; can be turned off in Letterbox settings.)_
+- **LET-011** Thank-you notes owed: after you mark gifts received in the Gift Nook, the Letterbox lists who you still owe a thank-you note. _(GIFT-007/GIFT-026 mean the app can never say who gave a gift, so you say who each one was from yourself — it's never filled in from tucks. Built (proposed details): received gifts from the last year (yours and kids' you manage) wait under "Who from?"; then they're on a list to tick off as notes get written. "No note needed" clears one, and you can add thank-yous for anything else.)_
 
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
@@ -213,3 +213,4 @@ Other ideas Claude mentioned that Josh hasn't picked: Surprise Planner (plan a s
 Josh's stated priority, in order:
 1. ~~**Hearth organization (CORE-022..024)**~~ — built 2026-10-07 as Hollows.
 2. ~~**Potluck Nook**~~ — built 2026-10-07 (section 2b).
+3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).

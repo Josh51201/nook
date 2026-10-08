@@ -55,6 +55,18 @@ export const nookCatalog: NookDefinition[] = [
     },
   },
   {
+    id: "letterbox",
+    title: "Letterbox Nook",
+    icon: "mail",
+    iconColor: "#a3425f",
+    tagline: "Cards & addresses",
+    description:
+      "Your household's card list and address book: who you've sent holiday cards to and who sent you one, every birthday coming up, thank-you notes still to write, and labels ready to print.",
+    route: "/letterbox",
+    available: true,
+    color: "#efd9e4",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

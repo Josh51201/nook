@@ -97,6 +97,12 @@ export const giftNookSettingDefaults = {
   notifyMemberJoined: true,
 };
 
+// Letterbox settings. notifyBirthdays is also read by the database
+// (public.wants_letterbox_reminder) — rename it in both places or not at all.
+export const letterboxSettingDefaults = {
+  notifyBirthdays: true, // LET-010
+};
+
 // Potluck settings. notifyReminder is also read by the database
 // (public.wants_potluck_reminder) — rename it in both places or not at all.
 export const potluckSettingDefaults = {

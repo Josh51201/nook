@@ -62,6 +62,7 @@ function RootStack() {
       {/* Nooks fade in over their tile as it grows to fill the screen (CORE-034). */}
       <Stack.Screen name="gift-nook" options={{ animation: "fade", animationDuration: 220 }} />
       <Stack.Screen name="potluck" options={{ animation: "fade", animationDuration: 220 }} />
+      <Stack.Screen name="letterbox" options={{ animation: "fade", animationDuration: 220 }} />
       <Stack.Screen name="burrow/[id]" options={{ ...headerOptions, title: "Burrow", headerBackTitle: "Back" }} />
       <Stack.Screen name="hollow/[id]" options={{ animation: "fade", animationDuration: 250 }} />
       <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: "fade" }} />

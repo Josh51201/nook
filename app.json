@@ -26,7 +26,14 @@
           "color": "#8a5a3b"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nook uses your photos so you can keep pictures of the cards you get.",
+          "cameraPermission": "Nook uses your camera so you can snap the cards you get."
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": true,

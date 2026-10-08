@@ -334,6 +334,13 @@ function KindSettings({
           </View>
         </>
       );
+    case "cards":
+      return (
+        <>
+          <Stepper label="Names to list" value={widget.settings.count} min={0} max={6} onChange={(count) => setSettings({ count })} />
+          <Text style={ui.muted}>Who's on your holiday list and still waiting for a card, from your Letterbox Nook.</Text>
+        </>
+      );
     case "inbox":
       return <Stepper label="Notices to list" value={widget.settings.count} min={0} max={5} onChange={(count) => setSettings({ count })} />;
     case "greeting":

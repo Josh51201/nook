@@ -9,6 +9,7 @@ import { countdown, displayName, formatDate, gatheringKindInfo, type TuckStatus 
 import { deepColor, tileBevel, tilePalette } from "../../lib/hearth-layout";
 import { noticeIcon } from "../../lib/inbox";
 import { supabase } from "../../lib/supabase";
+import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
 import {
   describeSchedule,
@@ -157,6 +158,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <Inbox {...props} widget={widget} />;
     case "greeting":
       return <Greeting {...props} widget={widget} />;
+    case "cards":
+      return <Cards {...props} widget={widget} />;
   }
 }
 
@@ -769,6 +772,84 @@ function Inbox({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"
       ) : (
         rows
       )}
+    </View>
+  );
+}
+
+// --- Card season (LET-009) --------------------------------------------------------
+
+function Cards({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"cards">) {
+  const summary = useLetterboxSummary(refreshKey);
+  if (!summary) return null;
+  const left = summary.toSend.length;
+  const allSent = summary.total > 0 && left === 0;
+
+  if (shape === "icon") {
+    return allSent ? <IconFace icon="check" palette={palette} /> : <IconFace icon={icon} palette={palette} badge={left} />;
+  }
+  if (!summary.total) return <Empty icon="mail" palette={palette} text="Add family to your Letterbox" />;
+  if (shape === "strip") {
+    return (
+      <Strip
+        icon={allSent ? "check" : icon}
+        palette={palette}
+        text={allSent ? "All your cards are out!" : `${left} holiday card${left === 1 ? "" : "s"} to send`}
+        sub={`${summary.sent} of ${summary.total} sent`}
+      />
+    );
+  }
+
+  const names = summary.toSend.slice(0, Math.min(widget.settings.count, rowsThatFit(height, 24, shape === "small" ? 110 : 120)));
+  const Count = () => (
+    <View>
+      <Text style={{ fontSize: isBig(shape) ? 44 : 34, fontWeight: "800", color: palette.text, letterSpacing: -1 }}>
+        {allSent ? "Done!" : left}
+      </Text>
+      <Muted palette={palette}>{allSent ? `all ${summary.total} sent` : `to send · ${summary.sent} of ${summary.total} sent`}</Muted>
+    </View>
+  );
+  const list = names.length ? (
+    <View style={{ gap: 6 }}>
+      {names.map((h) => (
+        <View key={h.id} style={styles.row}>
+          <Icon name="mail" size={13} color={palette.accent} />
+          <Text style={[styles.body, { color: palette.text, flex: 1 }]} numberOfLines={1}>
+            {h.name}
+          </Text>
+        </View>
+      ))}
+    </View>
+  ) : null;
+
+  if (shape === "small") {
+    return (
+      <View style={{ gap: 8, flex: 1 }}>
+        <Count />
+        <ProgressBar palette={palette} done={summary.sent} total={summary.total} />
+        {list}
+      </View>
+    );
+  }
+  if (shape === "wide") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 14, alignItems: "stretch" }]}>
+        <View style={{ justifyContent: "center", gap: 8, minWidth: 110 }}>
+          <Count />
+          <ProgressBar palette={palette} done={summary.sent} total={summary.total} />
+        </View>
+        {list ? (
+          <Panel palette={palette} style={{ flex: 1, justifyContent: "center" }}>
+            {list}
+          </Panel>
+        ) : null}
+      </View>
+    );
+  }
+  return (
+    <View style={{ gap: 10, flex: 1 }}>
+      <Count />
+      <ProgressBar palette={palette} done={summary.sent} total={summary.total} />
+      {list ? <Panel palette={palette} style={{ flex: 1 }}>{list}</Panel> : null}
     </View>
   );
 }

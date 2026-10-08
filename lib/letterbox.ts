@@ -89,6 +89,9 @@ export function householdNameFor(names: string[]) {
   return surname && people.every((p) => last(p) === surname) ? `The ${surname} family` : `${people[0]} & family`;
 }
 
+// A received gift you don't plan to write a note for (LET-011).
+export const NO_NOTE = "No note needed";
+
 // --- Birthdays (LET-010) ---------------------------------------------------------
 
 // A birthday's next date on or after today, and how many days away it is.

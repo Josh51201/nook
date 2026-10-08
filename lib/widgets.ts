@@ -6,7 +6,7 @@ import type { GatheringKind } from "./gift-nook";
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting";
+export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -39,6 +39,7 @@ export type WidgetSettings = {
   note: { text: string; textSize: "small" | "medium" | "large"; align: "left" | "center" };
   inbox: { count: number };
   greeting: { message: string; showName: boolean; showDate: boolean };
+  cards: { count: number };
 };
 
 export type WidgetConfig = {
@@ -69,6 +70,7 @@ export const widgetKinds: {
   { kind: "tucks", label: "Gifts to buy", description: "Your shopping list from the gifts you've tucked away.", icon: "tucks", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "note", label: "Sticky note", description: "Anything you want to see every day.", icon: "edit", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "inbox", label: "Inbox", description: "Unread notices from your Nooks at a glance.", icon: "bell", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "cards", label: "Card season", description: "Holiday cards left to send, from your Letterbox Nook.", icon: "mail", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 1, h: 1 } },
 ];
 
@@ -115,6 +117,8 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
       return { ...base, kind, settings: { count: 2 } };
     case "greeting":
       return { ...base, kind, showTitle: false, settings: { message: "", showName: true, showDate: true } };
+    case "cards":
+      return { ...base, kind, settings: { count: 3 } };
   }
 }
 
