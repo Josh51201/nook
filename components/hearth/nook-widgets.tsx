@@ -7,6 +7,7 @@ import { countdown, gatheringKindInfo } from "../../lib/gift-nook";
 import { headcount, slotRoom, type Rsvp, type Slot } from "../../lib/potluck";
 import { formatWhen } from "../../lib/potluck-data";
 import { supabase } from "../../lib/supabase";
+import { usePetsSummary } from "../../lib/pets-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
@@ -259,8 +260,31 @@ function LetterboxWidget({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// Pet Care: who still needs feeding today, and what's coming up at the vet.
+function PetCareWidget({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const summary = usePetsSummary(session?.user.id, refreshKey);
+  if (!summary) return null;
+  if (!summary.pets) return <Facts facts={[{ kind: "note", text: "Add your first pet" }]} {...props} />;
+
+  const left = summary.toFeed;
+  const facts: Fact[] = [];
+  if (!summary.mealsTotal) facts.push({ kind: "note", text: "Set meals to track feeding" });
+  else if (!left.length) facts.push({ kind: "headline", text: "Everyone's fed", trailing: `${summary.mealsTotal}/${summary.mealsTotal}` });
+  else {
+    facts.push({ kind: "headline", text: `${left.length} meal${left.length === 1 ? "" : "s"} to feed`, trailing: `${summary.mealsTotal - left.length}/${summary.mealsTotal}` });
+    facts.push({ kind: "progress", fraction: (summary.mealsTotal - left.length) / summary.mealsTotal });
+    for (const meal of left.slice(0, 3)) facts.push({ kind: "detail", icon: "paw", text: `${meal.pet}: ${meal.meal}` });
+  }
+  for (const item of summary.due.slice(0, 2)) {
+    facts.push({ kind: "detail", icon: "pill", text: `${item.pet}: ${item.title}`, strong: item.overdue });
+  }
+  return <Facts facts={facts} {...props} />;
+}
+
 export const nookWidgets: Record<string, NookWidget> = {
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
   potluck: { label: "Next Potluck", Component: PotluckWidget },
   letterbox: { label: "Cards & birthdays", Component: LetterboxWidget },
+  pets: { label: "Today", Component: PetCareWidget },
 };

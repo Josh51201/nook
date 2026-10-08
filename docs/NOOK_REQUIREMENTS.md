@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-08 (rev 36)_
+_Last updated: 2026-10-08 (rev 38)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -124,6 +124,15 @@ _Last updated: 2026-10-08 (rev 36)_
 - **LET-010** A reminder about a week before a contact's birthday, so a card arrives on time. _(Built (proposed details): an inbox notice 7 days ahead, using the birthday on the person's Nook profile if they're linked; can be turned off in Letterbox settings.)_
 - **LET-011** Thank-you notes owed: after you mark gifts received in the Gift Nook, the Letterbox lists who you still owe a thank-you note. _(GIFT-007/GIFT-026 mean the app can never say who gave a gift, so you say who each one was from yourself — it's never filled in from tucks. Built (proposed details): received gifts from the last year (yours and kids' you manage) wait under "Who from?"; then they're on a list to tick off as notes get written. "No note needed" clears one, and you can add thank-yous for anything else.)_
 
+## 2d. Pet Care Nook
+- **PET-001** A Pet Care Nook for the pets in your Home: nobody feeds twice, and vet visits, vaccines and meds aren't forgotten. _(Built 2026-10-08 — in the Market. The home lists each pet with today's meals as one-tap chips ("Sam · 8:05 AM" once fed); a pet's page has the day's meals, quick check-offs, a "Lately" feed, vet/vaccine/med items, records and helpers.)_
+- **PET-002** Pets belong to your Home (HOME-001): everyone in it can see and change them. A pet can also have **helpers** — a pet sitter or grandparent you already share a Burrow with — who see just that pet for as long as you allow. _(Proposed: helpers can see everything about the pet and check off meals, walks and the like, but can't change its profile, meals or records; you can set an end date, and they can step away any time. Built: a helper is picked from people you share a Burrow with who aren't already in your Home, for 1–2 weeks, a month, until a date, or until removed; they see the pet in a "Pets you're helping with" list.)_
+- **PET-003** Feeding check-offs: you set the meals per pet (e.g. Breakfast, Dinner); each shows done or not for today and resets daily, with who fed it and when. A meal already fed can't be checked off a second time. _(Built: enforced in the database, so two people tapping at once can't both feed; whoever fed it, or anyone in the Home, can undo it. Each meal can have an optional nudge time. Starter meals are Breakfast and Dinner (one "Feeding" for fish and reptiles).)_
+- **PET-004** Vet visits, vaccines and medications with due dates (and how often they repeat), marked done when they happen. _(Built (proposed details): vet visit, vaccine, medication or other, with a due date and how often it comes round (once, daily, weekly, monthly, every 3 or 6 months, yearly). "Done" rolls the next date forward; helpers can mark meds given. Overdue and due-today items show in red.)_
+- **PET-005** Quick check-offs for walks, potty breaks, litter changes and treats, with who and when. _(Built: Walk and Potty break for dogs, Litter for cats, rabbits and small pets, Treat for everyone; shown in "Lately" with who and when. History older than 120 days is cleared.)_
+- **PET-006** A pet profile and records in one place: photo, breed, birthday, microchip number, vet name and number, food, and notes (allergies and the like). _(Built: photo from camera or library, tap-to-call on the vet's number, age worked out from the birthday.)_
+- **PET-007** Reminders: if a meal hasn't been fed by a time you pick, the Home is nudged; a heads-up a week before a vet visit, vaccine or refill is due; and a notice when someone feeds the pet (off by default, since it could get noisy). Each can be turned off in Pet Care settings. _(Built (proposed details): the meal nudge goes to the Home and active helpers once a day per meal; due-date nudges go out a week ahead and again once overdue, but not for things that come round more often than monthly, like a daily pill. A "Pet care" Hearth widget and the Nook's tile show who still needs feeding and what's due.)_
+
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
   - _Built for now (proposed):_ honorees are optional when creating a Gathering. If any are picked, the Gathering links to their Wishbooks; if none, to everyone in the Burrow. Anniversaries can pick both people.
@@ -184,6 +193,7 @@ _Last updated: 2026-10-08 (rev 36)_
 - **2026-10-08 — Copies of widgets and Nooks:** "The ability to copy a widget so that I can put into different hollows or for people who just want to customize their page their own way, also I feel like you should have the ability to do add multiple nooks on your home pages or drop within hollows but they just go to the same place." No conflicts: a Nook's data lives on the account, not the tile. Copies being independent rather than mirrored is Claude's pick, for Josh to confirm. → CORE-039
 - **2026-10-08 — Copy button and drag to trash:** "A copy button from the main page as well when in edit mode rather than having to go into the widget and scroll all the way down." "Also need a drag to a trash functionality in edit mode to delete widgets." "Also needs to say somewhere that the widget was copied (maybe say at the bottom of the page or something to signify it was copied, maybe scroll down to it.)" → CORE-039, CORE-040
 - **2026-10-08 — Home, outside the Letterbox:** "I say we change up the households a little bit to be done outside of the letterbox since its going to be used for multiple things. Not sure if it should be done within the Burrows or in another tab or what is best for the app. Will leave you to think of where to best put it." Claude picked a "Your Home" card at the top of the Burrows tab; Josh chose the name "Home" and Pet Care as the next Nook. → HOME-001..005, LET-002, LET-003, Glossary
+- **2026-10-08 — Pet Care Nook:** Josh picked Pet Care next. Sharing: Home plus helpers. Tracks: feeding check-offs, vet/vaccines/meds, walks and potty/litter, and a pet profile with records. Feeding: set meals per pet. Nudges: meal not fed yet, vet and vaccine due dates, and fed notices. → PET-001..007
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -193,6 +203,7 @@ _Last updated: 2026-10-08 (rev 36)_
 | The gift-list Nook | Gift Nook | approved |
 | The who-brings-what Nook | Potluck Nook | approved |
 | The card & contact list Nook | Letterbox Nook | approved |
+| The pet-care Nook | Pet Care Nook | approved |
 | The people you live with, shared by Nooks | Home | proposed |
 | One entry in the Letterbox (one mailing address) | Contact | proposed |
 | Homepage | The Hearth | proposed |
@@ -209,7 +220,7 @@ _Last updated: 2026-10-08 (rev 36)_
 Josh's picks, in no particular order. Names and details are proposed until he confirms them; each will get proper requirement IDs when it's about to be built.
 - **Potluck** — now being built: see section 2b (POT-001..008).
 - **Card & Contact List** — now being built as the Letterbox Nook: see section 2c (LET-001..011).
-- **Pet Care** — shared pet profiles with "fed the dog?" check-offs so nobody feeds twice, plus vet, vaccine and medication dates with reminders; a Hearth widget shows the latest.
+- **Pet Care** — now being built as the Pet Care Nook: see section 2d (PET-001..007).
 - **Lent Out** — track things you've lent or borrowed (the drill, the casserole dish), to or from whom, with gentle reminders to ask for them back.
 - **Yearly Rhythms** — recurring annual and seasonal home chores (furnace filter, smoke-detector batteries, flu shots, gutters, car registration) with reminders and a log of who did what.
 - **House Binder** — home info in one place: paint colors, appliance models, warranty dates, filter sizes, trusted contacts like the plumber, and service history.

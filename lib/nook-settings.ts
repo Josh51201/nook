@@ -97,6 +97,14 @@ export const giftNookSettingDefaults = {
   notifyMemberJoined: true,
 };
 
+// Pet Care settings. The notify* keys are also read by the database
+// (public.wants_pet_notice) — rename them in both places or not at all.
+export const petSettingDefaults = {
+  notifyMissed: true, // PET-007: a meal not fed by its time
+  notifyDue: true, // PET-007: vet, vaccine and refill dates coming up
+  notifyFed: false, // PET-007: someone fed a pet (off unless turned on)
+};
+
 // Letterbox settings. notifyBirthdays is also read by the database
 // (public.wants_letterbox_reminder) — rename it in both places or not at all.
 export const letterboxSettingDefaults = {

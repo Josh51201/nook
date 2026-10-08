@@ -1,0 +1,212 @@
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+
+import { guarded } from "./feedback";
+import { displayName } from "./gift-nook";
+import { healthNeedingAttention, localDay, mealStatus, type CareEntry, type HealthItem, type Meal } from "./pets";
+import { supabase } from "./supabase";
+
+// Loads the pets you look after (PET-001..007) with everything their screens
+// need. Row level security decides what comes back: your Home's pets, plus
+// any you're a helper for while your access lasts.
+
+export type Helper = { pet_id: string; profile_id: string; until: string | null; added_at: string };
+
+export type Pet = {
+  id: string;
+  home_id: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  birthday: string | null;
+  photo_path: string | null;
+  microchip: string | null;
+  vet_name: string | null;
+  vet_phone: string | null;
+  food: string | null;
+  notes: string | null;
+  tz: string;
+  pet_meals: Meal[];
+  pet_health: HealthItem[];
+  pet_helpers: Helper[];
+  // True for your Home's pets, false for pets you only help with.
+  canEdit: boolean;
+};
+
+export type PetsData = {
+  homeId: string | null;
+  pets: Pet[];
+  // Recent care across all your pets, newest first.
+  log: (CareEntry & { pet_id: string })[];
+  // Profile names for everyone in the log and helper lists.
+  names: Map<string, string>;
+  today: string;
+};
+
+export async function loadPets(userId: string): Promise<PetsData> {
+  const { data: homeId } = await supabase.rpc("my_home");
+  const since = new Date(Date.now() - 14 * 864e5).toISOString();
+
+  const [petsResult, logResult] = await Promise.all([
+    supabase.from("pets").select("*, pet_meals(*), pet_health(*), pet_helpers(*)").order("name"),
+    supabase
+      .from("pet_care_log")
+      .select("id, pet_id, kind, meal_id, done_by, done_at, day, note")
+      .gte("done_at", since)
+      .order("done_at", { ascending: false })
+      .limit(600),
+  ]);
+  if (petsResult.error) throw petsResult.error;
+  if (logResult.error) throw logResult.error;
+
+  const pets = ((petsResult.data ?? []) as Omit<Pet, "canEdit">[]).map((pet) => ({
+    ...pet,
+    canEdit: pet.home_id === homeId,
+    pet_meals: [...pet.pet_meals].sort((a, b) => a.position - b.position),
+  }));
+  const log = (logResult.data ?? []) as PetsData["log"];
+
+  const ids = new Set<string>([userId]);
+  for (const entry of log) ids.add(entry.done_by);
+  for (const pet of pets) for (const helper of pet.pet_helpers) ids.add(helper.profile_id);
+  const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", [...ids]);
+  const names = new Map(
+    ((profiles ?? []) as { id: string; display_name: string | null }[]).map((p) => [p.id, displayName(p)])
+  );
+
+  return { homeId: homeId ?? null, pets, log, names, today: localDay() };
+}
+
+// Your pets for a screen, fresh each time it comes into view.
+export function usePets(userId: string | undefined) {
+  const [data, setData] = useState<PetsData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const reload = useCallback(
+    () =>
+      userId
+        ? guarded(
+            async () => {
+              setData(await loadPets(userId));
+              setError(null);
+            },
+            setError,
+            () => setIsLoading(false)
+          )
+        : Promise.resolve(),
+    [userId]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload])
+  );
+
+  return { data, error, isLoading, reload };
+}
+
+// "You" for yourself, otherwise their name.
+export function whoName(data: Pick<PetsData, "names">, id: string, userId: string | undefined) {
+  return id === userId ? "You" : data.names.get(id) ?? "Someone";
+}
+
+// "8:05 AM" for today, "Yesterday 6:30 PM", or "Mon 6:30 PM".
+export function whenWords(iso: string, now = new Date()) {
+  const when = new Date(iso);
+  const time = when.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOf(now) - startOf(when)) / 86400000);
+  if (days <= 0) return time;
+  if (days === 1) return `Yesterday ${time}`;
+  return `${when.toLocaleDateString(undefined, { weekday: "short" })} ${time}`;
+}
+
+// --- Photos (PET-006) ------------------------------------------------------------------
+
+export async function uploadPetPhoto(petId: string, uri: string, mimeType?: string | null) {
+  const type = mimeType && mimeType.startsWith("image/") ? mimeType : "image/jpeg";
+  const extension = type === "image/png" ? "png" : type === "image/heic" ? "heic" : "jpg";
+  const path = `${petId}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+  const body = await (await fetch(uri)).arrayBuffer();
+  const { error } = await supabase.storage.from("pets").upload(path, body, { contentType: type });
+  if (error) throw error;
+  return path;
+}
+
+export async function removePetPhoto(path: string | null) {
+  if (path) await supabase.storage.from("pets").remove([path]);
+}
+
+export async function petPhotoUrls(paths: string[]) {
+  const unique = [...new Set(paths.filter(Boolean))];
+  if (!unique.length) return new Map<string, string>();
+  const { data } = await supabase.storage.from("pets").createSignedUrls(unique, 3600);
+  return new Map((data ?? []).filter((d) => d.signedUrl && d.path).map((d) => [d.path!, d.signedUrl as string]));
+}
+
+// --- Checking things off (PET-003, PET-005) -----------------------------------------------
+
+// Feed a set meal. A meal can be fed once a day, so if someone else got
+// there first the database says so and we tell them who.
+export async function feedMeal(petId: string, mealId: string) {
+  const { error } = await supabase
+    .from("pet_care_log")
+    .insert({ pet_id: petId, kind: "meal", meal_id: mealId, day: localDay() });
+  return { error, alreadyFed: error?.code === "23505" };
+}
+
+export async function logCare(petId: string, kind: string, note?: string) {
+  const { error } = await supabase
+    .from("pet_care_log")
+    .insert({ pet_id: petId, kind, day: localDay(), note: note?.trim() || null });
+  return { error };
+}
+
+export async function undoCare(entryId: string) {
+  const { error } = await supabase.from("pet_care_log").delete().eq("id", entryId);
+  return { error };
+}
+
+// --- What the Hearth shows (PET-001) ------------------------------------------------------
+
+export type PetsSummary = {
+  pets: number;
+  mealsTotal: number;
+  // Meals still to feed today, in pet order.
+  toFeed: { petId: string; pet: string; meal: string }[];
+  // Vet visits, vaccines and meds due soon or overdue.
+  due: { petId: string; pet: string; title: string; overdue: boolean }[];
+};
+
+export function usePetsSummary(userId: string | undefined, refreshKey: number) {
+  const [summary, setSummary] = useState<PetsSummary | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let live = true;
+    loadPets(userId)
+      .then((data) => {
+        if (!live) return;
+        const toFeed: PetsSummary["toFeed"] = [];
+        const due: PetsSummary["due"] = [];
+        let mealsTotal = 0;
+        for (const pet of data.pets) {
+          const status = mealStatus(pet.pet_meals, data.log.filter((l) => l.pet_id === pet.id), data.today);
+          mealsTotal += status.length;
+          for (const s of status) if (!s.fed) toFeed.push({ petId: pet.id, pet: pet.name, meal: s.meal.label });
+          for (const item of healthNeedingAttention(pet.pet_health, data.today)) {
+            due.push({ petId: pet.id, pet: pet.name, title: item.title, overdue: item.due_on! < data.today });
+          }
+        }
+        setSummary({ pets: data.pets.length, mealsTotal, toFeed, due });
+      })
+      .catch(() => live && setSummary(null));
+    return () => {
+      live = false;
+    };
+  }, [userId, refreshKey]);
+
+  return summary;
+}

@@ -9,6 +9,7 @@ import { countdown, displayName, formatDate, gatheringKindInfo, type TuckStatus 
 import { deepColor, tileBevel, tilePalette } from "../../lib/hearth-layout";
 import { noticeIcon } from "../../lib/inbox";
 import { supabase } from "../../lib/supabase";
+import { usePetsSummary } from "../../lib/pets-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
 import {
@@ -160,6 +161,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <Greeting {...props} widget={widget} />;
     case "cards":
       return <Cards {...props} widget={widget} />;
+    case "pets":
+      return <PetCare {...props} widget={widget} />;
   }
 }
 
@@ -879,6 +882,110 @@ function Cards({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"
       <Count />
       <ProgressBar palette={palette} done={summary.sent} total={summary.total} />
       {list ? <Panel palette={palette} style={{ flex: 1 }}>{list}</Panel> : null}
+    </View>
+  );
+}
+
+// --- Pet care (PET-001) -------------------------------------------------------------
+
+function PetCare({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"pets">) {
+  const { session } = useAuth();
+  const summary = usePetsSummary(session?.user.id, refreshKey);
+  if (!summary) return null;
+
+  const left = summary.toFeed;
+  const allFed = summary.mealsTotal > 0 && left.length === 0;
+  const attention = left.length + summary.due.length;
+
+  if (shape === "icon") {
+    return allFed && !summary.due.length ? (
+      <IconFace icon="check" palette={palette} />
+    ) : (
+      <IconFace icon={icon} palette={palette} badge={attention} />
+    );
+  }
+  if (!summary.pets) return <Empty icon="paw" palette={palette} text="Add a pet in Pet Care" />;
+  if (shape === "strip") {
+    return (
+      <Strip
+        icon={allFed ? "check" : icon}
+        palette={palette}
+        text={
+          !summary.mealsTotal
+            ? `${summary.pets} pet${summary.pets === 1 ? "" : "s"}`
+            : allFed
+              ? "Everyone's fed"
+              : `${left[0].pet} needs ${left[0].meal.toLowerCase()}`
+        }
+        sub={summary.due[0] ? `${summary.due[0].pet}: ${summary.due[0].title}` : left.length > 1 ? `${left.length} meals to feed` : null}
+      />
+    );
+  }
+
+  const names = left.slice(0, Math.min(widget.settings.count, rowsThatFit(height, 24, shape === "small" ? 110 : 120)));
+  const Count = () => (
+    <View>
+      <Text style={{ fontSize: isBig(shape) ? 44 : 34, fontWeight: "800", color: palette.text, letterSpacing: -1 }}>
+        {!summary.mealsTotal ? summary.pets : allFed ? "Fed!" : left.length}
+      </Text>
+      <Muted palette={palette}>
+        {!summary.mealsTotal ? (summary.pets === 1 ? "pet" : "pets") : allFed ? "everyone's had their meals" : left.length === 1 ? "meal to feed" : "meals to feed"}
+      </Muted>
+    </View>
+  );
+  const list = (
+    <View style={{ gap: 6 }}>
+      {names.map((m, i) => (
+        <View key={i} style={styles.row}>
+          <Icon name="paw" size={13} color={palette.accent} />
+          <Text style={[styles.body, { color: palette.text, flex: 1 }]} numberOfLines={1}>
+            {m.pet}: {m.meal}
+          </Text>
+        </View>
+      ))}
+      {summary.due.slice(0, 1).map((d, i) => (
+        <View key={`d${i}`} style={styles.row}>
+          <Icon name="pill" size={13} color={palette.accent} />
+          <Text style={[styles.body, { color: palette.text, flex: 1, fontWeight: d.overdue ? "700" : "500" }]} numberOfLines={1}>
+            {d.pet}: {d.title}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+  const bar = summary.mealsTotal ? (
+    <ProgressBar palette={palette} done={summary.mealsTotal - left.length} total={summary.mealsTotal} />
+  ) : null;
+
+  if (shape === "small") {
+    return (
+      <View style={{ gap: 8, flex: 1 }}>
+        <Count />
+        {bar}
+        {list}
+      </View>
+    );
+  }
+  if (shape === "wide") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 14, alignItems: "stretch" }]}>
+        <View style={{ justifyContent: "center", gap: 8, minWidth: 110 }}>
+          <Count />
+          {bar}
+        </View>
+        <Panel palette={palette} style={{ flex: 1, justifyContent: "center" }}>
+          {list}
+        </Panel>
+      </View>
+    );
+  }
+  return (
+    <View style={{ gap: 10, flex: 1 }}>
+      <Count />
+      {bar}
+      <Panel palette={palette} style={{ flex: 1 }}>
+        {list}
+      </Panel>
     </View>
   );
 }

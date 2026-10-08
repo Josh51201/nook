@@ -18,6 +18,7 @@ export type Notice = {
     gathering_id?: string;
     potluck_id?: string;
     contact_id?: string;
+    pet_id?: string;
     invite_id?: string;
   };
   created_at: string;
@@ -47,6 +48,11 @@ const kinds: Record<string, Record<string, KindInfo>> = {
       icon: "potluck",
       route: (data) => (data.potluck_id ? `/potluck/${data.potluck_id}` : null),
     },
+  },
+  pets: {
+    pet_fed: { icon: "paw", route: (data) => (data.pet_id ? `/pets/${data.pet_id}` : "/pets") },
+    meal_missed: { icon: "paw", route: (data) => (data.pet_id ? `/pets/${data.pet_id}` : "/pets") },
+    health_due: { icon: "pill", route: (data) => (data.pet_id ? `/pets/${data.pet_id}` : "/pets") },
   },
   home: {
     home_invite: { icon: "hearth", route: () => "/home" },

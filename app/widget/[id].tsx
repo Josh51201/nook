@@ -364,6 +364,13 @@ function KindSettings({
           </View>
         </>
       );
+    case "pets":
+      return (
+        <>
+          <Stepper label="Names to list" value={widget.settings.count} min={0} max={6} onChange={(count) => setSettings({ count })} />
+          <Text style={ui.muted}>Who still needs feeding today, and what's coming due at the vet, from your Pet Care Nook.</Text>
+        </>
+      );
     case "cards":
       return (
         <>

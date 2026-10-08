@@ -67,6 +67,18 @@ export const nookCatalog: NookDefinition[] = [
     color: "#efd9e4",
   },
   {
+    id: "pets",
+    title: "Pet Care Nook",
+    icon: "paw",
+    iconColor: "#3f6a96",
+    tagline: "Fed the dog?",
+    description:
+      "Everyone who looks after your pets in one place: check off meals so nobody feeds twice, log walks and litter, keep vet visits, vaccines and medications on schedule, and let a sitter help for a while.",
+    route: "/pets",
+    available: true,
+    color: "#d9e4ef",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

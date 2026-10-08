@@ -286,6 +286,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         return router.push("/inbox");
       case "cards":
         return router.push("/letterbox/season");
+      case "pets":
+        return router.push("/pets");
       case "greeting":
         return;
       default:
