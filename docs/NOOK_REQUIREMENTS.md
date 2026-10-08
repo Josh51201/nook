@@ -2,7 +2,7 @@
 
 _Fine print for built features is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 40)_
+_Last updated: 2026-10-08 (rev 41)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -57,8 +57,8 @@ Josh wants the Hearth to be truly one of a kind for anyone who puts in the time,
 - **CORE-047** Ambience that follows the date and time of day (falling leaves, snow, fireflies), plus an optional soft fireplace sound that is off by default. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-048** A pet that lives on your Hearth, made from the photos in Pet Care (PET-006).
 - **CORE-049** More widget kinds: photo, clock/date, weather, quote of the day (pairs with the Quote Jar idea), quick-launch buttons, and a habit streak counter. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
-- **CORE-050** Widget stacks: several widgets in one spot that you swipe through.
-- **CORE-051** More than one Hearth page, swiped between, such as "Everyday" and "Holidays".
+- **CORE-050** Widget stacks: several widgets in one spot that you swipe through. _(Built 2026-10-08 (proposed details): in a widget's editor, "Stack" puts another widget of any kind in the same spot and size; up to 6. Swipe sideways on it (or tap a dot) to flip through; the stack moves, resizes and sits as one thing. "Take it out of the stack" sets one free. A copy or a move to a Hollow leaves the stack. Edit mode shows one at a time too.)_
+- **CORE-051** More than one Hearth page, swiped between, such as "Everyday" and "Holidays". _(Built 2026-10-08 (proposed details): swipe the Hearth sideways, or tap a page name in the strip under the top bar (shown once there are two or more). Edit → **Pages** adds, renames (up to 20 letters) and removes pages, up to 6. Removing a page moves what's on it to the first page. Hollows have just one page. Nooks, photos and the weather town are found across every page.)_
 - **CORE-052** Scenes *(proposed name)*: save a whole Hearth setup and swap it in by hand or on a schedule (Morning, Evening, Christmas).
 - **CORE-053** Show a widget or tile only sometimes, such as a gift countdown that only appears in November and December. _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
 - **CORE-054** A shared Home Hearth: a Hollow everyone in your Home (HOME-001, capped at 6) sees and arranges together, like the household bulletin board.
@@ -70,7 +70,7 @@ Josh wants the Hearth to be truly one of a kind for anyone who puts in the time,
 
 ### Hearth organization, round three
 Josh wants every organization idea below ("I think all of them"). None are built yet; every detail is Claude's proposal until Josh confirms it. Pages, stacks and Scenes were already wanted (CORE-050..052).
-- **CORE-060** Select many: in Edit, tap to pick several tiles, widgets and Trinkets, then move, copy, Move to a Hollow, recolor or delete them together.
+- **CORE-060** Select many: in Edit, tap to pick several tiles, widgets and Trinkets, then move, copy, Move to a Hollow, recolor or delete them together. _(Built 2026-10-08 (proposed details): Edit → **Select**, tap things to pick them, then a bar at the bottom offers Move to (the Hearth, a Hollow or another page), Copy, Color and Remove (with Undo). Picking turns off dragging and resizing. Moving several by dragging them together isn't built.)_
 - **CORE-061** Lock in place: pin an item so it can't be dragged, resized or deleted by accident; unlock it from its Edit sheet.
 - **CORE-062** Tidy up: one button closes gaps and lines things up, with an Undo.
 - **CORE-063** Find in Edit: a search box that highlights a widget or Nook and opens the Hollow it's in.
@@ -184,4 +184,4 @@ Josh's stated priority, in order:
 3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).
 4. ~~**Pet Care Nook**~~ — built 2026-10-08 (section 2d).
 5. ~~**Rhythms Nook**~~ — built 2026-10-08 (section 2e).
-6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. Still to do: 048, 050, 051, 052, 054, 055 and the fireplace sound. Organization round three (CORE-060..065) is wanted too; Claude suggests pages (051), stacks (050), then select-many (060).
+6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. Still to do: 048, 052, 054, 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 next: lock (061), tidy up (062), find (063). Round 3: dividers (064), Scenes (052), tags (065).

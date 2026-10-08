@@ -71,6 +71,8 @@ export function HearthGrid({
   onTrashHover,
   onTrashArmed,
   flashId,
+  selecting = false,
+  selectedIds,
   renderItem,
 }: {
   items: HearthItem[];
@@ -99,6 +101,10 @@ export function HearthGrid({
   onTrashArmed?: (armed: boolean) => void;
   // An item to make glow for a moment, e.g. a copy just made (CORE-039).
   flashId?: string | null;
+  // Select many (CORE-060): taps pick items instead of opening them, and
+  // nothing drags or resizes.
+  selecting?: boolean;
+  selectedIds?: string[];
   renderItem: (item: HearthItem, size: { width: number; height: number }) => ReactNode;
 }) {
   const cell = (width - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
@@ -205,6 +211,8 @@ export function HearthGrid({
           onTrashHover={(over) => onTrashHover?.(over)}
           onTrashArmed={(armed) => onTrashArmed?.(armed)}
           flash={flashId === item.id}
+          selecting={selecting}
+          selected={selectedIds?.includes(item.id) ?? false}
           onTrash={() => {
             finish();
             onTrashHover?.(false);
@@ -311,6 +319,8 @@ function GridItem({
   onTrashHover,
   onTrashArmed,
   flash,
+  selecting,
+  selected,
   onBegin,
   onGhost,
   onDrop,
@@ -332,6 +342,8 @@ function GridItem({
   onTrashHover: (over: boolean) => void;
   onTrashArmed: (armed: boolean) => void;
   flash?: boolean;
+  selecting: boolean;
+  selected: boolean;
   onBegin: () => void;
   onGhost: (rect: GridRect, finger: { x: number; y: number } | null) => void;
   onDrop: (x: number, y: number) => void;
@@ -486,6 +498,7 @@ function GridItem({
     // AND picks the tile up in one go (the gesture isn't rebuilt when Edit
     // switches on, so the finger already down keeps dragging).
     const pan = Gesture.Pan()
+      .enabled(!selecting)
       .activateAfterLongPress(300)
       .onStart((event) => {
         if (!editingNow.value) scheduleOnRN(hold);
@@ -575,7 +588,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [selecting, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
@@ -630,7 +643,22 @@ function GridItem({
         pointerEvents="none"
         style={[styles.glow, shadowShape(item, stride), { borderColor: accent, boxShadow: `0px 0px 18px 2px ${accent}` }, glowStyle]}
       />
-      {editing ? (
+      {selecting ? (
+        <>
+          <View
+            pointerEvents="none"
+            style={[styles.glow, shadowShape(item, stride), { borderColor: accent, opacity: selected ? 1 : 0.35, borderStyle: selected ? "solid" : "dashed" }]}
+          />
+          <View
+            pointerEvents="none"
+            style={[styles.pick, { borderColor: accent, backgroundColor: selected ? accent : "#ffffff" }]}
+            accessibilityLabel={selected ? "Selected" : "Not selected"}
+          >
+            {selected ? <Icon name="check" size={14} color="#ffffff" /> : null}
+          </View>
+        </>
+      ) : null}
+      {editing && !selecting ? (
         <GestureDetector gesture={resizeGesture}>
           <Animated.View
             entering={FadeIn.duration(200)}
@@ -642,7 +670,7 @@ function GridItem({
           </Animated.View>
         </GestureDetector>
       ) : null}
-      {editing && onCopy && !active ? (
+      {editing && !selecting && onCopy && !active ? (
         <Animated.View entering={FadeIn.duration(200)} style={styles.copy}>
           <Tap
             onPress={() => {
@@ -676,6 +704,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   copy: { position: "absolute", left: -6, top: -6 },
+  pick: {
+    position: "absolute",
+    left: -6,
+    top: -6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   glow: { position: "absolute", left: -4, top: -4, right: -4, bottom: -4, borderWidth: 3, opacity: 0 },
   copyButton: {
     width: 26,

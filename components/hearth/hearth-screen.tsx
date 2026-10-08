@@ -23,6 +23,7 @@ import { tap } from "../../lib/feedback";
 import { removeUnusedPhotos } from "../../lib/hearth-photos";
 import { addPage, neighbourPage, removePage, renamePage, switchPage } from "../../lib/hearth-pages";
 import { stackPosition, visibleItems as oneOfEachStack } from "../../lib/hearth-stacks";
+import { copyMany, moveManyToPage, moveManyToScope, recolorMany, removeMany } from "../../lib/hearth-select";
 import { trinketInfo, type TrinketKey } from "../../lib/trinkets";
 import { inSeason } from "../../lib/widget-extras";
 import { colors, useTheme } from "../../lib/theme";
@@ -82,6 +83,7 @@ import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { nookRadii } from "./tile-face";
 import { PagesSheet, PageStrip } from "./pages-sheet";
+import { ColorManySheet, MoveManySheet, SelectionBar, type SelectionAction, type SelectionTarget } from "./selection";
 import { StackShell } from "./stack-shell";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
@@ -112,6 +114,10 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const [adding, setAdding] = useState(false);
   const [decorating, setDecorating] = useState(false);
   const [pagesOpen, setPagesOpen] = useState(false);
+  // Select many (CORE-060): picking several things to act on together.
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [pickSheet, setPickSheet] = useState<"move" | "color" | null>(null);
   // Which widget of each stack is showing (CORE-050).
   const [stackShown, setStackShown] = useState<Record<string, number>>({});
   const [dragging, setDragging] = useState(false);
@@ -246,7 +252,7 @@ export function HearthScreen({ scope }: { scope: Scope }) {
   const gridRef = useRef<View>(null);
   const reduceMotion = useReducedMotion();
 
-  const sheetOpen = adding || decorating || pagesOpen || optionsFor !== null || zoom !== null;
+  const sheetOpen = adding || decorating || pagesOpen || pickSheet !== null || optionsFor !== null || zoom !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -388,9 +394,20 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     router.push(`/hollow/${id}`);
   }
 
+  function stopSelecting() {
+    setSelecting(false);
+    setPicked([]);
+    setPickSheet(null);
+  }
+
   function onPressItem(item: HearthItem) {
     // A checkbox inside a widget was just pressed; that's not an "open".
     if (touchesGuarded()) return;
+    if (selecting) {
+      tap();
+      setPicked((prev) => (prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id]));
+      return;
+    }
     if (item.kind === "widget") {
       if (editing) router.push(`/widget/${item.id}`);
       else openWidget(item);
@@ -551,6 +568,116 @@ export function HearthScreen({ scope }: { scope: Scope }) {
     if (item.kind === "hollow") return persist(removeHollow(layout, item.id));
     if (item.kind === "widget" && item.widget.kind === "reminders") cancelReminders(item.widget.settings.items);
     persistHere((inner) => removeItem(inner, item.id));
+  }
+
+  // Select many (CORE-060). Leaving Edit puts the picking away.
+  useEffect(() => {
+    if (!editing) stopSelecting();
+  }, [editing]);
+
+  // Picked things that are really still here.
+  const pickedIds = picked.filter((id) => items.some((i) => i.id === id));
+
+  function pickTargets(): SelectionTarget[] {
+    const chosen = new Set(pickedIds);
+    const targets: SelectionTarget[] = [];
+    const moved = () => {
+      tap("success");
+      stopSelecting();
+    };
+    if (scope) {
+      targets.push({
+        key: "hearth",
+        label: "The Hearth",
+        icon: "hearth",
+        onPick: () => {
+          persist(moveManyToScope(layout, pickedIds, null));
+          moved();
+        },
+      });
+    }
+    for (const h of hollowsOf(layout)) {
+      if (h.id === scope || chosen.has(h.id)) continue;
+      targets.push({
+        key: h.id,
+        label: h.name,
+        icon: "burrow",
+        onPick: () => {
+          persist(moveManyToScope(layout, pickedIds, h.id));
+          moved();
+        },
+      });
+    }
+    for (const page of layout.pages) {
+      if (page.id === layout.activePage) continue;
+      targets.push({
+        key: `page-${page.id}`,
+        label: `Page: ${page.name}`,
+        icon: "widgets",
+        onPick: () => {
+          const next = moveManyToPage(layout, pickedIds, page.id);
+          if (next) save(next).catch((saveError: Error) => Alert.alert("Couldn't move them", saveError.message));
+          moved();
+        },
+      });
+    }
+    return targets;
+  }
+
+  function copyPicked() {
+    const { items: next, copyIds } = copyMany(layout, pickedIds, scope);
+    if (!copyIds.length) return Alert.alert("Nothing to copy", "Hollows can't be copied.");
+    persist(next);
+    tap("success");
+    stopSelecting();
+    settleToast();
+    showToast(`Copied ${copyIds.length} ${copyIds.length === 1 ? "thing" : "things"}`);
+  }
+
+  function removePicked() {
+    const chosen = items.filter((i) => pickedIds.includes(i.id));
+    Alert.alert(
+      `Remove ${chosen.length} ${chosen.length === 1 ? "thing" : "things"}?`,
+      chosen.some((i) => i.kind === "hollow") ? "A Hollow keeps what's inside — it goes back onto your Hearth." : undefined,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            settleToast();
+            tap("success");
+            const before = layout.items;
+            persist(removeMany(layout, pickedIds));
+            const reminders = chosen.flatMap((i) => (i.kind === "widget" && i.widget.kind === "reminders" ? i.widget.settings.items : []));
+            if (reminders.length) pendingCancel.current = () => cancelReminders(reminders);
+            stopSelecting();
+            showToast(
+              `Removed ${chosen.length}`,
+              {
+                label: "Undo",
+                run: () => {
+                  if (toastTimer.current) clearTimeout(toastTimer.current);
+                  toastTimer.current = null;
+                  pendingCancel.current = null;
+                  tap();
+                  persist(before);
+                  setToast(null);
+                },
+              },
+              5000
+            );
+          },
+        },
+      ]
+    );
+  }
+
+  function onPickAction(action: SelectionAction) {
+    if (action === "move") setPickSheet("move");
+    else if (action === "color") setPickSheet("color");
+    else if (action === "copy") copyPicked();
+    else removePicked();
   }
 
   const optionsItem = (items.find((i) => i.id === optionsFor && i.kind !== "widget") ?? null) as
@@ -874,6 +1001,21 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                       <Text style={{ color: theme.background, fontWeight: "700", fontSize: 13 }}>Pages</Text>
                     </Tap>
                   )}
+                  {isEmpty ? null : (
+                    <Tap
+                      onPress={() => {
+                        tap();
+                        setSelecting((s) => !s);
+                        setPicked([]);
+                      }}
+                      hitSlop={8}
+                      style={[styles.decorateButton, { backgroundColor: theme.accent }]}
+                      accessibilityLabel="Select several"
+                    >
+                      <Icon name="check" size={14} color={theme.background} />
+                      <Text style={{ color: theme.background, fontWeight: "700", fontSize: 13 }}>{selecting ? "Stop" : "Select"}</Text>
+                    </Tap>
+                  )}
                 </View>
               </Animated.View>
             ) : null}
@@ -955,6 +1097,8 @@ export function HearthScreen({ scope }: { scope: Scope }) {
                   onTrashHover={setOverTrash}
                   onTrashArmed={setTrashArmed}
                   flashId={flashId}
+                  selecting={selecting}
+                  selectedIds={picked}
                   onDraggingChange={onDraggingChange}
                   dragScroll={dragScroll}
                   renderItem={renderItem}
@@ -1041,6 +1185,18 @@ export function HearthScreen({ scope }: { scope: Scope }) {
             ) : null}
           </View>
         </Animated.View>
+      ) : null}
+
+      {selecting && editing ? (
+        <SelectionBar
+          count={pickedIds.length}
+          accent={theme.accent}
+          background={theme.background}
+          text={theme.text}
+          bottom={(scope ? insets.bottom : 0) + 12}
+          onAction={onPickAction}
+          onDone={stopSelecting}
+        />
       ) : null}
 
       {/* Content melts away under the top bar instead of meeting a hard edge. */}
@@ -1135,6 +1291,18 @@ export function HearthScreen({ scope }: { scope: Scope }) {
         ambience={layout.ambience}
         onAmbience={changeAmbience}
         weatherPlace={weatherPlaceOf(everyTopLevel(layout))?.place.name}
+      />
+
+      <MoveManySheet visible={pickSheet === "move"} count={pickedIds.length} targets={pickTargets()} onClose={() => setPickSheet(null)} />
+      <ColorManySheet
+        visible={pickSheet === "color"}
+        count={pickedIds.length}
+        onPick={(color) => {
+          persist(recolorMany(layout, pickedIds, color));
+          tap("success");
+          stopSelecting();
+        }}
+        onClose={() => setPickSheet(null)}
       />
 
       <PagesSheet
