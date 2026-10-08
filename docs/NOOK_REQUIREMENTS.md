@@ -1,6 +1,6 @@
 # Nook — Requirements (living document)
 
-_Last updated: 2026-10-08 (rev 30)_
+_Last updated: 2026-10-08 (rev 31)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -51,6 +51,7 @@ _Last updated: 2026-10-08 (rev 30)_
 - **PROF-002** A brand-new person is asked to set up their profile (name required, the rest optional) before they enter the Hearth, instead of showing their email as their name. New accounts start with no name rather than their email.
 - **PROF-004** Each person can list their allergies and dietary needs on their profile; a kid's managers set the kid's. Family in their Burrows can see them, like the rest of a profile. (For Potluck warnings — POT-005.) _(The choices — peanuts, tree nuts, dairy, eggs, gluten, shellfish, fish, soy, sesame; vegetarian, vegan, gluten-free, dairy-free, halal, kosher — are proposed.)_
 - **PROF-003** A kid's managers can set up the kid's profile too — picture, birthday and "about me" — from Manage. Only their managers can (and their family sees it, like anyone's).
+- **PROF-005** Each person can put their mailing address on their profile. It's optional but encouraged. Everyone in their Burrows can see it, except Burrows they choose to leave out (e.g. a work Burrow). It fills in family's Letterbox Nooks and stays current when they move (LET-004).
 
 ## 2. Gift Nook (first Nook)
 - **GIFT-001** Users create families and invite others to join. _(Now in the Burrows tab, shared by every Nook — CORE-025.)_
@@ -100,6 +101,19 @@ _Last updated: 2026-10-08 (rev 30)_
 - **POT-006** People RSVP — Going / Maybe / Can't make it — with how many they're bringing ("+2"), so the host knows how much food is needed. Warnings only count people who are coming. _(Proposed: a kid's managers RSVP for the kid; "Maybe" counts as coming for warnings.)_
 - **POT-007** The day before, everyone bringing something gets an inbox reminder ("Tomorrow: you're bringing mashed potatoes"); it can be turned off in Potluck settings.
 - **POT-008** Whoever makes a Potluck is its host and can add co-hosts; hosts and co-hosts can change it (slots, date, details). Burrow admins can step in too.
+
+## 2c. Letterbox Nook
+- **LET-001** A Letterbox Nook: the holiday card list with addresses — who you sent cards to and who sent you one, each year — that doubles as a contact list for family and friends.
+- **LET-002** A Letterbox is shared by a household: you invite someone you already share a Burrow with, and once they accept it's one list for both of you. Either of you can mark a card sent.
+- **LET-003** Each entry in the Letterbox is a household — one mailing address, like "The Johnson Family" — with the people who live there listed inside. One card goes to each.
+- **LET-004** Addresses come from both places: family members' own profile addresses (PROF-005), which stay up to date, and addresses you type in for anyone not on the app (friends, neighbors, coworkers).
+- **LET-005** It tracks holiday cards each year: who you sent to and who sent you one, so next year you know who to send to.
+- **LET-006** It tracks other cards too: birthday, thank-you, sympathy, wedding, graduation and more.
+- **LET-007** You can keep photos of cards you receive (like family photo cards).
+- **LET-008** This year's send list can be turned into printable mailing labels or a list to copy addresses from.
+- **LET-009** A Hearth widget for card season: how many holiday cards are left to send, opening the list.
+- **LET-010** A reminder about a week before a contact's birthday, so a card arrives on time.
+- **LET-011** Thank-you notes owed: after you mark gifts received in the Gift Nook, the Letterbox lists who you still owe a thank-you note. _(GIFT-007/GIFT-026 mean the app can never say who gave a gift, so you say who each one was from yourself — it's never filled in from tucks.)_
 
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
@@ -157,6 +171,7 @@ _Last updated: 2026-10-08 (rev 30)_
 - **2026-10-07 — Design pass:** Josh agreed to all four suggestions: the Hearth theme across the whole app plus dark mode, Hearth-like headers on each Nook's home, opening a Nook as if stepping into it, and a cozier font (with options to compare). → CORE-032, CORE-033, CORE-034, CORE-035
 - **2026-10-07 — Nooks stand out; naming:** "The Nooks that we create are the special thing about this app so I want those added nooks to stand out amongst the other widgets. Also their names should be better, gift nook is fine... but potluck should at least have Potluck Nook." Josh picked "Potluck Nook" and the rule that every Nook is named "___ Nook". → CORE-036, CORE-037, Glossary
 - **2026-10-08 — Open widgets to see what's in them:** "We should be able to open up widgets like the shopping lists, countdown, inbox widget, reminders, etc. on the hearth to open up their open page to view what is in them, especially if they are icons and doesnt show it on home screen... if we arent in edit mode then they should just display whats in them in a nice useful way that also looks real nice." → CORE-020, CORE-038
+- **2026-10-08 — Letterbox Nook:** Josh picked the card & contact list as the next Nook and chose: the name Letterbox Nook; shared by a household, invited from your Burrows; one entry per household; addresses from family profiles plus typed-in ones; tracking holiday cards each year, other cards, photos of cards received, and printable labels; nudges for card season, birthday cards and thank-you notes owed. On addresses: "everyone in the burrows but you can choose to not include it to everyone, so like if its a work burrow then you wont want to share it with everyone. And also not everyone HAS to put in an address, but its encouraged." → LET-001..011, PROF-005, Glossary
 
 ## 5. Glossary (naming theme)
 | Concept | Name | Status |
@@ -165,6 +180,8 @@ _Last updated: 2026-10-08 (rev 30)_
 | How Nooks are named | "___ Nook" (Gift Nook, Potluck Nook, …) | approved |
 | The gift-list Nook | Gift Nook | approved |
 | The who-brings-what Nook | Potluck Nook | approved |
+| The card & contact list Nook | Letterbox Nook | approved |
+| One entry in the Letterbox (one mailing address) | Household | proposed |
 | Homepage | The Hearth | proposed |
 | A family group | Burrow | proposed |
 | Invite | Knock | proposed |
@@ -178,7 +195,7 @@ _Last updated: 2026-10-08 (rev 30)_
 ## 6. Nook Backlog
 Josh's picks, in no particular order. Names and details are proposed until he confirms them; each will get proper requirement IDs when it's about to be built.
 - **Potluck** — now being built: see section 2b (POT-001..008).
-- **Card & Contact List** — the holiday card list with addresses, who you've sent to and who sent you one each year; doubles as a contact list for family and friends.
+- **Card & Contact List** — now being built as the Letterbox Nook: see section 2c (LET-001..011).
 - **Pet Care** — shared pet profiles with "fed the dog?" check-offs so nobody feeds twice, plus vet, vaccine and medication dates with reminders; a Hearth widget shows the latest.
 - **Lent Out** — track things you've lent or borrowed (the drill, the casserole dish), to or from whom, with gentle reminders to ask for them back.
 - **Yearly Rhythms** — recurring annual and seasonal home chores (furnace filter, smoke-detector batteries, flu shots, gutters, car registration) with reminders and a log of who did what.
