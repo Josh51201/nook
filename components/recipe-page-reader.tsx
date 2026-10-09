@@ -17,7 +17,9 @@ const READ_PAGE = `(function () {
     var ld = [].slice.call(document.querySelectorAll('script[type="application/ld+json"]'))
       .map(function (s) { return '<script type="application/ld+json">' + s.textContent + '</scr' + 'ipt>'; })
       .join('');
-    if (!blocked && (ld || tries > 6)) {
+    // Wait for the recipe itself; some pages add it a moment after loading.
+    var hasRecipe = /"@type"\\s*:\\s*\\[?\\s*"Recipe"/.test(ld);
+    if (!blocked && (hasRecipe || tries > 10)) {
       var metas = [].slice.call(document.querySelectorAll('meta[property^="og:"], meta[name^="twitter:"]'))
         .map(function (m) { return m.outerHTML; }).join('');
       var title = '<title>' + document.title.replace(/</g, '') + '</title>';

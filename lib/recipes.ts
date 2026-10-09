@@ -313,11 +313,19 @@ export async function fetchRecipe(url: string): Promise<{ recipe: ImportedRecipe
       },
     });
     clearTimeout(timeout);
-    if (!response.ok) return { recipe: null, blocked: response.status === 403 || response.status === 429 || response.status === 503 };
+    if (!response.ok) {
+      if (__DEV__) console.log("[recipe import] refused", response.status, url);
+      return { recipe: null, blocked: response.status === 403 || response.status === 429 || response.status === 503 };
+    }
     const html = (await response.text()).slice(0, 3_000_000);
+    if (__DEV__) {
+      const ld = html.match(/application\/ld\+json/gi)?.length ?? 0;
+      console.log("[recipe import] got", response.status, response.url || url, `${html.length} chars, ${ld} recipe-data blocks`, html.slice(0, 120).replace(/\s+/g, " "));
+    }
     if (/<title>\s*Just a moment/i.test(html)) return { recipe: null, blocked: true };
     return { recipe: parseRecipePage(html, response.url || url), blocked: false };
-  } catch {
+  } catch (error) {
+    if (__DEV__) console.log("[recipe import] failed", url, String(error));
     // No connection, or the site didn't answer in time; a browser may still get in.
     return { recipe: null, blocked: true };
   }

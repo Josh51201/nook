@@ -23,7 +23,7 @@ export function isTikTok(url: string | null | undefined) {
 
 // ".../@cook/video/7301234567890123456?is_from_webapp=1" → "7301234567890123456"
 export function tiktokVideoId(url: string) {
-  return /\/video\/(\d{6,25})/.exec(url)?.[1] ?? null;
+  return /\/(?:video|v)\/(\d{6,25})/.exec(url)?.[1] ?? null;
 }
 
 // The official embed player, without the "more videos" and music extras.
@@ -66,33 +66,52 @@ export function parseCaption(caption: string) {
 
 const cache = new Map<string, Promise<TikTokInfo | null>>();
 
+const BROWSER_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+
+type OEmbed = { title?: string; author_name?: string; author_url?: string; thumbnail_url?: string; embed_product_id?: string };
+
+async function oEmbed(url: string): Promise<OEmbed | null> {
+  try {
+    const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`, {
+      headers: { "User-Agent": BROWSER_UA, Accept: "application/json" },
+    });
+    if (__DEV__) console.log("[tiktok] lookup", response.status, url);
+    if (!response.ok) return null;
+    return (await response.json()) as OEmbed;
+  } catch (error) {
+    if (__DEV__) console.log("[tiktok] lookup failed", url, String(error));
+    return null;
+  }
+}
+
 async function lookUp(link: string): Promise<TikTokInfo | null> {
-  let url = link;
-  // Share links (vm.tiktok.com/…, tiktok.com/t/…) redirect to the video.
-  if (!tiktokVideoId(url)) {
+  // TikTok's lookup takes the link as shared, short links (vm.tiktok.com/…,
+  // tiktok.com/t/…) included, and says which video it is.
+  let data = await oEmbed(link.split("?")[0]);
+  let resolved = link;
+  if (!data) {
+    // Some share links only work once followed to the video itself.
     try {
-      const response = await fetch(url, { method: "GET", redirect: "follow" });
-      if (response.url) url = response.url;
+      const response = await fetch(link, { headers: { "User-Agent": BROWSER_UA } });
+      resolved = response.url || link;
+      if (__DEV__) console.log("[tiktok] followed", link, "→", resolved);
     } catch {
       return null;
     }
+    if (resolved !== link) data = await oEmbed(resolved.split("?")[0]);
   }
-  const videoId = tiktokVideoId(url);
+  if (!data) return null;
+  const videoId = data.embed_product_id ?? tiktokVideoId(resolved);
   if (!videoId) return null;
-  try {
-    const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url.split("?")[0])}`);
-    if (!response.ok) return null;
-    const data = (await response.json()) as { title?: string; author_name?: string; thumbnail_url?: string };
-    return {
-      url: url.split("?")[0],
-      videoId,
-      caption: data.title ?? "",
-      author: data.author_name ?? null,
-      thumbnailUrl: data.thumbnail_url ?? null,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    // Saved as the plain video address, whatever kind of link was pasted.
+    url: data.author_url ? `${data.author_url}/video/${videoId}` : resolved.split("?")[0],
+    videoId,
+    caption: data.title ?? "",
+    author: data.author_name ?? null,
+    thumbnailUrl: data.thumbnail_url ?? null,
+  };
 }
 
 export function fetchTikTok(link: string): Promise<TikTokInfo | null> {

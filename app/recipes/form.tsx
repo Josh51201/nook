@@ -36,6 +36,9 @@ export default function RecipeForm() {
   const [fetchNote, setFetchNote] = useState<string | null>(null);
   // Set while the hidden browser tries a page that refused the quick download.
   const [readerUrl, setReaderUrl] = useState<string | null>(null);
+  // What the quick download found (a name and picture, but no recipe), kept
+  // in case the hidden browser finds nothing better.
+  const [thinFind, setThinFind] = useState<ImportedRecipe | null>(null);
   const [title, setTitle] = useState("");
   const [servings, setServings] = useState("");
   const [prep, setPrep] = useState("");
@@ -94,15 +97,12 @@ export default function RecipeForm() {
     setLink(url);
     if (isTikTok(url)) return fillFromTikTok(url);
     const { recipe: found, blocked } = await fetchRecipe(url);
-    if (found) return applyFound(found);
-    if (blocked) {
-      // The site wants a real browser: try it in a hidden one.
-      setFetchNote("This site is checking we're a real browser. Hang on a moment…");
-      setReaderUrl(url);
-      return;
-    }
-    setFetching(false);
-    setFetchNote("We couldn't find a recipe on that page. You can still type it in below.");
+    if (found && (found.ingredients.length || found.steps.length)) return applyFound(found);
+    // Turned away, or the page came without its recipe (some sites only add
+    // it in a real browser): try a hidden one before giving up.
+    setThinFind(found);
+    setFetchNote(blocked ? "This site is checking we're a real browser. Hang on a moment…" : "Looking a little harder…");
+    setReaderUrl(url);
   }
 
   // REC-013: the name and any ingredients come from the caption; the whole
@@ -135,7 +135,9 @@ export default function RecipeForm() {
     const url = readerUrl;
     setReaderUrl(null);
     const found = page && url ? parseRecipePage(page.html, page.url || url) : null;
-    if (found) return applyFound(found);
+    if (__DEV__) console.log("[recipe import] hidden browser", page ? `${page.html.length} chars from ${page.url}` : "gave up", found ? `${found.ingredients.length} ingredients` : "no recipe");
+    if (found && (found.ingredients.length || found.steps.length)) return applyFound(found);
+    if (found ?? thinFind) return applyFound((found ?? thinFind)!);
     setFetching(false);
     setFetchNote("That site wouldn't let us in. You can still type the recipe in below, or copy it from the page.");
   }
