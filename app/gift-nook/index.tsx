@@ -284,6 +284,13 @@ export default function GiftNookHome() {
         />
       </View>
 
+      <NavCard
+        icon="suggest"
+        title="Idea Stash"
+        subtitle="Private notes about family: gift ideas, sizes, what they like"
+        onPress={() => router.push("/gift-nook/stash")}
+      />
+
       {upcoming.length > 0 ? (
         <>
           <SectionHeader title="Coming up" icon="calendar" />

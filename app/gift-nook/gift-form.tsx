@@ -19,11 +19,14 @@ import { Button, Chip } from "../../components/ui";
 //   ?forProfileId=...  add to someone else's list: a kid you manage gets a
 //                      normal gift (GIFT-020); anyone else gets a suggestion,
 //                      hidden from them (GIFT-022).
+//   ?stashId=...       an Idea Stash note being turned into this gift
+//                      (GIFT-036): the form starts filled in from it, and the
+//                      note is marked once the gift is added.
 export default function GiftForm() {
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id;
-  const { giftId, forProfileId } = useLocalSearchParams<{ giftId?: string; forProfileId?: string }>();
+  const { giftId, forProfileId, stashId } = useLocalSearchParams<{ giftId?: string; forProfileId?: string; stashId?: string }>();
   const isEditing = Boolean(giftId);
 
   const [shelves, setShelves] = useState<Shelf[]>([]);
@@ -73,6 +76,15 @@ export default function GiftForm() {
         if (shelfRows?.length) {
           setShelfId(shelfRows[0].id);
           setIsRepeatable(repeatableByDefault.has(shelfRows[0].key));
+        }
+        if (stashId) {
+          const { data: idea } = await supabase.from("idea_stash").select("title, notes, url, price").eq("id", stashId).maybeSingle();
+          if (idea) {
+            setTitle(idea.title);
+            setNotes(idea.notes ?? "");
+            setUrl(idea.url ?? "");
+            setPrice(idea.price != null ? String(idea.price) : "");
+          }
         }
         if (forProfileId && forProfileId !== userId) {
           const [profileResult, managerResult] = await Promise.all([
@@ -171,6 +183,10 @@ export default function GiftForm() {
         wishbook_id: wishbook?.id,
         suggested_by: isSuggestion ? userId : null,
       }));
+      // The idea this came from now shows as done (GIFT-036).
+      if (!saveError && stashId) {
+        await supabase.from("idea_stash").update({ suggested_at: new Date().toISOString() }).eq("id", stashId);
+      }
     }
 
     setIsSaving(false);

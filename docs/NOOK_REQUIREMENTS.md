@@ -2,7 +2,7 @@
 
 _Fine print for built features is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 48)_
+_Last updated: 2026-10-08 (rev 49)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -99,7 +99,7 @@ Josh wants every organization idea below ("I think all of them"). None are built
 
 ## 2. Built Nooks (requirements archived)
 Full requirements for these live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_NOOKS_BUILT.md). **Grep it by ID before changing one of these Nooks**; edit requirements there.
-- **Gift Nook** (GIFT-001..036): wish lists ("Wishbooks") per person across Burrows, Gatherings, claims ("Tucks"), kids' managed profiles. Idea Stash (GIFT-036) not built yet.
+- **Gift Nook** (GIFT-001..036): wish lists ("Wishbooks") per person across Burrows, Gatherings, claims ("Tucks"), kids' managed profiles. Idea Stash (GIFT-036) built 2026-10-09.
 - **Potluck Nook** (POT-001..008): who brings what, RSVPs, allergy warnings.
 - **Letterbox Nook** (LET-001..011): holiday cards, addresses, labels, thank-yous.
 - **Pet Care Nook** (PET-001..007): feeding, vet/meds, helpers.

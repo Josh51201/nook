@@ -489,6 +489,12 @@ export default function MemberWishbook() {
           />
         )}
       </View>
+      <Button
+        title={`My private ideas for ${name}`}
+        icon="hidden"
+        variant="secondary"
+        onPress={() => router.push({ pathname: "/gift-nook/stash", params: { aboutId: profileId } })}
+      />
 
       {gifts.length > 4 ? (
         <View style={{ gap: 8 }}>
