@@ -55,6 +55,7 @@ import {
   copyItem,
   cubbyContents,
   deepColor,
+  tilePalette,
   everyTopLevel,
   findHollow,
   hearthThemes,
@@ -113,6 +114,8 @@ import { isPetBed, PetRoamers, strideFor } from "./pet-roamer";
 import { petSizeForStride } from "../../lib/hearth-pet";
 import { useHearthView } from "../../lib/hearth-view";
 import { canGoOnHomePage, HOME_PAGE } from "../../lib/home-hearth";
+import { fridgePlace, fridgeRoute, placeKey } from "../../lib/fridge";
+import { markFridgesSeen, useFridgeNews } from "../../lib/fridge-data";
 import { fullMessage, overflowing } from "../../lib/hearth-limits";
 import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
@@ -213,6 +216,34 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const [barHeight, setBarHeight] = useState(0);
   // The page row under the bar (CORE-051), so the fade starts below it.
   const [stripHeight, setStripHeight] = useState(0);
+  // Fridge doors (CORE-086): which fridges have a note you haven't seen, so
+  // their page tabs (the Home page's above all) wear a little note.
+  const fridgeNews = useFridgeNews(home.homeId, refreshKey);
+  const fridgesOn = (pageItems: HearthItem[], onHomePage: boolean) =>
+    pageItems.flatMap((item) => {
+      if (item.kind !== "widget" || item.widget.kind !== "fridge") return [];
+      const place = fridgePlace(item.widget.settings, { onHomePage, homeId: home.homeId });
+      return place ? [place] : [];
+    });
+  const onHomePageNow = !scope && layout.activePage === HOME_PAGE;
+  const pagesWithNews = scope
+    ? []
+    : layout.pages
+        .filter((page) => {
+          const pageItems = page.id === layout.activePage ? layout.items : layout.otherPages[page.id] ?? [];
+          return fridgesOn(pageItems, page.id === HOME_PAGE).some((place) => fridgeNews.has(placeKey(place)));
+        })
+        .map((page) => page.id);
+  // Looking at a fridge counts as seeing what's on it.
+  const unseenHere = editing ? [] : fridgesOn(items, onHomePageNow).filter((place) => fridgeNews.has(placeKey(place)));
+  const unseenKey = unseenHere.map(placeKey).join(",");
+  useEffect(() => {
+    if (!unseenKey || !navigation.isFocused()) return;
+    const timer = setTimeout(() => void markFridgesSeen(unseenHere), 1200);
+    return () => clearTimeout(timer);
+    // `unseenKey` stands for `unseenHere`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unseenKey, refreshKey]);
 
   // Auto-scroll while dragging (CORE-029): hold an item near the top or
   // bottom of the screen and the page scrolls along with it. The grid
@@ -646,6 +677,13 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           .catch(() => router.push("/recipes"));
       case "greeting":
         return;
+      case "fridge": {
+        const place = fridgePlace(item.widget.settings, { onHomePage: onHomePageNow, homeId: home.homeId });
+        // The big door takes the widget's color (CORE-086).
+        const soft = item.color ?? tilePalette[0];
+        const enamel = item.widget.look === "bold" ? deepColor(soft) : item.widget.look === "soft" ? soft : null;
+        return router.push((place ? fridgeRoute(place, enamel) : `/widget/view/${item.id}`) as never);
+      }
       case "companion":
         // A pet from Pet Care opens its page there (CORE-048).
         if (item.widget.settings.petId) return router.push(`/pets/${item.widget.settings.petId}`);
@@ -1215,6 +1253,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           corners={item.corners}
           border={item.border}
           still={editing}
+          onHomePage={onHomePageNow}
           onChange={editing ? undefined : (widget) => changeWidget(item, widget)}
         />
       );
@@ -1436,6 +1475,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
             pages={layout.pages}
             activeId={layout.activePage}
             homeId={showsHome ? HOME_PAGE : undefined}
+            newsIds={pagesWithNews}
             accent={theme.accent}
             text={theme.text}
             background={theme.background}

@@ -22,6 +22,9 @@ export type Notice = {
     rhythm_id?: string;
     link_id?: string;
     invite_id?: string;
+    home_id?: string;
+    note_id?: string;
+    expires_at?: string;
   };
   created_at: string;
   read_at: string | null;
@@ -76,6 +79,13 @@ const kinds: Record<string, Record<string, KindInfo>> = {
   home: {
     home_invite: { icon: "hearth", route: () => "/home" },
     home_joined: { icon: "group", route: () => "/home" },
+  },
+  // Fridge door notes (CORE-086): open the fridge it's on.
+  fridge: {
+    fridge_note: {
+      icon: "fridge",
+      route: (data) => (data.home_id ? `/fridge?home=${data.home_id}` : data.burrow_id ? `/fridge?burrow=${data.burrow_id}` : null),
+    },
   },
   letterbox: {
     birthday_card: {

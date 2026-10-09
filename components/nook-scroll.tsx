@@ -21,9 +21,12 @@ export function NookScroll({
   contentContainerStyle,
   tour,
   pinned,
+  scrollEnabled = true,
 }: {
   children: ReactNode;
   pinned?: ReactNode;
+  // Off while a finger is drawing on the page (the Fridge door's doodle pad).
+  scrollEnabled?: boolean;
   onRefresh?: () => Promise<unknown> | void;
   contentContainerStyle?: StyleProp<ViewStyle>;
   tour?: ReturnType<typeof useTourScrollArea>;
@@ -44,6 +47,7 @@ export function NookScroll({
       ref={tour?.scrollRef as never}
       {...tour?.scrollProps}
       bottomOffset={32}
+      scrollEnabled={scrollEnabled}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       contentInsetAdjustmentBehavior="automatic"

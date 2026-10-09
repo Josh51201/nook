@@ -246,6 +246,7 @@ export default function WidgetEditor() {
         themeText={theme.text}
         corners={draft.corners}
         border={draft.border}
+        onHomePage={sharedPage}
         onChange={(changed) => setWidget(changed)}
       />
     </ItemPreview>
@@ -289,6 +290,8 @@ export default function WidgetEditor() {
           setSettings={setSettings}
           setWidget={setWidget}
           photoFolder={sharedPage && homeHearth.homeId ? homePhotoFolder(homeHearth.homeId) : undefined}
+          onHomePage={sharedPage}
+          homeName={homeHearth.name}
         />
       </Collapsible>
 
@@ -320,6 +323,7 @@ export default function WidgetEditor() {
           ))}
         </View>
         {widget.kind === "companion" ? <Text style={ui.muted}>Outline leaves out the card, so the bed sits right on your Hearth. The title switch shows or hides the pet's name.</Text> : null}
+        {widget.kind === "fridge" ? <Text style={ui.muted}>Soft is a pastel fridge in the color below, Bold a deep one, and Outline leaves just the notes on your Hearth. The title is printed on a label-maker strip.</Text> : null}
 
         {widget.kind === "frame" || widget.kind === "window" ? null : (
           <>
@@ -793,14 +797,21 @@ function KindSettings({
   setSettings,
   setWidget,
   photoFolder,
+  onHomePage = false,
+  homeName,
 }: {
   widget: WidgetConfig;
   setSettings: (changes: Record<string, unknown>) => void;
   setWidget: (changes: Partial<WidgetConfig>) => void;
   // Where new photos go: the Home's folder for the shared page.
   photoFolder?: string;
+  // On the page shared with your Home (CORE-054), and that page's name.
+  onHomePage?: boolean;
+  homeName?: string;
 }) {
   switch (widget.kind) {
+    case "fridge":
+      return <FridgeSettings widget={widget} setSettings={setSettings} onHomePage={onHomePage} homeName={homeName} />;
     case "companion":
       return <CompanionSettings widget={widget} setSettings={setSettings} setWidget={setWidget} />;
     case "countdown":
@@ -1081,6 +1092,60 @@ function CountdownSettings({
           In words
         </Chip>
       </View>
+    </>
+  );
+}
+
+// Which fridge (CORE-086): on the Home page it's always the Home's.
+function FridgeSettings({
+  widget,
+  setSettings,
+  onHomePage,
+  homeName,
+}: {
+  widget: WidgetOf<"fridge">;
+  setSettings: (changes: Partial<WidgetOf<"fridge">["settings"]>) => void;
+  onHomePage: boolean;
+  homeName?: string;
+}) {
+  const { place, burrowId } = widget.settings;
+  const [burrows, setBurrows] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    supabase
+      .from("burrows")
+      .select("id, name")
+      .order("name")
+      .then(({ data }) => setBurrows(data ?? []));
+  }, []);
+
+  if (onHomePage) {
+    return (
+      <Text style={ui.muted}>
+        This is your Home's fridge, because it's on the {homeName || "Home"} page. Everyone in your Home sees the same notes, and the page's tab
+        gets a little note on it when someone sticks one up.
+      </Text>
+    );
+  }
+  const onBurrow = place === "burrow" && Boolean(burrowId);
+  return (
+    <>
+      <Text style={ui.label}>Whose fridge</Text>
+      <View style={ui.chips}>
+        <Chip icon="hearth" selected={!onBurrow} onPress={() => setSettings({ place: "home", burrowId: null })}>
+          My Home's
+        </Chip>
+        {burrows.map((b) => (
+          <Chip key={b.id} icon="burrow" selected={onBurrow && burrowId === b.id} onPress={() => setSettings({ place: "burrow", burrowId: b.id })}>
+            {b.name}
+          </Chip>
+        ))}
+      </View>
+      <Text style={ui.muted}>
+        {onBurrow
+          ? "Everyone in this Burrow can see the notes and stick up their own."
+          : "The people you live with share this fridge. Put a Fridge door on the Home page and it's theirs to see on their Hearth too."}{" "}
+        Notes come down by themselves after a day, three days or a week, whichever the writer picks.
+      </Text>
     </>
   );
 }

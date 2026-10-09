@@ -41,6 +41,10 @@ import { Icon, IconBadge, type IconName } from "../icon";
 import { Tap } from "../motion";
 import { BedArt, BowlArt, CritterArt, PetStageContext, Snooze } from "./pet-art";
 import { WindowScene } from "./window-scene";
+import { FridgeDoor, FridgeNoteCard, LetterMagnets, Magnet } from "../fridge-door";
+import { fridgeGrid, fridgePlace, hashOf, magnets, noteMagnet } from "../../lib/fridge";
+import { useFridgeNotes } from "../../lib/fridge-data";
+import { useHomeHearth } from "../../lib/home-hearth-data";
 
 // Renders any Hearth widget (CORE-018) in its chosen look, laid out for the
 // shape it's been given (CORE-030): a single icon with a count, a one-line
@@ -108,6 +112,7 @@ function WidgetBody({
   corners,
   border,
   still = false,
+  onHomePage = false,
 }: {
   widget: WidgetConfig;
   color?: string;
@@ -124,8 +129,25 @@ function WidgetBody({
   border?: boolean;
   // Hold animations still, e.g. while the Hearth is being edited.
   still?: boolean;
+  // It's on the page shared with your Home (CORE-054): a Fridge door there
+  // is always the Home's.
+  onHomePage?: boolean;
 }) {
   const radius = cornerRadius(corners, width, height);
+  if (widget.kind === "fridge") {
+    return (
+      <FridgeWidget
+        widget={widget}
+        color={color}
+        width={width}
+        height={height}
+        radius={radius}
+        border={border}
+        refreshKey={refreshKey}
+        onHomePage={onHomePage}
+      />
+    );
+  }
   if (widget.kind === "frame") {
     return <PhotoFrame settings={widget.settings} width={width} height={height} radius={radius} />;
   }
@@ -245,6 +267,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return null; // drawn whole by WindowWidget, above
     case "companion":
       return null; // drawn whole by PetBedWidget, below
+    case "fridge":
+      return null; // drawn whole by FridgeWidget, below
   }
 }
 
@@ -1493,6 +1517,110 @@ function PhotoFrame({
         </View>
       ) : null}
     </View>
+  );
+}
+
+// --- Fridge door (CORE-086) ------------------------------------------------------------
+
+// A fridge door with the newest notes and doodles held up by magnets. As
+// many as fit are shown; a last magnet says how many more are up. Tapping
+// it (outside Edit) opens the fridge itself (app/fridge.tsx).
+function FridgeWidget({
+  widget,
+  color,
+  width,
+  height,
+  radius,
+  border,
+  refreshKey,
+  onHomePage,
+}: {
+  widget: WidgetOf<"fridge">;
+  color?: string;
+  width: number;
+  height: number;
+  radius: number;
+  border?: boolean;
+  refreshKey: number;
+  onHomePage: boolean;
+}) {
+  const { homeId } = useHomeHearth();
+  const place = fridgePlace(widget.settings, { onHomePage, homeId });
+  const { notes } = useFridgeNotes(place, refreshKey);
+  const soft = color ?? tilePalette[0];
+  const deep = deepColor(soft);
+  const enamel = widget.look === "bold" ? deep : widget.look === "soft" ? soft : null;
+  const ink = widget.look === "bold" ? "rgba(255,255,255,0.85)" : "#5b4f46";
+  const shape = widgetShape(width, height);
+  const label = widget.showTitle && shape !== "icon" && height >= 110 ? widget.title || "Fridge" : null;
+
+  if (shape === "icon") {
+    // A little two-door fridge with how many notes are up.
+    return (
+      <FridgeDoor width={width} height={height} enamel={enamel} outline={deep} radius={radius} freezerAt={height * 0.36} border={border}>
+        {notes.length ? (
+          <View style={{ position: "absolute", left: 0, right: 12, top: height * 0.36, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+            <Magnet color={noteMagnet(notes[0].id)} size={Math.min(28, width * 0.36)}>
+              <Text style={{ color: "#ffffff", fontSize: Math.min(13, width * 0.17), fontWeight: "900" }}>{notes.length > 9 ? "9+" : notes.length}</Text>
+            </Magnet>
+          </View>
+        ) : null}
+      </FridgeDoor>
+    );
+  }
+
+  const freezerAt = shape === "tall" || shape === "large" ? Math.min(height * 0.24, 70) : undefined;
+  const pad = { top: label ? 30 : 10, left: 8, right: 22, bottom: 8 };
+  const innerW = width - pad.left - pad.right;
+  const innerH = height - pad.top - pad.bottom;
+  const grid = fridgeGrid(innerW, innerH, notes.length);
+
+  return (
+    <FridgeDoor width={width} height={height} enamel={enamel} outline={deep} radius={radius} freezerAt={freezerAt} label={label} border={border}>
+      <View style={{ position: "absolute", left: pad.left, top: pad.top, width: innerW, height: innerH }}>
+        {notes.length === 0 ? (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <LetterMagnets size={Math.max(16, Math.min(40, Math.min(innerW, innerH) * 0.3))} />
+            {innerH >= 120 ? (
+              <Text style={{ color: ink, fontSize: 12, fontWeight: "600", textAlign: "center" }} numberOfLines={2}>
+                {place ? "Tap to stick up a note" : "Loading your fridge…"}
+              </Text>
+            ) : null}
+          </View>
+        ) : (
+          notes.slice(0, grid.shown).map((note, i) => {
+            const col = i % grid.cols;
+            const row = Math.floor(i / grid.cols);
+            const jitter = (hashOf(note.id) % 7) - 3;
+            return (
+              <View
+                key={note.id}
+                style={{ position: "absolute", left: col * grid.cellW + 4 + jitter, top: row * grid.cellH + 3 }}
+              >
+                <FridgeNoteCard note={note} width={grid.cellW - 8} height={grid.cellH - 6} />
+              </View>
+            );
+          })
+        )}
+        {grid.extra > 0 ? (
+          <View
+            style={{
+              position: "absolute",
+              left: ((grid.cols * grid.rows - 1) % grid.cols) * grid.cellW,
+              top: (grid.rows - 1) * grid.cellH,
+              width: grid.cellW,
+              height: grid.cellH,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Magnet color={magnets[1]} size={Math.min(40, grid.cellW * 0.5)}>
+              <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "900" }}>+{grid.extra}</Text>
+            </Magnet>
+          </View>
+        ) : null}
+      </View>
+    </FridgeDoor>
   );
 }
 

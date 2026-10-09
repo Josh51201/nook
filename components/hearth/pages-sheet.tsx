@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ScrollView, TextInput, View } from "react-native";
+import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { colors, ui } from "../../lib/theme";
 import { MAX_PAGES } from "../../lib/hearth-pages";
@@ -26,11 +27,15 @@ export function PageStrip({
   onSwitch,
   onAdd,
   homeId,
+  newsIds = [],
 }: {
   pages: HearthPage[];
   activeId: string;
   // The page shared with your Home (CORE-054), shown with a little house.
   homeId?: string;
+  // Pages with a Fridge door someone's left a note on (CORE-086): their tab
+  // wears a tiny note under a magnet until you've looked.
+  newsIds?: string[];
   accent: string;
   text: string;
   background: string;
@@ -50,13 +55,14 @@ export function PageStrip({
         horizontal
         style={{ flexGrow: 0 }}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingTop: 2, paddingBottom: 10, alignItems: "center" }}
+        contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingTop: 6, paddingBottom: 6, alignItems: "center" }}
         keyboardShouldPersistTaps="handled"
       >
         {pages.map((page) => {
           const on = page.id === activeId;
           const hover = hoverId === page.id;
           const shared = page.id === homeId;
+          const news = newsIds.includes(page.id);
           return (
             <View key={page.id} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             {/* The shared Home page (CORE-054) sits apart from your own pages:
@@ -68,6 +74,7 @@ export function PageStrip({
                 pressedScale={0.94}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
+                accessibilityLabel={news ? `${page.name}, someone left a note on the fridge` : undefined}
                 style={{
                   paddingHorizontal: shared ? 12 : 14,
                   paddingVertical: 6,
@@ -84,6 +91,7 @@ export function PageStrip({
                   </Text>
                 </View>
               </Tap>
+              {news ? <FridgeNews /> : null}
             </View>
             </View>
           );
@@ -115,6 +123,37 @@ export function PageStrip({
         ) : null}
       </ScrollView>
     </View>
+  );
+}
+
+// A tiny sticky note under a red magnet, tucked on a page tab's corner.
+function FridgeNews() {
+  return (
+    <Animated.View entering={ZoomIn.springify().damping(11)} pointerEvents="none" style={{ position: "absolute", top: -5, right: -5 }}>
+      <View
+        style={{
+          width: 13,
+          height: 12,
+          marginTop: 3,
+          borderRadius: 1.5,
+          backgroundColor: "#fff1a6",
+          transform: [{ rotate: "8deg" }],
+          boxShadow: "0px 1px 2px rgba(0,0,0,0.3)",
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 4,
+          width: 6,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: "#d94b3f",
+          boxShadow: "0px 1px 1px rgba(0,0,0,0.3)",
+        }}
+      />
+    </Animated.View>
   );
 }
 

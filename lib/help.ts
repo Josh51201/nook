@@ -34,6 +34,14 @@ const screens: Record<string, HelpTopic> = {
     title: "The Market",
     body: "See what each Nook does and put the ones you like on your Hearth as tiles. Taking one off the Hearth never deletes what's inside it.",
   },
+  fridge: {
+    title: "The fridge",
+    body: "Notes and doodles your Home or Burrow stuck up for each other. Tap one to see who left it; each comes down by itself after a day or so.",
+  },
+  "fridge-note": {
+    title: "Stick something up",
+    body: "Write on a sticky note or doodle with your finger, pick the paper and how long it stays up. Everyone who shares this fridge gets a little notice.",
+  },
   home: {
     title: "Your Home",
     body: "The people you live with. Nooks for the house — cards, pets, chores — share with your Home instead of your whole family.",

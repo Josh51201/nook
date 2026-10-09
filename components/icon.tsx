@@ -127,6 +127,7 @@ const icons = {
   doc: { ios: "doc.text.fill", android: "description" },
   sitter: { ios: "list.clipboard.fill", android: "assignment" },
   recipe: { ios: "book.pages.fill", android: "auto_stories" },
+  fridge: { ios: "refrigerator.fill", android: "kitchen" },
   timer: { ios: "timer", android: "timer" },
   play: { ios: "play.fill", android: "play_arrow" },
   pause: { ios: "pause.fill", android: "pause" },

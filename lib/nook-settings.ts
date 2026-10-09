@@ -143,3 +143,10 @@ export const potluckSettingDefaults = {
   notifyRsvps: false, // hosts: someone RSVPs
   notifyDishes: false, // hosts: someone picks a dish
 };
+
+// Fridge door notices (CORE-086). Also read by the database
+// (public.wants_fridge_notice) — rename them in both places or not at all.
+export const fridgeSettingDefaults = {
+  notifyHome: true, // someone sticks up a note on your Home's fridge
+  notifyBurrow: true, // … or on one of your Burrows' fridges
+};

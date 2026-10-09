@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-09 (rev 58)_
+_Last updated: 2026-10-09 (rev 59)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -37,6 +37,7 @@ _Last updated: 2026-10-09 (rev 58)_
 - **CORE-083** The color picker's Light / Soft / Rich now change text and Bold-look colors too (they were all turning into the same deep color): Light is dustier, Rich deeper and more vivid; Soft is unchanged. _(Fixed 2026-10-09.)_
 - **CORE-084** A decorative box to put behind widgets and tiles, "like a cardboard box" that can be decorated to match your theme. _(Josh asked 2026-10-09. Built as **Cubbies**: 8 styles (cardboard, crate, gift, quilted, frame, scrapbook, frosted glass, shelf) with color, pattern, see-through, corners and shadow; the box frames what's inside and carries it when dragged or tidied. Name, styles and carrying are Claude's, proposed.)_
 - **CORE-085** A Cubby mode, so Cubbies can be selected even when they're behind widgets. _(Josh asked 2026-10-09. Built as a "Cubbies" button in Edit: in it, everything else fades and only boxes can be touched; out of it, boxes can't be touched so they never get in the way. Adding or finding a Cubby turns it on, and the Add sheet's Cubbies section explains it. Design is Claude's, proposed.)_
+- **CORE-086** A **Fridge door** widget that "fairly resembles a fridge", connected to your Home or a Burrow, where everyone can share a message that lasts "a day or whatever" before it's deleted. On the Home page it's automatically the Home's fridge; a new note shows a little icon on the Home page's tab and a notice in the inbox. _(Josh asked 2026-10-09. Built: notes written on sticky-note paper or finger-drawn doodles, held by magnets on an enamel door with a handle and label-maker title; each stays up a day, 3 days or a week (writer picks), then the database takes it down. Tapping opens the whole fridge to read, add or take down notes (the writer, or anyone in the Home for a Home note). The tab icon is a tiny note under a magnet, on any page whose fridge has news, and clears once you've looked. Notices can be switched off on the fridge screen. The look, the doodles, the lengths and who can take notes down are Claude's, proposed; free like other widgets, proposed.)_
 
 ### Still to do from the Hearth rounds
 Everything else in CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md) — grep it by ID. Josh said yes to every idea in these rounds; details are Claude's proposals until he confirms. Some is paid under Nook Plus (Q-028).
@@ -138,6 +139,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The paid subscription, per Home | Nook Plus | proposed |
 | A decorative object placed on the Hearth | Trinket | proposed |
 | A decorated box behind widgets that holds them together (CORE-084) | Cubby | proposed |
+| The shared notes-and-doodles widget (CORE-086) | Fridge door (its screen: "the Home fridge" / "the ___ fridge") | proposed |
 | A saved whole-Hearth setup | Scene | proposed |
 | The pet that lives on your Hearth (CORE-048) | Hearth pet | proposed |
 | The Hearth page shared with your Home (CORE-054) | Home page | proposed |
@@ -160,7 +162,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **Lent Out** — track things you've lent or borrowed (the drill, the casserole dish), to or from whom, with gentle reminders to ask for them back.
 - **House Binder** — home info in one place: paint colors, appliance models, warranty dates, filter sizes, trusted contacts like the plumber, and service history.
 - **Quote Jar** — save funny things people say, with the date and who said it; a Hearth widget shows a random one each day.
-- **Fridge Door** — family sticky notes and doodles, shown as a Hearth widget.
+- **Fridge Door** — now built as the Fridge door widget: see CORE-086.
 - **Recipe Box** — now being built as the Recipe Box Nook: see section 2h (REC-001..014).
 - **Heads-Up Board** — one-tap household status like "on my way", "dinner at 6?" or "need milk"; no location tracking. _(Josh picked it 2026-10-08.)_
 - **Sick Day** — log a child's symptoms, temperature and medicine doses with a "next dose safe at…" timer so two parents can't double-dose; could feed the Sitter Sheet. _(Josh picked it 2026-10-08: "sick day nook is also good".)_
