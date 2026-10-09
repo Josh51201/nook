@@ -202,7 +202,7 @@ export default function GiftNookHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <View style={[ui.row, { gap: 22 }]}>
+            <View style={[ui.row, { gap: 4 }]}>
               <HeaderIcon
                 icon="bell"
                 label={unread ? `Inbox, ${unread} unread` : "Inbox"}

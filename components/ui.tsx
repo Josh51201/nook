@@ -224,7 +224,9 @@ export function HeaderIcon({
   badge?: number;
 }) {
   return (
-    <Tap onPress={onPress} hitSlop={10} pressedScale={0.85} accessibilityLabel={label} accessibilityRole="button">
+    // Padded so the badge and the icon sit inside the button's box: a
+    // navigation header crops anything drawn outside it.
+    <Tap onPress={onPress} hitSlop={6} pressedScale={0.85} accessibilityLabel={label} accessibilityRole="button" style={{ padding: 9 }}>
       <Icon name={icon} size={22} />
       {badge > 0 ? (
         <Animated.View entering={ZoomIn.springify().damping(12)} style={headerBadge}>
@@ -237,8 +239,8 @@ export function HeaderIcon({
 
 const headerBadge = themed(() => ({
   position: "absolute" as const,
-  top: -6,
-  right: -9,
+  top: 0,
+  right: 0,
   minWidth: 18,
   height: 18,
   borderRadius: 9,
