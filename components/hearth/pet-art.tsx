@@ -77,7 +77,8 @@ export function CritterArt({
     </>
   ) : null;
   return (
-    <View style={{ width, height, transform: flip ? [{ scaleX: -1 }] : undefined }}>
+    // Always a transform (never removed): taking one away crashes on the phone.
+    <View style={{ width, height, transform: [{ scaleX: flip ? -1 : 1 }] }}>
       <Svg width={width} height={height} viewBox="0 0 100 80" preserveAspectRatio="xMidYMax meet">
         <Ellipse cx="50" cy="78" rx="30" ry="2.6" fill="#000" fillOpacity={0.1} />
         <Critter critter={critter} s={s} closed={eyesClosed} photo={photo} />
