@@ -3,7 +3,8 @@ import type { IconName } from "../components/icon";
 // The first-time tour (CORE-026): little pop-up bubbles that point at parts
 // of the app and say what they do. One tour, shown once — the first time
 // someone reaches their Hearth — or again from Settings. It walks over to
-// the Burrows tab partway through and back to the Hearth at the end.
+// the Nooks and Burrows tabs first (the essentials), then back to the Hearth
+// for the optional decorating.
 // Pure logic only (no React), so it's unit-testable; components/tour.tsx
 // draws it.
 //
@@ -12,7 +13,7 @@ import type { IconName } from "../components/icon";
 // that save doesn't make it.
 
 // The screens (tabs) a tour step can take you to.
-export type TourScreen = "hearth" | "burrows";
+export type TourScreen = "hearth" | "nooks" | "burrows";
 
 export type TourStep = {
   icon: IconName;
@@ -34,7 +35,7 @@ export const firstTour: TourStep[] = [
   {
     icon: "hearth",
     title: "Welcome to your Hearth",
-    body: "This is home — everything in Nook starts here. Here's a quick look around.",
+    body: "This is home — everything in Nook starts here. Here's a quick look around; it only takes a minute.",
   },
   {
     icon: "bell",
@@ -43,40 +44,32 @@ export const firstTour: TourStep[] = [
     title: "Your inbox",
     body: "News from your Nooks lands here — a Gathering coming up, someone joining your Burrow. A little number shows when there's something new.",
   },
-  {
-    icon: "drag",
-    screen: "hearth",
-    target: "hearth-edit",
-    optional: true,
-    title: "Make it yours",
-    body: "Tap Edit, or hold anything, to drag it around, resize it from its corner, or drop it onto a Hollow.",
-  },
-  {
-    icon: "add",
-    screen: "hearth",
-    target: "hearth-add",
-    title: "Add to your Hearth",
-    body: "Tap here to add widgets — countdowns, reminders, notes — plus text, and Hollows: little houses and stumps you can step into to keep things tidy.",
-  },
-  {
-    icon: "market",
-    screen: "hearth",
-    target: "hearth-market",
-    optional: true,
-    title: "The Market",
-    body: "Nooks live here — little apps like the Gift Nook. Add one and it shows up as a tile on your Hearth.",
-  },
+  // The essentials first: where the Nooks are, and joining your people.
   {
     icon: "nooks",
     target: "tab-nooks",
     title: "Every Nook, one tap away",
-    body: "A Nook doesn't have to be on your Hearth to use it. They're all in here, and a dot shows when one has something new for you — like a Gathering you're invited to.",
+    body: "Nooks are little apps — family gift lists, potlucks, recipes and more. They all live in this tab. Let's take a look.",
+  },
+  {
+    icon: "gift",
+    screen: "nooks",
+    target: "nooks-first",
+    title: "Open any Nook",
+    body: "Tap one to open it — you don't have to add it anywhere first. Anything waiting for you, like a Gathering you're invited to, shows up at the top, and the tab gets a little dot.",
   },
   {
     icon: "burrow",
     target: "tab-burrows",
     title: "Burrows are your people",
     body: "A Burrow is your family or group. Every Nook that shares with people — like the Gift Nook — uses the same Burrows, so everyone only joins once. Let's take a peek.",
+  },
+  {
+    icon: "hearth",
+    screen: "burrows",
+    target: "burrows-home",
+    title: "Your Home",
+    body: "The people you live with. Nooks for the house — cards, pets, yearly chores, the sitter sheet — share with your Home instead of the whole family.",
   },
   {
     icon: "burrow",
@@ -90,13 +83,37 @@ export const firstTour: TourStep[] = [
     screen: "burrows",
     target: "burrows-code",
     title: "Got a Knock?",
-    body: "When someone invites you, they'll send you a 6-letter code. Type it here to join their Burrow.",
+    body: "When someone invites you, they'll send you a 6-letter code. Type it here to join their Burrow — their Gatherings and Wishbooks show up straight away.",
+  },
+  // Then the fun, optional part: making the Hearth your own.
+  {
+    icon: "drag",
+    screen: "hearth",
+    target: "hearth-edit",
+    optional: true,
+    title: "Make it yours — whenever you like",
+    body: "None of this is needed to use Nook. Tap Edit, or hold anything, to drag it around, resize it from its corner, or drop it onto a Hollow.",
+  },
+  {
+    icon: "add",
+    screen: "hearth",
+    target: "hearth-add",
+    title: "Add to your Hearth",
+    body: "Widgets — countdowns, reminders, notes — plus text, and Hollows: little houses and stumps you can step into to keep things tidy.",
+  },
+  {
+    icon: "market",
+    screen: "hearth",
+    target: "hearth-market",
+    optional: true,
+    title: "The Market",
+    body: "See what each Nook does and put the ones you use most on your Hearth as tiles.",
   },
   {
     icon: "settings",
     target: "tab-settings",
     title: "Settings",
-    body: "Your profile, your Hearth's name and theme — and this tour again, whenever you want it.",
+    body: "Your profile (add your birthday and your Burrows get a Birthday Gathering for you), your Hearth's name and theme — and this tour again, whenever you want it.",
   },
 ];
 

@@ -6,6 +6,7 @@ import { Text } from "../../components/text";
 import { Icon } from "../../components/icon";
 import { Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { TourTarget, useTourScrollArea } from "../../components/tour";
 import { Button, NavCard, SectionHeader } from "../../components/ui";
 import { tap } from "../../lib/feedback";
 import { addNook, nookCount, useHearthLayout } from "../../lib/hearth";
@@ -25,6 +26,7 @@ export default function Nooks() {
   const { layout, save } = useHearthLayout();
   const [refreshKey, setRefreshKey] = useState(0);
   const waiting = useUnreadByNook(refreshKey);
+  const tourScroll = useTourScrollArea();
 
   useFocusEffect(
     useCallback(() => {
@@ -59,29 +61,45 @@ export default function Nooks() {
     }
   }
 
+  // The first-time tour (CORE-026) points at whichever Nook is listed first.
   let index = 0;
-  const card = (nook: NookDefinition, options: { subtitle?: string; right?: React.ReactNode } = {}) => (
-    <NavCard
-      key={nook.id}
-      index={index++}
-      icon={nook.icon}
-      iconColor={nook.iconColor}
-      iconBackground={nook.color}
-      title={nook.title}
-      subtitle={options.subtitle ?? nook.tagline}
-      right={options.right}
-      onPress={() => open(nook)}
-    />
-  );
+  const card = (nook: NookDefinition, options: { subtitle?: string; right?: React.ReactNode } = {}) => {
+    const first = index === 0;
+    const shown = (
+      <NavCard
+        key={nook.id}
+        index={index++}
+        icon={nook.icon}
+        iconColor={nook.iconColor}
+        iconBackground={nook.color}
+        title={nook.title}
+        subtitle={options.subtitle ?? nook.tagline}
+        right={options.right}
+        onPress={() => open(nook)}
+      />
+    );
+    return first ? (
+      <TourTarget key={nook.id} id="nooks-first">
+        {shown}
+      </TourTarget>
+    ) : (
+      shown
+    );
+  };
 
   return (
-    <NookScroll onRefresh={() => setRefreshKey((key) => key + 1)}>
+    <NookScroll onRefresh={() => setRefreshKey((key) => key + 1)} tour={tourScroll}>
       <Text style={ui.muted}>Every Nook, one tap away — even ones that aren't on your Hearth.</Text>
 
       {withNews.length ? (
         <>
           <SectionHeader title="Waiting for you" icon="bell" />
-          {withNews.map((nook) => card(nook, { subtitle: waiting[nook.id].latest, right: <NewsBubble count={waiting[nook.id].count} /> }))}
+          {withNews.map((nook) =>
+            card(nook, {
+              subtitle: waiting[nook.id].latest,
+              right: <NewsBubble count={waiting[nook.id].count} />,
+            })
+          )}
         </>
       ) : null}
 
@@ -101,12 +119,29 @@ export default function Nooks() {
                 <Tap
                   onPress={() => addToHearth(nook)}
                   hitSlop={8}
-                  style={[ui.row, { gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, backgroundColor: colors.barkSoft }]}
+                  style={[
+                    ui.row,
+                    {
+                      gap: 4,
+                      paddingVertical: 6,
+                      paddingHorizontal: 10,
+                      borderRadius: 999,
+                      backgroundColor: colors.barkSoft,
+                    },
+                  ]}
                   accessibilityRole="button"
                   accessibilityLabel={`Add ${nook.title} to your Hearth`}
                 >
                   <Icon name="add" size={14} color={colors.bark} />
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.bark }}>Hearth</Text>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "700",
+                      color: colors.bark,
+                    }}
+                  >
+                    Hearth
+                  </Text>
                 </Tap>
               ),
             })
@@ -115,7 +150,9 @@ export default function Nooks() {
       ) : null}
 
       {comingSoon.length ? (
-        <Text style={[ui.muted, { marginTop: 6 }]}>Coming soon: {comingSoon.map((nook) => nook.title).join(", ")}.</Text>
+        <Text style={[ui.muted, { marginTop: 6 }]}>
+          Coming soon: {comingSoon.map((nook) => nook.title).join(", ")}.
+        </Text>
       ) : null}
 
       <Button
@@ -132,7 +169,17 @@ export default function Nooks() {
 // How many new notices a Nook has.
 function NewsBubble({ count }: { count: number }) {
   return (
-    <View style={{ minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 7, alignItems: "center", justifyContent: "center", backgroundColor: colors.bark }}>
+    <View
+      style={{
+        minWidth: 24,
+        height: 24,
+        borderRadius: 12,
+        paddingHorizontal: 7,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: colors.bark,
+      }}
+    >
       <Text style={{ color: colors.background, fontSize: 13, fontWeight: "800" }}>{count > 99 ? "99+" : count}</Text>
     </View>
   );

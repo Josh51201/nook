@@ -253,7 +253,7 @@ export default function HearthSettings() {
       <NavCard
         icon="sparkles"
         title="Show me around again"
-        subtitle="Replay the little tour of the Hearth and Burrows"
+        subtitle="Replay the little tour of the Hearth, Nooks and Burrows"
         onPress={() =>
           tour
             ?.replay()

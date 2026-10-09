@@ -149,20 +149,22 @@ export default function Burrows() {
         ]}
       />
 
-      <NavCard
-        index={0}
-        icon="hearth"
-        title="Your Home"
-        subtitle={
-          homeMates === null
-            ? "The people you live with"
-            : homeMates > 0
-              ? `You and ${homeMates} other${homeMates === 1 ? "" : "s"} · shared by every Nook`
-              : "Invite the people you live with"
-        }
-        right={homeInvites ? <Text style={[ui.link, { fontWeight: "700" }]}>{homeInvites} waiting</Text> : undefined}
-        onPress={() => router.push("/home")}
-      />
+      <TourTarget id="burrows-home">
+        <NavCard
+          index={0}
+          icon="hearth"
+          title="Your Home"
+          subtitle={
+            homeMates === null
+              ? "The people you live with"
+              : homeMates > 0
+                ? `You and ${homeMates} other${homeMates === 1 ? "" : "s"} · shared by every Nook`
+                : "Invite the people you live with"
+          }
+          right={homeInvites ? <Text style={[ui.link, { fontWeight: "700" }]}>{homeInvites} waiting</Text> : undefined}
+          onPress={() => router.push("/home")}
+        />
+      </TourTarget>
 
       <SectionHeader title="Your Burrows" icon="burrow" />
       {burrows.length === 0 ? (

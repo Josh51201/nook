@@ -44,10 +44,13 @@ describe("resolveSteps", () => {
     // Starting on the Hearth, the Burrows tab's targets don't exist yet.
     const resolved = resolveSteps(firstTour, new Set(["hearth-inbox", "hearth-add", "tab-burrows", "tab-settings"]));
     const onBurrows = resolved.filter((step) => step.screen === "burrows");
-    expect(onBurrows.map((step) => step.target)).toEqual(["burrows-start", "burrows-code"]);
+    expect(onBurrows.map((step) => step.target)).toEqual(["burrows-home", "burrows-start", "burrows-code"]);
+    const onNooks = resolved.filter((step) => step.screen === "nooks");
+    expect(onNooks.map((step) => step.target)).toEqual(["nooks-first"]);
   });
 
-  it("is one tour: it visits the Burrows tab, and ends on a step that works from any tab", () => {
+  it("is one tour: it visits the Nooks and Burrows tabs, and ends on a step that works from any tab", () => {
+    expect(firstTour.some((step) => step.screen === "nooks")).toBe(true);
     expect(firstTour.some((step) => step.screen === "burrows")).toBe(true);
     expect(firstTour.at(-1)?.screen).toBeUndefined();
   });
