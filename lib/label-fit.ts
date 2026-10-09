@@ -106,7 +106,7 @@ export function fitText(m: TextMeasure, box: { width: number; height: number }, 
 function fitWith(m: TextMeasure, box: { width: number; height: number }, rules: FitRules, snug: boolean): Fit {
   const top = Math.max(rules.min, rules.max);
   let last: Fit | null = null;
-  for (let step = top; step > rules.min - 0.5; step -= 0.5) {
+  for (let step = top; step > rules.min - 0.5; step -= Math.max(0.5, step * 0.02)) {
     // The last try is the smallest size exactly.
     const size = Math.max(rules.min, step);
     const inset = decorInset(rules.decor, size, snug);
@@ -124,15 +124,18 @@ function fitWith(m: TextMeasure, box: { width: number; height: number }, rules: 
 // Text half a row tall (or so) is "slim": one line, centred in its space.
 export const SLIM_HEIGHT = 50;
 
-// The sizes each kind of text may use. Titles grow the most with their space,
-// captions the least (they wrap onto more lines instead), and each is a step
-// smaller than the one above it in the same space, so a heading never looks
-// like a title. `fontScale` is the phone's own text size setting.
-const tiers = {
-  title: { share: 1, max: 40, min: 12, lines: 3 },
-  heading: { share: 0.78, max: 26, min: 11, lines: 3 },
-  caption: { share: 0.6, max: 17, min: 10, lines: 8 },
+// How much of its space each kind of text fills (CORE-077). A title is as big
+// as the space allows; a heading and a caption are the same fit, scaled down,
+// so all three grow and shrink with the box and a heading never looks like a
+// title. `min` is the smallest each may go before "…"; `fontScale` is the
+// phone's own text size setting, which raises those smallest sizes.
+export const labelFill = {
+  title: { share: 1, min: 12, lines: 4 },
+  heading: { share: 0.72, min: 11, lines: 6 },
+  caption: { share: 0.5, min: 10, lines: 12 },
 } as const;
+// Even an enormous box stops somewhere.
+const BIGGEST = 200;
 
 export function lineHeightFor(font: LabelFont | undefined) {
   // Handwriting has tall loops; give it a touch more room.
@@ -140,24 +143,37 @@ export function lineHeightFor(font: LabelFont | undefined) {
 }
 
 export function labelRules(
-  item: Pick<LabelItem, "size" | "caps" | "decor" | "font" | "divider">,
+  item: Pick<LabelItem, "size" | "decor" | "font" | "divider">,
   box: { width: number; height: number },
   fontScale = 1
 ): FitRules {
-  const tier = tiers[item.size];
+  const tier = labelFill[item.size];
   const scale = Math.min(1.4, Math.max(1, fontScale));
   const lineHeight = lineHeightFor(item.font);
   const slim = box.height < SLIM_HEIGHT;
-  // Capitals look bigger than lowercase at the same size.
-  const cap = tier.max * (item.caps ? 0.85 : 1) * scale;
-  const oneLine = (box.height - 2) / lineHeight;
   return {
-    max: Math.max(tier.min, Math.min(cap, tier.share * oneLine)),
+    max: Math.max(tier.min, Math.min(BIGGEST, (box.height - 2) / lineHeight)),
     min: tier.min * Math.min(scale, 1.15),
     lineHeight,
     maxLines: slim || item.divider ? 1 : tier.lines,
     decor: item.divider ? "none" : item.decor,
   };
+}
+
+// The size for a piece of Hearth text in its space: the biggest that fills
+// it, scaled to the kind of text, then fitted again at that size so the
+// lines are right.
+export function fitLabel(
+  m: TextMeasure,
+  item: Pick<LabelItem, "size" | "decor" | "font" | "divider">,
+  box: { width: number; height: number },
+  options: { fontScale?: number; reserve?: number } = {}
+): Fit & { lineHeight: number } {
+  const rules = { ...labelRules(item, box, options.fontScale), reserve: options.reserve };
+  const fill = fitText(m, box, rules);
+  const share = labelFill[item.size].share;
+  const fit = share === 1 || !fill.fits ? fill : fitText(m, box, { ...rules, max: Math.max(rules.min, fill.fontSize * share) });
+  return { ...fit, lineHeight: rules.lineHeight };
 }
 
 // A rough measure from the letters alone, used for the first moment before

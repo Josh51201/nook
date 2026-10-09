@@ -7,8 +7,7 @@ import { deepColor, labelIsBold, type LabelItem } from "../../lib/hearth-layout"
 import {
   decorInset,
   estimateMeasure,
-  fitText,
-  labelRules,
+  fitLabel,
   SIDE_PAD,
   SLIM_HEIGHT,
   splitWords,
@@ -21,8 +20,8 @@ import { Icon } from "../icon";
 // Text on the Hearth (CORE-009, CORE-076, CORE-077): a title, heading or
 // caption in its own font, with an optional cozy decoration — an underline, a
 // soft pill, a stitched patch, a ribbon, a little wooden sign or a flourish.
-// It's sized to fit its space every time (lib/label-fit.ts): as big as the
-// width and height allow, wrapping onto more lines when there's room, so it
+// It's sized to fill its space every time (lib/label-fit.ts): as big as the
+// width and height allow (a heading or caption a set step smaller), wrapping onto more lines when there's room, so it
 // grows and shrinks as you resize it instead of turning into "R…".
 // Slim text (half a row) sits in the middle of its space; taller text sits
 // at the bottom, like a heading over what comes next.
@@ -72,14 +71,13 @@ export function LabelFace({
 
   // A divider keeps room beside its words for the line, arrow and count.
   const reserve = item.divider ? 10 + 24 + 10 + 16 + (folded && hiddenCount ? 70 : 0) : 0;
-  const rules = { ...labelRules(item, { width, height }, PixelRatio.getFontScale()), reserve };
-  const fit = fitText(measure, { width, height }, rules);
+  const fit = fitLabel(measure, item, { width, height }, { fontScale: PixelRatio.getFontScale(), reserve });
   const fontSize = fit.fontSize;
   const textStyle: TextStyle = {
     ...face,
     textAlign: item.align,
     fontSize,
-    lineHeight: fontSize * rules.lineHeight,
+    lineHeight: fontSize * fit.lineHeight,
     letterSpacing: spacing * fontSize,
   };
   const slim = height < SLIM_HEIGHT;

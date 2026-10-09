@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decorInset, estimateMeasure, fitText, labelRules, wrapCount } from "../lib/label-fit";
+import { decorInset, estimateMeasure, fitLabel, fitText, labelRules, wrapCount } from "../lib/label-fit";
 import type { LabelItem } from "../lib/hearth-layout";
 
 // Sizes on a typical phone: a 4-column grid, cells about 80 wide with 12
@@ -14,7 +14,7 @@ type Look = Pick<LabelItem, "size" | "caps" | "decor" | "font" | "divider">;
 
 function fit(text: string, look: Partial<Look>, box: { width: number; height: number }) {
   const item: Look = { size: "title", ...look };
-  return fitText(estimateMeasure(text, item.font, item.caps, true), box, labelRules(item, box));
+  return fitLabel(estimateMeasure(text, item.font, item.caps, true), item, box);
 }
 
 describe("wrapCount (CORE-077)", () => {
@@ -61,6 +61,21 @@ describe("Hearth text always fits (CORE-077)", () => {
     expect(narrow.fontSize).toBeLessThan(full.fontSize);
   });
 
+  it("keeps filling the box as it gets bigger, with no fixed top size", () => {
+    const sizes = [1, 2, 3].map((rows) => fit("Hi", {}, { width: FULL_WIDTH, height: rows * 92 - 12 }).fontSize);
+    for (let i = 1; i < sizes.length; i++) expect(sizes[i]).toBeGreaterThan(sizes[i - 1]);
+    // A short title in a two-row box takes up most of its height.
+    expect(sizes[1] * 1.2).toBeGreaterThan((2 * 92 - 12) * 0.8);
+  });
+
+  it("headings and captions grow with the box too, just a step smaller", () => {
+    for (const size of ["heading", "caption"] as const) {
+      const small = fit("Hello", { size }, { width: FULL_WIDTH, height: ROW }).fontSize;
+      const big = fit("Hello", { size }, { width: FULL_WIDTH, height: 3 * 92 - 12 }).fontSize;
+      expect(big).toBeGreaterThan(small * 1.5);
+    }
+  });
+
   it("wraps onto a second line when the space is tall enough, rather than going tiny", () => {
     const result = fit("Family recipes", {}, { width: ONE_COL * 2 + 12, height: ROW });
     expect(result.fits).toBe(true);
@@ -96,10 +111,11 @@ describe("Hearth text always fits (CORE-077)", () => {
   });
 
   it("follows the phone's bigger text setting where there's room", () => {
-    const box = { width: FULL_WIDTH, height: ROW };
-    const normal = fitText(estimateMeasure("Hi", "app"), box, labelRules({ size: "caption" }, box, 1));
-    const bigger = fitText(estimateMeasure("Hi", "app"), box, labelRules({ size: "caption" }, box, 1.3));
-    expect(bigger.fontSize).toBeGreaterThan(normal.fontSize);
+    // A word that only fits at the smallest size gets a bigger smallest size.
+    const long = estimateMeasure("Supercalifragilistic", "app");
+    expect(fitLabel(long, { size: "caption" }, { width: ONE_COL, height: ROW }, { fontScale: 1.3 }).fontSize).toBeGreaterThan(
+      fitLabel(long, { size: "caption" }, { width: ONE_COL, height: ROW }, { fontScale: 1 }).fontSize
+    );
   });
 
   it("leaves room beside a divider's words for its line and arrow", () => {
