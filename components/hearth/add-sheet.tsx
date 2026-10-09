@@ -74,6 +74,9 @@ export function AddSheet({
         ) : null}
         <Row icon="text" title="Text" subtitle="A title or heading to label part of this space" onPress={onAddLabel} index={2} />
 
+        {/* The sections that open and close, set apart from the things you add with one tap. */}
+        <Text style={[ui.muted, { marginTop: 14, fontSize: 13, fontWeight: "700", letterSpacing: 0.6 }]}>MORE TO ADD</Text>
+
         {onAddTrinket ? (
           <Collapsible id="add-trinkets" icon="sparkles" title="Trinkets" summary={`${trinkets.length} little decorations to scatter about`}>
             <Text style={ui.muted}>Little decorations to make the place feel lived in. They can't be tapped; they just sit there being cozy.</Text>
