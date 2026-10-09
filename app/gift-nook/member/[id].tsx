@@ -410,7 +410,7 @@ export default function MemberWishbook() {
           <View style={[ui.card, ui.row, { gap: 14, alignItems: "flex-start" }]}>
             <Avatar name={person.display_name} icon={person.avatar_icon} color={person.avatar_color} size={64} />
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text }} numberOfLines={1}>
+              <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text }} numberOfLines={2}>
                 {name}
               </Text>
               {person.bio ? <Text style={[ui.muted, { color: colors.text }]}>{person.bio}</Text> : null}

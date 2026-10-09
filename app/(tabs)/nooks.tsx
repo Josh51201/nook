@@ -1,22 +1,25 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, View } from "react-native";
-import { FixedTextSize, Text } from "../../components/text";
+import { FixedTextSize, Text, TextInput } from "../../components/text";
 
 import { Icon } from "../../components/icon";
 import { Tap } from "../../components/motion";
+import { NookGrid } from "../../components/nook-grid";
 import { NookScroll } from "../../components/nook-scroll";
 import { TourTarget, useTourScrollArea } from "../../components/tour";
 import { Button, NavCard, SectionHeader } from "../../components/ui";
 import { tap } from "../../lib/feedback";
 import { addNook, nookCount, useHearthLayout } from "../../lib/hearth";
 import { fullMessage, overflowing } from "../../lib/hearth-limits";
-import { nookCatalog, type NookDefinition } from "../../lib/nooks";
+import { nookCatalog, nookMatches, type NookDefinition } from "../../lib/nooks";
 import { colors, ui } from "../../lib/theme";
 import { useUnreadByNook } from "../../lib/use-unread";
 
-// CORE-067 (proposed): the Nooks tab — every Nook in one plain list, so
+// CORE-067 (proposed): the Nooks tab — every Nook in one place, so
 // anything can be opened in one tap whether or not it's on your Hearth.
+// Nooks sit in small icon grids (and there's a search box) so the page stays
+// short as more Nooks arrive (CORE-088).
 // Someone who joined a family just for the Gift Nook, or was invited to a
 // Gathering before adding anything, finds it here: Nooks with something new
 // for you sit at the top. Arranging the Hearth stays on the Hearth and in
@@ -25,6 +28,7 @@ export default function Nooks() {
   const router = useRouter();
   const { layout, save } = useHearthLayout();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [query, setQuery] = useState("");
   const waiting = useUnreadByNook(refreshKey);
   const tourScroll = useTourScrollArea();
 
@@ -61,14 +65,26 @@ export default function Nooks() {
     }
   }
 
+  const searching = query.trim().length > 0;
+  const found = searching ? available.filter((nook) => nookMatches(nook, query)) : [];
+
   // The first-time tour (CORE-026) points at whichever Nook is listed first.
-  let index = 0;
-  const card = (nook: NookDefinition, options: { subtitle?: string; right?: React.ReactNode } = {}) => {
-    const first = index === 0;
-    const shown = (
+  let tourPlaced = false;
+  const tourFirst = (key: string, shown: React.ReactNode) => {
+    if (tourPlaced) return shown;
+    tourPlaced = true;
+    return (
+      <TourTarget key={key} id="nooks-first">
+        {shown}
+      </TourTarget>
+    );
+  };
+  const card = (nook: NookDefinition, index: number, options: { subtitle?: string; right?: React.ReactNode } = {}) =>
+    tourFirst(
+      nook.id,
       <NavCard
         key={nook.id}
-        index={index++}
+        index={index}
         icon={nook.icon}
         iconColor={nook.iconColor}
         iconBackground={nook.color}
@@ -78,82 +94,75 @@ export default function Nooks() {
         onPress={() => open(nook)}
       />
     );
-    return first ? (
-      <TourTarget key={nook.id} id="nooks-first">
-        {shown}
-      </TourTarget>
-    ) : (
-      shown
-    );
-  };
+  const grid = (nooks: NookDefinition[], onAdd?: (nook: NookDefinition) => void) => (
+    <NookGrid nooks={nooks} onOpen={open} onAdd={onAdd} wrap={(nook, _i, tile) => tourFirst(nook.id, tile)} />
+  );
 
   return (
     <NookScroll onRefresh={() => setRefreshKey((key) => key + 1)} tour={tourScroll}>
       <Text style={ui.muted}>Every Nook, one tap away — even ones that aren't on your Hearth.</Text>
 
-      {withNews.length ? (
-        <>
-          <SectionHeader title="Waiting for you" icon="bell" />
-          {withNews.map((nook) =>
-            card(nook, {
-              subtitle: waiting[nook.id].latest,
-              right: <NewsBubble count={waiting[nook.id].count} />,
+      <View style={[ui.input, ui.row, { paddingVertical: 0 }]}>
+        <Icon name="search" size={16} color={colors.muted} />
+        <TextInput
+          style={{ flex: 1, paddingVertical: 13, fontSize: 16, color: colors.text }}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Find a Nook"
+          placeholderTextColor={colors.muted}
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+          accessibilityLabel="Find a Nook"
+        />
+      </View>
+
+      {searching ? (
+        found.length ? (
+          found.map((nook, i) =>
+            card(nook, i, {
+              subtitle: waiting[nook.id]?.latest,
+              right: nookCount(layout, nook.id) === 0 ? <AddPill nook={nook} onPress={() => addToHearth(nook)} /> : undefined,
             })
-          )}
-        </>
-      ) : null}
-
-      {onHearth.length ? (
+          )
+        ) : (
+          <Text style={ui.muted}>No Nook matches "{query.trim()}".</Text>
+        )
+      ) : (
         <>
-          <SectionHeader title="On your Hearth" icon="hearth" />
-          {onHearth.map((nook) => card(nook))}
-        </>
-      ) : null}
+          {withNews.length ? (
+            <>
+              <SectionHeader title="Waiting for you" icon="bell" />
+              {withNews.map((nook, i) =>
+                card(nook, i, {
+                  subtitle: waiting[nook.id].latest,
+                  right: <NewsBubble count={waiting[nook.id].count} />,
+                })
+              )}
+            </>
+          ) : null}
 
-      {notOnHearth.length ? (
-        <>
-          <SectionHeader title={onHearth.length ? "More Nooks" : "Nooks to try"} icon="nooks" />
-          {notOnHearth.map((nook) =>
-            card(nook, {
-              right: (
-                <Tap
-                  onPress={() => addToHearth(nook)}
-                  hitSlop={8}
-                  style={[
-                    ui.row,
-                    {
-                      gap: 4,
-                      paddingVertical: 6,
-                      paddingHorizontal: 10,
-                      borderRadius: 999,
-                      backgroundColor: colors.barkSoft,
-                    },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Add ${nook.title} to your Hearth`}
-                >
-                  <Icon name="add" size={14} color={colors.bark} />
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "700",
-                      color: colors.bark,
-                    }}
-                  >
-                    Hearth
-                  </Text>
-                </Tap>
-              ),
-            })
-          )}
-        </>
-      ) : null}
+          {onHearth.length ? (
+            <>
+              <SectionHeader title="On your Hearth" icon="hearth" />
+              {grid(onHearth)}
+            </>
+          ) : null}
 
-      {comingSoon.length ? (
-        <Text style={[ui.muted, { marginTop: 6 }]}>
-          Coming soon: {comingSoon.map((nook) => nook.title).join(", ")}.
-        </Text>
-      ) : null}
+          {notOnHearth.length ? (
+            <>
+              <SectionHeader title={onHearth.length ? "More Nooks" : "Nooks to try"} icon="nooks" />
+              <Text style={[ui.muted, { marginTop: -6 }]}>Tap + to put one on your Hearth.</Text>
+              {grid(notOnHearth, addToHearth)}
+            </>
+          ) : null}
+
+          {comingSoon.length ? (
+            <Text style={[ui.muted, { marginTop: 6 }]}>
+              Coming soon: {comingSoon.map((nook) => nook.title).join(", ")}.
+            </Text>
+          ) : null}
+        </>
+      )}
 
       <Button
         title="Arrange your Hearth in the Market"
@@ -163,6 +172,31 @@ export default function Nooks() {
         onPress={() => router.push("/market")}
       />
     </NookScroll>
+  );
+}
+
+// "+ Hearth": put a Nook that isn't on the Hearth onto it.
+function AddPill({ nook, onPress }: { nook: NookDefinition; onPress: () => void }) {
+  return (
+    <Tap
+      onPress={onPress}
+      hitSlop={8}
+      style={[
+        ui.row,
+        {
+          gap: 4,
+          paddingVertical: 6,
+          paddingHorizontal: 10,
+          borderRadius: 999,
+          backgroundColor: colors.barkSoft,
+        },
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`Add ${nook.title} to your Hearth`}
+    >
+      <Icon name="add" size={14} color={colors.bark} />
+      <Text style={{ fontSize: 13, fontWeight: "700", color: colors.bark }}>Hearth</Text>
+    </Tap>
   );
 }
 

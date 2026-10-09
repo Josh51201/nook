@@ -15,11 +15,36 @@ export type NookDefinition = {
   route: string | null;
   available: boolean;
   color: string;
+  // Which part of the Market (and the Nooks tab) it sits in.
+  aisle: NookAisle;
   // Nooks that share with people use Burrows (CORE-025). Where this Nook
   // shows one Burrow's things, and what it shows there — linked from that
   // Burrow's page.
   burrow?: { route: (burrowId: string) => string; blurb: string };
 };
+
+// The Nooks are sorted into a few groups so the Market and the Nooks tab
+// stay easy to scan as more Nooks arrive. `short` is the filter chip's name.
+export type NookAisle = "together" | "house" | "care" | "kitchen";
+
+export const nookAisles: { id: NookAisle; title: string; short: string; icon: IconName }[] = [
+  { id: "together", title: "Family & get-togethers", short: "Family", icon: "group" },
+  { id: "house", title: "Around the house", short: "House", icon: "door" },
+  { id: "care", title: "Pets & health", short: "Care", icon: "heart" },
+  { id: "kitchen", title: "Kitchen", short: "Kitchen", icon: "recipe" },
+];
+
+// Whether a Nook matches what someone typed in a search box.
+export function nookMatches(nook: NookDefinition, query: string) {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const haystack = `${nook.title} ${nook.tagline} ${nook.description}`.toLowerCase();
+  return words.every((word) => haystack.includes(word));
+}
+
+// A Nook's name without the trailing "Nook", for small labels under icons.
+export function shortNookName(nook: NookDefinition) {
+  return nook.title.replace(/ Nook$/, "");
+}
 
 export const nookCatalog: NookDefinition[] = [
   {
@@ -33,6 +58,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/gift-nook",
     available: true,
     color: "#f6d9c4",
+    aisle: "together",
     burrow: {
       route: (burrowId) => `/gift-nook/burrow/${burrowId}`,
       blurb: "Gatherings and everyone's Wishbooks",
@@ -49,6 +75,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/potluck",
     available: true,
     color: "#dfe8d6",
+    aisle: "together",
     burrow: {
       route: (burrowId) => `/potluck?burrowId=${burrowId}`,
       blurb: "Who's bringing what",
@@ -65,6 +92,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/letterbox",
     available: true,
     color: "#efd9e4",
+    aisle: "together",
   },
   {
     id: "pets",
@@ -77,6 +105,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/pets",
     available: true,
     color: "#d9e4ef",
+    aisle: "care",
   },
   {
     id: "rhythms",
@@ -89,6 +118,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/rhythms",
     available: true,
     color: "#f1e4c8",
+    aisle: "house",
   },
   {
     id: "sitter",
@@ -101,6 +131,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/sitter",
     available: true,
     color: "#e8dcef",
+    aisle: "house",
   },
   {
     id: "recipes",
@@ -113,6 +144,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/recipes",
     available: true,
     color: "#f3dccb",
+    aisle: "kitchen",
   },
   {
     id: "subscriptions",
@@ -125,6 +157,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/subscriptions",
     available: true,
     color: "#d6ebe4",
+    aisle: "house",
   },
   {
     id: "getaways",
@@ -137,6 +170,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/getaways",
     available: true,
     color: "#d4eaf1",
+    aisle: "together",
   },
   {
     id: "sickday",
@@ -149,6 +183,7 @@ export const nookCatalog: NookDefinition[] = [
     route: "/sickday",
     available: true,
     color: "#f4dde0",
+    aisle: "care",
   },
   {
     id: "food-tracker",
@@ -160,6 +195,7 @@ export const nookCatalog: NookDefinition[] = [
     route: null,
     available: false,
     color: "#dfe8d6",
+    aisle: "kitchen",
   },
   {
     id: "to-do",
@@ -171,6 +207,7 @@ export const nookCatalog: NookDefinition[] = [
     route: null,
     available: false,
     color: "#d9e4ef",
+    aisle: "house",
   },
 ];
 

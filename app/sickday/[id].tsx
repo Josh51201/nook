@@ -162,7 +162,7 @@ export default function SpellPage() {
       <View style={[styles.hero, { backgroundColor: colors.dark ? `${nook.iconColor}26` : nook.color }]}>
         <IconBadge name="sick" size={48} color={nook.iconColor} background={colors.surface} />
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[styles.heroTitle, { color: colors.text }]} numberOfLines={2}>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>
             {spellTitle(spell) === "Sick" ? (ended ? `${name} was sick` : `${name} is sick`) : `${name} · ${spellTitle(spell)}`}
           </Text>
           <Text style={ui.muted}>

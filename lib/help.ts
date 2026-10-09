@@ -16,7 +16,7 @@ const screens: Record<string, HelpTopic> = {
   },
   nooks: {
     title: "Nooks",
-    body: "Every Nook is listed here. Tap one to open it — it doesn't need to be on your Hearth. A dot on this tab means one has news for you.",
+    body: "Every Nook is here. Tap one to open it — it doesn't need to be on your Hearth — or search for one by name. Tap + on a Nook to put it on your Hearth. A dot on this tab means one has news for you.",
   },
   burrows: {
     title: "Burrows",
@@ -32,7 +32,7 @@ const screens: Record<string, HelpTopic> = {
   },
   market: {
     title: "The Market",
-    body: "See what each Nook does and put the ones you like on your Hearth as tiles. Taking one off the Hearth never deletes what's inside it.",
+    body: "Nooks are sorted into a few groups, with a search box. Tap one to see what it does, and Add to put it on your Hearth as a tile. Taking one off the Hearth never deletes what's inside it.",
   },
   fridge: {
     title: "The fridge",
@@ -136,7 +136,7 @@ export const helpAnswers: HelpAnswer[] = [
   {
     question: "Where did my Nook go?",
     answer:
-      "Every Nook lives in the Nooks tab at the bottom, even if it isn't on your Hearth. To put it on your Hearth, tap + Hearth next to it. Taking a Nook off your Hearth never deletes anything inside it.",
+      "Every Nook lives in the Nooks tab at the bottom, even if it isn't on your Hearth. To put it on your Hearth, tap the + on its icon. Taking a Nook off your Hearth never deletes anything inside it.",
   },
   {
     question: "How do I add a gift to my Wishbook?",

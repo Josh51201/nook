@@ -166,7 +166,7 @@ export default function PetPage() {
         <View style={[styles.hero, { backgroundColor: colors.dark ? `${nook.iconColor}26` : nook.color }]}>
           <PetAvatar uri={photo} size={72} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
               {pet.name}
             </Text>
             <Text style={[ui.muted, { color: colors.text }]} numberOfLines={2}>
