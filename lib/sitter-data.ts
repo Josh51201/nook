@@ -1,10 +1,10 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { guarded } from "./feedback";
 import { displayName } from "./gift-nook";
 import { localDay } from "./pets";
-import type { SitterLink, SitterSheet } from "./sitter";
+import { linkState, type SitterLink, type SitterSheet } from "./sitter";
 import { supabase } from "./supabase";
 
 // Loads your Home's Sitter Sheet and its links (SIT-001..008). Row level
@@ -84,7 +84,10 @@ export function useSitter(userId: string | undefined) {
 
 // --- Changes -------------------------------------------------------------------------------
 
-export type SheetFields = Pick<SitterSheet, "address" | "contacts" | "doctor_name" | "doctor_phone" | "bedtime" | "rules" | "food" | "notes">;
+export type SheetFields = Pick<
+  SitterSheet,
+  "address" | "contacts" | "doctor_name" | "doctor_phone" | "routine" | "bedtime" | "rules" | "food" | "wifi_name" | "wifi_password" | "places" | "codes" | "notes"
+>;
 
 export async function saveSheet(homeId: string, fields: SheetFields, exists: boolean) {
   const { error } = exists
@@ -114,7 +117,12 @@ export type SitterView = {
   contacts?: { name: string; phone: string; note?: string }[];
   doctor_name?: string | null;
   doctor_phone?: string | null;
+  routine?: { time: string; what: string }[];
   bedtime?: string | null;
+  wifi_name?: string | null;
+  wifi_password?: string | null;
+  places?: string | null;
+  codes?: string | null;
   rules?: string | null;
   food?: string | null;
   notes?: string | null;
@@ -134,4 +142,50 @@ export type SitterView = {
 export async function previewLink(token: string) {
   const { data, error } = await supabase.rpc("sitter_sheet_for_link", { link: token });
   return { view: (data as SitterView | null) ?? null, error };
+}
+
+// --- What the Hearth shows (SIT-009) -------------------------------------------------------
+
+export type SitterSummary = {
+  // Whether anything's written on the sheet yet.
+  started: boolean;
+  // Links out now or starting soon, ending soonest first.
+  live: { id: string; label: string; ends_on: string; starts_on: string; views: number; upcoming: boolean }[];
+};
+
+export async function loadSitterSummary(): Promise<SitterSummary> {
+  const { data: homeId, error } = await supabase.rpc("my_home");
+  if (error) throw error;
+  const [sheet, links] = await Promise.all([
+    supabase.from("sitter_sheets").select("home_id").eq("home_id", homeId).maybeSingle(),
+    supabase
+      .from("sitter_links")
+      .select("id, label, starts_on, ends_on, expires_at, revoked_at, views")
+      .eq("home_id", homeId)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .order("ends_on"),
+  ]);
+  const live = ((links.data ?? []) as Pick<SitterLink, "id" | "label" | "starts_on" | "ends_on" | "expires_at" | "revoked_at" | "views">[])
+    .map((l) => ({ ...l, state: linkState(l) }))
+    .filter((l) => l.state === "active" || l.state === "upcoming")
+    .map((l) => ({ id: l.id, label: l.label, ends_on: l.ends_on, starts_on: l.starts_on, views: l.views, upcoming: l.state === "upcoming" }));
+  return { started: Boolean(sheet.data), live };
+}
+
+export function useSitterSummary(userId: string | undefined, refreshKey: number) {
+  const [summary, setSummary] = useState<SitterSummary | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let live = true;
+    loadSitterSummary()
+      .then((s) => live && setSummary(s))
+      .catch(() => live && setSummary(null));
+    return () => {
+      live = false;
+    };
+  }, [userId, refreshKey]);
+
+  return summary;
 }

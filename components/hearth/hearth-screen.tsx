@@ -607,6 +607,8 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         return router.push("/pets");
       case "rhythms":
         return router.push("/rhythms");
+      case "sitter":
+        return router.push("/sitter");
       case "greeting":
         return;
       case "companion":

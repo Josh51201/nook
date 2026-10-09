@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { cleanContacts, linkState, linkUrl, sectionFilled, shareMessage, sitterPageUrl, stayProblem, stayWords, viewsWords, type SitterSheet } from "../lib/sitter";
+import {
+  applyPreset,
+  cleanContacts,
+  cleanRoutine,
+  endsWords,
+  linkState,
+  linkUrl,
+  pastSitters,
+  reusePicks,
+  routineNow,
+  sectionFilled,
+  shareMessage,
+  sitterPageUrl,
+  stayProblem,
+  stayWords,
+  viewsWords,
+  type SitterSheet,
+} from "../lib/sitter";
 
 const sheet = (fields: Partial<SitterSheet>): SitterSheet => ({
   home_id: "h",
@@ -8,7 +25,12 @@ const sheet = (fields: Partial<SitterSheet>): SitterSheet => ({
   contacts: [],
   doctor_name: null,
   doctor_phone: null,
+  routine: [],
   bedtime: null,
+  wifi_name: null,
+  wifi_password: null,
+  places: null,
+  codes: null,
   rules: null,
   food: null,
   notes: null,
@@ -73,5 +95,55 @@ describe("Sitter Sheet helpers", () => {
       { name: "Mom", phone: "555" },
       { name: "Nana", phone: "556", note: "Next door" },
     ]);
+  });
+
+  it("the routine knows what's on now and what's next (SIT-010)", () => {
+    const steps = [
+      { time: "20:00", what: "Bed" },
+      { time: "15:15", what: "Pickup" },
+      { time: "17:30", what: "Dinner" },
+    ];
+    expect(routineNow(steps, "14:00")).toMatchObject({ now: -1, next: 0 });
+    expect(routineNow(steps, "15:15")).toMatchObject({ now: 0, next: 1 });
+    expect(routineNow(steps, "18:00")).toMatchObject({ now: 1, next: 2 });
+    expect(routineNow(steps, "22:00")).toMatchObject({ now: 2, next: -1 });
+    expect(routineNow(steps, "18:00").steps.map((s) => s.what)).toEqual(["Pickup", "Dinner", "Bed"]);
+    expect(cleanRoutine([{ time: "20:00", what: " Bed " }, { time: "09:00", what: "  " }, { time: "7:00", what: "Bad time" }])).toEqual([
+      { time: "20:00", what: "Bed" },
+    ]);
+  });
+
+  it("presets only pick what's filled in, and never codes (SIT-012, SIT-013)", () => {
+    const s = sheet({ contacts: [{ name: "Mom", phone: "1" }], codes: "4321", wifi_name: "Nook", routine: [{ time: "08:00", what: "Up" }] });
+    const babysitter = applyPreset("babysitter", s, ["kid"], ["pet"]);
+    expect(babysitter.sections).toEqual(["contacts", "routine", "wifi"]);
+    expect(babysitter.kidIds).toEqual(["kid"]);
+    const house = applyPreset("house", s, ["kid"], ["pet"]);
+    expect(house.sections).toEqual(["contacts", "wifi"]);
+    expect(house.kidIds).toEqual([]);
+    expect(house.petIds).toEqual(["pet"]);
+    for (const key of ["babysitter", "house", "pets"] as const) expect(applyPreset(key, s, [], []).sections).not.toContain("codes");
+  });
+
+  it("'same as last time' lists each sitter once, newest first, and drops kids or pets who've left", () => {
+    const links = [
+      { id: "1", label: "Grandma", created_at: "2026-01-01" },
+      { id: "2", label: "Babysitter Sam", created_at: "2026-03-01" },
+      { id: "3", label: "grandma ", created_at: "2026-05-01" },
+    ];
+    expect(pastSitters(links).map((l) => l.id)).toEqual(["3", "2"]);
+    expect(reusePicks({ sections: ["contacts"], kid_ids: ["a", "gone"], pet_ids: ["p"] }, ["a"], ["p"])).toEqual({
+      sections: ["contacts"],
+      kidIds: ["a"],
+      petIds: ["p"],
+    });
+  });
+
+  it("says when a link ends in a few words for the Hearth (SIT-009)", () => {
+    expect(endsWords({ starts_on: "2026-10-09", ends_on: "2026-10-09" }, "2026-10-09")).toBe("ends today");
+    expect(endsWords({ starts_on: "2026-10-09", ends_on: "2026-10-10" }, "2026-10-09")).toBe("ends tmrw");
+    expect(endsWords({ starts_on: "2026-10-09", ends_on: "2026-10-11" }, "2026-10-09")).toBe("ends Sun");
+    expect(endsWords({ starts_on: "2026-10-09", ends_on: "2026-10-30" }, "2026-10-09")).toBe("ends Oct 30");
+    expect(endsWords({ starts_on: "2026-10-10", ends_on: "2026-10-12" }, "2026-10-09")).toBe("starts tmrw");
   });
 });

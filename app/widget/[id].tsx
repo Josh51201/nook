@@ -924,6 +924,13 @@ function KindSettings({
           <Text style={ui.muted}>What's overdue or due today, then what's coming in the next month, from your Rhythms Nook.</Text>
         </>
       );
+    case "sitter":
+      return (
+        <>
+          <Stepper label="Links to list" value={widget.settings.count} min={0} max={6} onChange={(count) => setSettings({ count })} />
+          <Text style={ui.muted}>Who has a sitter link, until when, and whether they've opened it, from your Sitter Sheet Nook.</Text>
+        </>
+      );
     case "cards":
       return (
         <>

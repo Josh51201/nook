@@ -12,13 +12,28 @@ import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
 import { phoneTimeZone } from "../../lib/pets";
 import { parseDateString, toDateString } from "../../lib/profile";
-import { linkUrl, sectionFilled, sections, shareMessage, stayProblem, type SectionKey, type SitterLink } from "../../lib/sitter";
+import {
+  applyPreset,
+  linkUrl,
+  pastSitters,
+  presets,
+  reusePicks,
+  sectionFilled,
+  sections,
+  shareMessage,
+  stayProblem,
+  type PresetKey,
+  type SectionKey,
+  type SitterLink,
+} from "../../lib/sitter";
 import { useSitter } from "../../lib/sitter-data";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
 // Make a link for one stay (SIT-003, SIT-006, SIT-008): who it's for, which
 // days, which parts of the sheet, and which kids and pets (none unless ticked).
+// Quick starts (SIT-012) fill in the picks for a kind of sitter, or copy a
+// past link's. Codes are only ever ticked by hand (SIT-013).
 export default function NewSitterLink() {
   const router = useRouter();
   const { session } = useAuth();
@@ -31,12 +46,13 @@ export default function NewSitterLink() {
   const [picked, setPicked] = useState<SectionKey[]>([]);
   const [kidIds, setKidIds] = useState<string[]>([]);
   const [petIds, setPetIds] = useState<string[]>([]);
+  const [quick, setQuick] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (ready || !data) return;
-    // Everything you've filled in, to start; kids and pets stay off.
-    setPicked(sections.filter((s) => sectionFilled(data.sheet, s.key)).map((s) => s.key));
+    // Everything you've filled in except codes, to start; kids and pets stay off.
+    setPicked(sections.filter((s) => s.key !== "codes" && sectionFilled(data.sheet, s.key)).map((s) => s.key));
     setReady(true);
   }, [data, ready]);
 
@@ -44,6 +60,28 @@ export default function NewSitterLink() {
 
   const toggle = <T,>(list: T[], item: T) => (list.includes(item) ? list.filter((x) => x !== item) : [...list, item]);
   const filled = sections.filter((s) => sectionFilled(data.sheet, s.key));
+  const allKids = data.kids.map((k) => k.id);
+  const allPets = data.pets.map((p) => p.id);
+  const past = pastSitters(data.links);
+
+  function pickPreset(key: PresetKey) {
+    tap();
+    const picks = applyPreset(key, data!.sheet, allKids, allPets);
+    setPicked(picks.sections);
+    setKidIds(picks.kidIds);
+    setPetIds(picks.petIds);
+    setQuick(key);
+  }
+
+  function pickLast(link: SitterLink) {
+    tap();
+    const picks = reusePicks(link, allKids, allPets);
+    setPicked(picks.sections.filter((s) => sectionFilled(data!.sheet, s)));
+    setKidIds(picks.kidIds);
+    setPetIds(picks.petIds);
+    setLabel(link.label);
+    setQuick(link.id);
+  }
 
   async function save() {
     if (!label.trim()) return Alert.alert("Who's it for?", "Like “Grandma, Thanksgiving weekend”.");
@@ -112,6 +150,28 @@ export default function NewSitterLink() {
       />
       <Text style={ui.muted}>Only your Home sees this name. The sitter sees it as the title.</Text>
 
+      <SectionHeader title="Quick start" icon="sparkles" />
+      <View style={ui.chips}>
+        {presets.map((p) => (
+          <Chip key={p.key} icon={p.icon} selected={quick === p.key} onPress={() => pickPreset(p.key)}>
+            {p.label}
+          </Chip>
+        ))}
+      </View>
+      {past.length ? (
+        <>
+          <Text style={ui.label}>Same as last time</Text>
+          <View style={ui.chips}>
+            {past.map((l) => (
+              <Chip key={l.id} icon="undo" selected={quick === l.id} onPress={() => pickLast(l)}>
+                {l.label}
+              </Chip>
+            ))}
+          </View>
+        </>
+      ) : null}
+      <Text style={ui.muted}>Fills in the picks below. You can still change any of them.</Text>
+
       <SectionHeader title="When" icon="calendar" />
       <Text style={ui.label}>First day</Text>
       <DateField mode="date" value={parseDateString(startsOn)} onChange={(d) => {
@@ -137,6 +197,13 @@ export default function NewSitterLink() {
       ) : (
         <Text style={ui.muted}>Nothing written on the sheet yet.</Text>
       )}
+      {picked.includes("codes") ? (
+        <Text style={[ui.muted, { color: colors.error }]}>
+          Door and alarm codes are on this link. Anyone with the link can see them until it ends, so only send it to someone you'd give a key to.
+        </Text>
+      ) : sectionFilled(data.sheet, "codes") ? (
+        <Text style={ui.muted}>Door and alarm codes stay off unless you tick them.</Text>
+      ) : null}
 
       {data.kids.length ? (
         <>

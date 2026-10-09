@@ -8,7 +8,7 @@ import { Text } from "../../components/text";
 import { Button, EmptyState, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { formatTimeOfDay } from "../../lib/pets";
-import { stayWords } from "../../lib/sitter";
+import { routineNow, stayWords } from "../../lib/sitter";
 import { previewLink, useSitter, type SitterView } from "../../lib/sitter-data";
 import { colors, ui } from "../../lib/theme";
 
@@ -46,7 +46,7 @@ export default function SitterPreview() {
     </View>
   );
 
-  const block = (title: string, body: string | null | undefined, icon: "moon" | "food" | "shield" | "doc" | "place") =>
+  const block = (title: string, body: string | null | undefined, icon: "moon" | "food" | "shield" | "doc" | "place" | "search" | "key") =>
     body ? (
       <View key={title} style={{ gap: 8 }}>
         <SectionHeader title={title} icon={icon} />
@@ -92,6 +92,24 @@ export default function SitterPreview() {
         </>
       ) : null}
 
+      {view.routine?.length ? (
+        <>
+          <SectionHeader title="Daily routine" icon="clock" />
+          <View style={[ui.card, { gap: 8 }]}>
+            {(() => {
+              const now = new Date();
+              const { steps, now: current, next } = routineNow(view.routine!, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+              return steps.map((step, i) => (
+                <View key={i} style={[ui.row, { gap: 10 }]}>
+                  <Text style={[ui.muted, { width: 72 }]}>{formatTimeOfDay(step.time)}</Text>
+                  <Text style={[{ flex: 1 }, i === current && { fontWeight: "800", color: colors.bark }]}>{step.what}</Text>
+                  {i === current ? <Text style={{ color: colors.bark, fontWeight: "700", fontSize: 13 }}>Now</Text> : i === next ? <Text style={[ui.muted, { fontSize: 13 }]}>Next</Text> : null}
+                </View>
+              ));
+            })()}
+          </View>
+        </>
+      ) : null}
       {block("Bedtime", view.bedtime, "moon")}
       {block("Food", view.food, "food")}
       {block("House rules", view.rules, "shield")}
@@ -112,6 +130,18 @@ export default function SitterPreview() {
         </>
       ) : null}
 
+      {view.wifi_name || view.wifi_password ? (
+        <>
+          <SectionHeader title="Wi-Fi" icon="globe" />
+          <View style={[ui.card, { gap: 4 }]}>
+            {view.wifi_name ? <Text>Network: {view.wifi_name}</Text> : null}
+            {view.wifi_password ? <Text>Password: {view.wifi_password}</Text> : null}
+            <Text style={ui.muted}>The sitter gets a button to copy the password.</Text>
+          </View>
+        </>
+      ) : null}
+      {block("Where things are", view.places, "search")}
+      {block("Door & alarm codes", view.codes, "key")}
       {block("Anything else", view.notes, "doc")}
 
       <Text style={[ui.muted, { textAlign: "center", marginTop: 8 }]}>Opening it here doesn't count as the sitter opening it.</Text>

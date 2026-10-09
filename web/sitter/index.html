@@ -52,6 +52,18 @@
   .label { color: var(--muted); font-size: 14px; }
   .center { text-align: center; padding-top: 18vh; }
   .center .icon { font-size: 44px; }
+  .step { display: flex; gap: 12px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--border); }
+  .step:first-child { border-top: 0; }
+  .step .when { color: var(--muted); font-size: 15px; min-width: 72px; }
+  .step .what { flex: 1; }
+  .step.now .what { font-weight: 800; color: var(--accent); }
+  .pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: var(--accent-soft); color: var(--accent); }
+  .step.now .pill { background: var(--accent); color: var(--card); }
+  button.soft {
+    margin-top: 10px; width: 100%; font: inherit; font-weight: 700; border: 0; cursor: pointer;
+    padding: 11px 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent);
+  }
+  .secret { font-family: ui-monospace, Menlo, monospace; letter-spacing: .02em; }
   footer { margin-top: 32px; text-align: center; color: var(--muted); font-size: 13px; }
 </style>
 </head>
@@ -99,6 +111,41 @@
   }
 
   function textCard(body) { return add(el("div", "card"), el("p", null, body)); }
+
+  function button(text, onClick) {
+    var b = el("button", "soft", text);
+    b.type = "button";
+    b.addEventListener("click", function () { onClick(b); });
+    return b;
+  }
+
+  // The routine, with what's on now and what's next (SIT-010). Refreshed
+  // each minute so it keeps up while the page stays open.
+  function routineCard(steps) {
+    var card = el("div", "card");
+    var sorted = steps.slice().sort(function (a, b) { return a.time < b.time ? -1 : a.time > b.time ? 1 : 0; });
+    var d = new Date();
+    var nowTime = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+    var current = -1;
+    sorted.forEach(function (s, i) { if (s.time <= nowTime) current = i; });
+    var next = current + 1 < sorted.length ? current + 1 : -1;
+    sorted.forEach(function (s, i) {
+      var row = add(el("div", "step" + (i === current ? " now" : "")), el("span", "when", time(s.time)), el("span", "what", s.what));
+      if (i === current) add(row, el("span", "pill", "Now"));
+      else if (i === next) add(row, el("span", "pill", "Next"));
+      add(card, row);
+    });
+    return card;
+  }
+
+  function copyText(text, b) {
+    var done = function () { b.textContent = "Copied!"; setTimeout(function () { b.textContent = "Copy password"; }, 2000); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { b.textContent = "Press and hold the password to copy"; });
+    } else {
+      b.textContent = "Press and hold the password to copy";
+    }
+  }
 
   function section(title) { return el("h2", null, title); }
 
@@ -149,6 +196,7 @@
       });
     }
 
+    if (s.routine && s.routine.length) add(app, section("Daily routine"), routineCard(s.routine));
     if (s.bedtime) add(app, section("Bedtime"), textCard(s.bedtime));
     if (s.food) add(app, section("Food"), textCard(s.food));
     if (s.rules) add(app, section("House rules"), textCard(s.rules));
@@ -167,6 +215,25 @@
       });
     }
 
+    if (s.wifi_name || s.wifi_password) {
+      var wifi = el("div", "card");
+      if (s.wifi_name) add(wifi, add(el("div", "row"), el("span", "label", "Network: "), el("span", null, s.wifi_name)));
+      if (s.wifi_password) {
+        add(wifi, add(el("div", "row"), el("span", "label", "Password: "), el("span", "secret", s.wifi_password)));
+        add(wifi, button("Copy password", function (b) { copyText(s.wifi_password, b); }));
+      }
+      add(app, section("Wi-Fi"), wifi);
+    }
+    if (s.places) add(app, section("Where things are"), textCard(s.places));
+    if (s.codes) {
+      // Hidden until tapped, so they aren't on screen for anyone glancing over (SIT-013).
+      var codes = add(el("div", "card"), el("div", "muted", "Tap to show the codes."));
+      add(codes, button("Show codes", function (b) {
+        codes.textContent = "";
+        add(codes, el("p", "secret", s.codes));
+      }));
+      add(app, section("Door & alarm codes"), codes);
+    }
     if (s.notes) add(app, section("Anything else"), textCard(s.notes));
 
     add(app, el("footer", null, "This page stops working after " + day(s.ends_on) + ". Made with Nook."));
@@ -187,6 +254,13 @@
     .then(function (sheet) {
       if (!sheet) return nothing("This link has ended", "It ran out or the family switched it off. Ask them for a new one.");
       render(sheet);
+      // Keep "Now" and "Next" current, without asking the database again.
+      if (sheet.routine && sheet.routine.length) {
+        setInterval(function () {
+          var old = document.querySelector(".card .step") && document.querySelector(".card .step").parentNode;
+          if (old) old.parentNode.replaceChild(routineCard(sheet.routine), old);
+        }, 60000);
+      }
     })
     .catch(function () {
       nothing("Couldn't open the sheet", "Check your internet connection and refresh the page.");

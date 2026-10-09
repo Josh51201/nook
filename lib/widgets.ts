@@ -9,7 +9,7 @@ import type { Condition, Place, Unit, WindowFrame } from "./weather";
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion";
+export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "sitter" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -66,6 +66,7 @@ export type WidgetSettings = {
   cards: { count: number };
   pets: { count: number };
   rhythms: { count: number; mineOnly: boolean };
+  sitter: { count: number };
   frame: { photos: string[]; style: FrameStyle; seconds: number; caption: string };
   clock: { face: "digital" | "analog"; hour24: boolean; showDate: boolean };
   quote: { source: QuoteSource; mine: string[] };
@@ -130,6 +131,7 @@ export const widgetKinds: {
   { kind: "cards", label: "Card season", description: "Holiday cards left to send, from your Letterbox Nook.", icon: "mail", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "pets", label: "Pet care", description: "Who still needs feeding today and what's due at the vet, from your Pet Care Nook.", icon: "paw", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "rhythms", label: "Due soon", description: "Home chores overdue or coming up, from your Rhythms Nook.", icon: "rhythm", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "sitter", label: "Sitter links", description: "Who has a sitter link, until when, and whether they've opened it, from your Sitter Sheet Nook.", icon: "sitter", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "frame", label: "Photo frame", description: "Your own pictures in a frame, one after another.", icon: "camera", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "clock", label: "Clock", description: "The time and date, as a digital or an analog clock.", icon: "clock", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "quote", label: "Quote of the day", description: "A warm line a day, from ours or from your own list.", icon: "sparkles", size: { w: 4, h: 2 }, minSize: { w: 1, h: 1 } },
@@ -144,7 +146,7 @@ export const widgetKinds: {
 // How the "Add" sheet groups widgets so it isn't one long list (CORE-059).
 // Every kind belongs to exactly one category (a test checks this).
 export const widgetCategories: { id: string; label: string; blurb: string; icon: IconName; kinds: WidgetKind[] }[] = [
-  { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["gatherings", "tucks", "inbox", "cards", "pets", "rhythms"] },
+  { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["gatherings", "tucks", "inbox", "cards", "pets", "rhythms", "sitter"] },
   { id: "lists", label: "Lists & routines", blurb: "Things to remember, tick off and jump to", icon: "todo", kinds: ["reminders", "note", "streak", "launch"] },
   { id: "time", label: "Time & weather", blurb: "Dates, the clock and the sky", icon: "clock", kinds: ["countdown", "clock", "weather", "window"] },
   { id: "cozy", label: "Cozy touches", blurb: "Pictures, words and a warm hello", icon: "sparkles", kinds: ["companion", "frame", "quote", "greeting"] },
@@ -199,6 +201,8 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
       return { ...base, kind, settings: { count: 3 } };
     case "rhythms":
       return { ...base, kind, settings: { count: 3, mineOnly: false } };
+    case "sitter":
+      return { ...base, kind, settings: { count: 3 } };
     case "frame":
       return { ...base, kind, showTitle: false, settings: { photos: [], style: "wood", seconds: 12, caption: "" } };
     case "clock":

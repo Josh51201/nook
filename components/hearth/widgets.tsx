@@ -15,10 +15,12 @@ import { shade } from "../../lib/colors";
 import { deepColor, tileBevel, tilePalette } from "../../lib/hearth-layout";
 import { noticeIcon } from "../../lib/inbox";
 import { supabase } from "../../lib/supabase";
-import { daysToDue } from "../../lib/pets";
+import { daysToDue, localDay } from "../../lib/pets";
 import { useHearthPetInfo, usePetsSummary } from "../../lib/pets-data";
 import { bedLayout, isNight, petSizeForBox } from "../../lib/hearth-pet";
 import { useRhythmsSummary } from "../../lib/rhythms-data";
+import { endsWords } from "../../lib/sitter";
+import { useSitterSummary } from "../../lib/sitter-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
 import { conditionIcon, conditionLabel, dayName, formatTemp, windowSky } from "../../lib/weather";
@@ -210,6 +212,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <PetCare {...props} widget={widget} />;
     case "rhythms":
       return <Rhythms {...props} widget={widget} />;
+    case "sitter":
+      return <Sitter {...props} widget={widget} />;
     case "frame":
       return null; // drawn whole by PhotoFrame, above
     case "clock":
@@ -1211,6 +1215,88 @@ function Rhythms({ widget, palette, refreshKey, height, shape, icon }: BodyProps
     </View>
   ) : (
     <Muted palette={palette}>Nothing this month</Muted>
+  );
+
+  if (shape === "small") {
+    return (
+      <View style={{ gap: 8, flex: 1 }}>
+        <Count />
+        {list}
+      </View>
+    );
+  }
+  if (shape === "wide") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 14, alignItems: "stretch" }]}>
+        <View style={{ justifyContent: "center", minWidth: 110 }}>
+          <Count />
+        </View>
+        <Panel palette={palette} style={{ flex: 1, justifyContent: "center" }}>
+          {list}
+        </Panel>
+      </View>
+    );
+  }
+  return (
+    <View style={{ gap: 10, flex: 1 }}>
+      <Count />
+      <Panel palette={palette} style={{ flex: 1 }}>
+        {list}
+      </Panel>
+    </View>
+  );
+}
+
+// --- Sitter links (SIT-009) -------------------------------------------------------
+
+function Sitter({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"sitter">) {
+  const { session } = useAuth();
+  const summary = useSitterSummary(session?.user.id, refreshKey);
+  if (!summary) return null;
+
+  const live = summary.live;
+  const today = localDay();
+  const unopened = live.filter((l) => !l.views).length;
+
+  if (shape === "icon") {
+    return live.length ? <IconFace icon={icon} palette={palette} badge={live.length} /> : <IconFace icon={icon} palette={palette} />;
+  }
+  if (!summary.started && !live.length) return <Empty icon="sitter" palette={palette} text="Write your sitter sheet" />;
+  if (shape === "strip") {
+    return (
+      <Strip
+        icon={icon}
+        palette={palette}
+        text={live.length ? `${live[0].label} · ${endsWords(live[0], today)}` : "No sitter links out"}
+        sub={live.length > 1 ? `${live.length} links out` : live.length ? (live[0].views ? "Opened" : "Not opened yet") : null}
+      />
+    );
+  }
+
+  const rows = live.slice(0, Math.min(widget.settings.count, rowsThatFit(height, 24, shape === "small" ? 110 : 120)));
+
+  const Count = () => (
+    <View>
+      <Text style={{ fontSize: isBig(shape) ? 44 : 34, fontWeight: "800", color: palette.text, letterSpacing: -1 }}>{live.length}</Text>
+      <Muted palette={palette}>
+        {!live.length ? "links out" : unopened ? `out · ${unopened} not opened` : live.length === 1 ? "link out" : "links out"}
+      </Muted>
+    </View>
+  );
+  const list = rows.length ? (
+    <View style={{ gap: 6 }}>
+      {rows.map((l) => (
+        <View key={l.id} style={styles.row}>
+          <Icon name={l.views ? "check" : "link"} size={13} color={palette.accent} />
+          <Text style={[styles.body, { color: palette.text, flex: 1, fontWeight: l.ends_on === today ? "700" : "500" }]} numberOfLines={1}>
+            {l.label}
+          </Text>
+          <Text style={[styles.small, { color: palette.muted }]}>{endsWords(l, today).replace("ends ", "")}</Text>
+        </View>
+      ))}
+    </View>
+  ) : (
+    <Muted palette={palette}>Make a link before you head out</Muted>
   );
 
   if (shape === "small") {

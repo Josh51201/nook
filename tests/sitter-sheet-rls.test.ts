@@ -112,6 +112,11 @@ describe.runIf(canRun)("Sitter Sheet: the Home writes it, a link shows only what
       rules: "No screens after dinner",
       food: "Pasta in the fridge",
       notes: "Wi-Fi: nooknook",
+      routine: [{ time: "15:15", what: "School pickup" }],
+      wifi_name: "NookNet",
+      wifi_password: "cozy-burrow",
+      places: "First-aid kit under the sink",
+      codes: "Front door 4321",
     });
     if (sheetError) throw sheetError;
   });
@@ -255,5 +260,35 @@ describe.runIf(canRun)("Sitter Sheet: the Home writes it, a link shows only what
     const { data } = await clients.josh.from("sitter_links").select("views, last_viewed_at").eq("id", link.id).single();
     expect(data!.views).toBe(2);
     expect(data!.last_viewed_at).not.toBeNull();
+  });
+
+  it("codes are never on a link unless ticked for it (SIT-013)", async () => {
+    const plain = await makeLink();
+    const sheet = await view(plain.token);
+    expect(sheet).not.toHaveProperty("codes");
+    expect(JSON.stringify(sheet)).not.toContain("4321");
+    expect(sheet.routine).toEqual([{ time: "15:15", what: "School pickup" }]);
+    expect(sheet.wifi_password).toBe("cozy-burrow");
+
+    const withCodes = await makeLink({ sections: ["codes"] });
+    const coded = await view(withCodes.token);
+    expect(coded.codes).toBe("Front door 4321");
+    expect(coded).not.toHaveProperty("wifi_password");
+  });
+
+  it("whoever made a link hears once when the sitter first opens it, and nobody else does (SIT-011)", async () => {
+    const link = await makeLink({ label: `Opened ${runId}` });
+    // Someone in the Home previewing it isn't the sitter.
+    await clients.sarah.rpc("sitter_sheet_for_link", { link: link.token });
+    await view(link.token);
+    await view(link.token);
+
+    const notices = async (person: Person) =>
+      ((await clients[person].from("notifications").select("kind, title").eq("nook", "sitter")).data ?? []).filter(
+        (n) => n.title === `Opened ${runId}`
+      );
+    expect(await notices("josh")).toEqual([{ kind: "sitter_opened", title: `Opened ${runId}` }]);
+    expect(await notices("sarah")).toEqual([]);
+    expect(await notices("stranger")).toEqual([]);
   });
 });

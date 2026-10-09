@@ -1,8 +1,11 @@
 import type { IconName } from "../components/icon";
 
-// Sitter Sheet Nook (SIT-001..008): the plain helpers, no database.
+// Sitter Sheet Nook (SIT-001..013): the plain helpers, no database.
 
 export type SitterContact = { name: string; phone: string; note?: string };
+
+// One step of the day (SIT-010): "15:15", "School pickup".
+export type RoutineStep = { time: string; what: string };
 
 export type SitterSheet = {
   home_id: string;
@@ -10,15 +13,20 @@ export type SitterSheet = {
   contacts: SitterContact[];
   doctor_name: string | null;
   doctor_phone: string | null;
+  routine: RoutineStep[];
   bedtime: string | null;
   rules: string | null;
   food: string | null;
+  wifi_name: string | null;
+  wifi_password: string | null;
+  places: string | null;
+  codes: string | null;
   notes: string | null;
   updated_by: string | null;
   updated_at: string;
 };
 
-export type SectionKey = "address" | "contacts" | "doctor" | "bedtime" | "rules" | "food" | "notes";
+export type SectionKey = "address" | "contacts" | "doctor" | "routine" | "bedtime" | "rules" | "food" | "wifi" | "places" | "codes" | "notes";
 
 export type SitterLink = {
   id: string;
@@ -37,15 +45,19 @@ export type SitterLink = {
   created_at: string;
 };
 
-// The parts you type (SIT-004), in the order the sitter sees them.
+// The parts you type (SIT-004, SIT-010, SIT-013), in the order the sitter sees them.
 export const sections: { key: SectionKey; label: string; icon: IconName; hint: string }[] = [
   { key: "contacts", label: "Emergency numbers", icon: "phone", hint: "You, a neighbor, grandparents, poison control" },
   { key: "address", label: "Address", icon: "place", hint: "So they can give it to 911" },
   { key: "doctor", label: "Doctor", icon: "heart", hint: "Name and number" },
+  { key: "routine", label: "Daily routine", icon: "clock", hint: "The day in order: pickup, dinner, bath, bed" },
   { key: "bedtime", label: "Bedtime", icon: "moon", hint: "When, and how it goes" },
   { key: "food", label: "Food", icon: "food", hint: "What's for dinner, snacks that are okay" },
   { key: "rules", label: "House rules", icon: "shield", hint: "Screens, outside, friends over" },
-  { key: "notes", label: "Anything else", icon: "doc", hint: "Wi-Fi, where things are" },
+  { key: "wifi", label: "Wi-Fi", icon: "globe", hint: "They get a button to copy the password" },
+  { key: "places", label: "Where things are", icon: "search", hint: "First-aid kit, breaker box, spare key, flashlight" },
+  { key: "codes", label: "Door & alarm codes", icon: "key", hint: "Never on a link unless you tick it for that link" },
+  { key: "notes", label: "Anything else", icon: "doc", hint: "Anything that doesn't fit above" },
 ];
 
 export const allSections = sections.map((s) => s.key);
@@ -56,11 +68,95 @@ export function sectionFilled(sheet: SitterSheet | null, key: SectionKey) {
   switch (key) {
     case "contacts":
       return sheet.contacts.length > 0;
+    case "routine":
+      return (sheet.routine ?? []).length > 0;
     case "doctor":
       return Boolean(sheet.doctor_name?.trim() || sheet.doctor_phone?.trim());
+    case "wifi":
+      return Boolean(sheet.wifi_name?.trim() || sheet.wifi_password?.trim());
     default:
       return Boolean(sheet[key]?.trim());
   }
+}
+
+// --- Quick starts (SIT-012) ----------------------------------------------------------------
+
+export type PresetKey = "babysitter" | "house" | "pets";
+
+// Which parts, kids and pets each kind of sitter usually needs. Codes are
+// never in a preset (SIT-013): you tick them yourself, per link.
+export const presets: { key: PresetKey; label: string; icon: IconName; sections: SectionKey[]; kids: boolean; pets: boolean }[] = [
+  {
+    key: "babysitter",
+    label: "Babysitter",
+    icon: "kid",
+    sections: ["contacts", "address", "doctor", "routine", "bedtime", "food", "rules", "wifi", "places", "notes"],
+    kids: true,
+    pets: true,
+  },
+  { key: "house", label: "House-sitter", icon: "hearth", sections: ["contacts", "address", "wifi", "places", "notes"], kids: false, pets: true },
+  { key: "pets", label: "Pet-sitter", icon: "paw", sections: ["contacts", "address", "places", "notes"], kids: false, pets: true },
+];
+
+// A preset's picks, limited to what's actually filled in and who's in the Home.
+export function applyPreset(
+  key: PresetKey,
+  sheet: SitterSheet | null,
+  kidIds: string[],
+  petIds: string[]
+): { sections: SectionKey[]; kidIds: string[]; petIds: string[] } {
+  const preset = presets.find((p) => p.key === key)!;
+  return {
+    sections: preset.sections.filter((s) => s !== "codes" && sectionFilled(sheet, s)),
+    kidIds: preset.kids ? kidIds : [],
+    petIds: preset.pets ? petIds : [],
+  };
+}
+
+// "Same as last time": the latest link per name, newest first.
+export function pastSitters<T extends Pick<SitterLink, "label" | "created_at">>(links: T[], limit = 5): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const link of [...links].sort((a, b) => b.created_at.localeCompare(a.created_at))) {
+    const key = link.label.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(link);
+    if (out.length === limit) break;
+  }
+  return out;
+}
+
+// Reuse a past link's picks, dropping kids or pets no longer in the Home.
+export function reusePicks(link: Pick<SitterLink, "sections" | "kid_ids" | "pet_ids">, kidIds: string[], petIds: string[]) {
+  return {
+    sections: [...link.sections],
+    kidIds: link.kid_ids.filter((id) => kidIds.includes(id)),
+    petIds: link.pet_ids.filter((id) => petIds.includes(id)),
+  };
+}
+
+// --- The routine (SIT-010) -----------------------------------------------------------------
+
+export function sortRoutine(steps: RoutineStep[]) {
+  return [...steps].sort((a, b) => a.time.localeCompare(b.time));
+}
+
+// Which step is happening now (the latest one that's started) and which is
+// next, for a time of day "HH:MM". Before the first step, nothing is "now".
+export function routineNow(steps: RoutineStep[], time: string) {
+  const sorted = sortRoutine(steps);
+  let now = -1;
+  sorted.forEach((s, i) => {
+    if (s.time <= time) now = i;
+  });
+  const next = now + 1 < sorted.length ? now + 1 : -1;
+  return { steps: sorted, now, next };
+}
+
+// Keep steps that say something, tidied and in order.
+export function cleanRoutine(steps: RoutineStep[]): RoutineStep[] {
+  return sortRoutine(steps.map((s) => ({ time: s.time, what: s.what.trim() })).filter((s) => s.what && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.time)));
 }
 
 // The web page the sitter opens. The secret goes after "#", which browsers
@@ -104,6 +200,19 @@ export function shortDay(day: string) {
 // "Fri, Oct 10 – Sun, Oct 12", or one day on its own.
 export function stayWords(link: Pick<SitterLink, "starts_on" | "ends_on">) {
   return link.starts_on === link.ends_on ? shortDay(link.starts_on) : `${shortDay(link.starts_on)} – ${shortDay(link.ends_on)}`;
+}
+
+// Short words for a Hearth tile (SIT-009): "ends today", "ends tmrw",
+// "ends Sun", "ends Oct 30"; or when it starts, if it hasn't yet.
+export function endsWords(link: { starts_on: string; ends_on: string }, today: string) {
+  if (link.starts_on > today) {
+    const d = daysBetween(today, link.starts_on);
+    return d === 1 ? "starts tmrw" : d < 7 ? `starts ${shortDay(link.starts_on).slice(0, 3)}` : `starts ${shortDay(link.starts_on).slice(5)}`;
+  }
+  const d = daysBetween(today, link.ends_on);
+  if (d <= 0) return "ends today";
+  if (d === 1) return "ends tmrw";
+  return d < 7 ? `ends ${shortDay(link.ends_on).slice(0, 3)}` : `ends ${shortDay(link.ends_on).slice(5)}`;
 }
 
 export function viewsWords(views: number) {

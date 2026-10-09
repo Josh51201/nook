@@ -21,6 +21,7 @@ export default function SitterLayout() {
       <Stack.Screen name="edit" options={{ title: "The sheet", presentation: "modal" }} />
       <Stack.Screen name="link" options={{ title: "New link", presentation: "modal" }} />
       <Stack.Screen name="preview" options={{ title: "What they'll see" }} />
+      <Stack.Screen name="settings" options={{ title: "Sitter Sheet Settings" }} />
     </Stack>
   );
 }

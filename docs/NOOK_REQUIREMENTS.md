@@ -115,7 +115,12 @@ Full requirements for these live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_N
 - **SIT-006** Anything pulled in from other Nooks is optional and off by default; you tick each kid and pet per link. _(Josh: "I wanna stay legal… things can be optional", and left the details to Claude.)_ _(Proposed: kids show only first name, allergies and diets, with no birthdays, photos or last names. Pets show name, food, meals, medications, vet and notes. Only kids managed by someone in the Home and pets in the Home can be picked.)_
 - **SIT-007** _(Proposed.)_ The link only exposes what you chose, enforced in Postgres (not just hidden in the screens). An expired, switched-off or made-up link shows nothing. Tests prove it, in the same spirit as GIFT-007. The page tells search engines not to index it, and the secret part of the link never reaches the web host.
 - **SIT-008** _(Proposed.)_ A link works from when it's made until the end of its last day (so the sitter can read ahead), and a stay is at most 60 days. You can see how many times it's been opened.
-- _Built 2026-10-09:_ the Nook in the Market (sheet, links, "see what they see" preview), the database rules, and the sitter's page in `web/sitter` (`npm run build:sitter`). Waiting on: the page being put on a web host and its address in `.env` as `EXPO_PUBLIC_SITTER_PAGE_URL` (Q-031).
+- **SIT-009** The Sitter Sheet shows on the Hearth. _(Josh: "Its kinda plain and does nothing on the main page".)_ _(Proposed: its tile shows which links are out, until when, and whether they've been opened; plus a standalone "Sitter links" widget.)_
+- **SIT-010** A daily routine on the sheet (e.g. 3:15 school pickup, 5:30 dinner, 8:00 bed). The sitter's page highlights what's happening now and next. _(Josh picked it.)_
+- **SIT-011** Inbox notices: when a sitter first opens a link, and the morning a link ends. _(Josh picked it.)_ _(Proposed: they go to whoever made the link, both on by default, each with a switch in the Nook's settings.)_
+- **SIT-012** Quick starts when making a link: Babysitter, House-sitter and Pet-sitter presets, and "same as last time" to reuse a past link's picks. _(Josh picked it.)_
+- **SIT-013** House info: Wi-Fi name and password (with a copy button on the sitter's page), where things are, and door or alarm codes. Codes are off on every link unless ticked. _(Josh picked it.)_ _(Proposed: no preset ever ticks codes, and the sitter's page hides them until tapped.)_
+- _Built 2026-10-09:_ the Nook in the Market (sheet, links, "see what they see" preview), the database rules, and the sitter's page in `web/sitter` (`npm run build:sitter`). Hosted on Netlify for now (Q-031). SIT-009..013 built 2026-10-09: Hearth tile and "Sitter links" widget, routine, notices (the ending one needs pg_cron), quick starts, house info.
 
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
@@ -184,7 +189,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **Lent Out** — track things you've lent or borrowed (the drill, the casserole dish), to or from whom, with gentle reminders to ask for them back.
 - **Yearly Rhythms** — now being built as the Rhythms Nook: see section 2e (RHY-001..008).
 - **House Binder** — home info in one place: paint colors, appliance models, warranty dates, filter sizes, trusted contacts like the plumber, and service history.
-- **Sitter Sheet** — now being designed as the Sitter Sheet Nook: see section 2g (SIT-001..008). Original idea: one page for babysitters, grandparents or house-sitters: allergies, bedtime, house rules, emergency numbers and the doctor. Shareable by link without them needing the app.
+- **Sitter Sheet** — now being designed as the Sitter Sheet Nook: see section 2g (SIT-001..013). Original idea: one page for babysitters, grandparents or house-sitters: allergies, bedtime, house rules, emergency numbers and the doctor. Shareable by link without them needing the app.
 - **Quote Jar** — save funny things people say, with the date and who said it; a Hearth widget shows a random one each day.
 - **Fridge Door** — family sticky notes and doodles, shown as a Hearth widget.
 - **Idea Stash** — part of the Gift Nook (GIFT-036), not a separate Nook.
@@ -200,5 +205,5 @@ Josh's stated priority, in order:
 3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).
 4. ~~**Pet Care Nook**~~ — built 2026-10-08 (section 2d).
 5. ~~**Rhythms Nook**~~ — built 2026-10-08 (section 2e).
-6. **Sitter Sheet Nook (SIT-001..008)** — built 2026-10-09; needs its web page hosted (Q-031).
+6. ~~**Sitter Sheet Nook (SIT-001..013)**~~ — built 2026-10-09; page hosted on Netlify for now (Q-031).
 7. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. 048 and 054 built 2026-10-08. Still to do: 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 built 2026-10-08: lock (061), tidy up (062), find (063). Round 3 built 2026-10-08: dividers (064), Scenes (052), tags (065).

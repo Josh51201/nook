@@ -117,6 +117,11 @@ export const rhythmSettingDefaults = {
 
 // Letterbox settings. notifyBirthdays is also read by the database
 // (public.wants_letterbox_reminder) — rename it in both places or not at all.
+export const sitterSettingDefaults = {
+  notifyOpened: true, // SIT-011: a sitter first opens a link you made
+  notifyEnding: true, // SIT-011: the morning a link you made ends
+};
+
 export const letterboxSettingDefaults = {
   notifyBirthdays: true, // LET-010
 };
