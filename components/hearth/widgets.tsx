@@ -23,6 +23,7 @@ import { endsWords } from "../../lib/sitter";
 import { useSitterSummary } from "../../lib/sitter-data";
 import { formatMinutes } from "../../lib/recipes";
 import { useRecipesSummary } from "../../lib/recipes-data";
+import { useRecipeImage } from "../recipe-thumb";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
 import { conditionIcon, conditionLabel, dayName, formatTemp, windowSky } from "../../lib/weather";
@@ -1338,6 +1339,8 @@ function Sitter({ widget, palette, refreshKey, height, shape, icon }: BodyProps<
 function RecipeOfTheDay({ widget, palette, refreshKey, shape, icon }: BodyProps<"recipe">) {
   const { session } = useAuth();
   const summary = useRecipesSummary(session?.user.id, refreshKey, widget.settings.shelf);
+  // A TikTok recipe's thumbnail is looked up fresh (REC-013).
+  const imageUrl = useRecipeImage(summary?.today?.image_url ?? null, summary?.today?.source_url ?? null);
   if (!summary) return null;
   const today = summary.today;
 
@@ -1364,8 +1367,8 @@ function RecipeOfTheDay({ widget, palette, refreshKey, shape, icon }: BodyProps<
       {sub ? <Muted palette={palette}>{sub}</Muted> : null}
     </View>
   );
-  const picture = today.image_url ? (
-    <Image source={{ uri: today.image_url }} style={{ flex: 1, borderRadius: 14, minHeight: 60 }} contentFit="cover" transition={200} />
+  const picture = imageUrl ? (
+    <Image source={{ uri: imageUrl }} style={{ flex: 1, borderRadius: 14, minHeight: 60 }} contentFit="cover" transition={200} />
   ) : null;
 
   if (shape === "small") {

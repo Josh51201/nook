@@ -8,6 +8,7 @@ import { Text } from "../../components/text";
 
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
+import { TikTokPlayer } from "../../components/tiktok-player";
 import { Button, EmptyState } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
@@ -15,6 +16,7 @@ import { findTimers, formatClock, scaleIngredient } from "../../lib/recipes";
 import { loadRecipe, markMade, type FamilyRecipe } from "../../lib/recipes-data";
 import { canRemind, configureReminders } from "../../lib/reminders";
 import { colors, ui } from "../../lib/theme";
+import { tiktokVideoId } from "../../lib/tiktok";
 
 type Timer = { id: string; label: string; step: number; endsAt: number; notificationId?: string; rang: boolean };
 
@@ -37,6 +39,7 @@ export default function CookMode() {
   const [timers, setTimers] = useState<Timer[]>([]);
   const [now, setNow] = useState(Date.now());
   const [finishing, setFinishing] = useState(false);
+  const [showVideo, setShowVideo] = useState(true);
   const timersRef = useRef(timers);
   timersRef.current = timers;
 
@@ -70,6 +73,8 @@ export default function CookMode() {
   if (!recipe) return <EmptyState icon="recipe" title="This recipe isn't here" />;
 
   const current = recipe.steps.findIndex((_, i) => !done.has(i));
+  // A TikTok recipe keeps its video at the top to follow along (REC-014).
+  const videoId = recipe.source_url ? tiktokVideoId(recipe.source_url) : null;
 
   function toggle(set: Set<number>, update: (s: Set<number>) => void, i: number) {
     tap();
@@ -136,6 +141,20 @@ export default function CookMode() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 140 + insets.bottom }}>
+        {videoId ? (
+          <>
+            <Button
+              title={showVideo ? "Hide the video" : "Show the video"}
+              icon={showVideo ? "close" : "play"}
+              variant="secondary"
+              onPress={() => {
+                tap();
+                setShowVideo(!showVideo);
+              }}
+            />
+            {showVideo ? <TikTokPlayer videoId={videoId} url={recipe.source_url!} maxHeight={460} /> : null}
+          </>
+        ) : null}
         {recipe.ingredients.length ? (
           <>
             <Text style={[ui.sectionTitle, { fontSize: 22 }]}>You'll need</Text>

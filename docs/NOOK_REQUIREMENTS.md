@@ -68,7 +68,9 @@ Josh picked it from the backlog on 2026-10-08 ("Lets do the recipe box") and cho
 - **REC-010** Allergy warnings: a recipe shows whose allergies or diets it clashes with (PROF-004). _(Josh picked it.)_ _(Proposed: checked against everyone in your Burrows, using only the tags the cook set — never guessed from the ingredients.)_
 - **REC-011** A Hearth widget. _(Josh picked it.)_ _(Proposed: "Recipe of the day" from your box or one Shelf, changing each day; tapping opens it. The Nook's tile shows how many recipes and what you made last.)_
 - **REC-012** _(Proposed.)_ Only you and family in your Burrows can see your recipes, enforced in Postgres, with tests. "Just me" recipes are seen by nobody else. Nobody can change or delete a recipe but its owner.
-- _Built 2026-10-09:_ REC-001..012 in `app/recipes`, with the database rules in the `recipe_box` migration. The privacy tests skip until a service key is in `.env.test.local`.
+- **REC-013** Paste a TikTok link to save a recipe from a TikTok video. _(Josh picked it 2026-10-09.)_ _(Proposed: the name and any ingredients come from the caption, and the whole caption goes in the notes. The video's thumbnail is the picture, looked up fresh each time because TikTok's expire. Turning the spoken video into written steps is left for later; it would need an AI service.)_
+- **REC-014** Watch the TikTok inside Nook, on the recipe's page and in cook mode, with a button to open it in TikTok. _(Josh picked it 2026-10-09.)_
+- _Built 2026-10-09:_ REC-001..014 in `app/recipes`, with the database rules in the `recipe_box` migration. The privacy tests skip until a service key is in `.env.test.local`.
 
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
@@ -137,7 +139,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **House Binder** — home info in one place: paint colors, appliance models, warranty dates, filter sizes, trusted contacts like the plumber, and service history.
 - **Quote Jar** — save funny things people say, with the date and who said it; a Hearth widget shows a random one each day.
 - **Fridge Door** — family sticky notes and doodles, shown as a Hearth widget.
-- **Recipe Box** — now being built as the Recipe Box Nook: see section 2h (REC-001..012).
+- **Recipe Box** — now being built as the Recipe Box Nook: see section 2h (REC-001..014).
 - **Heads-Up Board** — one-tap household status like "on my way", "dinner at 6?" or "need milk"; no location tracking. _(Josh picked it 2026-10-08.)_
 - **Sick Day** — log a child's symptoms, temperature and medicine doses with a "next dose safe at…" timer so two parents can't double-dose; could feed the Sitter Sheet. _(Josh picked it 2026-10-08: "sick day nook is also good".)_
 - **Subscriptions** — every recurring charge with renewal date, price and a "cancel by" reminder, plus a monthly total. _(Josh picked it 2026-10-08.)_
@@ -152,7 +154,7 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 ## 7. Up next
 Josh's stated priority, in order:
 1. **Hearth:** only CORE-055 (share a look) and the fireplace sound (CORE-047) are left.
-2. ~~**Recipe Box Nook (REC-001..012)**~~ — built 2026-10-09 (section 2h).
+2. ~~**Recipe Box Nook (REC-001..014)**~~ — built 2026-10-09 (section 2h).
 3. **Backlog Nooks** (section 6) — Josh picks the next one.
 
 _Built and done: Hollows, Potluck, Letterbox, Pet Care, Rhythms, Sitter Sheet (page on Netlify for now, Q-031), and Hearth rounds two and three._

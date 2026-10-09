@@ -137,7 +137,7 @@ export default function RecipeBoxHome() {
               key={recipe.id}
               index={i}
               icon="recipe"
-              leading={<RecipeThumb imageUrl={recipe.image_url} />}
+              leading={<RecipeThumb imageUrl={recipe.image_url} sourceUrl={recipe.source_url} />}
               title={recipe.title}
               subtitle={subtitle || undefined}
               onPress={() => router.push(`/recipes/${recipe.id}`)}

@@ -15,10 +15,11 @@ import { recipeSettingDefaults, useNookSettings } from "../../lib/nook-settings"
 import { allergens, otherContents } from "../../lib/potluck";
 import { cleanShelf, fetchRecipe, MAX_SHELVES, parseRecipePage, shelfIdeas, shelvesIn, toLines, type ImportedRecipe } from "../../lib/recipes";
 import { deleteRecipe, loadRecipe, loadRecipeBox, saveRecipe } from "../../lib/recipes-data";
+import { fetchTikTok, isTikTok, parseCaption } from "../../lib/tiktok";
 import { colors, ui } from "../../lib/theme";
 
 // Add or change a recipe (REC-003/007), or fill one in from a website link
-// (REC-008).
+// (REC-008) or a TikTok's caption (REC-013).
 //   ?id=…      edit your recipe
 //   ?shelf=…   start a new one on that Shelf
 export default function RecipeForm() {
@@ -87,10 +88,11 @@ export default function RecipeForm() {
 
   async function fillFromLink() {
     const url = normalizeUrl(link.trim());
-    if (!url) return Alert.alert("Paste a link first", "Copy the address of a recipe page and paste it here.");
+    if (!url) return Alert.alert("Paste a link first", "Copy the address of a recipe page or a TikTok and paste it here.");
     setFetching(true);
     setFetchNote(null);
     setLink(url);
+    if (isTikTok(url)) return fillFromTikTok(url);
     const { recipe: found, blocked } = await fetchRecipe(url);
     if (found) return applyFound(found);
     if (blocked) {
@@ -101,6 +103,32 @@ export default function RecipeForm() {
     }
     setFetching(false);
     setFetchNote("We couldn't find a recipe on that page. You can still type it in below.");
+  }
+
+  // REC-013: the name and any ingredients come from the caption; the whole
+  // caption goes in the notes. The video's thumbnail is looked up fresh when
+  // shown, so no picture is saved.
+  async function fillFromTikTok(url: string) {
+    const info = await fetchTikTok(url);
+    setFetching(false);
+    if (!info) {
+      setFetchNote("We couldn't find that TikTok. Check the link is to one video (Share → Copy link) and try again.");
+      return;
+    }
+    tap("success");
+    setLink(info.url);
+    setImageUrl(null);
+    const caption = parseCaption(info.caption);
+    if (caption.title && !title.trim()) setTitle(caption.title);
+    if (caption.ingredients.length && !ingredients.trim()) setIngredients(caption.ingredients.join("\n"));
+    if (caption.notes && !notes.trim()) {
+      setNotes([caption.notes, info.author ? `From ${info.author} on TikTok` : null].filter(Boolean).join("\n\n"));
+    }
+    setFetchNote(
+      caption.ingredients.length
+        ? "Filled in from the TikTok's caption. Check it over and add the steps from the video."
+        : "Saved the TikTok. Its caption didn't list ingredients, so add what you can see in the video."
+    );
   }
 
   function readerDone(page: { url: string; html: string } | null) {
@@ -173,7 +201,7 @@ export default function RecipeForm() {
         steps: toLines(steps, 60),
         notes: notes.trim() || null,
         source_url: link.trim() ? normalizeUrl(link.trim()) : null,
-        image_url: imageUrl,
+        image_url: isTikTok(link) ? null : imageUrl,
         tags,
         shelves,
         private: privateNow,
@@ -224,10 +252,11 @@ export default function RecipeForm() {
         />
         <Button title="Fill in" icon="sparkles" variant="secondary" onPress={fillFromLink} loading={fetching} />
       </View>
+      <Text style={ui.muted}>A recipe website, or a TikTok video: in TikTok tap Share, then Copy link.</Text>
       {fetchNote ? <Banner icon="sparkles" tone="sky" body={fetchNote} /> : null}
 
       <View style={[ui.row, { gap: 12 }]}>
-        {imageUrl ? <RecipeThumb imageUrl={imageUrl} size={56} /> : null}
+        {imageUrl || isTikTok(link) ? <RecipeThumb imageUrl={imageUrl} sourceUrl={isTikTok(link) ? link : null} size={56} /> : null}
         <View style={{ flex: 1, gap: 14 }}>
           <Text style={ui.label}>Name</Text>
           <TextInput

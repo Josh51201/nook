@@ -7,6 +7,7 @@ import { Text } from "../../components/text";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { TikTokPlayer } from "../../components/tiktok-player";
 import { Banner, Button, Chip, EmptyState, HeaderIcon, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, guarded, tap } from "../../lib/feedback";
@@ -15,11 +16,13 @@ import { dishWarnings, tagLabel, type Person } from "../../lib/potluck";
 import { formatMinutes, madeWords, scaleFactor, scaleIngredient, youWords } from "../../lib/recipes";
 import { loadFamilyNeeds, loadRecipe, saveCopy, type FamilyRecipe } from "../../lib/recipes-data";
 import { colors, ui } from "../../lib/theme";
+import { tiktokVideoId } from "../../lib/tiktok";
 
 const multipliers = [0.5, 1, 2, 3];
 
 // One recipe (REC-003): scale it (REC-005), see who it's not safe for
 // (REC-010), cook it (REC-004), or save family's into your own box (REC-002).
+// A TikTok recipe plays its video right here (REC-014).
 export default function RecipeScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,6 +64,7 @@ export default function RecipeScreen() {
   }
 
   const mine = recipe.owner_id === userId;
+  const videoId = recipe.source_url ? tiktokVideoId(recipe.source_url) : null;
   const factor = recipe.servings ? scaleFactor(recipe.servings, servings ?? recipe.servings) : times;
   const warnings = dishWarnings(recipe.tags, people).map(youWords);
   const time = [
@@ -92,7 +96,9 @@ export default function RecipeScreen() {
         }}
       />
 
-      {recipe.image_url ? (
+      {videoId ? (
+        <TikTokPlayer videoId={videoId} url={recipe.source_url!} />
+      ) : recipe.image_url ? (
         <View style={{ borderRadius: 22, overflow: "hidden", backgroundColor: findNook("recipes")!.color }}>
           <Image source={{ uri: recipe.image_url }} style={{ width: "100%", aspectRatio: 16 / 10 }} contentFit="cover" transition={200} />
         </View>
@@ -121,7 +127,7 @@ export default function RecipeScreen() {
       ) : null}
 
       <View style={[ui.row, { gap: 10 }]}>
-        <Button title="Start cooking" icon="play" onPress={cook} style={{ flex: 1 }} disabled={!recipe.steps.length && !recipe.ingredients.length} />
+        <Button title="Start cooking" icon="play" onPress={cook} style={{ flex: 1 }} disabled={!recipe.steps.length && !recipe.ingredients.length && !videoId} />
         {!mine ? <Button title="Save to my box" icon="add" variant="secondary" onPress={copyToMyBox} loading={saving} style={{ flex: 1 }} /> : null}
       </View>
 
@@ -185,7 +191,7 @@ export default function RecipeScreen() {
         </>
       ) : null}
 
-      {recipe.source_url ? (
+      {recipe.source_url && !videoId ? (
         <Tap onPress={() => Linking.openURL(recipe.source_url!).catch(() => {})} style={[ui.row, { gap: 6, alignSelf: "flex-start" }]}>
           <Icon name="link" size={15} />
           <Text style={ui.link} numberOfLines={1}>

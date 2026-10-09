@@ -165,18 +165,18 @@ export async function markMade(recipe: Pick<Recipe, "id" | "made_count">) {
 
 export type RecipesSummary = {
   count: number;
-  today: Pick<Recipe, "id" | "title" | "shelves" | "prep_minutes" | "cook_minutes" | "image_url"> | null;
+  today: Pick<Recipe, "id" | "title" | "shelves" | "prep_minutes" | "cook_minutes" | "image_url" | "source_url"> | null;
   lastMade: Pick<Recipe, "id" | "title" | "last_made_at"> | null;
 };
 
 export async function loadRecipesSummary(userId: string, shelf: string | null): Promise<RecipesSummary> {
   const { data, error } = await supabase
     .from("recipes")
-    .select("id, title, shelves, prep_minutes, cook_minutes, image_url, last_made_at")
+    .select("id, title, shelves, prep_minutes, cook_minutes, image_url, source_url, last_made_at")
     .eq("owner_id", userId)
     .limit(2000);
   if (error) throw error;
-  const rows = (data ?? []) as Pick<Recipe, "id" | "title" | "shelves" | "prep_minutes" | "cook_minutes" | "image_url" | "last_made_at">[];
+  const rows = (data ?? []) as Pick<Recipe, "id" | "title" | "shelves" | "prep_minutes" | "cook_minutes" | "image_url" | "source_url" | "last_made_at">[];
   const pool = shelf ? rows.filter((r) => r.shelves.includes(shelf)) : rows;
   const lastMade = rows
     .filter((r) => r.last_made_at)
