@@ -5,6 +5,7 @@ import { Text, TextInput } from "../../components/text";
 
 import { LoadingScreen } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { RecipePageReader } from "../../components/recipe-page-reader";
 import { RecipeThumb } from "../../components/recipe-thumb";
 import { Banner, Button, Chip } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
@@ -12,7 +13,7 @@ import { friendlyError, tap } from "../../lib/feedback";
 import { normalizeUrl } from "../../lib/gift-nook";
 import { recipeSettingDefaults, useNookSettings } from "../../lib/nook-settings";
 import { allergens, otherContents } from "../../lib/potluck";
-import { cleanShelf, fetchRecipe, MAX_SHELVES, shelfIdeas, shelvesIn, toLines } from "../../lib/recipes";
+import { cleanShelf, fetchRecipe, MAX_SHELVES, parseRecipePage, shelfIdeas, shelvesIn, toLines, type ImportedRecipe } from "../../lib/recipes";
 import { deleteRecipe, loadRecipe, loadRecipeBox, saveRecipe } from "../../lib/recipes-data";
 import { colors, ui } from "../../lib/theme";
 
@@ -32,6 +33,8 @@ export default function RecipeForm() {
   const [link, setLink] = useState("");
   const [fetching, setFetching] = useState(false);
   const [fetchNote, setFetchNote] = useState<string | null>(null);
+  // Set while the hidden browser tries a page that refused the quick download.
+  const [readerUrl, setReaderUrl] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [servings, setServings] = useState("");
   const [prep, setPrep] = useState("");
@@ -87,13 +90,30 @@ export default function RecipeForm() {
     if (!url) return Alert.alert("Paste a link first", "Copy the address of a recipe page and paste it here.");
     setFetching(true);
     setFetchNote(null);
-    const found = await fetchRecipe(url);
-    setFetching(false);
     setLink(url);
-    if (!found) {
-      setFetchNote("That page wouldn't open for us. You can still type the recipe in below.");
+    const { recipe: found, blocked } = await fetchRecipe(url);
+    if (found) return applyFound(found);
+    if (blocked) {
+      // The site wants a real browser: try it in a hidden one.
+      setFetchNote("This site is checking we're a real browser. Hang on a moment…");
+      setReaderUrl(url);
       return;
     }
+    setFetching(false);
+    setFetchNote("We couldn't find a recipe on that page. You can still type it in below.");
+  }
+
+  function readerDone(page: { url: string; html: string } | null) {
+    const url = readerUrl;
+    setReaderUrl(null);
+    const found = page && url ? parseRecipePage(page.html, page.url || url) : null;
+    if (found) return applyFound(found);
+    setFetching(false);
+    setFetchNote("That site wouldn't let us in. You can still type the recipe in below, or copy it from the page.");
+  }
+
+  function applyFound(found: ImportedRecipe) {
+    setFetching(false);
     tap("success");
     if (found.title) setTitle(found.title);
     if (found.servings) setServings(String(found.servings));
@@ -187,6 +207,7 @@ export default function RecipeForm() {
   return (
     <NookScroll>
       <Stack.Screen options={{ title: editing ? "Edit recipe" : "New recipe" }} />
+      {readerUrl ? <RecipePageReader url={readerUrl} onDone={readerDone} /> : null}
 
       <Text style={ui.label}>From a website (optional)</Text>
       <View style={[ui.row, { gap: 8 }]}>

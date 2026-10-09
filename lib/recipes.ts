@@ -297,7 +297,10 @@ export function parseRecipePage(html: string, pageUrl: string): ImportedRecipe |
   };
 }
 
-export async function fetchRecipe(url: string): Promise<ImportedRecipe | null> {
+// A quick download from the phone. `blocked` means the site turned us away
+// (often Cloudflare's browser check), so it's worth trying again in a real
+// browser (components/recipe-page-reader.tsx).
+export async function fetchRecipe(url: string): Promise<{ recipe: ImportedRecipe | null; blocked: boolean }> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -310,11 +313,13 @@ export async function fetchRecipe(url: string): Promise<ImportedRecipe | null> {
       },
     });
     clearTimeout(timeout);
-    if (!response.ok) return null;
+    if (!response.ok) return { recipe: null, blocked: response.status === 403 || response.status === 429 || response.status === 503 };
     const html = (await response.text()).slice(0, 3_000_000);
-    return parseRecipePage(html, response.url || url);
+    if (/<title>\s*Just a moment/i.test(html)) return { recipe: null, blocked: true };
+    return { recipe: parseRecipePage(html, response.url || url), blocked: false };
   } catch {
-    return null;
+    // No connection, or the site didn't answer in time; a browser may still get in.
+    return { recipe: null, blocked: true };
   }
 }
 
