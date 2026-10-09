@@ -164,6 +164,9 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   // Which widget of each stack is showing (CORE-050).
   const [stackShown, setStackShown] = useState<Record<string, number>>({});
   const [dragging, setDragging] = useState(false);
+  // Edit started by holding an item: the tip card at the top stays away until
+  // you let go, so the grid doesn't slide out from under your finger.
+  const [holdStarted, setHoldStarted] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [openingHollow, setOpeningHollow] = useState<string | null>(null);
   // Inside a Hollow: the sheet for the Hollow itself (name, look, color, size).
@@ -270,6 +273,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   function onDraggingChange(isDragging: boolean) {
     draggingNow.current = isDragging;
     setDragging(isDragging);
+    if (!isDragging) setHoldStarted(false);
     if (isDragging) {
       measureViewport();
       measureTabs();
@@ -1324,7 +1328,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
             scrollEnabled={!dragging}
             keyboardShouldPersistTaps="handled"
           >
-            {editing ? (
+            {editing && !holdStarted ? (
               <Animated.View
                 entering={FadeIn.duration(200)}
                 exiting={FadeOut.duration(150)}
@@ -1452,7 +1456,10 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
                         }
                   }
                   onPressItem={onPressItem}
-                  onLongPress={() => setEditing(true)}
+                  onLongPress={() => {
+                    setHoldStarted(true);
+                    setEditing(true);
+                  }}
                   onCopy={(item) => copyTo(item.id, scope)}
                   onTrash={trash}
                   onTrashHover={setOverTrash}
