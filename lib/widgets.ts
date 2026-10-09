@@ -51,8 +51,10 @@ export const MAX_FRAME_PHOTOS = 8;
 
 export type WidgetSettings = {
   countdown: {
-    source: "next" | "gathering" | "custom";
+    // "getaway": one Getaway (getawayId), or whichever's next (TRIP-010).
+    source: "next" | "gathering" | "custom" | "getaway";
     gatheringId?: string;
+    getawayId?: string;
     customTitle: string;
     customDate?: string; // ISO
     display: "number" | "words";
@@ -253,6 +255,18 @@ export function newReminderId() {
 
 // Ready-made starting points shown in "Add to your Hearth" → Ideas.
 export const widgetTemplates: { id: string; label: string; description: string; icon: IconName; build: () => WidgetConfig; size?: Size }[] = [
+  {
+    id: "getaway-countdown",
+    label: "Getaway countdown",
+    description: "Days until your next Getaway. Tap it to open the trip.",
+    icon: "plane",
+    build: () => ({
+      ...defaultWidget("countdown"),
+      kind: "countdown",
+      title: "Next Getaway",
+      settings: { source: "getaway", customTitle: "", display: "number" },
+    }),
+  },
   {
     id: "food-log",
     label: "Food log reminders",

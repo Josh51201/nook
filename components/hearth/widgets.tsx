@@ -25,6 +25,7 @@ import { formatMinutes } from "../../lib/recipes";
 import { useRecipesSummary } from "../../lib/recipes-data";
 import { useRecipeImage } from "../recipe-thumb";
 import { formatMoney } from "../../lib/subscriptions";
+import { kindInfo } from "../../lib/getaways";
 import { useSubscriptionsSummary } from "../../lib/subscriptions-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
@@ -422,17 +423,33 @@ export function ProgressBar({ palette, done, total }: { palette: Palette; done: 
 
 // --- Countdown ------------------------------------------------------------------
 
-export type CountdownTarget = { title: string; date: string; icon: IconName; gatheringId?: string };
+export type CountdownTarget = { title: string; date: string; icon: IconName; gatheringId?: string; getawayId?: string };
 
 // What a countdown is counting to: your own date, a chosen Gathering, or
 // the next one coming up. undefined while loading, null if there's nothing.
 export function useCountdownTarget(settings: WidgetOf<"countdown">["settings"], refreshKey: number) {
-  const { source, gatheringId, customTitle, customDate } = settings;
+  const { source, gatheringId, getawayId, customTitle, customDate } = settings;
   const [target, setTarget] = useState<CountdownTarget | null | undefined>(undefined);
 
   useEffect(() => {
     if (source === "custom") {
       setTarget(customDate ? { title: customTitle || "The big day", date: customDate, icon: "calendar" } : null);
+      return;
+    }
+    if (source === "getaway") {
+      // One Getaway, or whichever's next; while it's on, it counts as today.
+      const today = localDay();
+      let query = supabase.from("getaways").select("id, title, kind, starts_on, ends_on");
+      query = getawayId ? query.eq("id", getawayId) : query.gte("ends_on", today);
+      query
+        .order("starts_on")
+        .limit(1)
+        .then(({ data }) => {
+          const row = data?.[0];
+          if (!row) return setTarget(null);
+          const [y, m, d] = (row.starts_on > today ? row.starts_on : today).split("-").map(Number);
+          setTarget({ title: row.title, date: new Date(y, m - 1, d, 12).toISOString(), icon: kindInfo(row.kind).icon, getawayId: row.id });
+        });
       return;
     }
     let query = supabase.from("gatherings").select("id, title, kind, ends_at");
@@ -446,7 +463,7 @@ export function useCountdownTarget(settings: WidgetOf<"countdown">["settings"], 
           row ? { title: row.title, date: row.ends_at, icon: gatheringKindInfo(row.kind).icon, gatheringId: row.id } : null
         );
       });
-  }, [source, gatheringId, customTitle, customDate, refreshKey]);
+  }, [source, gatheringId, getawayId, customTitle, customDate, refreshKey]);
 
   return target;
 }
@@ -458,7 +475,13 @@ function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyPro
   if (target === undefined) return null;
   if (!target) {
     if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
-    return <Empty icon="calendar" palette={palette} text={source === "custom" ? "Pick a date in the editor" : "Nothing coming up"} />;
+    return (
+      <Empty
+        icon={source === "getaway" ? "plane" : "calendar"}
+        palette={palette}
+        text={source === "custom" ? "Pick a date in the editor" : source === "getaway" ? "Plan a Getaway" : "Nothing coming up"}
+      />
+    );
   }
 
   const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();

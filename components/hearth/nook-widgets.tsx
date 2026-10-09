@@ -16,6 +16,8 @@ import { formatMinutes } from "../../lib/recipes";
 import { useRecipesSummary } from "../../lib/recipes-data";
 import { formatMoney } from "../../lib/subscriptions";
 import { useSubscriptionsSummary } from "../../lib/subscriptions-data";
+import { kindInfo, rangeWords, whenWords } from "../../lib/getaways";
+import { useGetawaysSummary } from "../../lib/getaways-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
@@ -376,6 +378,24 @@ function SubscriptionsWidget({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// Getaways (TRIP-010): the countdown to the next one, then what's left to
+// pack and do.
+function GetawaysWidget({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const summary = useGetawaysSummary(session?.user.id, refreshKey);
+  if (!summary) return null;
+  if (!summary.next) return <Facts facts={[{ kind: "note", text: summary.count ? "Where to next?" : "Plan a Getaway" }]} {...props} />;
+
+  const next = summary.next;
+  const facts: Fact[] = [
+    { kind: "headline", text: next.title, trailing: whenWords(next, summary.today).toLowerCase() },
+    { kind: "detail", icon: kindInfo(next.kind).icon, text: [rangeWords(next.starts_on, next.ends_on, summary.today), next.place].filter(Boolean).join(" · ") },
+  ];
+  if (next.leftToPack) facts.push({ kind: "detail", icon: "clothes", text: `${next.leftToPack} left to pack` });
+  if (next.leftToDo) facts.push({ kind: "detail", icon: "todo", text: `${next.leftToDo} before you go` });
+  return <Facts facts={facts} {...props} />;
+}
+
 export const nookWidgets: Record<string, NookWidget> = {
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
   potluck: { label: "Next Potluck", Component: PotluckWidget },
@@ -385,4 +405,5 @@ export const nookWidgets: Record<string, NookWidget> = {
   sitter: { label: "Sitter links", Component: SitterWidget },
   recipes: { label: "Today's pick", Component: RecipesWidget },
   subscriptions: { label: "Renewing soon", Component: SubscriptionsWidget },
+  getaways: { label: "Next Getaway", Component: GetawaysWidget },
 };

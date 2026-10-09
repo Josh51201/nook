@@ -1,5 +1,5 @@
 import * as Clipboard from "expo-clipboard";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Share, View } from "react-native";
 
@@ -38,11 +38,13 @@ export default function NewSitterLink() {
   const router = useRouter();
   const { session } = useAuth();
   const { data } = useSitter(session?.user.id);
+  // A Getaway opens this with its dates and name filled in (TRIP-012).
+  const params = useLocalSearchParams<{ startsOn?: string; endsOn?: string; label?: string }>();
 
   const [ready, setReady] = useState(false);
-  const [label, setLabel] = useState("");
-  const [startsOn, setStartsOn] = useState(toDateString(new Date()));
-  const [endsOn, setEndsOn] = useState(toDateString(new Date(Date.now() + 864e5)));
+  const [label, setLabel] = useState(params.label ? params.label.slice(0, 60) : "");
+  const [startsOn, setStartsOn] = useState(params.startsOn ?? toDateString(new Date()));
+  const [endsOn, setEndsOn] = useState(params.endsOn ?? toDateString(new Date(Date.now() + 864e5)));
   const [picked, setPicked] = useState<SectionKey[]>([]);
   const [kidIds, setKidIds] = useState<string[]>([]);
   const [petIds, setPetIds] = useState<string[]>([]);

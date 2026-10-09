@@ -14,7 +14,7 @@ import { friendlyError, tap } from "../../lib/feedback";
 import { displayName, PROFILE_FIELDS, type Profile } from "../../lib/gift-nook";
 import { usePets } from "../../lib/pets-data";
 import { localDay } from "../../lib/pets";
-import { toDateString } from "../../lib/profile";
+import { parseDateString, toDateString } from "../../lib/profile";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
@@ -25,7 +25,8 @@ type Length = "open" | "week" | "twoWeeks" | "month" | "pick";
 // and check things off, but not change its profile, meals or records.
 export default function Helpers() {
   const router = useRouter();
-  const { petId } = useLocalSearchParams<{ petId: string }>();
+  // A Getaway opens this with `until` set to its last day (TRIP-012).
+  const { petId, until: untilParam } = useLocalSearchParams<{ petId: string; until?: string }>();
   const { session } = useAuth();
   const userId = session?.user.id;
   const { data } = usePets(userId);
@@ -33,8 +34,8 @@ export default function Helpers() {
   const [people, setPeople] = useState<Profile[] | null>(null);
   const [homeIds, setHomeIds] = useState<Set<string>>(new Set());
   const [picked, setPicked] = useState<string | null>(null);
-  const [length, setLength] = useState<Length>("week");
-  const [until, setUntil] = useState(new Date(Date.now() + 14 * 864e5));
+  const [length, setLength] = useState<Length>(untilParam ? "pick" : "week");
+  const [until, setUntil] = useState(untilParam ? parseDateString(untilParam) : new Date(Date.now() + 14 * 864e5));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {

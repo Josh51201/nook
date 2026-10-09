@@ -748,6 +748,13 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         return router.push("/sitter");
       case "subscriptions":
         return router.push("/subscriptions");
+      case "countdown":
+        // A Getaway countdown opens that Getaway (TRIP-010).
+        if (item.widget.settings.source === "getaway") {
+          const tripId = item.widget.settings.getawayId;
+          return router.push(tripId ? `/getaways/${tripId}` : "/getaways");
+        }
+        return router.push(`/widget/view/${item.id}`);
       case "recipe":
         // Today's pick opens straight to its page (REC-011).
         if (!session?.user.id) return router.push("/recipes");

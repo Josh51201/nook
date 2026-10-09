@@ -127,6 +127,18 @@ export const nookCatalog: NookDefinition[] = [
     color: "#d6ebe4",
   },
   {
+    id: "getaways",
+    title: "Getaway Nook",
+    icon: "plane",
+    iconColor: "#2a7590",
+    tagline: "Packed and ready",
+    description:
+      "Plan a trip with the people going: everyone's packing list, a before-you-go checklist with reminders, flight and hotel confirmations, a day-by-day plan, who paid for what, and a countdown on your Hearth.",
+    route: "/getaways",
+    available: true,
+    color: "#d4eaf1",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

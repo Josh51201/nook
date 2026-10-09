@@ -51,6 +51,8 @@ import {
 } from "../../lib/hearth";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { shelvesIn } from "../../lib/recipes";
+import { rangeWords } from "../../lib/getaways";
+import { localDay } from "../../lib/pets";
 import { supabase } from "../../lib/supabase";
 import { colors, themed, ui, useTheme } from "../../lib/theme";
 import {
@@ -1047,8 +1049,19 @@ function CountdownSettings({
   widget: WidgetOf<"countdown">;
   setSettings: (changes: Partial<WidgetOf<"countdown">["settings"]>) => void;
 }) {
-  const { source, gatheringId, customTitle, customDate, display } = widget.settings;
+  const { source, gatheringId, getawayId, customTitle, customDate, display } = widget.settings;
   const [gatherings, setGatherings] = useState<{ id: string; title: string; ends_at: string }[]>([]);
+  const [getaways, setGetaways] = useState<{ id: string; title: string; starts_on: string; ends_on: string }[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from("getaways")
+      .select("id, title, starts_on, ends_on")
+      .gte("ends_on", localDay())
+      .order("starts_on")
+      .limit(20)
+      .then(({ data }) => setGetaways(data ?? []));
+  }, []);
 
   useEffect(() => {
     supabase
@@ -1070,10 +1083,26 @@ function CountdownSettings({
         <Chip selected={source === "gathering"} onPress={() => setSettings({ source: "gathering" })}>
           A Gathering
         </Chip>
+        <Chip selected={source === "getaway"} onPress={() => setSettings({ source: "getaway" })}>
+          A Getaway
+        </Chip>
         <Chip selected={source === "custom"} onPress={() => setSettings({ source: "custom" })}>
           My own date
         </Chip>
       </View>
+
+      {source === "getaway" ? (
+        <Animated.View entering={FadeIn.duration(200)} style={ui.chips}>
+          <Chip selected={!getawayId} onPress={() => setSettings({ getawayId: undefined })}>
+            Whichever's next
+          </Chip>
+          {getaways.map((g) => (
+            <Chip key={g.id} selected={getawayId === g.id} onPress={() => setSettings({ getawayId: g.id })}>
+              {g.title} · {rangeWords(g.starts_on, g.ends_on)}
+            </Chip>
+          ))}
+        </Animated.View>
+      ) : null}
 
       {source === "gathering" ? (
         <Animated.View entering={FadeIn.duration(200)} style={ui.chips}>

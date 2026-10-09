@@ -85,6 +85,7 @@ function RootStack() {
       <Stack.Screen name="sitter" options={{ animation: "fade", animationDuration: 220 }} />
       <Stack.Screen name="recipes" options={{ animation: "fade", animationDuration: 220 }} />
       <Stack.Screen name="subscriptions" options={{ animation: "fade", animationDuration: 220 }} />
+      <Stack.Screen name="getaways" options={{ animation: "fade", animationDuration: 220 }} />
       <Stack.Screen name="burrow/[id]" options={{ ...headerOptions, title: "Burrow", headerBackTitle: "Back" }} />
       <Stack.Screen name="hollow/[id]" options={{ animation: "fade", animationDuration: 250 }} />
       <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: "fade" }} />

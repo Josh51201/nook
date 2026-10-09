@@ -21,6 +21,7 @@ export type Notice = {
     pet_id?: string;
     rhythm_id?: string;
     subscription_id?: string;
+    getaway_id?: string;
     link_id?: string;
     invite_id?: string;
     home_id?: string;
@@ -82,6 +83,11 @@ const kinds: Record<string, Record<string, KindInfo>> = {
       icon: "card",
       route: (data) => (data.subscription_id ? `/subscriptions/${data.subscription_id}` : "/subscriptions"),
     },
+  },
+  getaways: {
+    getaway_added: { icon: "plane", route: (data) => (data.getaway_id ? `/getaways/${data.getaway_id}` : "/getaways") },
+    getaway_todo: { icon: "todo", route: (data) => (data.getaway_id ? `/getaways/todos?id=${data.getaway_id}` : "/getaways") },
+    getaway_tomorrow: { icon: "calendar", route: (data) => (data.getaway_id ? `/getaways/${data.getaway_id}` : "/getaways") },
   },
   sitter: {
     sitter_opened: { icon: "check", route: () => "/sitter" },

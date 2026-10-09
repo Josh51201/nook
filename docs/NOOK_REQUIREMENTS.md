@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-09 (rev 63)_
+_Last updated: 2026-10-09 (rev 64)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -107,6 +107,24 @@ Josh picked it from the backlog on 2026-10-08 and on 2026-10-09 chose who sees i
 - **SUB-012** _(Proposed.)_ Nobody outside the Home can see any of them, and nobody but its owner can see, change or count a Just me one, enforced in Postgres, with tests.
 - _Built 2026-10-09:_ SUB-001..012 in `app/subscriptions`, with the database rules in the `subscriptions` migration. The privacy tests skip until a service key is in `.env.test.local`.
 
+## 2j. Getaway Nook
+The backlog's "Trip" Nook. Josh picked it on 2026-10-09 ("lets do the trip nook next, maybe a better name for it too"), chose the name, who sees it and every part below. Anything marked _(Proposed)_ is Claude's detail for him to confirm.
+- **TRIP-001** A Getaway Nook where each trip is "a Getaway", with a name, place, kind (beach, mountains, road trip…) and dates. _(Josh picked the name "Getaway Nook".)_
+- **TRIP-002** A Getaway is seen only by the people going, picked from your Home and your Burrows. _(Josh picked "The people going".)_ _(Proposed: anyone going can bring more people; you can take yourself off, whoever started it can take anyone off, and a kid's managers can take the kid off; kids can be added so they have packing lists.)_
+- **TRIP-003** Packing lists: each person going has their own, plus a shared one, ticked off as you pack. _(Josh picked it.)_
+- **TRIP-004** Confirmations: flights, places to stay, rental cars, trains and tickets, with confirmation numbers (tap to copy), times, address and link. _(Josh picked it.)_
+- **TRIP-005** A day-by-day plan, filled in from the confirmations (a flight on its day, check-in and check-out) plus anything you add. _(Josh picked it.)_
+- **TRIP-006** A before-you-go checklist ("book the dog sitter", "hold the mail"), each with a do-by day and a reminder. _(Josh picked it.)_ _(Proposed: each can say who's doing it; one-tap ideas come with a sensible do-by day.)_
+- **TRIP-007** _(Proposed.)_ Everyone going can add and change the lists, confirmations, plans and costs; only whoever started a Getaway can delete it.
+- **TRIP-008** Reusable packing lists: save a list and start the next trip from it, with a few ready-made ones. _(Josh picked it.)_ _(Proposed: saved lists are just yours; ready-made: The basics, Toiletries, Beach, Camping, Flying, Little ones, Road trip.)_
+- **TRIP-009** Shared costs: who paid for what, and who owes whom at the end. _(Josh picked it.)_ _(Proposed: split between everyone going unless changed; the fewest paybacks are suggested and "Mark paid" records one; a kid's share is added to their grown-up's.)_
+- **TRIP-010** A countdown widget ("12 days until the beach") on the Hearth; tapping it opens the trip. _(Josh picked it.)_ _(Proposed: built into the Countdown widget as "A Getaway" (one, or whichever's next), with a ready-made "Getaway countdown" in Add → Ideas; the Nook's tile shows the next Getaway and what's left to pack.)_
+- **TRIP-011** _(Proposed.)_ Inbox notices when someone adds you to a Getaway, the morning a before-you-go task is due, and the day before you leave (with what's left to pack); each can be switched off in the Nook's settings.
+- **TRIP-012** Sitter Sheet & Pet Care link: from a Getaway, make a Sitter Sheet link for its dates in one tap. _(Josh picked it.)_ _(Proposed: also a button per pet to let a sitter help in Pet Care until the last day; a link already made for those days is shown.)_
+- **TRIP-013** _(Proposed.)_ Nobody but the people going can see or change anything about a Getaway, enforced in Postgres, with tests. Costs can only be paid by and split between people going.
+- **TRIP-014** _(Proposed.)_ Leaving takes your own packing list with you, tasks you were doing go back to "anyone", and costs stay so the sums add up; when the last person leaves, the Getaway is deleted.
+- _Built 2026-10-09:_ TRIP-001..014 in `app/getaways`, with the database rules in the `getaways` migration. The privacy tests skip until a service key is in `.env.test.local`.
+
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
 - **MON-002** A subscription belongs to a **Home** and covers everyone in it, up to the Home's cap of 6 (HOME-006). It never covers a Burrow, so joining someone's Burrow unlocks nothing paid. The paid customization follows the Home too, not the person. _(Josh: "I like the per home idea but yes needs capped at 6".)_
@@ -131,7 +149,7 @@ Josh picked it from the backlog on 2026-10-08 and on 2026-10-09 chose who sees i
 - **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
 - **Q-025** The app ID (bundle identifier) is currently `com.josh51201.nook`. It is permanent once the app is published. Should it use the domain Josh buys for email (Q-023) instead?
 
-- **Q-028** Exactly where the free/paid line sits, the price and the trial length (MON-003, MON-004). Decided so far: subscription, no ads, one plan per Home, capped at 6, and the free/paid list is easy to change later (MON-005). The how-it-works details in MON-006..010 are Claude's proposals for Josh to confirm. The Subscriptions Nook (SUB-001) keeps things in a Home, so under MON-003 it would be Plus too (proposed). Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. Also depends on Q-020 (account deletion) and Q-025 (app ID) before an App Store release.
+- **Q-028** Exactly where the free/paid line sits, the price and the trial length (MON-003, MON-004). Decided so far: subscription, no ads, one plan per Home, capped at 6, and the free/paid list is easy to change later (MON-005). The how-it-works details in MON-006..010 are Claude's proposals for Josh to confirm. The Subscriptions Nook (SUB-001) keeps things in a Home, so under MON-003 it would be Plus too (proposed); the Getaway Nook (TRIP-001) shares across Burrows, so it could stay free like the Gift Nook (proposed). Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. Also depends on Q-020 (account deletion) and Q-025 (app ID) before an App Store release.
 - **Q-031** Where should the Sitter Sheet's web page live? It's one small file. Options: a free static host (Netlify or Cloudflare Pages) now, then the domain bought for email (Q-023) later, e.g. `sitter.<domain>`. Links made before a move stop working, but they only last one stay anyway.
 
 ## 4. Decision Log
@@ -151,6 +169,9 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The recipes Nook | Recipe Box Nook | proposed |
 | The recurring-charges Nook | Subscriptions Nook | proposed |
 | The Hearth widget with what renews next (SUB-006) | Renewing soon | proposed |
+| The trip-planning Nook (TRIP-001) | Getaway Nook | approved |
+| One trip in it | a Getaway | approved |
+| The ready-made countdown to your next trip (TRIP-010) | Getaway countdown | proposed |
 | A Hearth widget with one recipe a day (REC-011) | Recipe of the day | proposed |
 | One recurring chore in the Rhythms Nook | Rhythm | proposed |
 | The paid subscription, per Home | Nook Plus | proposed |
@@ -186,7 +207,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **Sick Day** — log a child's symptoms, temperature and medicine doses with a "next dose safe at…" timer so two parents can't double-dose; could feed the Sitter Sheet. _(Josh picked it 2026-10-08: "sick day nook is also good".)_
 - **Subscriptions** — now built as the Subscriptions Nook: see section 2i (SUB-001..012).
 - **Little Log** — log anything with a date (blood pressure, mileage, a symptom, a mood); you pick the fields and it charts them over time. _(Josh picked it 2026-10-08.)_
-- **Trip** — packing list, confirmations, itinerary and a "have I booked the dog sitter?" checklist, with a countdown widget. _(Josh picked it 2026-10-08.)_
+- **Trip** — now built as the Getaway Nook: see section 2j (TRIP-001..014).
 - **Idea Stash** — part of the Gift Nook (GIFT-036), not a separate Nook.
 
 Earlier faint, very broad ideas (lower priority, may be dropped): Food tracker, To-do list.
@@ -197,6 +218,6 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 Josh's stated priority, in order:
 1. ~~**Hearth:** CORE-055 (share a look) and the fireplace sound (CORE-047)~~ — built 2026-10-09; the Hearth rounds are done.
 2. ~~**Recipe Box Nook (REC-001..014)**~~ — built 2026-10-09 (section 2h).
-3. **Backlog Nooks** (section 6) — Josh picks the next one. Subscriptions built 2026-10-09 (section 2i).
+3. **Backlog Nooks** (section 6) — Josh picks the next one. Subscriptions and Getaway (Trip) built 2026-10-09 (sections 2i, 2j).
 
 _Built and done: Hollows, Potluck, Letterbox, Pet Care, Rhythms, Sitter Sheet (page on Netlify for now, Q-031), and Hearth rounds two and three._

@@ -127,6 +127,15 @@ export const subscriptionSettingDefaults = {
   notifyMonthly: false, // before a weekly or monthly one renews
 };
 
+// Getaway settings (TRIP-011). The notify* keys are also read by the
+// database (public.wants_getaway_notice) — rename them in both places or not
+// at all.
+export const getawaySettingDefaults = {
+  notifyAdded: true, // someone adds you to a Getaway
+  notifyTodos: true, // a before-you-go task is due
+  notifyLeaving: true, // the day before it starts, with what's left to pack
+};
+
 // Letterbox settings. notifyBirthdays is also read by the database
 // (public.wants_letterbox_reminder) — rename it in both places or not at all.
 export const sitterSettingDefaults = {
