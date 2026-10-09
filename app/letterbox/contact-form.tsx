@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, Switch, View } from "react-native";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
@@ -47,6 +48,8 @@ export default function ContactForm() {
   const [saving, setSaving] = useState(false);
   const [mates, setMates] = useState<Mate[]>([]);
   const [shared, setShared] = useState<Map<string, Address>>(new Map());
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ name, people, addressFrom, address, onList, notes }, ready);
 
   // Fill the form once the Letterbox has loaded.
   useEffect(() => {
@@ -166,6 +169,7 @@ export default function ContactForm() {
         if (error) throw error;
       }
       tap("success");
+      allowLeave();
       if (existing) router.back();
       else router.replace(`/letterbox/contact/${contactId}`);
     } catch (error) {
@@ -183,6 +187,7 @@ export default function ContactForm() {
         onPress: async () => {
           const { error } = await supabase.from("letterbox_contacts").delete().eq("id", existing!.id);
           if (error) return Alert.alert("Couldn't remove them", friendlyError(error));
+          allowLeave();
           router.dismissTo("/letterbox");
         },
       },

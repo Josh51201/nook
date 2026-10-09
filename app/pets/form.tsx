@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Switch, View } from "react-native";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
@@ -54,6 +55,8 @@ export default function PetForm() {
   const [photo, setPhoto] = useState<{ uri: string; mimeType?: string | null; isNew: boolean } | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ name, species, breed, birthday, microchip, vetName, vetPhone, food, notes, meals, photo, removePhoto }, ready);
 
   useEffect(() => {
     if (ready || !data || (id && !existing)) return;
@@ -168,6 +171,7 @@ export default function PetForm() {
         if (error) throw error;
       }
       tap("success");
+      allowLeave();
       if (existing) router.back();
       else router.replace(`/pets/${petId}`);
     } catch (error) {

@@ -1,4 +1,4 @@
-import { contrast, hexToHsl, hslToHex, isHex } from "./colors";
+import { contrast, hexToHsl, hslToHex, isHex, readableOn } from "./colors";
 import { seasonOf, type Season } from "./decor";
 
 // Build-your-own themes (CORE-043): pure, so they're unit-testable. A custom
@@ -87,7 +87,7 @@ export function buildPalette(input: CustomTheme) {
       background: theme.background,
       surface: hslToHex(h, bg.s, clamp(bg.l + 0.05, 0, 1)),
       text: hslToHex(h, 0.15, 0.96),
-      muted: hslToHex(h, 0.1, 0.72),
+      muted: readableOn(hslToHex(h, 0.1, 0.72), [theme.background, hslToHex(h, bg.s, clamp(bg.l + 0.05, 0, 1))]),
       border: hslToHex(h, bg.s, clamp(bg.l + 0.13, 0, 1)),
       error: "#ff8f80",
       white: "#ffffff",
@@ -107,7 +107,11 @@ export function buildPalette(input: CustomTheme) {
     background: theme.background,
     surface: hslToHex(h, bg.s * 0.5, clamp(bg.l + 0.06, 0, 0.995)),
     text: hslToHex(h, 0.25, 0.14),
-    muted: hslToHex(h, 0.1, 0.45),
+    muted: readableOn(hslToHex(h, 0.1, 0.45), [
+      theme.background,
+      hslToHex(h, bg.s * 0.5, clamp(bg.l + 0.06, 0, 0.995)),
+      hslToHex(h, bg.s, clamp(bg.l - 0.03, 0, 1)),
+    ]),
     border: hslToHex(h, bg.s * 0.8, clamp(bg.l - 0.05, 0, 1)),
     error: "#c0392b",
     white: "#ffffff",

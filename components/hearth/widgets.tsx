@@ -357,7 +357,7 @@ export function CalendarPage({ date, palette, size }: { date: Date; palette: Pal
         <Text style={{ fontSize: size * 0.4, fontWeight: "800", color: "#2a2420", letterSpacing: -1, marginTop: -2 }}>
           {date.getDate()}
         </Text>
-        <Text style={{ fontSize: size * 0.11, color: "#857a72", fontWeight: "600", marginTop: -2 }}>
+        <Text style={{ fontSize: size * 0.11, color: "#726862", fontWeight: "600", marginTop: -2 }}>
           {date.toLocaleDateString(undefined, { weekday: "short" })}
         </Text>
       </View>

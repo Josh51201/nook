@@ -1,4 +1,5 @@
 import { Stack, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, View } from "react-native";
 
@@ -45,6 +46,8 @@ export default function SitterSheetForm() {
   const [wifiPassword, setWifiPassword] = useState("");
   const [text, setText] = useState<Record<LongKey, string>>({ bedtime: "", food: "", rules: "", places: "", codes: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ contacts, routine, address, doctorName, doctorPhone, wifiName, wifiPassword, text }, ready);
 
   useEffect(() => {
     if (ready || !data) return;
@@ -99,6 +102,7 @@ export default function SitterSheetForm() {
       return Alert.alert("Couldn't save", friendlyError(error));
     }
     tap("success");
+    allowLeave();
     router.back();
   }
 

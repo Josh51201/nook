@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { Text, TextInput } from "../../components/text";
@@ -51,6 +52,8 @@ export default function PotluckForm() {
   const [removedSlots, setRemovedSlots] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ burrowId, gatheringId, title, startsAt, place, notes, slots, removedSlots }, !isLoading);
 
   // First load: my Burrows, and whatever we're editing or planning for.
   useEffect(() => {
@@ -177,6 +180,7 @@ export default function PotluckForm() {
       }
 
       tap("success");
+      allowLeave();
       if (editing) router.back();
       else router.replace(`/potluck/${potluckId}`);
     } catch (error) {
@@ -195,7 +199,10 @@ export default function PotluckForm() {
         onPress: async () => {
           const { error } = await supabase.from("potlucks").delete().eq("id", params.potluckId!);
           if (error) Alert.alert("Couldn't delete it", friendlyError(error));
-          else router.dismissTo("/potluck");
+          else {
+            allowLeave();
+            router.dismissTo("/potluck");
+          }
         },
       },
     ]);

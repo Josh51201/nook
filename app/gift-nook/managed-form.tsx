@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { Text, TextInput } from "../../components/text";
@@ -18,6 +19,8 @@ export default function ManagedForm() {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ name }, true);
 
   useEffect(() => {
     supabase
@@ -52,7 +55,10 @@ export default function ManagedForm() {
     });
     setIsSaving(false);
     if (rpcError) setError(rpcError.message);
-    else router.replace(`/gift-nook/member/${data}`);
+    else {
+      allowLeave();
+      router.replace(`/gift-nook/member/${data}`);
+    }
   }
 
   return (

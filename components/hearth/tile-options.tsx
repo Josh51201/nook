@@ -5,6 +5,7 @@ import { Text, TextInput } from "../text";
 import { cornerChoices, liftChoices, tileShapes } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import {
+  canNudge,
   hollowDecors,
   hollowLookInfo,
   hollowLooks,
@@ -13,6 +14,7 @@ import {
   sizePresets,
   type HearthItem,
   type HollowItem,
+  type Nudge,
   type LabelItem,
   type NookItem,
   type Scope,
@@ -31,6 +33,7 @@ import { ColorPicker } from "./color-picker";
 import { SeasonPicker } from "./season-picker";
 import { TagsEditor } from "./tag-bar";
 import { IconPicker } from "./icon-picker";
+import { NudgePad } from "./nudge-pad";
 import { TrinketThumb } from "./trinket-art";
 
 type Editable = NookItem | LabelItem | HollowItem | TrinketItem;
@@ -56,6 +59,7 @@ export function ItemOptions({
   onMoveTo,
   copyTargets = [],
   onCopyTo,
+  onNudge,
 }: {
   item: Editable | null;
   onChange: (changes: Partial<HearthItem>) => void;
@@ -73,6 +77,8 @@ export function ItemOptions({
   // Places a copy could go (here, the Hearth, other Hollows).
   copyTargets?: MoveTarget[];
   onCopyTo?: (scope: Scope) => void;
+  // One step in a direction, for the arrow buttons (CORE-075).
+  onNudge?: (way: Nudge) => void;
 }) {
   const [text, setText] = useState("");
 
@@ -387,6 +393,7 @@ export function ItemOptions({
                 trackColor={{ true: colors.bark }}
               />
             </View>
+            {onNudge ? <NudgePad can={(way) => canNudge(shown, way)} onNudge={onNudge} at={shown} /> : null}
             {moveTargets.length && onMoveTo && shown.kind !== "hollow" ? (
               <>
                 <Text style={ui.label}>Move to</Text>

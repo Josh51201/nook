@@ -290,6 +290,23 @@ export default function HearthSettings() {
                 </Tap>
               );
             })}
+            <Text style={ui.muted}>
+              Turned on Bold Text in your phone's settings? Nook's words get bolder too.
+            </Text>
+          </Collapsible>
+          <Collapsible id="settings-touch" icon="wave" title="Touch" summary={layout.haptics ? "Vibrates on taps" : "No vibration"}>
+            <View style={[ui.row, { gap: 12 }]}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={ui.cardTitle}>Vibrate on taps</Text>
+                <Text style={ui.muted}>A tiny buzz when you tap, pick something up or finish a task.</Text>
+              </View>
+              <Switch
+                value={layout.haptics}
+                onValueChange={(haptics) => saveHearthChanges({ haptics })}
+                trackColor={{ true: colors.bark }}
+                accessibilityLabel="Vibrate on taps"
+              />
+            </View>
           </Collapsible>
         </>
       )}

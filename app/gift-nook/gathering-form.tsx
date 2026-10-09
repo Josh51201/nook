@@ -1,5 +1,6 @@
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Platform, View } from "react-native";
 import { Text, TextInput } from "../../components/text";
@@ -45,6 +46,8 @@ export default function GatheringForm() {
   const [isLoading, setIsLoading] = useState(Boolean(gatheringId));
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ burrowId, kind, title, date, honorees: [...honorees] }, !isLoading);
 
   // Editing: load what's there.
   useEffect(() => {
@@ -154,6 +157,7 @@ export default function GatheringForm() {
 
     setIsSaving(false);
     tap("success");
+    allowLeave();
     if (gatheringId) router.back();
     else router.replace(`/gift-nook/gathering/${id}`);
   }

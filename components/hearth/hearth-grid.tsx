@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { AccessibilityInfo, StyleSheet, View, type AccessibilityActionEvent } from "react-native";
 import { Text } from "../text";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -17,7 +17,18 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import { tap } from "../../lib/feedback";
 import { cornerRadius, liftLevel } from "../../lib/decor";
-import { COLUMNS, edgeScrollSpeed, minSize, rowsUsed, type GridRect, type HearthItem, type HollowItem } from "../../lib/hearth-layout";
+import {
+  canNudge,
+  COLUMNS,
+  edgeScrollSpeed,
+  itemSpokenName,
+  minSize,
+  rowsUsed,
+  type GridRect,
+  type HearthItem,
+  type HollowItem,
+  type Nudge,
+} from "../../lib/hearth-layout";
 import { Icon } from "../icon";
 import { Tap, useWiggle } from "../motion";
 import { nookRadii } from "./tile-face";
@@ -64,6 +75,7 @@ export function HearthGrid({
   shadowAt,
   dragScroll,
   onMove,
+  onNudge,
   onResize,
   onPressItem,
   onLongPress,
@@ -90,6 +102,8 @@ export function HearthGrid({
   shadowAt?: (level: 0 | 1 | 2 | 3) => string | undefined;
   dragScroll: DragScroll;
   onMove: (id: string, x: number, y: number) => void;
+  // One step in a direction, from a screen reader's actions (CORE-075).
+  onNudge?: (id: string, way: Nudge) => void;
   onResize: (id: string, w: number, h: number) => void;
   onPressItem: (item: HearthItem) => void;
   onLongPress: () => void;
@@ -218,6 +232,7 @@ export function HearthGrid({
           dragScroll={dragScroll}
           onPress={() => onPressItem(item)}
           onLongPress={onLongPress}
+          onNudge={onNudge ? (way) => onNudge(item.id, way) : undefined}
           onCopy={onCopy && item.kind !== "hollow" ? () => onCopy(item) : undefined}
           onTrashHover={(over) => onTrashHover?.(over)}
           onTrashArmed={(armed) => onTrashArmed?.(armed)}
@@ -333,6 +348,7 @@ function GridItem({
   dragScroll,
   onPress,
   onLongPress,
+  onNudge,
   onCopy,
   onTrash,
   onTrashHover,
@@ -359,6 +375,7 @@ function GridItem({
   dragScroll: DragScroll;
   onPress: () => void;
   onLongPress: () => void;
+  onNudge?: (way: Nudge) => void;
   onCopy?: () => void;
   onTrash: () => void;
   onTrashHover: (over: boolean) => void;
@@ -701,6 +718,7 @@ function GridItem({
         <Animated.View
           key={`${item.kind === "nook" ? (item.shape ?? "arch") : ""}-${item.corners ?? ""}-${shadow ?? ""}`}
           style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, wiggle]}
+          {...spokenAs(item, editing, { press, hold, nudge: onNudge })}
         >
           {children}
         </Animated.View>
@@ -822,3 +840,40 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 });
+
+// How a tile reads to a screen reader (CORE-075): its name as a button, and —
+// while arranging — actions to move it a step at a time (swipe up or down on
+// iPhone, or the actions menu on Android), since dragging can't be done by
+// touch-exploring. A widget with its own buttons inside (a checklist) keeps
+// them reachable one by one, except while arranging.
+const nudgeWays: Nudge[] = ["up", "down", "left", "right"];
+
+function spokenAs(
+  item: HearthItem,
+  editing: boolean,
+  { press, hold, nudge }: { press: () => void; hold: () => void; nudge?: (way: Nudge) => void }
+) {
+  if (item.kind === "widget" && !editing) return {};
+  const moves = editing && nudge ? nudgeWays.filter((way) => canNudge(item, way)) : [];
+  return {
+    accessible: true,
+    accessibilityRole: "button" as const,
+    accessibilityLabel: `${itemSpokenName(item)}${editing && item.locked ? ", locked" : ""}`,
+    accessibilityHint: editing ? "Double-tap for its options." : item.kind === "label" ? undefined : "Double-tap to open.",
+    accessibilityActions: [
+      { name: "activate" },
+      ...(editing ? [] : [{ name: "longpress", label: "Arrange your Hearth" }]),
+      ...moves.map((way) => ({ name: `move-${way}`, label: `Move ${way}` })),
+    ],
+    onAccessibilityAction: (event: AccessibilityActionEvent) => {
+      const name = event.nativeEvent.actionName;
+      if (name === "activate") press();
+      else if (name === "longpress") hold();
+      else if (name.startsWith("move-") && nudge) {
+        const way = name.slice(5) as Nudge;
+        nudge(way);
+        AccessibilityInfo.announceForAccessibility(`Moved ${way}`);
+      }
+    },
+  };
+}

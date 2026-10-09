@@ -107,6 +107,8 @@ export type HearthLayout = {
   font: FontKey;
   // How big text is across the app, except on the Hearth's own tiles (CORE-068).
   textSize: TextSizeKey;
+  // A little vibration on taps (CORE-075).
+  haptics: boolean;
   // Behind everything (CORE-041), and the weather in the air (CORE-047).
   wallpaper: Wallpaper;
   ambience: Ambience;
@@ -170,7 +172,7 @@ export const hearthThemes: Record<HearthThemeKey, HearthTheme> = {
     label: "Hearth",
     background: "#fbf7f2",
     text: "#222222",
-    muted: "#777777",
+    muted: "#6f6f6f",
     accent: "#8a5a3b",
     shade: "74, 44, 22",
     glow: "#f5b97c",
@@ -180,8 +182,8 @@ export const hearthThemes: Record<HearthThemeKey, HearthTheme> = {
     label: "Ember",
     background: "#fbefe4",
     text: "#3a2418",
-    muted: "#8a6a58",
-    accent: "#b0552d",
+    muted: "#7e6050",
+    accent: "#a04d29",
     shade: "110, 48, 20",
     glow: "#f49a5c",
     dark: false,
@@ -190,7 +192,7 @@ export const hearthThemes: Record<HearthThemeKey, HearthTheme> = {
     label: "Sage",
     background: "#eef3ea",
     text: "#23301f",
-    muted: "#6b7a64",
+    muted: "#606d5a",
     accent: "#4f6b45",
     shade: "38, 58, 32",
     glow: "#d9e3a4",
@@ -239,6 +241,7 @@ export const defaultHearthLayout: HearthLayout = {
   followPhone: true,
   font: "classic",
   textSize: "normal",
+  haptics: true,
   wallpaper: { kind: "none" },
   ambience: "off",
   customThemes: [],
@@ -588,6 +591,54 @@ export function nookLabel(item: NookItem) {
   return item.label?.trim() || findNook(item.nookId)?.title || "Nook";
 }
 
+// What a screen reader says for a tile (CORE-075): its name and what it is.
+export function itemSpokenName(item: HearthItem): string {
+  switch (item.kind) {
+    case "nook":
+      return nookLabel(item);
+    case "widget":
+      return `${item.widget.title?.trim() || widgetKindInfo(item.widget.kind).label}, widget`;
+    case "hollow":
+      return `${item.name}, Hollow`;
+    case "label":
+      return item.text;
+    case "trinket":
+      return `${trinketInfo(item.piece).label}, decoration`;
+  }
+}
+
+// Moving without dragging (CORE-075): one step in a direction, for the
+// arrow buttons and screen readers. Which ways it can go from where it is.
+export type Nudge = "up" | "down" | "left" | "right";
+
+const nudgeSteps: Record<Nudge, { dx: number; dy: number }> = {
+  up: { dx: 0, dy: -1 },
+  down: { dx: 0, dy: 1 },
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
+};
+
+export function canNudge(item: GridRect & { locked?: boolean }, way: Nudge): boolean {
+  if (item.locked) return false;
+  if (way === "up") return item.y > 0;
+  if (way === "left") return item.x > 0;
+  if (way === "right") return item.x + item.w < COLUMNS;
+  return true;
+}
+
+// Where one step that way lands (unchanged if it can't go).
+export function nudgedSpot(item: GridRect & { locked?: boolean }, way: Nudge): { x: number; y: number } {
+  if (!canNudge(item, way)) return { x: item.x, y: item.y };
+  return { x: item.x + nudgeSteps[way].dx, y: item.y + nudgeSteps[way].dy };
+}
+
+export function nudgeItem(layout: HearthLayout, id: string, way: Nudge): HearthItem[] {
+  const item = layout.items.find((other) => other.id === id);
+  if (!item || !canNudge(item, way)) return layout.items;
+  const spot = nudgedSpot(item, way);
+  return moveItem(layout, id, spot.x, spot.y);
+}
+
 function trinketColorFallback(item: TrinketItem) {
   return trinketInfo(item.piece).color;
 }
@@ -626,6 +677,7 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
     followPhone: saved.followPhone ?? defaultHearthLayout.followPhone,
     font: saved.font ?? defaultHearthLayout.font,
     textSize: saved.textSize ?? defaultHearthLayout.textSize,
+    haptics: saved.haptics ?? defaultHearthLayout.haptics,
     wallpaper: saved.wallpaper ?? defaultHearthLayout.wallpaper,
     ambience: saved.ambience ?? defaultHearthLayout.ambience,
     customThemes: saved.customThemes ?? defaultHearthLayout.customThemes,

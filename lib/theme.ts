@@ -48,7 +48,7 @@ export const palettes: Record<string, Palette> = {
     background: "#fbf7f2",
     surface: "#ffffff",
     text: "#2a2420",
-    muted: "#857a72",
+    muted: "#726862", // CORE-075: darker so it passes 4.5:1
     border: "#ece4dc",
     error: "#c0392b",
     white: "#ffffff",
@@ -61,13 +61,13 @@ export const palettes: Record<string, Palette> = {
   },
   ember: {
     dark: false,
-    bark: "#b0552d",
+    bark: "#a04d29", // CORE-075: a shade deeper so it reads on tinted chips
     barkSoft: "#f7e0d0",
     cream: "#f8e6d8",
     background: "#fbefe4",
     surface: "#fffaf6",
     text: "#3a2418",
-    muted: "#8a6a58",
+    muted: "#7e6050",
     border: "#f0dccc",
     error: "#c0392b",
     white: "#ffffff",
@@ -86,7 +86,7 @@ export const palettes: Record<string, Palette> = {
     background: "#eef3ea",
     surface: "#fbfdf9",
     text: "#23301f",
-    muted: "#6b7a64",
+    muted: "#606d5a",
     border: "#dce5d4",
     error: "#b83a2e",
     white: "#ffffff",
@@ -210,6 +210,19 @@ export function applyTextSize(key: TextSizeKey) {
 
 export function currentTextScale() {
   return textScale;
+}
+
+// The phone's Bold Text setting (iPhone), for our own fonts (CORE-075).
+let boldText = false;
+
+export function applyBoldText(on: boolean) {
+  if (on === boldText) return;
+  boldText = on;
+  if (font !== "classic") bump();
+}
+
+export function currentBoldText() {
+  return boldText;
 }
 
 export function fontsAreReady() {

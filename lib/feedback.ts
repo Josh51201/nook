@@ -2,10 +2,18 @@ import * as Haptics from "expo-haptics";
 
 // Small touches of feedback used across Nooks.
 
+// Vibrate on taps can be switched off in Settings (CORE-075).
+let hapticsOn = true;
+
+export function setHaptics(on: boolean) {
+  hapticsOn = on;
+}
+
 // A gentle tap on the phone for things that "land": tucking a gift, picking
 // up a Hearth tile, marking something bought. Never throws — some devices
 // (and simulators) have no haptics.
 export function tap(kind: "light" | "success" = "light") {
+  if (!hapticsOn) return;
   const run =
     kind === "success"
       ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)

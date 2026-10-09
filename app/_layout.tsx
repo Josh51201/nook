@@ -9,6 +9,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ThemeGate, themedScreenLayout } from "../components/themed-screen";
 import { HelpButton } from "../components/help-button";
+import { OfflineNotice } from "../components/offline-notice";
 import { TourProvider } from "../components/tour";
 import { AuthProvider } from "../lib/auth-context";
 import { configureReminders } from "../lib/reminders";
@@ -39,6 +40,7 @@ export default function RootLayout() {
               {/* Up here so the tour can be replayed from any screen (Help). */}
               <TourProvider>
                 <RootStack />
+                <OfflineNotice />
               </TourProvider>
             </ThemeGate>
           </AuthProvider>

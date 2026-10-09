@@ -88,6 +88,21 @@ export function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+// The color nudged darker (on light backgrounds) or lighter (on dark ones)
+// until it reads clearly on every one of `backgrounds` — 4.5:1, the usual
+// bar for everyday text (CORE-075). A color that already passes is unchanged.
+export function readableOn(fg: string, backgrounds: string[], min = 4.5): string {
+  const { h, s, l } = hexToHsl(fg);
+  const onDark = luminance(backgrounds[0]) < 0.25;
+  let out = fg;
+  let lightness = l;
+  for (let i = 0; i < 100 && Math.min(...backgrounds.map((b) => contrast(out, b))) < min; i++) {
+    lightness = clamp(lightness + (onDark ? 0.01 : -0.01), 0, 1);
+    out = hslToHex(h, s, lightness);
+  }
+  return out;
+}
+
 // Is it a color we can show (a "#rgb" or "#rrggbb")? Saved settings are only
 // ever our own, but a bad value should never crash a screen.
 export function isHex(value: unknown): value is string {

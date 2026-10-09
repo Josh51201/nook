@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../components/leave-guard";
 import { useState } from "react";
 import { Alert, useColorScheme, View } from "react-native";
 
@@ -33,6 +34,8 @@ export default function ThemeEditor() {
 
   const [draft, setDraft] = useState<CustomTheme | null>(null);
   const [saving, setSaving] = useState(false);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard(draft, draft !== null);
 
   if (isLoading) return <LoadingScreen />;
   if (id && !existing && !draft) {
@@ -83,6 +86,7 @@ export default function ThemeEditor() {
         ...(phoneIsDark && layout.followPhone && !clean.dark ? { followPhone: false } : {}),
       });
       tap("success");
+      allowLeave();
       router.back();
     } catch (error) {
       setSaving(false);
@@ -106,6 +110,7 @@ export default function ThemeEditor() {
               theme: layout.theme === existing!.id ? "hearth" : layout.theme,
               seasonal: { ...layout.seasonal, ...cleaned },
             });
+            allowLeave();
             router.back();
           } catch (error) {
             Alert.alert("Couldn't delete it", (error as Error).message);

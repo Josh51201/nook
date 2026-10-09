@@ -91,6 +91,8 @@ const icons = {
   gamepad: { ios: "gamecontroller.fill", android: "sports_esports" },
   arrowUp: { ios: "arrow.up", android: "arrow_upward" },
   arrowDown: { ios: "arrow.down", android: "arrow_downward" },
+  arrowLeft: { ios: "arrow.left", android: "arrow_back" },
+  arrowRight: { ios: "arrow.right", android: "arrow_forward" },
   drag: { ios: "hand.draw.fill", android: "drag_indicator" },
   resize: { ios: "arrow.up.left.and.arrow.down.right", android: "open_in_full" },
   text: { ios: "textformat", android: "title" },

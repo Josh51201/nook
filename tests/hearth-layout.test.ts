@@ -19,6 +19,9 @@ import {
   resizeItem,
   rowsUsed,
   starterItems,
+  canNudge,
+  itemSpokenName,
+  nudgeItem,
   type HearthItem,
   type HearthLayout,
 } from "../lib/hearth-layout";
@@ -354,5 +357,42 @@ describe("starterItems", () => {
   it("leaves the default layout empty, so an existing empty Hearth stays empty", () => {
     expect(defaultHearthLayout.items).toEqual([]);
     expect(migrateLayout({ items: [] }).items).toEqual([]);
+  });
+});
+
+describe("moving without dragging", () => {
+  const tile = (x: number, y: number, extra: Partial<HearthItem> = {}) =>
+    ({ id: "t", kind: "nook", nookId: "gift-nook", x, y, w: 2, h: 2, ...extra }) as HearthItem;
+
+  it("knows which ways a tile can go", () => {
+    expect(canNudge(tile(0, 0), "up")).toBe(false);
+    expect(canNudge(tile(0, 0), "left")).toBe(false);
+    expect(canNudge(tile(0, 0), "right")).toBe(true);
+    expect(canNudge(tile(2, 0), "right")).toBe(false);
+    expect(canNudge(tile(0, 0), "down")).toBe(true);
+    expect(canNudge(tile(1, 1, { locked: true }), "down")).toBe(false);
+  });
+
+  it("moves one step, and pushes anything in the way down", () => {
+    const layout: HearthLayout = {
+      ...defaultHearthLayout,
+      items: [tile(0, 0), { id: "o", kind: "nook", nookId: "potluck", x: 2, y: 0, w: 2, h: 2 } as HearthItem],
+    };
+    const items = nudgeItem(layout, "t", "right");
+    const moved = items.find((i) => i.id === "t")!;
+    const other = items.find((i) => i.id === "o")!;
+    expect(moved.x).toBe(1);
+    expect(overlaps(moved, other)).toBe(false);
+  });
+
+  it("does nothing when it can't go that way", () => {
+    const layout: HearthLayout = { ...defaultHearthLayout, items: [tile(0, 0)] };
+    expect(nudgeItem(layout, "t", "up")).toBe(layout.items);
+  });
+
+  it("gives every kind of tile a spoken name", () => {
+    expect(itemSpokenName(tile(0, 0))).toBe("Gift Nook");
+    expect(itemSpokenName({ id: "h", kind: "hollow", name: "Kids", look: "house", x: 0, y: 0, w: 1, h: 1, items: [] } as unknown as HearthItem)).toBe("Kids, Hollow");
+    expect(itemSpokenName({ id: "w", kind: "widget", widget: defaultWidget("clock"), x: 0, y: 0, w: 2, h: 2 } as HearthItem)).toContain("widget");
   });
 });

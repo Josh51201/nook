@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, View } from "react-native";
 
@@ -26,6 +27,8 @@ export default function ThanksForm() {
   const [fromName, setFromName] = useState("");
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ what, contactId, fromName }, existing !== undefined);
 
   useEffect(() => {
     if (!params.id) return;
@@ -69,6 +72,7 @@ export default function ThanksForm() {
       return Alert.alert("Couldn't save", friendlyError(error));
     }
     tap("success");
+    allowLeave();
     router.back();
   }
 
@@ -81,6 +85,7 @@ export default function ThanksForm() {
         onPress: async () => {
           const { error } = await supabase.from("letterbox_thanks").delete().eq("id", existing!.id);
           if (error) return Alert.alert("Couldn't remove it", friendlyError(error));
+          allowLeave();
           router.back();
         },
       },

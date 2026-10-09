@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { useLeaveGuard } from "./leave-guard";
 import { Text, TextInput } from "./text";
 import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 
@@ -43,6 +44,8 @@ export function ProfileForm({
   const [bio, setBio] = useState(initial?.bio ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave, blockLeave } = useLeaveGuard({ name, icon, color, birthday, bio });
 
   async function submit() {
     const trimmed = name.trim();
@@ -50,6 +53,8 @@ export function ProfileForm({
     if (trimmed.includes("@")) return setError("Use your name here, not your email address.");
     setIsSaving(true);
     setError(null);
+    // Saving may leave the screen; only ask again if it didn't work.
+    allowLeave();
     const message = await onSubmit({
       display_name: trimmed,
       avatar_icon: icon,
@@ -58,7 +63,10 @@ export function ProfileForm({
       bio: bio.trim() || null,
     });
     setIsSaving(false);
-    if (message) setError(message);
+    if (message) {
+      blockLeave();
+      setError(message);
+    }
   }
 
   return (

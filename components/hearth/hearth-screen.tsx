@@ -59,6 +59,7 @@ import {
   itemColor,
   locate,
   moveItem,
+  nudgeItem,
   moveToScope,
   newItemId,
   tidyItems,
@@ -1484,6 +1485,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   accent={theme.accent}
                   shadowAt={(level) => shadowAtLevel(themeKey, level)}
                   onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
+                  onNudge={(id, way) => persistHere((inner) => nudgeItem(inner, id, way))}
                   onResize={(id, w, h) => persistHere((inner) => resizeItem(inner, id, w, h))}
                   onDropIntoHollow={
                     scope
@@ -1645,6 +1647,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         item={optionsItem}
         onChange={(changes) => optionsFor && persistHere((inner) => updateItem(inner, optionsFor, changes))}
         onResize={(w, h) => optionsFor && persistHere((inner) => resizeItem(inner, optionsFor, w, h))}
+        onNudge={(way) => optionsFor && persistHere((inner) => nudgeItem(inner, optionsFor, way))}
         onOpen={
           optionsItem?.kind === "nook"
             ? () => {

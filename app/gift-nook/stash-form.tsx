@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, View } from "react-native";
 
@@ -34,6 +35,8 @@ export default function StashForm() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ aboutId, kind, title, notes, url, price }, !isLoading);
 
   useEffect(() => {
     if (!userId) return;
@@ -82,6 +85,7 @@ export default function StashForm() {
     setIsSaving(false);
     if (saveError) return setError(friendlyError(saveError));
     tap("success");
+    allowLeave();
     router.back();
   }
 
@@ -94,7 +98,10 @@ export default function StashForm() {
         onPress: async () => {
           const { error: removeError } = await supabase.from("idea_stash").delete().eq("id", ideaId!);
           if (removeError) setError(friendlyError(removeError));
-          else router.back();
+          else {
+            allowLeave();
+            router.back();
+          }
         },
       },
     ]);

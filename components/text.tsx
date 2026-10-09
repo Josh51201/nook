@@ -1,8 +1,8 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { StyleSheet, Text as RNText, TextInput as RNTextInput, type TextInputProps, type TextProps } from "react-native";
 
-import { familyFor, weightOf } from "../lib/fonts";
-import { currentFont, currentTextScale } from "../lib/theme";
+import { boldened, familyFor, weightOf } from "../lib/fonts";
+import { currentBoldText, currentFont, currentTextScale } from "../lib/theme";
 import { scaledType } from "../lib/text-size";
 
 // Text and TextInput for the whole app, in the chosen font (CORE-035) and
@@ -46,7 +46,10 @@ export function Text({ style, ...props }: TextProps) {
     const weight = asked === undefined && parent !== null ? parent : weightOf(asked);
     text = (
       <ParentWeight.Provider value={weight}>
-        <RNText {...props} style={[sized, { fontFamily: familyFor(font, weight) ?? undefined, fontWeight: "normal" }]} />
+        <RNText
+          {...props}
+          style={[sized, { fontFamily: familyFor(font, boldened(weight, currentBoldText())) ?? undefined, fontWeight: "normal" }]}
+        />
       </ParentWeight.Provider>
     );
   }
@@ -61,6 +64,9 @@ export function TextInput({ style, ...props }: TextInputProps) {
   if (font === "classic") return <RNTextInput {...props} style={sized} />;
   const weight = weightOf(flat?.fontWeight);
   return (
-    <RNTextInput {...props} style={[sized, { fontFamily: familyFor(font, weight) ?? undefined, fontWeight: "normal" }]} />
+    <RNTextInput
+      {...props}
+      style={[sized, { fontFamily: familyFor(font, boldened(weight, currentBoldText())) ?? undefined, fontWeight: "normal" }]}
+    />
   );
 }

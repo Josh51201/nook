@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, Switch, View } from "react-native";
 import { Text, TextInput } from "../../components/text";
@@ -53,6 +54,8 @@ export default function RecipeForm() {
   const [newShelf, setNewShelf] = useState("");
   const [isPrivate, setIsPrivate] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ title, servings, prep, cookTime, ingredients, steps, notes, imageUrl, tags, shelves, isPrivate }, !isLoading);
 
   useEffect(() => {
     if (!userId) return;
@@ -213,6 +216,7 @@ export default function RecipeForm() {
     setSaving(false);
     if (error) return Alert.alert("Couldn't save the recipe", friendlyError(error));
     tap("success");
+    allowLeave();
     if (editing) router.back();
     else router.replace(`/recipes/${id}`);
   }
@@ -226,6 +230,7 @@ export default function RecipeForm() {
         onPress: async () => {
           const { error } = await deleteRecipe(params.id!);
           if (error) return Alert.alert("Couldn't delete it", friendlyError(error));
+          allowLeave();
           router.dismissTo("/recipes");
         },
       },

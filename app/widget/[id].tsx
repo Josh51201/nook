@@ -12,10 +12,12 @@ import { allTags } from "../../lib/hearth-tags";
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
 import { IconPicker } from "../../components/hearth/icon-picker";
 import { PlacePicker } from "../../components/hearth/place-picker";
+import { NudgePad } from "../../components/hearth/nudge-pad";
 import { WidgetView } from "../../components/hearth/widgets";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { Collapsible } from "../../components/collapsible";
 import { DateField } from "../../components/date-field";
 import { Banner, Button, Chip, EmptyState } from "../../components/ui";
@@ -39,7 +41,10 @@ import {
   hollowsOf,
   inScope,
   locate,
+  canNudge,
+  moveItem,
   moveToScope,
+  nudgedSpot,
   removeItem,
   resizeItem,
   sizePresets,
@@ -86,6 +91,8 @@ export default function WidgetEditor() {
 
   const [draft, setDraft] = useState<WidgetItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ draft, livesIn }, Boolean(draft));
 
   useEffect(() => {
     if (original && !draft) setDraft(original);
@@ -145,6 +152,10 @@ export default function WidgetEditor() {
       if (draft.w !== original.w || draft.h !== original.h) {
         items = inScope({ ...layout, items }, home, (inner) => resizeItem(inner, draft.id, draft.w, draft.h));
       }
+      // Moved with the arrows (CORE-075).
+      if (draft.x !== original.x || draft.y !== original.y) {
+        items = inScope({ ...layout, items }, home, (inner) => moveItem(inner, draft.id, draft.x, draft.y));
+      }
       // Moving it to the Hearth or another Hollow.
       if (livesIn !== undefined && livesIn !== home) {
         items = moveToScope({ ...layout, items }, draft.id, livesIn);
@@ -174,6 +185,7 @@ export default function WidgetEditor() {
         if (removed.length) pending.then(() => removeUnusedPhotos(removed, { ...layout, items })).catch(() => {});
       }
       tap("success");
+      allowLeave();
       if (stackedId) router.replace({ pathname: "/widget/[id]", params: { id: stackedId, stacked: "1" } });
       else if (copyId) router.replace({ pathname: "/widget/[id]", params: { id: copyId, copied: "1" } });
       else router.back();
@@ -197,6 +209,7 @@ export default function WidgetEditor() {
         onPress: () => {
           if (original?.widget.kind === "reminders") cancelReminders(original.widget.settings.items);
           const pending = save({ items: inScope(layout, home, (inner) => removeItem(inner, id)) });
+          allowLeave();
           router.back();
           pending.catch((error: Error) => Alert.alert("Couldn't remove it", error.message));
         },
@@ -362,6 +375,7 @@ export default function WidgetEditor() {
         <Text style={ui.muted}>Or drag its corner on the Hearth for any size.</Text>
         <SwitchRow label="Lock in place" value={Boolean(draft.locked)} onChange={(locked) => setDraft({ ...draft, locked: locked || undefined })} />
         <Text style={ui.muted}>Can't be dragged, resized or removed until you unlock it.</Text>
+        <NudgePad can={(way) => canNudge(draft, way)} onNudge={(way) => setDraft({ ...draft, ...nudgedSpot(draft, way) })} at={draft} />
         {hollowsOf(layout).length ? (
           <>
             <Text style={ui.label}>Where it lives</Text>

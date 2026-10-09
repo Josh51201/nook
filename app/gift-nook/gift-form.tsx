@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, Image, Switch, View } from "react-native";
 import { Text, TextInput } from "../../components/text";
@@ -45,6 +46,8 @@ export default function GiftForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [isFetchingPreview, setIsFetchingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ shelfId, title, url, imageUrl, notes, isRepeatable, isMostWanted, price, details }, !isLoading);
 
   useEffect(() => {
     if (!userId) return;
@@ -193,6 +196,7 @@ export default function GiftForm() {
     if (saveError) setError(friendlyError(saveError));
     else {
       tap("success");
+      allowLeave();
       router.back();
     }
   }
@@ -211,7 +215,10 @@ export default function GiftForm() {
           onPress: async () => {
             const { error: deleteError } = await supabase.rpc("remove_gift", { target_gift: giftId });
             if (deleteError) setError(friendlyError(deleteError));
-            else router.back();
+            else {
+              allowLeave();
+              router.back();
+            }
           },
         },
       ]

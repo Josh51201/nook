@@ -38,6 +38,12 @@ export function weightOf(weight: string | number | undefined): number {
 }
 
 // The font file for a weight, or null to use the phone's own font.
+// With the phone's Bold Text setting on (iPhone), our own fonts go two steps
+// heavier, the way the phone's font does by itself (CORE-075).
+export function boldened(weight: number, bold: boolean): number {
+  return bold ? Math.min(900, weight + 200) : weight;
+}
+
 export function familyFor(font: FontKey, weight: number): string | null {
   if (font === "classic") return null;
   // Storybook: Fraunces for headings (semi-bold and up), Nunito for the rest.

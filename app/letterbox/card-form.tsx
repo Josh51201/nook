@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -38,6 +39,8 @@ export default function CardForm() {
   const [photo, setPhoto] = useState<Photo>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ contactId, direction, occasion, date, note, photo }, ready);
 
   useEffect(() => {
     if (ready || !data) return;
@@ -110,6 +113,7 @@ export default function CardForm() {
       if (error) throw error;
       if (existing?.photo_path && existing.photo_path !== photoPath) removeCardPhoto(existing.photo_path);
       tap("success");
+      allowLeave();
       router.back();
     } catch (error) {
       setSaving(false);
@@ -127,6 +131,7 @@ export default function CardForm() {
           const { error } = await supabase.from("letterbox_cards").delete().eq("id", existing!.id);
           if (error) return Alert.alert("Couldn't remove it", friendlyError(error));
           removeCardPhoto(existing!.photo_path);
+          allowLeave();
           router.back();
         },
       },

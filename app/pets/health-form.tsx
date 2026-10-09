@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, View } from "react-native";
 
@@ -32,6 +33,8 @@ export default function HealthForm() {
   const [repeat, setRepeat] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ kind, title, dueOn, repeat, notes }, ready);
 
   useEffect(() => {
     if (ready || !data) return;
@@ -69,6 +72,7 @@ export default function HealthForm() {
       return Alert.alert("Couldn't save", friendlyError(error));
     }
     tap("success");
+    allowLeave();
     router.back();
   }
 
@@ -81,6 +85,7 @@ export default function HealthForm() {
         onPress: async () => {
           const { error } = await supabase.from("pet_health").delete().eq("id", existing!.id);
           if (error) return Alert.alert("Couldn't remove it", friendlyError(error));
+          allowLeave();
           router.back();
         },
       },

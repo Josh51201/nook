@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { familyFor, fontFiles, weightOf } from "../lib/fonts";
+import { boldened, familyFor, fontFiles, weightOf } from "../lib/fonts";
 
 describe("fonts (CORE-035)", () => {
   it("reads any way of writing a weight", () => {
@@ -32,5 +32,13 @@ describe("fonts (CORE-035)", () => {
         expect(fontFiles).toContain(familyFor(font, weight));
       }
     }
+  });
+});
+
+describe("boldened (CORE-075)", () => {
+  it("goes two steps heavier when the phone's Bold Text is on, up to the heaviest", () => {
+    expect(boldened(400, true)).toBe(600);
+    expect(boldened(800, true)).toBe(900);
+    expect(boldened(600, false)).toBe(600);
   });
 });

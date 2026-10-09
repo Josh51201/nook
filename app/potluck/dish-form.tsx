@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLeaveGuard } from "../../components/leave-guard";
 import { useEffect, useState } from "react";
 import { Alert, View } from "react-native";
 import { Text, TextInput } from "../../components/text";
@@ -37,6 +38,8 @@ export default function DishForm() {
   const [myRecipes, setMyRecipes] = useState<{ id: string; title: string; tags: string[]; ingredients: string[]; shelves: string[] }[]>([]);
   const [recipeQuery, setRecipeQuery] = useState("");
   const [saving, setSaving] = useState(false);
+  // Leaving with unsaved changes asks first (CORE-075).
+  const { allowLeave } = useLeaveGuard({ name, slotId, tags, note, recipeId }, !isLoading);
 
   useEffect(() => {
     if (!userId) return;
@@ -109,6 +112,7 @@ export default function DishForm() {
     setSaving(false);
     if (error) return Alert.alert("Couldn't save your dish", friendlyError(error));
     tap("success");
+    allowLeave();
     router.back();
   }
 
@@ -121,7 +125,10 @@ export default function DishForm() {
         onPress: async () => {
           const { error } = await supabase.from("potluck_dishes").delete().eq("id", params.dishId!);
           if (error) Alert.alert("Couldn't remove it", friendlyError(error));
-          else router.back();
+          else {
+            allowLeave();
+            router.back();
+          }
         },
       },
     ]);
