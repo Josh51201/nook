@@ -6,6 +6,7 @@ import { boldened, labelFamily } from "../../lib/fonts";
 import { deepColor, labelIsBold, type LabelItem } from "../../lib/hearth-layout";
 import {
   decorInset,
+  decorMinHeight,
   decorMinWidth,
   estimateMeasure,
   fitLabel,
@@ -85,7 +86,7 @@ export function LabelFace({
   const vJustify = valign === "top" ? "flex-start" : valign === "middle" ? "center" : "flex-end";
   // A little breathing room from the edge it sits against.
   const vPad = { paddingTop: valign === "top" ? 2 : 0, paddingBottom: valign === "bottom" ? 2 : 0 };
-  const inset = decorInset(decor, fontSize, fit.snug, fit.padding);
+  const inset = decorInset(decor, fontSize, fit.snug);
 
   // Measures each word (and a space) once, out of sight. Until that's back,
   // the fit uses a guess from the letters.
@@ -156,7 +157,7 @@ export function LabelFace({
     <View style={{ width, height, justifyContent: vJustify, paddingHorizontal: SIDE_PAD, ...vPad }}>
       {measurer}
       <View style={{ flexDirection: "row", justifyContent: justify }}>
-        <Decorated decor={decor} tint={tint} soft={item.color} accent={theme.accent} inset={inset} minWidth={decorMinWidth(item, width)}>
+        <Decorated decor={decor} tint={tint} soft={item.color} accent={theme.accent} inset={inset} minWidth={decorMinWidth(item, width)} minHeight={decorMinHeight(item, height)}>
           {shown}
         </Decorated>
       </View>
@@ -174,6 +175,7 @@ function Decorated({
   accent,
   inset,
   minWidth,
+  minHeight,
   children,
 }: {
   decor: NonNullable<LabelItem["decor"]>;
@@ -184,17 +186,19 @@ function Decorated({
   // Stretched across its space (CORE-078); the words keep their own line-up
   // inside it.
   minWidth: number;
+  // Stretched up and down (CORE-081), with the words in the middle.
+  minHeight: number;
   children: React.ReactNode;
 }) {
   const [box, setBox] = useState({ w: 0, h: 0 });
   const fill = soft ?? `${accent}24`;
-  const pad = { paddingHorizontal: inset.padX, paddingVertical: inset.padY, minWidth };
+  const pad = { paddingHorizontal: inset.padX, paddingVertical: inset.padY, minWidth, minHeight, justifyContent: "center" } as const;
 
   switch (decor) {
     case "underline": {
       const thick = Math.max(2, inset.outerY * 0.55);
       return (
-        <View style={{ flexShrink: 1, alignItems: "stretch", ...pad }}>
+        <View style={{ flexShrink: 1, alignItems: "stretch", minWidth }}>
           {children}
           <View style={{ height: thick, borderRadius: thick, marginTop: inset.outerY - thick, backgroundColor: `${tint}55`, marginHorizontal: 2 }} />
         </View>
@@ -267,7 +271,7 @@ function Decorated({
     }
     case "flourish":
       return (
-        <View style={{ flexShrink: 1, flexDirection: "row", alignItems: "center", gap: inset.gap, ...pad }}>
+        <View style={{ flexShrink: 1, flexDirection: "row", alignItems: "center", gap: inset.gap, minWidth }}>
           <Icon name="sparkles" size={inset.icon} color={`${tint}aa`} />
           {/* Stretched, the sparkles go out to the ends. */}
           <View style={{ flexShrink: 1, flexGrow: minWidth ? 1 : 0 }}>{children}</View>
@@ -275,6 +279,6 @@ function Decorated({
         </View>
       );
     default:
-      return <View style={{ flexShrink: 1, ...pad }}>{children}</View>;
+      return <View style={{ flexShrink: 1 }}>{children}</View>;
   }
 }

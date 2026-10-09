@@ -23,9 +23,6 @@ export type Fit = {
   fits: boolean;
   // The decoration had to tighten up to make room (decorInset).
   snug: boolean;
-  // Padding around the words, in points: what you asked for, or less if
-  // the space was too tight for it (CORE-080).
-  padding: number;
 };
 
 // The room a decoration takes around the text, at a font size: padding on
@@ -35,13 +32,7 @@ export type Fit = {
 // used only when the text can't fit otherwise (a narrow space).
 export type Inset = { padX: number; padY: number; outerX: number; outerY: number; tail: number; icon: number; gap: number };
 
-export function decorInset(decor: LabelDecor | undefined, fontSize: number, snug = false, padding = 0): Inset {
-  // Padding you added (CORE-080) goes on all four sides of the words.
-  const base = shapeInset(decor, fontSize, snug);
-  return { ...base, padX: base.padX + padding, padY: base.padY + padding };
-}
-
-function shapeInset(decor: LabelDecor | undefined, fontSize: number, snug: boolean): Inset {
+export function decorInset(decor: LabelDecor | undefined, fontSize: number, snug = false): Inset {
   const none = { padX: 0, padY: 0, outerX: 0, outerY: 0, tail: 0, icon: 0, gap: 0 };
   const padY = Math.max(2, fontSize * 0.14);
   const k = snug ? 0.6 : 1;
@@ -78,8 +69,6 @@ export type FitRules = {
   decor?: LabelDecor;
   // Width kept free beside the text (a divider's line and arrow).
   reserve?: number;
-  // Padding asked for around the words, in points (CORE-080).
-  padding?: number;
 };
 
 // How many lines the words wrap onto at this size, or Infinity if a single
@@ -107,39 +96,29 @@ export const SIDE_PAD = 4;
 const SLACK = 0.96;
 
 export function fitText(m: TextMeasure, box: { width: number; height: number }, rules: FitRules): Fit {
-  const asked = rules.padding ?? 0;
-  const decorated = Boolean(rules.decor && rules.decor !== "none");
-  // Padding gives way before the words do: the full amount, then half, then
-  // none; and only then does a decoration tighten up.
-  const tries: [number, boolean][] = [[asked, false]];
-  if (asked > 0) tries.push([asked / 2, false], [0, false]);
-  if (decorated) tries.push([0, true]);
-  let first: Fit | null = null;
-  for (const [padding, snug] of tries) {
-    const fit = fitWith(m, box, rules, snug, padding);
-    if (fit.fits) return fit;
-    // Nothing fits: show it at its smallest without the extras, with "…".
-    if (padding === 0 && !snug) first = fit;
-  }
-  return first ?? fitWith(m, box, rules, false, 0);
+  const roomy = fitWith(m, box, rules, false);
+  if (roomy.fits || !rules.decor || rules.decor === "none") return roomy;
+  // Too tight with the decoration's usual padding: try it snug.
+  const snug = fitWith(m, box, rules, true);
+  return snug.fits ? snug : roomy;
 }
 
-function fitWith(m: TextMeasure, box: { width: number; height: number }, rules: FitRules, snug: boolean, padding: number): Fit {
+function fitWith(m: TextMeasure, box: { width: number; height: number }, rules: FitRules, snug: boolean): Fit {
   const top = Math.max(rules.min, rules.max);
   let last: Fit | null = null;
   for (let step = top; step > rules.min - 0.5; step -= Math.max(0.5, step * 0.02)) {
     // The last try is the smallest size exactly.
     const size = Math.max(rules.min, step);
-    const inset = decorInset(rules.decor, size, snug, padding);
+    const inset = decorInset(rules.decor, size, snug);
     const lineWidth = (box.width - SIDE_PAD * 2 - inset.padX * 2 - inset.outerX - (rules.reserve ?? 0)) * SLACK;
     const height = box.height - inset.padY * 2 - inset.outerY;
     const room = Math.min(rules.maxLines, Math.floor(height / (size * rules.lineHeight) + 0.001));
-    last = { fontSize: size, lines: Math.max(1, room), room: Math.max(1, room), fits: false, snug, padding };
+    last = { fontSize: size, lines: Math.max(1, room), room: Math.max(1, room), fits: false, snug };
     if (room < 1 || lineWidth <= 0) continue;
     const lines = wrapCount(m, size, lineWidth);
-    if (lines <= room) return { fontSize: size, lines, room, fits: true, snug, padding };
+    if (lines <= room) return { fontSize: size, lines, room, fits: true, snug };
   }
-  return last ?? { fontSize: rules.min, lines: 1, room: 1, fits: false, snug, padding };
+  return last ?? { fontSize: rules.min, lines: 1, room: 1, fits: false, snug };
 }
 
 // Text half a row tall (or so) is "slim": one line, centred in its space.
@@ -186,24 +165,15 @@ export function labelRules(
 // lines are right.
 export function fitLabel(
   m: TextMeasure,
-  item: Pick<LabelItem, "size" | "decor" | "font" | "divider" | "padding">,
+  item: Pick<LabelItem, "size" | "decor" | "font" | "divider">,
   box: { width: number; height: number },
   options: { fontScale?: number; reserve?: number } = {}
 ): Fit & { lineHeight: number } {
-  const rules = { ...labelRules(item, box, options.fontScale), reserve: options.reserve, padding: labelPadding(item, box) };
+  const rules = { ...labelRules(item, box, options.fontScale), reserve: options.reserve };
   const fill = fitText(m, box, rules);
   const share = labelFill[item.size].share;
   const fit = share === 1 || !fill.fits ? fill : fitText(m, box, { ...rules, max: Math.max(rules.min, fill.fontSize * share) });
   return { ...fit, lineHeight: rules.lineHeight };
-}
-
-// Padding around the words, in points (CORE-080): the slider goes from none
-// to about a third of the space's shorter side, split between the two sides.
-// A divider has none.
-export function labelPadding(item: Pick<LabelItem, "padding" | "divider">, box: { width: number; height: number }): number {
-  if (item.divider) return 0;
-  const amount = Math.min(1, Math.max(0, item.padding ?? 0));
-  return amount * Math.min(box.width, box.height) * 0.16;
 }
 
 // A rough measure from the letters alone, used for the first moment before
@@ -232,4 +202,20 @@ export function decorMinWidth(item: Pick<LabelItem, "span" | "decor" | "divider"
   if (item.divider || !item.decor || item.decor === "none") return 0;
   const span = Math.min(1, Math.max(0, item.span ?? 0));
   return span * Math.max(0, width - SIDE_PAD * 2);
+}
+
+// Decorations with a shape that can be stretched up and down (CORE-081). An
+// underline or a flourish has nothing to make taller.
+export function decorStretchesTall(decor: LabelDecor | undefined): boolean {
+  return decor === "pill" || decor === "stitched" || decor === "ribbon" || decor === "sign";
+}
+
+// How tall the decoration is drawn (CORE-081): at least `spanY` of the space
+// from top to bottom. The words keep the size the fit gave them; the shape
+// just grows into the room around them.
+export function decorMinHeight(item: Pick<LabelItem, "spanY" | "decor" | "divider">, height: number): number {
+  if (item.divider || !decorStretchesTall(item.decor)) return 0;
+  const span = Math.min(1, Math.max(0, item.spanY ?? 0));
+  // The 2 points it keeps from the edge it sits against.
+  return span * Math.max(0, height - 2);
 }

@@ -3,6 +3,7 @@ import { ScrollView, Switch, View } from "react-native";
 import { Text, TextInput } from "../text";
 
 import { cornerChoices, liftChoices, tileShapes } from "../../lib/decor";
+import { decorStretchesTall } from "../../lib/label-fit";
 import { Slider } from "../slider";
 import { tap } from "../../lib/feedback";
 import {
@@ -86,8 +87,8 @@ export function ItemOptions({
   renderPreview?: (item: Editable) => ReactNode;
 }) {
   const [text, setText] = useState("");
-  // A slider's spot while it's being dragged (stretch, padding), shown in the
-  // preview before it's saved.
+  // A stretch slider's spot while it's being dragged, shown in the preview
+  // before it's saved.
   const [sliding, setSliding] = useState<Partial<LabelItem>>({});
 
   // Keep showing the last item while the sheet slides away.
@@ -389,21 +390,24 @@ export function ItemOptions({
                           startLabel="Just the words"
                           endLabel="Edge to edge"
                         />
+                        {decorStretchesTall(shown.decor) ? (
+                          <>
+                            <Text style={ui.label}>Stretch up and down</Text>
+                            <Slider
+                              label="How far the decoration stretches up and down its space"
+                              value={shown.spanY ?? 0}
+                              onSlide={(spanY) => setSliding({ spanY })}
+                              onChange={(spanY) => {
+                                setSliding({});
+                                onChange({ spanY } as Partial<LabelItem>);
+                              }}
+                              startLabel="Just the words"
+                              endLabel="Top to bottom"
+                            />
+                          </>
+                        ) : null}
                       </>
                     ) : null}
-                    <Text style={ui.label}>Padding</Text>
-                    <Slider
-                      label="Room around the words"
-                      value={shown.padding ?? 0}
-                      onSlide={(padding) => setSliding({ padding })}
-                      onChange={(padding) => {
-                        setSliding({});
-                        onChange({ padding } as Partial<LabelItem>);
-                      }}
-                      startLabel="None"
-                      endLabel="Lots"
-                    />
-                    <Text style={ui.muted}>Room around the words, as long as there's space. In a tight spot it gives way so the words still fit.</Text>
                   </>
                 )}
               </>

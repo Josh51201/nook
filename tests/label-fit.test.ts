@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decorInset, decorMinWidth, estimateMeasure, fitLabel, fitText, labelRules, labelPadding, labelVAlign, wrapCount } from "../lib/label-fit";
+import { decorInset, decorMinHeight, decorMinWidth, decorStretchesTall, estimateMeasure, fitLabel, fitText, labelRules, labelVAlign, wrapCount } from "../lib/label-fit";
 import type { LabelItem } from "../lib/hearth-layout";
 
 // Sizes on a typical phone: a 4-column grid, cells about 80 wide with 12
@@ -10,7 +10,7 @@ const FULL_WIDTH = 356;
 const SLIM = 34;
 const ROW = 80;
 
-type Look = Pick<LabelItem, "size" | "caps" | "decor" | "font" | "divider" | "padding">;
+type Look = Pick<LabelItem, "size" | "caps" | "decor" | "font" | "divider" | "spanY">;
 
 function fit(text: string, look: Partial<Look>, box: { width: number; height: number }) {
   const item: Look = { size: "title", ...look };
@@ -151,33 +151,27 @@ describe("Where text sits and how far its decoration stretches (CORE-078)", () =
   });
 });
 
-describe("Padding around the words (CORE-080)", () => {
-  const box = { width: FULL_WIDTH, height: 2 * 92 - 12 };
+describe("Stretching a decoration up and down (CORE-081)", () => {
+  const tall = 2 * 92 - 12;
 
-  it("adds room around the words, making them smaller to fit", () => {
-    const none = fit("Hello", {}, box);
-    const lots = fit("Hello", { padding: 1 }, box);
-    expect(none.padding).toBe(0);
-    expect(lots.padding).toBeCloseTo(labelPadding({ padding: 1 }, box));
-    expect(lots.padding).toBeGreaterThan(20);
-    expect(lots.fontSize).toBeLessThan(none.fontSize);
+  it("stretches a shaped decoration as far up and down as you ask", () => {
+    expect(decorMinHeight({ decor: "sign" }, tall)).toBe(0);
+    expect(decorMinHeight({ decor: "stitched", spanY: 0.5 }, tall)).toBe((tall - 2) / 2);
+    expect(decorMinHeight({ decor: "ribbon", spanY: 1 }, tall)).toBe(tall - 2);
+    expect(decorMinHeight({ decor: "pill", spanY: 4 }, tall)).toBe(tall - 2);
   });
 
-  it("works with a decoration too: the shape gets roomier around the words", () => {
-    const plain = fit("Holidays", { decor: "pill" }, box);
-    const roomy = fit("Holidays", { decor: "pill", padding: 1 }, box);
-    expect(decorInset("pill", roomy.fontSize, roomy.snug, roomy.padding).padY).toBeGreaterThan(
-      decorInset("pill", plain.fontSize, plain.snug, plain.padding).padY
-    );
+  it("only shaped decorations stretch up and down", () => {
+    for (const decor of ["pill", "stitched", "ribbon", "sign"] as const) expect(decorStretchesTall(decor)).toBe(true);
+    for (const decor of ["none", "underline", "flourish", undefined] as const) {
+      expect(decorStretchesTall(decor)).toBe(false);
+      expect(decorMinHeight({ decor, spanY: 1 }, tall)).toBe(0);
+    }
+    expect(decorMinHeight({ decor: "pill", spanY: 1, divider: true }, tall)).toBe(0);
   });
 
-  it("gives way in a tight spot instead of cutting the words off", () => {
-    const tight = fit("Recipes", { decor: "sign", padding: 1 }, { width: ONE_COL, height: SLIM });
-    expect(tight.fits).toBe(true);
-    expect(tight.padding).toBeLessThan(labelPadding({ padding: 1 }, { width: ONE_COL, height: SLIM }));
-  });
-
-  it("dividers don't get padding", () => {
-    expect(labelPadding({ padding: 1, divider: true }, box)).toBe(0);
+  it("doesn't change the size of the words", () => {
+    const box = { width: FULL_WIDTH, height: tall };
+    expect(fit("Holidays", { decor: "sign" }, box).fontSize).toBe(fit("Holidays", { decor: "sign", spanY: 1 }, box).fontSize);
   });
 });

@@ -65,9 +65,10 @@ export type LabelItem = ItemBase & {
   // How far the decoration stretches across its space (CORE-078): 0 hugs the
   // words, 1 reaches edge to edge. Unset is 0.
   span?: number;
-  // Room around the words (CORE-080): 0 none, 1 the most. Given back when
-  // the space is too tight for it. Unset is 0.
-  padding?: number;
+  // How far a shaped decoration (pill, patch, ribbon, sign) stretches up and
+  // down its space, the same way (CORE-081). The words stay their size,
+  // centred inside it. Unset is 0.
+  spanY?: number;
 };
 
 export type LabelVAlign = "top" | "middle" | "bottom";
