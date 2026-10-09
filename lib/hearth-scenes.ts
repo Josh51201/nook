@@ -107,6 +107,23 @@ export function switchScene(
   return { state: { scenes, active: targetId }, show: target.snapshot };
 }
 
+// Adds a scene made somewhere else (a look shared by family, CORE-055) and
+// switches to it, keeping the Hearth you're leaving like switchScene does.
+// Null if there isn't room for both.
+export function addAndSwitch(
+  state: ScenesState,
+  layout: HearthLayout,
+  name: string,
+  snapshot: SceneSnapshot
+): { state: ScenesState; show: SceneSnapshot; id: string } | null {
+  const keepsCurrent = !(state.active && state.scenes.some((s) => s.id === state.active));
+  if (state.scenes.length + 1 + (keepsCurrent ? 1 : 0) > MAX_SCENES) return null;
+  const id = newSceneId();
+  const withNew: ScenesState = { ...state, scenes: [...state.scenes, { id, name: cleanName(name) || "Shared look", snapshot }] };
+  const switched = switchScene(withNew, layout, id);
+  return switched ? { ...switched, id } : null;
+}
+
 export function renameScene(state: ScenesState, id: string, name: string): ScenesState {
   const clean = cleanName(name);
   if (!clean) return state;

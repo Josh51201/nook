@@ -163,4 +163,9 @@ export const helpAnswers: HelpAnswer[] = [
     answer:
       "Open the Settings tab. There you can choose a theme, make your own, change the font and the text size, and even have the theme change with the seasons.",
   },
+  {
+    question: "How do I copy someone's Hearth, or share mine?",
+    answer:
+      "On your Hearth, tap Edit, then Share. \"Share mine\" makes a 6-letter code for your theme or your whole Hearth to text to family. \"Use a code\" is where you type one they sent you. A whole Hearth is added to your Scenes, so your own is kept and you can switch back.",
+  },
 ];

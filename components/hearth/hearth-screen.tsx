@@ -29,6 +29,7 @@ import { keepPhotosForScenes, removeUnusedPhotos } from "../../lib/hearth-photos
 import {
   defaultScenes,
   removeScene,
+  addAndSwitch,
   renameScene,
   saveScene,
   sceneForNow,
@@ -117,6 +118,8 @@ import { canGoOnHomePage, HOME_PAGE } from "../../lib/home-hearth";
 import { fridgePlace, fridgeRoute, placeKey } from "../../lib/fridge";
 import { markFridgesSeen, useFridgeNews } from "../../lib/fridge-data";
 import { useFireSound } from "./fire-sound";
+import { ShareSheet, type OpenedLook } from "./share-sheet";
+import { isHearthLook, lookAsSnapshot, receiveTheme, sceneNameFor } from "../../lib/hearth-share";
 import { fullMessage, overflowing } from "../../lib/hearth-limits";
 import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
@@ -173,6 +176,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const [pagesOpen, setPagesOpen] = useState(false);
   const [finding, setFinding] = useState(false);
   const [scenesOpen, setScenesOpen] = useState(false);
+  // Share a look (CORE-055).
+  const [sharing, setSharing] = useState(false);
   // Scenes (CORE-052) are kept in their own saved row.
   const scenesStore = useNookSettings<ScenesState>("hearth-scenes", defaultScenes);
   const scenes = scenesStore.settings;
@@ -384,7 +389,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const gridRef = useRef<View>(null);
   const reduceMotion = useReducedMotion();
 
-  const sheetOpen = adding || decorating || pagesOpen || finding || scenesOpen || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
+  const sheetOpen = adding || decorating || pagesOpen || finding || scenesOpen || sharing || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -493,6 +498,74 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scope, scenesReady, isLoading, editing, scenes, layout])
   );
+
+  // Toasts call the newest useScene, not the one from when they were made.
+  const latestUseScene = useRef(useScene);
+  latestUseScene.current = useScene;
+
+  // A theme family shared (CORE-055): its colors, wallpaper and ambience on
+  // your Hearth, with Undo.
+  function useSharedTheme({ look, fromName }: OpenedLook) {
+    const first = fromName.trim().split(" ")[0] || "Family";
+    const received = receiveTheme(look, personal.layout.customThemes, first);
+    if (!received) {
+      return Alert.alert("You have the most themes", "Remove one of your own themes in Settings → Theme to make room for this one.");
+    }
+    const mine = personal.layout;
+    const before = { theme: mine.theme, customThemes: mine.customThemes, wallpaper: mine.wallpaper, ambience: mine.ambience };
+    personal
+      .save({
+        theme: received.theme,
+        customThemes: received.customThemes,
+        wallpaper: look.wallpaper?.kind === "photo" ? { kind: "none" } : look.wallpaper ?? { kind: "none" },
+        ambience: look.ambience ?? "off",
+      })
+      .then(() => {
+        tap("success");
+        setSharing(false);
+        settleToast();
+        showToast(`Using ${first}'s theme`, { label: "Undo", run: () => (settleToast(), void personal.save(before)) }, 6000);
+      })
+      .catch((saveError: Error) => Alert.alert("Couldn't use that theme", saveError.message));
+  }
+
+  // A whole Hearth family shared (CORE-055) becomes a new scene and switches
+  // on; the Hearth you're leaving is kept as a scene, so nothing is lost.
+  async function trySharedHearth({ look, fromName }: OpenedLook) {
+    if (!isHearthLook(look) || !scenesReady || isLoading) return;
+    const first = fromName.trim().split(" ")[0] || "Family";
+    const received = receiveTheme(look, personal.layout.customThemes, first);
+    if (!received) {
+      return Alert.alert("You have the most themes", "Remove one of your own themes in Settings → Theme to make room for theirs.");
+    }
+    const result = addAndSwitch(scenes, personal.layout, sceneNameFor(fromName), lookAsSnapshot(look, received.theme));
+    if (!result) {
+      return Alert.alert(
+        "Make room in Scenes first",
+        `Trying ${first}'s Hearth keeps yours safe as a scene, and you have the most scenes there can be. Remove one in Edit → Scenes.`
+      );
+    }
+    const before = scenes;
+    try {
+      await scenesStore.update({ scenes: result.state.scenes, active: result.state.active });
+      await personal.save({ ...result.show, customThemes: received.customThemes });
+    } catch (switchError) {
+      scenesStore.update({ scenes: before.scenes, active: before.active }).catch(() => {});
+      return Alert.alert("Couldn't switch to it", (switchError as Error).message);
+    }
+    stopSelecting();
+    setFolded([]);
+    tap("success");
+    setSharing(false);
+    settleToast();
+    // Where "Switch back" goes: the scene you were on, or the one just made for it.
+    const back = before.active ?? result.state.scenes.find((s) => s.id !== result.id && !before.scenes.some((b) => b.id === s.id))?.id;
+    showToast(
+      `Trying ${first}'s Hearth`,
+      back ? { label: "Switch back", run: () => (settleToast(), void latestUseScene.current(back)) } : undefined,
+      6000
+    );
+  }
 
   function saveCurrentScene(name: string) {
     const saved = saveScene(scenes, personal.layout, name);
@@ -1557,6 +1630,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   {scope ? null : (
                     <Pill icon="widgets" label="Pages" accent={theme.accent} background={theme.background} onPress={() => setPagesOpen(true)} />
                   )}
+                  {scope ? null : (
+                    <Pill icon="share" label="Share" accent={theme.accent} background={theme.background} onPress={() => setSharing(true)} />
+                  )}
                   {isEmpty ? null : (
                     <>
                       <Pill
@@ -1940,6 +2016,16 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         }}
         onClose={() => setPickSheet(null)}
       />
+
+      {scope ? null : (
+        <ShareSheet
+          visible={sharing}
+          onClose={() => setSharing(false)}
+          layout={personal.layout}
+          onUseTheme={useSharedTheme}
+          onTryHearth={(opened) => void trySharedHearth(opened)}
+        />
+      )}
 
       <ScenesSheet
         visible={scenesOpen}

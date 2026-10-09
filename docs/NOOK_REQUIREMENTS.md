@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-09 (rev 60)_
+_Last updated: 2026-10-09 (rev 61)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -39,9 +39,8 @@ _Last updated: 2026-10-09 (rev 60)_
 - **CORE-085** A Cubby mode, so Cubbies can be selected even when they're behind widgets. _(Josh asked 2026-10-09. Built as a "Cubbies" button in Edit: in it, everything else fades and only boxes can be touched; out of it, boxes can't be touched so they never get in the way. Adding or finding a Cubby turns it on, and the Add sheet's Cubbies section explains it. Design is Claude's, proposed.)_
 - **CORE-086** A **Fridge door** widget that "fairly resembles a fridge", connected to your Home or a Burrow, where everyone can share a message that lasts "a day or whatever" before it's deleted. On the Home page it's automatically the Home's fridge; a new note shows a little icon on the Home page's tab and a notice in the inbox. _(Josh asked 2026-10-09. Built: notes written on sticky-note paper or finger-drawn doodles, held by magnets on an enamel door with a handle and label-maker title; each stays up a day, 3 days or a week (writer picks), then the database takes it down. Tapping opens the whole fridge to read, add or take down notes. Who can take a note down (Josh 2026-10-09: "that sounds right to me"): only its writer on a Burrow fridge; the writer or anyone in the Home on the Home fridge. The tab icon is a tiny note under a magnet, on any page whose fridge has news, and clears once you've looked. Notices can be switched off on the fridge screen. The look, the doodles and the lengths are Claude's, proposed; free like other widgets, proposed.)_
 
-### Still to do from the Hearth rounds
-Everything else in CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md) — grep it by ID. Josh said yes to every idea in these rounds; details are Claude's proposals until he confirms. Some is paid under Nook Plus (Q-028).
-- **CORE-055** Share a look: send a layout or theme to family as a code so they can copy it and then change it.
+### Hearth rounds
+All of CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md) — grep it by ID (the last two, CORE-047's fireplace sound and CORE-055 share a look, were finished 2026-10-09). Josh said yes to every idea in these rounds; details are Claude's proposals until he confirms. Some is paid under Nook Plus (Q-028).
 
 
 ## 1a. Accounts & Login
@@ -139,6 +138,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The paid subscription, per Home | Nook Plus | proposed |
 | A decorative object placed on the Hearth | Trinket | proposed |
 | A decorated box behind widgets that holds them together (CORE-084) | Cubby | proposed |
+| Sending your theme or whole Hearth to family as a code (CORE-055) | Share a look | proposed |
 | The shared notes-and-doodles widget (CORE-086) | Fridge door (its screen: "the Home fridge" / "the ___ fridge") | proposed |
 | A saved whole-Hearth setup | Scene | proposed |
 | The pet that lives on your Hearth (CORE-048) | Hearth pet | proposed |
@@ -177,7 +177,7 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 
 ## 7. Up next
 Josh's stated priority, in order:
-1. **Hearth:** only CORE-055 (share a look) and the fireplace sound (CORE-047) are left.
+1. ~~**Hearth:** CORE-055 (share a look) and the fireplace sound (CORE-047)~~ — built 2026-10-09; the Hearth rounds are done.
 2. ~~**Recipe Box Nook (REC-001..014)**~~ — built 2026-10-09 (section 2h).
 3. **Backlog Nooks** (section 6) — Josh picks the next one.
 
