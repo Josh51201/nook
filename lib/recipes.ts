@@ -130,7 +130,10 @@ export function findTimers(step: string): StepTimer[] {
     const perUnit = unit.startsWith("h") ? 3600 : unit.startsWith("m") ? 60 : 1;
     const seconds = Math.round(amount * perUnit);
     if (seconds < 10 || seconds > 24 * 3600) continue;
-    timers.push({ label: match[0].trim(), seconds });
+    const label = match[0].trim();
+    // "Cook 5 minutes, stir, cook 5 minutes more": one button does for both.
+    if (timers.some((t) => t.label.toLowerCase() === label.toLowerCase())) continue;
+    timers.push({ label, seconds });
   }
   return timers;
 }

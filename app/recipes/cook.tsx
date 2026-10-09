@@ -190,8 +190,8 @@ export default function CookMode() {
               </View>
               <Text style={{ fontSize: 24, lineHeight: 34, color: colors.text, textDecorationLine: finished ? "line-through" : "none" }}>{step}</Text>
               {!finished
-                ? findTimers(step).map((t) => (
-                    <Button key={t.label} title={`Start ${t.label} timer`} icon="timer" variant="secondary" onPress={() => startTimer(i, t.label, t.seconds)} />
+                ? findTimers(step).map((t, n) => (
+                    <Button key={`${n}-${t.label}`} title={`Start ${t.label} timer`} icon="timer" variant="secondary" onPress={() => startTimer(i, t.label, t.seconds)} />
                   ))
                 : null}
             </Tap>

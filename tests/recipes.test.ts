@@ -72,6 +72,10 @@ describe("timers in steps (REC-004)", () => {
     expect(findTimers("Roast 1½ hours")[0].seconds).toBe(5400);
   });
 
+  it("gives one button for a time said twice in a step", () => {
+    expect(findTimers("Cook 5 minutes, stir, then cook 5 minutes more.")).toEqual([{ label: "5 minutes", seconds: 300 }]);
+  });
+
   it("ignores steps without a time, and oven temperatures", () => {
     expect(findTimers("Mix the flour and sugar.")).toEqual([]);
     expect(findTimers("Heat the oven to 350 degrees.")).toEqual([]);
