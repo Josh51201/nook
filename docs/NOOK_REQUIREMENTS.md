@@ -2,7 +2,7 @@
 
 _Fine print for built features is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 47)_
+_Last updated: 2026-10-08 (rev 48)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -76,6 +76,7 @@ Josh wants every organization idea below ("I think all of them"). None are built
 - **CORE-063** Find in Edit: a search box that highlights a widget or Nook and opens the Hollow it's in. _(Built 2026-10-08 (proposed details): Edit → **Find** (on the Hearth) searches names on every page and inside every Hollow; best matches first. Tapping a result switches page or steps into the Hollow, scrolls to it and makes it glow.)_
 - **CORE-064** Section dividers: a labelled divider you can fold shut to hide the band of the grid under it, until the next divider. _(Built 2026-10-08 (proposed details): in a text label's sheet, "Fold-away divider" makes it full width with a line and an arrow. Tap it outside Edit to fold away everything under it down to the next divider (or the end) — the rest slides up, with "3 hidden" shown. In Edit everything is shown. Folding is only how it is drawn: it is not saved and resets when the app restarts.)_
 - **CORE-065** Tags and filters: tag any item (e.g. Kids, Home, Gifts) and show or hide a tag with one tap. _(Built 2026-10-08 (proposed details): up to 5 tags per item (16 letters each), added in an item's sheet, a widget's editor, or for several at once with **Tag** in Select. Once any tag exists, a row of tags sits under the top bar; tap one to hide everything with it, tap again to bring it back, or "Show all". Out of Edit only; hidden things leave an empty space. What is hidden is not saved.)_
+- **CORE-066** A page or Hollow holds only so much, so the Hearth stays smooth on older phones. _(Built 2026-10-08 (proposed details; Josh agreed to the numbers): 60 things per page and per Hollow, 40 on the shared Home page; a Trinket counts as half, a stack as one, a Hollow as one. At the limit, adding, copying or moving more in says so and suggests a new page or a Hollow. Hearths already over it are never trimmed and can still shrink or be rearranged. A speed guard, not a storage one; to be re-checked on a real phone.)_
 
 ## 1a. Accounts & Login
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.

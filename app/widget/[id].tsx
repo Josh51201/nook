@@ -20,6 +20,7 @@ import { DateField } from "../../components/date-field";
 import { Banner, Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { useHearthView } from "../../lib/hearth-view";
+import { fullMessage, overflowing } from "../../lib/hearth-limits";
 import { homePhotoFolder } from "../../lib/home-hearth";
 import { bedStyles, critterForSpecies, critterInfo, critters } from "../../lib/hearth-pet";
 import { usePets } from "../../lib/pets-data";
@@ -152,6 +153,14 @@ export default function WidgetEditor() {
       else if (stackWith) {
         const joined = addToStack({ items }, draft.id, stackWith);
         if (joined) ({ items, id: stackedId } = joined);
+      }
+      // A page or Hollow only holds so much (CORE-066).
+      const full = overflowing(layout, { ...layout, items });
+      if (full) {
+        const message = fullMessage(full);
+        setIsSaving(false);
+        Alert.alert(message.title, message.body);
+        return;
       }
       // Your Hearth updates instantly; the cloud save finishes in the
       // background, so closing never waits on the network.

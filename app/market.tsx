@@ -8,6 +8,7 @@ import { Appear, LoadingScreen } from "../components/motion";
 import { NookScroll } from "../components/nook-scroll";
 import { Button } from "../components/ui";
 import { tap } from "../lib/feedback";
+import { fullMessage, overflowing } from "../lib/hearth-limits";
 import { addNook, nookCount, removeNook, useHearthLayout } from "../lib/hearth";
 import { nookCatalog, type NookDefinition } from "../lib/nooks";
 import { colors, ui } from "../lib/theme";
@@ -22,7 +23,14 @@ export default function Market() {
 
   async function add(nook: NookDefinition, another = false) {
     try {
-      await save({ items: addNook(layout, nook.id, another) });
+      const items = addNook(layout, nook.id, another);
+      // A page only holds so much (CORE-066).
+      const full = overflowing(layout, { ...layout, items });
+      if (full) {
+        const message = fullMessage(full);
+        return Alert.alert(message.title, message.body);
+      }
+      await save({ items });
       if (another) Alert.alert("Added another", `It's on your Hearth. Move it into a Hollow from Edit if you like.`);
     } catch (saveError) {
       Alert.alert("Couldn't add it", (saveError as Error).message);

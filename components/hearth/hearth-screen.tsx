@@ -100,6 +100,7 @@ import { isPetBed, PetRoamers, strideFor } from "./pet-roamer";
 import { petSizeForStride } from "../../lib/hearth-pet";
 import { useHearthView } from "../../lib/hearth-view";
 import { canGoOnHomePage, HOME_PAGE } from "../../lib/home-hearth";
+import { fullMessage, overflowing } from "../../lib/hearth-limits";
 import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
 import { nookRadii } from "./tile-face";
@@ -340,12 +341,26 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     }, [scope])
   );
 
+  // A page or Hollow only holds so much (CORE-066). True, after saying so, if
+  // this change would put one over.
+  function tooFull(changes: Partial<HearthLayout>) {
+    const space = overflowing(layout, { ...layout, ...changes });
+    if (!space) return false;
+    const message = fullMessage(space);
+    Alert.alert(message.title, message.body);
+    return true;
+  }
+
+  // Saves, unless a page or Hollow would be over its limit: then it says so
+  // and returns false, so callers can skip their "done" message.
   function persist(next: HearthItem[]) {
+    if (tooFull({ items: next })) return false;
     save({ items: next }).catch((saveError: Error) => Alert.alert("Couldn't save your Hearth", saveError.message));
+    return true;
   }
   // Apply an edit to whatever this screen is showing (Hearth or a Hollow).
   function persistHere(edit: (inner: HearthLayout) => HearthItem[]) {
-    persist(inScope(layout, scope, edit));
+    return persist(inScope(layout, scope, edit));
   }
 
   // Pages of the Hearth (CORE-051). Hollows have just the one.
@@ -447,6 +462,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     }
     const moved = moveManyToPage(work, [item.id], target);
     if (!moved) return;
+    if (tooFull({ ...(created ?? {}), ...moved })) return;
     const before = { items: layout.items, otherPages: layout.otherPages };
     const name = work.pages.find((p) => p.id === target)?.name ?? "that page";
     tap("success");
@@ -653,6 +669,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     const size = widgetKindInfo(widget.kind).size;
     const id = newItemId("w");
     const next = inScope(layout, scope, (inner) => addItem(inner, { id, kind: "widget", widget, ...size }));
+    if (tooFull({ items: next })) return;
     save({ items: next })
       .then(async () => {
         tap("success");
@@ -674,9 +691,9 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   function addLabel() {
     setAdding(false);
     const id = newItemId("l");
-    persistHere((inner) =>
+    if (!persistHere((inner) =>
       addItem(inner, { id, kind: "label", text: scope ? "Up top" : "My Nooks", size: "heading", align: "left", w: 4, h: 1 })
-    );
+    )) return;
     setEditing(true);
     setOptionsFor(id);
   }
@@ -685,7 +702,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     setAdding(false);
     const id = newItemId("h");
     const count = hollowsOf(layout).length;
-    persist(
+    if (!persist(
       addItem(layout, {
         id,
         kind: "hollow",
@@ -695,7 +712,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         w: 2,
         h: 2,
       })
-    );
+    )) return;
     tap("success");
     setEditing(true);
     setOptionsFor(id); // name it and pick its look straight away
@@ -706,7 +723,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     setAdding(false);
     const info = trinketInfo(piece);
     const id = newItemId("t");
-    persistHere((inner) => addItem(inner, { id, kind: "trinket", piece, color: info.color, ...info.size }));
+    if (!persistHere((inner) => addItem(inner, { id, kind: "trinket", piece, color: info.color, ...info.size }))) return;
     tap("success");
     setEditing(true);
     setOptionsFor(id);
@@ -811,8 +828,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         label: "The Hearth",
         icon: "hearth",
         onPick: () => {
-          persist(moveManyToScope(layout, pickedIds, null));
-          moved();
+          if (persist(moveManyToScope(layout, pickedIds, null))) moved();
         },
       });
     }
@@ -823,8 +839,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         label: h.name,
         icon: "burrow",
         onPick: () => {
-          persist(moveManyToScope(layout, pickedIds, h.id));
-          moved();
+          if (persist(moveManyToScope(layout, pickedIds, h.id))) moved();
         },
       });
     }
@@ -839,6 +854,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
             return Alert.alert("Hollows stay on your own pages", "Pick the other things, or put what's inside the Hollow on the Home page.");
           }
           const next = moveManyToPage(layout, pickedIds, page.id);
+          if (next && tooFull(next)) return;
           if (next) save(next).catch((saveError: Error) => Alert.alert("Couldn't move them", saveError.message));
           moved();
         },
@@ -850,7 +866,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
   function copyPicked() {
     const { items: next, copyIds } = copyMany(layout, pickedIds, scope);
     if (!copyIds.length) return Alert.alert("Nothing to copy", "Hollows can't be copied.");
-    persist(next);
+    if (!persist(next)) return;
     tap("success");
     stopSelecting();
     settleToast();
@@ -1008,7 +1024,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
     const original = locate(layout, id)?.item;
     const { items: next, copyId } = copyItem(layout, id, target);
     if (!copyId || !original) return;
-    persist(next);
+    if (!persist(next)) return;
     settleToast();
     const label = itemLabel(original);
     if (target === scope) {
@@ -1451,8 +1467,7 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
                     scope
                       ? undefined
                       : (id, hollowId) => {
-                          tap("success");
-                          persist(moveToScope(layout, id, hollowId));
+                          if (persist(moveToScope(layout, id, hollowId))) tap("success");
                         }
                   }
                   onPressItem={onPressItem}
