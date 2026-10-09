@@ -26,6 +26,24 @@ if (!/^https:\/\/[\w.-]+$/.test(url) || !key) {
   console.error("Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env first.");
   process.exit(1);
 }
+// The page is public, so only the publishable (anon) key may go in it. A
+// secret / service_role key there would hand anyone the whole database.
+function isSecretKey(value) {
+  if (value.startsWith("sb_secret_")) return true;
+  try {
+    const payload = JSON.parse(Buffer.from(value.split(".")[1] ?? "", "base64url").toString("utf-8"));
+    return payload.role === "service_role";
+  } catch {
+    return false;
+  }
+}
+if (isSecretKey(key)) {
+  console.error(
+    "EXPO_PUBLIC_SUPABASE_ANON_KEY in .env is a SECRET key. Never put it in the app or this page.\n" +
+      "Use the publishable key instead (Supabase → Project Settings → API Keys, starts with sb_publishable_)."
+  );
+  process.exit(1);
+}
 if (!/^[\w.-]+$/.test(key)) {
   console.error("EXPO_PUBLIC_SUPABASE_ANON_KEY doesn't look like a key.");
   process.exit(1);
