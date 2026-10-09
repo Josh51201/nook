@@ -67,6 +67,12 @@ export const firstTour: TourStep[] = [
     body: "Nooks live here — little apps like the Gift Nook. Add one and it shows up as a tile on your Hearth.",
   },
   {
+    icon: "nooks",
+    target: "tab-nooks",
+    title: "Every Nook, one tap away",
+    body: "A Nook doesn't have to be on your Hearth to use it. They're all in here, and a dot shows when one has something new for you — like a Gathering you're invited to.",
+  },
+  {
     icon: "burrow",
     target: "tab-burrows",
     title: "Burrows are your people",

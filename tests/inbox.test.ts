@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { noticeIcon, noticeRoute } from "../lib/inbox";
+import { noticeIcon, noticeRoute, unreadByNook } from "../lib/inbox";
 
 describe("noticeRoute", () => {
   it("sends each Gift Nook notice to the right place", () => {
@@ -40,5 +40,22 @@ describe("noticeRoute", () => {
     expect(noticeRoute({ nook: "potluck", kind: "dish_added", data: {} })).toBeNull();
     expect(noticeRoute({ nook: "gift-nook", kind: "something_new", data: {} })).toBeNull();
     expect(noticeIcon({ nook: "potluck", kind: "dish_added" })).toBe("bell");
+  });
+});
+
+describe("unreadByNook", () => {
+  it("counts unread notices per Nook and keeps the newest title", () => {
+    const waiting = unreadByNook([
+      { nook: "gift-nook", title: "Christmas is coming" },
+      { nook: "potluck", title: "New Potluck" },
+      { nook: "gift-nook", title: "Older notice" },
+    ]);
+    expect(waiting["gift-nook"]).toEqual({ count: 2, latest: "Christmas is coming" });
+    expect(waiting.potluck).toEqual({ count: 1, latest: "New Potluck" });
+    expect(waiting.pets).toBeUndefined();
+  });
+
+  it("is empty when nothing is waiting", () => {
+    expect(unreadByNook([])).toEqual({});
   });
 });

@@ -10,14 +10,16 @@ import { themedScreenLayout } from "../../components/themed-screen";
 import { TourProvider, TourTarget } from "../../components/tour";
 import { useAuth } from "../../lib/auth-context";
 import { tap } from "../../lib/feedback";
+import { findNook } from "../../lib/nooks";
 import { colors, headerFont, themed, useTheme } from "../../lib/theme";
+import { useUnreadByNook } from "../../lib/use-unread";
 
-// CORE-025: the bar along the bottom of the app — the Hearth, Burrows
-// (families, shared by every Nook) and Settings. Nooks, Hollows and other
+// CORE-025: the bar along the bottom of the app — the Hearth, every Nook
+// (CORE-067), Burrows (families, shared by every Nook) and Settings. Nooks, Hollows and other
 // screens open on top of it. The first-time tour (CORE-026) lives here too,
 // so it can point at these tabs.
 
-const tabIcons: Record<string, IconName> = { hearth: "hearth", burrows: "burrow", settings: "settings" };
+const tabIcons: Record<string, IconName> = { hearth: "hearth", nooks: "nooks", burrows: "burrow", settings: "settings" };
 
 const headerOptions = themed(() => ({
   headerShown: true,
@@ -46,6 +48,7 @@ export default function TabsLayout() {
         }}
       >
         <Tabs.Screen name="hearth" options={{ title: "Hearth" }} />
+        <Tabs.Screen name="nooks" options={{ ...headerOptions, title: "Nooks" }} />
         <Tabs.Screen name="burrows" options={{ ...headerOptions, title: "Burrows" }} />
         <Tabs.Screen name="settings" options={{ ...headerOptions, title: "Settings" }} />
       </Tabs>
@@ -55,6 +58,10 @@ export default function TabsLayout() {
 
 function NookTabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
   const focused = state.routes[state.index];
+  // A dot on the Nooks tab when a Nook has something new (checked again on
+  // every tab change), so a newcomer knows where to look.
+  const waiting = useUnreadByNook(state.index);
+  const nooksHaveNews = Object.keys(waiting).some((id) => findNook(id)?.available);
   // The bar wears the app's theme, like every screen (CORE-032).
   const background = colors.background;
   const accent = colors.bark;
@@ -100,6 +107,9 @@ function NookTabBar({ state, descriptors, navigation, insets }: BottomTabBarProp
             >
               <TabPill focused={isFocused} color={`${accent}1f`}>
                 <Icon name={tabIcons[route.name] ?? "hearth"} size={22} color={isFocused ? accent : muted} />
+                {route.name === "nooks" && nooksHaveNews ? (
+                  <View style={[styles.dot, { backgroundColor: accent, borderColor: background }]} />
+                ) : null}
               </TabPill>
               <Text style={[styles.label, { color: isFocused ? accent : muted, fontWeight: isFocused ? "700" : "500" }]}>
                 {label}
@@ -138,4 +148,5 @@ const styles = StyleSheet.create({
   pillWrap: { width: 60, height: 32, alignItems: "center", justifyContent: "center" },
   pill: { borderRadius: 16 },
   label: { fontSize: 12 },
+  dot: { position: "absolute", top: 3, right: 14, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
 });

@@ -16,6 +16,7 @@ const icons = {
   hearth: { ios: "house.fill", android: "home" },
   burrow: { ios: "house.lodge.fill", android: "cottage" },
   market: { ios: "storefront.fill", android: "storefront" },
+  nooks: { ios: "square.grid.2x2.fill", android: "apps" },
   potluck: { ios: "fork.knife", android: "restaurant" },
   // Potluck
   warning: { ios: "exclamationmark.triangle.fill", android: "warning" },

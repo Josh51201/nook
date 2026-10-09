@@ -94,3 +94,18 @@ export function noticeIcon(notice: Pick<Notice, "nook" | "kind">): IconName {
 export function noticeRoute(notice: Pick<Notice, "nook" | "kind" | "data">): string | null {
   return kinds[notice.nook]?.[notice.kind]?.route(notice.data ?? {}) ?? null;
 }
+
+// Unread notices counted per Nook, for the Nooks tab: which Nooks have
+// something waiting, and the newest notice's title to show under each.
+// `rows` must be newest first.
+export type NookWaiting = { count: number; latest: string };
+
+export function unreadByNook(rows: Pick<Notice, "nook" | "title">[]): Record<string, NookWaiting> {
+  const waiting: Record<string, NookWaiting> = {};
+  for (const row of rows) {
+    const entry = waiting[row.nook];
+    if (entry) entry.count += 1;
+    else waiting[row.nook] = { count: 1, latest: row.title };
+  }
+  return waiting;
+}

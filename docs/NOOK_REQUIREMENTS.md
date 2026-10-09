@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 52)_
+_Last updated: 2026-10-09 (rev 53)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -18,6 +18,7 @@ _Last updated: 2026-10-08 (rev 52)_
 - **CORE-021** Nook ships as its own app with its own icon (not inside Expo Go). _(Prepared: icon set drawn (a cozy fireplace in an arch, proposed), app.json and eas.json set up, build guide in docs/BUILDING_THE_APP.md. Needs Josh's Expo and Apple Developer accounts to build — see Q-025.)_
 - **CORE-037** Every Nook is named "___ Nook" (Gift Nook, Potluck Nook, …). Each get-together inside the Potluck Nook is still "a Potluck".
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
+- **CORE-067** Every Nook is reachable from one menu, even ones not added to the Hearth, so someone invited to a Gathering (or who joined just for the Gift Nook) knows where to tap. _(Built as a "Nooks" tab in the bottom bar: Nooks with something new sit at the top, a dot on the tab shows news, one tap opens any Nook, and a Nook can be put on the Hearth from there; the tour points at it. Placement and layout are Claude's call, proposed.)_
 
 ### Still to do from the Hearth rounds
 Everything else in CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md) — grep it by ID. Josh said yes to every idea in these rounds; details are Claude's proposals until he confirms. Some is paid under Nook Plus (Q-028).
@@ -131,6 +132,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | An event | Gathering | proposed |
 | Gift categories, and recipe categories (REC-006) | Shelves | proposed |
 | The Nook shop | The Market | proposed |
+| The bottom tab listing every Nook (CORE-067) | Nooks | proposed |
 | A house/stump on the Hearth you enter to reach its own organized screen | Hollow | approved |
 
 ## 6. Nook Backlog
