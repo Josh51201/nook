@@ -35,6 +35,7 @@ _Last updated: 2026-10-09 (rev 58)_
 - **CORE-081** "Stretch up and down" slider for shaped decorations (pill, stitched, ribbon, sign): the shape grows taller into its box, from just around the words to top to bottom, like "Stretch across" does sideways; the words keep their size, centred inside. _(Built 2026-10-09; Josh asked for it; slider wording is Claude's, proposed.)_
 - **CORE-082** Lettering for Hearth text, in its own "Lettering" section: font, Bold, Italic, Letters (As typed / CAPITALS / lowercase / Title Case), Letter spacing (Snug / Normal / Airy / Wide), Underline (None / Line / Soft bar / Wavy) and Effect (None / Shadow / Glow / Letterpress / Retro). Underline is no longer a decoration, so it combines with any decoration; older underlined or CAPITALS text keeps its look. _(Built 2026-10-09; Josh asked to split underline out and add bold, italics "etc"; the option set and names are Claude's, proposed.)_
 - **CORE-083** The color picker's Light / Soft / Rich now change text and Bold-look colors too (they were all turning into the same deep color): Light is dustier, Rich deeper and more vivid; Soft is unchanged. _(Fixed 2026-10-09.)_
+- **CORE-084** A decorative box to put behind widgets and tiles, "like a cardboard box" that can be decorated to match your theme. _(Josh asked 2026-10-09. Built as **Cubbies**: 8 styles (cardboard, crate, gift, quilted, frame, scrapbook, frosted glass, shelf) with color, pattern, see-through, corners and shadow; the box frames what's inside and carries it when dragged or tidied. Name, styles and carrying are Claude's, proposed.)_
 
 ### Still to do from the Hearth rounds
 Everything else in CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md) — grep it by ID. Josh said yes to every idea in these rounds; details are Claude's proposals until he confirms. Some is paid under Nook Plus (Q-028).
@@ -135,6 +136,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | One recurring chore in the Rhythms Nook | Rhythm | proposed |
 | The paid subscription, per Home | Nook Plus | proposed |
 | A decorative object placed on the Hearth | Trinket | proposed |
+| A decorated box behind widgets that holds them together (CORE-084) | Cubby | proposed |
 | A saved whole-Hearth setup | Scene | proposed |
 | The pet that lives on your Hearth (CORE-048) | Hearth pet | proposed |
 | The Hearth page shared with your Home (CORE-054) | Home page | proposed |

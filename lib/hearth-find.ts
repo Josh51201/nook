@@ -1,5 +1,6 @@
 import { findNook } from "./nooks";
 import { nookLabel, type HearthItem, type HearthLayout } from "./hearth-layout";
+import { cubbyStyleInfo } from "./cubbies";
 import { trinketInfo } from "./trinkets";
 import { widgetKindInfo } from "./widgets";
 
@@ -21,6 +22,7 @@ export function itemName(item: HearthItem): string {
   if (item.kind === "nook") return nookLabel(item);
   if (item.kind === "hollow") return item.name;
   if (item.kind === "trinket") return trinketInfo(item.piece).label;
+  if (item.kind === "cubby") return cubbyStyleInfo(item.style).label;
   return item.text;
 }
 
@@ -29,6 +31,7 @@ function kindName(item: HearthItem): string {
   if (item.kind === "nook") return "Nook";
   if (item.kind === "hollow") return "Hollow";
   if (item.kind === "trinket") return "Trinket";
+  if (item.kind === "cubby") return "Cubby";
   return "Text";
 }
 

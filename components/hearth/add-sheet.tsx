@@ -3,6 +3,7 @@ import { Text } from "../text";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { trinkets, type TrinketKey } from "../../lib/trinkets";
+import { cubbyStyles, type CubbyStyle } from "../../lib/cubbies";
 import { colors, ui } from "../../lib/theme";
 import { defaultWidget, widgetCategories, widgetKindInfo, widgetTemplates, type WidgetConfig } from "../../lib/widgets";
 import { BottomSheet } from "../bottom-sheet";
@@ -10,6 +11,7 @@ import { IconBadge, type IconName } from "../icon";
 import { Tap } from "../motion";
 import { SectionHeader } from "../ui";
 import { TrinketThumb } from "./trinket-art";
+import { CubbyThumb } from "./cubby-art";
 
 // "Add to your Hearth": widgets (CORE-018), ready-made ideas, a text label
 // for designing your layout, a Hollow to organize things into (CORE-022),
@@ -23,6 +25,7 @@ export function AddSheet({
   onOpenMarket,
   onAddHollow,
   onAddTrinket,
+  onAddCubby,
   hollowName,
 }: {
   visible: boolean;
@@ -34,6 +37,8 @@ export function AddSheet({
   onAddHollow?: () => void;
   // A decoration to scatter around (CORE-045).
   onAddTrinket?: (piece: TrinketKey) => void;
+  // A decorated box to put behind things (CORE-084).
+  onAddCubby?: (style: CubbyStyle) => void;
   // Set when adding inside a Hollow.
   hollowName?: string;
 }) {
@@ -84,6 +89,32 @@ export function AddSheet({
                   <TrinketThumb piece={t.key} color={t.color} size={52} />
                   <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, textAlign: "center" }} numberOfLines={2}>
                     {t.label}
+                  </Text>
+                </Tap>
+              ))}
+            </View>
+          </>
+        ) : null}
+
+        {onAddCubby ? (
+          <>
+            <SectionHeader title="Cubbies" icon="category" />
+            <Text style={ui.muted}>
+              Decorated boxes that sit behind your widgets and tiles. Drag one around a few things to gather them
+              together — they move with the box.
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {cubbyStyles.map((c) => (
+                <Tap
+                  key={c.key}
+                  onPress={() => onAddCubby(c.key)}
+                  style={[ui.card, { width: "47.5%", alignItems: "center", gap: 6, paddingVertical: 12, paddingHorizontal: 6 }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add a ${c.label}`}
+                >
+                  <CubbyThumb styleKey={c.key} color={c.color} size={110} />
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, textAlign: "center" }} numberOfLines={1}>
+                    {c.label}
                   </Text>
                 </Tap>
               ))}

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ScrollView, Switch, View } from "react-native";
 import { Text, TextInput } from "../text";
 
-import { cornerChoices, liftChoices, tileShapes } from "../../lib/decor";
+import { cornerChoices, liftChoices, patterns, tileShapes } from "../../lib/decor";
+import { cubbyFills, cubbyStyleInfo, cubbyStyles } from "../../lib/cubbies";
 import { decorStretchesTall } from "../../lib/label-fit";
 import { Slider } from "../slider";
 import { tap } from "../../lib/feedback";
@@ -21,6 +22,7 @@ import {
   itemColor,
   nookLabel,
   sizePresets,
+  type CubbyItem,
   type HearthItem,
   type HollowItem,
   type LabelItem,
@@ -43,8 +45,9 @@ import { SeasonPicker } from "./season-picker";
 import { TagsEditor } from "./tag-bar";
 import { IconPicker } from "./icon-picker";
 import { TrinketThumb } from "./trinket-art";
+import { CubbyThumb } from "./cubby-art";
 
-export type Editable = NookItem | LabelItem | HollowItem | TrinketItem;
+export type Editable = NookItem | LabelItem | HollowItem | TrinketItem | CubbyItem;
 
 export type MoveTarget = { scope: Scope; label: string };
 
@@ -105,11 +108,11 @@ export function ItemOptions({
   useEffect(() => {
     if (!item) return;
     setSliding({});
-    setText(item.kind === "nook" ? item.label ?? "" : item.kind === "hollow" ? item.name : item.kind === "trinket" ? "" : item.text);
+    setText(item.kind === "nook" ? item.label ?? "" : item.kind === "hollow" ? item.name : item.kind === "label" ? item.text : "");
   }, [item?.id]);
 
   function commitText() {
-    if (!item || item.kind === "trinket") return;
+    if (!item || item.kind === "trinket" || item.kind === "cubby") return;
     if (item.kind === "nook") {
       const trimmed = text.trim();
       if (trimmed !== (item.label ?? "")) onChange({ label: trimmed || undefined } as Partial<NookItem>);
@@ -151,9 +154,11 @@ export function ItemOptions({
               { title: "Title", heading: "Heading", caption: "Caption" }[shown.size],
               shown.divider ? "Divider" : labelDecors.find((d) => d.key === labelLook(shown).decor)?.label,
             ].join(" · ")
-          : shown.flip
-            ? "Flipped"
-            : "As drawn";
+          : shown.kind === "cubby"
+            ? [cubbyStyleInfo(shown.style).label, cubbyFills.find((f) => f.key === (shown.fill ?? "solid"))?.label].join(" · ")
+            : shown.flip
+              ? "Flipped"
+              : "As drawn";
   const placeSummary = shown ? sizeSummary(sizePresets[shown.kind], shown.w, shown.h, shown.locked) : "";
   const letteringSummary = shown?.kind === "label" ? letteringInWords(shown) : "";
 
@@ -182,6 +187,8 @@ export function ItemOptions({
               <IconBadge name={hollowLookInfo(shown.look).icon} size={44} background={itemColor(shown)} />
             ) : shown.kind === "trinket" ? (
               <TrinketThumb piece={shown.piece} color={itemColor(shown)} size={44} />
+            ) : shown.kind === "cubby" ? (
+              <CubbyThumb styleKey={shown.style} color={itemColor(shown)} size={52} />
             ) : (
               <IconBadge name="text" size={44} />
             )}
@@ -192,7 +199,9 @@ export function ItemOptions({
                   ? shown.name
                   : shown.kind === "trinket"
                     ? trinketInfo(shown.piece).label
-                    : "Text"}
+                    : shown.kind === "cubby"
+                      ? cubbyStyleInfo(shown.style).label
+                      : "Text"}
             </Text>
           </View>
         ) : null
@@ -205,7 +214,7 @@ export function ItemOptions({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {shown.kind === "trinket" ? null : (
+          {shown.kind === "trinket" || shown.kind === "cubby" ? null : (
             <>
               <Text style={ui.label}>
                 {shown.kind === "nook" ? "Name on your Hearth" : shown.kind === "hollow" ? "Name" : "Words"}
@@ -243,7 +252,60 @@ export function ItemOptions({
             </>
           ) : null}
 
+          {shown.kind === "cubby" ? (
+            <>
+              <Text style={ui.label}>Which box</Text>
+              <View style={ui.chips}>
+                {cubbyStyles.map((c) => (
+                  <Chip
+                    key={c.key}
+                    icon={c.icon}
+                    selected={shown.style === c.key}
+                    onPress={() => {
+                      const was = cubbyStyleInfo(shown.style);
+                      onChange({
+                        style: c.key,
+                        // Keep a color or corners you picked; otherwise take the new box's own.
+                        color: !shown.color || shown.color === was.color ? c.color : shown.color,
+                        corners: !shown.corners || shown.corners === was.corners ? undefined : shown.corners,
+                      } as Partial<CubbyItem>);
+                    }}
+                  >
+                    {c.label}
+                  </Chip>
+                ))}
+              </View>
+              <Text style={ui.muted}>
+                Anything sitting wholly inside the box moves with it when you drag it. For a label on the box, put a
+                slim Text along its top.
+              </Text>
+            </>
+          ) : null}
+
           <Collapsible id="tile-looks" icon="palette" title="How it looks" summary={looksSummary} defaultOpen>
+            {shown.kind === "cubby" ? (
+              <>
+                <Text style={ui.label}>Inside</Text>
+                <View style={ui.chips}>
+                  {cubbyFills.map((f) => (
+                    <Chip key={f.key} selected={(shown.fill ?? "solid") === f.key} onPress={() => onChange({ fill: f.key } as Partial<CubbyItem>)}>
+                      {f.label}
+                    </Chip>
+                  ))}
+                </View>
+                <Text style={ui.label}>Pattern</Text>
+                <View style={ui.chips}>
+                  <Chip selected={!shown.pattern} onPress={() => onChange({ pattern: undefined } as Partial<CubbyItem>)}>
+                    Plain
+                  </Chip>
+                  {patterns.map((pt) => (
+                    <Chip key={pt.key} selected={shown.pattern === pt.key} onPress={() => onChange({ pattern: pt.key } as Partial<CubbyItem>)}>
+                      {pt.label}
+                    </Chip>
+                  ))}
+                </View>
+              </>
+            ) : null}
             {shown.kind === "trinket" ? (
               <>
                 <Text style={ui.label}>Facing</Text>
@@ -409,7 +471,7 @@ export function ItemOptions({
                 )}
               </>
             ) : null}
-            <Text style={ui.label}>{shown.kind === "trinket" ? "Main color" : "Color"}</Text>
+            <Text style={ui.label}>{shown.kind === "trinket" ? "Main color" : shown.kind === "cubby" ? "Box color" : "Color"}</Text>
             <ColorPicker
               value={shown.kind === "label" ? shown.color : itemColor(shown)}
               onChange={(color) => onChange({ color })}
@@ -417,7 +479,24 @@ export function ItemOptions({
               fallback={shown.kind === "label" ? "" : itemColor(shown)}
             />
 
-            {shown.kind === "nook" || shown.kind === "hollow" ? (
+            {shown.kind === "cubby" ? (
+              <>
+                <Text style={ui.label}>Corners</Text>
+                <View style={ui.chips}>
+                  {cornerChoices.map((c) => (
+                    <Chip
+                      key={c.key}
+                      selected={(shown.corners ?? cubbyStyleInfo(shown.style).corners) === c.key}
+                      onPress={() => onChange({ corners: c.key })}
+                    >
+                      {c.label}
+                    </Chip>
+                  ))}
+                </View>
+              </>
+            ) : null}
+
+            {shown.kind === "nook" || shown.kind === "hollow" || shown.kind === "cubby" ? (
               <>
                 {shown.kind === "nook" ? (
                   <>
@@ -621,7 +700,9 @@ export function ItemOptions({
                   ? "Remove this Hollow"
                   : shown.kind === "trinket"
                     ? "Remove this"
-                    : "Remove text"
+                    : shown.kind === "cubby"
+                      ? "Remove this box"
+                      : "Remove text"
             }
             icon="trash"
             variant="danger"
@@ -631,6 +712,8 @@ export function ItemOptions({
             <Text style={[ui.muted, { textAlign: "center" }]}>
               Nothing inside is deleted — it all moves back onto your Hearth.
             </Text>
+          ) : shown.kind === "cubby" ? (
+            <Text style={[ui.muted, { textAlign: "center" }]}>Only the box goes; everything in it stays put.</Text>
           ) : null}
         </ScrollView>
       ) : null}

@@ -2,7 +2,8 @@ import type { IconName } from "../components/icon";
 import { deepOf } from "./colors";
 import type { CustomTheme, SeasonalThemes } from "./custom-theme";
 import type { ShowIn } from "./widget-extras";
-import { wallpaperPath, type Ambience, type Corners, type Lift, type TileShape, type Wallpaper } from "./decor";
+import { cubbyStyleInfo, type CubbyFill, type CubbyStyle } from "./cubbies";
+import { wallpaperPath, type Ambience, type Corners, type Lift, type PatternKey, type TileShape, type Wallpaper } from "./decor";
 import { findNook } from "./nooks";
 import { trinketInfo, type TrinketKey } from "./trinkets";
 import { defaultWidget, newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
@@ -186,6 +187,10 @@ export type HollowItem = ItemBase & {
 // A little decoration (CORE-045): can't be tapped, just there. Its `color` is
 // the main color of the drawing.
 export type TrinketItem = ItemBase & { kind: "trinket"; piece: TrinketKey; flip?: boolean };
+// A Cubby (CORE-084): a decorated box drawn behind everything else, to
+// gather the things inside it. Its `color` is the box's main color; a
+// pattern can be printed on it, and its fill can let the wallpaper through.
+export type CubbyItem = ItemBase & { kind: "cubby"; style: CubbyStyle; pattern?: PatternKey; fill?: CubbyFill };
 
 export const hollowLooks: { look: HollowLook; label: string; icon: IconName; color: string }[] = [
   { look: "house", label: "A little house", icon: "burrow", color: "#f6d9c4" },
@@ -204,7 +209,7 @@ export const hollowDecors: { decor: HollowDecor; label: string; icon: IconName }
   { decor: "snow", label: "Snowy", icon: "christmas" },
   { decor: "flowers", label: "Flowers", icon: "flower" },
 ];
-export type HearthItem = NookItem | WidgetItem | LabelItem | HollowItem | TrinketItem;
+export type HearthItem = NookItem | WidgetItem | LabelItem | HollowItem | TrinketItem | CubbyItem;
 
 // A page of the Hearth (CORE-051), such as "Everyday" and "Holidays". Only
 // the page you're on keeps its items in `items` (so every editing helper keeps
@@ -422,6 +427,13 @@ export const sizePresets: Record<HearthItem["kind"], { label: string; w: number;
     { label: "Wide", w: 4, h: 1 },
     { label: "Large", w: 4, h: 3 },
   ],
+  cubby: [
+    { label: "Small", w: 2, h: 2 },
+    { label: "Wide", w: 4, h: 2 },
+    { label: "Tall", w: 2, h: 4 },
+    { label: "Large", w: 4, h: 4 },
+    { label: "Big", w: 4, h: 6 },
+  ],
 };
 
 export function minSize(item: HearthItem): { w: number; h: number } {
@@ -440,6 +452,12 @@ export function snapRow(n: number) {
   return Math.round(n / ROW_STEP) * ROW_STEP;
 }
 
+// Things that can end on a half row: text, and Cubbies (so a box can wrap
+// slim text along with the things under it).
+export function usesHalfRows(item: Pick<HearthItem, "kind">) {
+  return item.kind === "label" || item.kind === "cubby";
+}
+
 // --- Grid geometry ------------------------------------------------------------
 
 export function overlaps(a: GridRect, b: GridRect) {
@@ -452,9 +470,26 @@ export function rowsUsed(items: GridRect[]) {
 
 // Trinkets (CORE-045) float: they can sit anywhere, between the grid's
 // cells, overlap things, and are never pushed out of the way or push others.
-// Their x and y are in cells but may have decimals.
+// Their x and y are in cells but may have decimals. Cubbies (CORE-084) float
+// the same way, behind everything, but snap to cells.
 export function isFloating(item: HearthItem) {
+  return item.kind === "trinket" || item.kind === "cubby";
+}
+
+// Placed anywhere, not snapped to cells.
+function isLoose(item: HearthItem) {
   return item.kind === "trinket";
+}
+
+// What's in a Cubby: everything (but itself) that sits wholly inside its
+// cells. Locked things stay where they are, so they aren't carried.
+export function cubbyContents(items: HearthItem[], cubby: GridRect & { id: string }): HearthItem[] {
+  const inside = (item: HearthItem) =>
+    item.x >= cubby.x - 0.01 &&
+    item.y >= cubby.y - 0.01 &&
+    item.x + item.w <= cubby.x + cubby.w + 0.01 &&
+    item.y + item.h <= cubby.y + cubby.h + 0.01;
+  return items.filter((item) => item.id !== cubby.id && !item.locked && inside(item));
 }
 
 const hundredths = (n: number) => Math.round(n * 100) / 100;
@@ -462,8 +497,8 @@ const hundredths = (n: number) => Math.round(n * 100) / 100;
 function clampRect<T extends HearthItem>(item: T): T {
   const min = minSize(item);
   const w = Math.max(min.w, Math.min(COLUMNS, Math.round(item.w)));
-  const h = Math.max(min.h, Math.min(8, item.kind === "label" ? snapRow(item.h) : Math.round(item.h)));
-  const free = isFloating(item);
+  const h = Math.max(min.h, Math.min(8, usesHalfRows(item) ? snapRow(item.h) : Math.round(item.h)));
+  const free = isLoose(item);
   const x = Math.max(0, Math.min(COLUMNS - w, free ? hundredths(item.x) : Math.round(item.x)));
   const y = Math.max(0, free ? hundredths(item.y) : snapRow(item.y));
   return { ...item, x, y, w, h };
@@ -472,14 +507,16 @@ function clampRect<T extends HearthItem>(item: T): T {
 // Slide anything overlapping the item that just moved (or grew) downward,
 // cascading, until nothing overlaps. Items only ever move down, so this
 // always finishes; gaps elsewhere are left exactly as the person made them.
-export function settle(items: HearthItem[], fixedId: string): HearthItem[] {
+// Several items can stay put at once (what a Cubby just carried).
+export function settle(items: HearthItem[], fixedId: string | string[]): HearthItem[] {
   const result = items.map((item) => ({ ...item }));
-  const fixed = result.find((item) => item.id === fixedId);
-  if (!fixed) return result;
+  const ids = new Set(Array.isArray(fixedId) ? fixedId : [fixedId]);
+  if (!result.some((item) => ids.has(item.id))) return result;
   // Widgets in a stack (CORE-050) are one thing: they don't push each other,
   // and they move as a group.
+  const stacks = new Set(result.filter((item) => ids.has(item.id) && item.stack).map((item) => item.stack));
   const isFixed = (item: HearthItem) =>
-    item.id === fixedId || (!!fixed.stack && item.stack === fixed.stack) || Boolean(item.locked);
+    ids.has(item.id) || (!!item.stack && stacks.has(item.stack)) || Boolean(item.locked);
   const order = () =>
     [...result].sort((a, b) => (isFixed(a) ? 0 : 1) - (isFixed(b) ? 0 : 1) || a.y - b.y || a.x - b.x);
 
@@ -531,6 +568,7 @@ function withStackMates(items: HearthItem[], id: string) {
 export function moveItem(layout: HearthLayout, id: string, x: number, y: number): HearthItem[] {
   const moving = layout.items.find((item) => item.id === id);
   if (!moving || moving.locked) return layout.items;
+  if (moving.kind === "cubby") return moveCubby(layout, moving, x, y);
   // A Trinket just goes where it was put.
   if (isFloating(moving)) {
     const placed = clampRect({ ...moving, x, y });
@@ -560,6 +598,27 @@ export function resizeItem(layout: HearthLayout, id: string, w: number, h: numbe
   return settle(items, id);
 }
 
+// A Cubby (CORE-084) brings what's inside it along, and anything where they
+// land slides down out of the way. If what's inside would land on something
+// locked, the box goes on its own.
+function moveCubby(layout: HearthLayout, cubby: CubbyItem, x: number, y: number): HearthItem[] {
+  const placed = clampRect({ ...cubby, x, y });
+  const dx = placed.x - cubby.x;
+  const dy = placed.y - cubby.y;
+  const contents = cubbyContents(layout.items, cubby);
+  const carried = new Set(contents.map((item) => item.id));
+  const shifted = contents.map((item) => ({ ...item, x: hundredths(item.x + dx), y: hundredths(item.y + dy) }));
+  const blocked = shifted.some(
+    (item) =>
+      !isFloating(item) &&
+      layout.items.some((other) => other.locked && !carried.has(other.id) && !isFloating(other) && overlaps(other, item))
+  );
+  if (blocked || !shifted.length) return layout.items.map((item) => (item.id === cubby.id ? placed : item));
+  const moved = new Map(shifted.map((item) => [item.id, item]));
+  const items = layout.items.map((item) => (item.id === cubby.id ? placed : moved.get(item.id) ?? item));
+  return settle(items, [...carried]);
+}
+
 // The open spot closest to where an item was dropped, given things that
 // can't be pushed out of the way.
 function nearestOpenSpot(obstacles: GridRect[], want: GridRect): { x: number; y: number } {
@@ -584,6 +643,15 @@ function nearestOpenSpot(obstacles: GridRect[], want: GridRect): { x: number; y:
 // and a stack moves as one.
 export function tidyItems(items: HearthItem[]): HearthItem[] {
   const result = items.map((item) => ({ ...item }));
+  // What each Cubby holds before tidying, so it can follow its things after.
+  const held = result
+    .filter((item) => item.kind === "cubby" && !item.locked)
+    .map((cubby) => ({
+      cubby,
+      contents: cubbyContents(result, cubby)
+        .filter((item) => !isFloating(item))
+        .map((item) => ({ item, y: item.y })),
+    }));
   // Trinkets float, so tidying leaves them where they are.
   const placed: HearthItem[] = result.filter((item) => item.locked && !isFloating(item));
   const rest = result.filter((item) => !item.locked && !isFloating(item)).sort((a, b) => a.y - b.y || a.x - b.x);
@@ -600,6 +668,18 @@ export function tidyItems(items: HearthItem[]): HearthItem[] {
     item.y = y;
     if (item.stack) stackRow.set(item.stack, y);
     placed.push(item);
+  }
+  // A Cubby moves and stretches with its things, keeping the room it had
+  // above and below them.
+  for (const { cubby, contents } of held) {
+    if (!contents.length) continue;
+    const top = Math.min(...contents.map((c) => c.y));
+    const bottom = Math.max(...contents.map((c) => c.y + c.item.h));
+    const newTop = Math.min(...contents.map((c) => c.item.y));
+    const newBottom = Math.max(...contents.map((c) => c.item.y + c.item.h));
+    const y = snapRow(Math.max(0, cubby.y + newTop - top));
+    cubby.h = Math.min(8, Math.max(1, snapRow(cubby.y + cubby.h + newBottom - bottom - y)));
+    cubby.y = y;
   }
   return result;
 }
@@ -633,6 +713,7 @@ export function addItem(
     | Omit<LabelItem, "x" | "y">
     | Omit<HollowItem, "x" | "y">
     | Omit<TrinketItem, "x" | "y">
+    | Omit<CubbyItem, "x" | "y">
 ): HearthItem[] {
   const spot = findFreeSpot(layout.items.filter((other) => !isFloating(other)), item.w, item.h);
   return [...layout.items, { ...item, ...spot } as HearthItem];
@@ -698,7 +779,7 @@ export function copyItem(layout: HearthLayout, id: string, to: Scope): { items: 
       id: newReminderId(),
     }));
   }
-  const copyId = newItemId(rest.kind === "nook" ? "n" : rest.kind === "widget" ? "w" : rest.kind === "trinket" ? "t" : "l");
+  const copyId = newItemId(rest.kind === "nook" ? "n" : rest.kind === "widget" ? "w" : rest.kind === "trinket" ? "t" : rest.kind === "cubby" ? "b" : "l");
   return { items: inScope(layout, to, (inner) => addItem(inner, { ...rest, id: copyId } as never)), copyId };
 }
 
@@ -731,6 +812,8 @@ export function itemDisplayName(item: HearthItem): string {
       return item.text;
     case "trinket":
       return trinketInfo(item.piece).label;
+    case "cubby":
+      return cubbyStyleInfo(item.style).label;
   }
 }
 
@@ -739,7 +822,7 @@ export function itemSpokenName(item: HearthItem): string {
   const name = itemDisplayName(item);
   if (item.kind === "widget") return `${name}, widget`;
   if (item.kind === "hollow") return `${name}, Hollow`;
-  if (item.kind === "trinket") return `${name}, decoration`;
+  if (item.kind === "trinket" || item.kind === "cubby") return `${name}, decoration`;
   return name;
 }
 
@@ -766,7 +849,7 @@ export function canNudge(item: GridRect & { locked?: boolean }, way: Nudge): boo
 // Text moves up and down by half rows; everything else by whole ones.
 export function nudgedSpot(item: GridRect & { locked?: boolean; kind?: string }, way: Nudge): { x: number; y: number } {
   if (!canNudge(item, way)) return { x: item.x, y: item.y };
-  const step = item.kind === "label" ? ROW_STEP : 1;
+  const step = item.kind === "label" || item.kind === "cubby" ? ROW_STEP : 1;
   return { x: item.x + nudgeSteps[way].dx, y: Math.max(0, item.y + nudgeSteps[way].dy * step) };
 }
 
@@ -786,6 +869,7 @@ export function itemColor(item: HearthItem) {
   if (item.kind === "hollow") return hollowLookInfo(item.look).color;
   if (item.kind === "nook") return findNook(item.nookId)?.color ?? tilePalette[0];
   if (item.kind === "trinket") return trinketColorFallback(item);
+  if (item.kind === "cubby") return cubbyStyleInfo(item.style).color;
   return tilePalette[0];
 }
 

@@ -20,10 +20,12 @@ import { cornerRadius, liftLevel } from "../../lib/decor";
 import {
   canNudge,
   COLUMNS,
+  cubbyContents,
   edgeScrollSpeed,
   itemSpokenName,
   minSize,
   rowsUsed,
+  usesHalfRows,
   type GridRect,
   type HearthItem,
   type HollowItem,
@@ -141,6 +143,16 @@ export function HearthGrid({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dropHollow, setDropHollow] = useState<HollowItem | null>(null);
   const dropHollowRef = useRef<HollowItem | null>(null);
+  // While a Cubby (CORE-084) is dragged, the things inside it come along:
+  // which ones, and how far the box has been dragged so far.
+  const [carriedIds, setCarriedIds] = useState<string[]>([]);
+  const carry = useSharedValue({ x: 0, y: 0 });
+
+  // Cubbies sit behind everything else.
+  const ordered = useMemo(
+    () => [...items.filter((item) => item.kind === "cubby"), ...items.filter((item) => item.kind !== "cubby")],
+    [items]
+  );
 
   // Things can end on a half row (CORE-076); the grid shows whole rows.
   const rows = Math.ceil(rowsUsed(items)) + (editing ? EXTRA_EDIT_ROWS : 0);
@@ -150,14 +162,18 @@ export function HearthGrid({
     (id: string) => {
       setActiveId(id);
       onDraggingChange(true);
+      const cubby = items.find((item) => item.id === id && item.kind === "cubby");
+      carry.value = { x: 0, y: 0 };
+      setCarriedIds(cubby ? cubbyContents(items, cubby).map((item) => item.id) : []);
     },
-    [onDraggingChange]
+    [onDraggingChange, items, carry]
   );
   const finish = useCallback(() => {
     setGhost(null);
     setDropHollow(null);
     dropHollowRef.current = null;
     setActiveId(null);
+    setCarriedIds([]);
     onDraggingChange(false);
   }, [onDraggingChange]);
 
@@ -223,7 +239,7 @@ export function HearthGrid({
         />
       ) : null}
 
-      {items.map((item, index) => (
+      {ordered.map((item, index) => (
         <GridItem
           key={item.id}
           item={item}
@@ -231,6 +247,8 @@ export function HearthGrid({
           editing={editing}
           seed={index}
           active={activeId === item.id}
+          carry={carry}
+          carried={carriedIds.includes(item.id)}
           accent={accent}
           shadow={isRaised(item) ? shadowAt?.(liftLevel(item.lift, item.kind === "nook")) : undefined}
           dragScroll={dragScroll}
@@ -261,7 +279,7 @@ export function HearthGrid({
           onGhost={(rect, finger) => {
             // Is the finger over a Hollow? (Not for Hollows themselves.)
             const target =
-              onDropIntoHollow && finger && item.kind !== "hollow"
+              onDropIntoHollow && finger && item.kind !== "hollow" && item.kind !== "cubby"
                 ? ((items.find(
                     (other) =>
                       other.kind === "hollow" &&
@@ -317,10 +335,10 @@ const ItemContent = memo(
 );
 
 // Text being resized redraws at the new size as you drag the corner, so you
-// see how it'll fit before letting go (CORE-077). Everything else keeps its
-// size until you let go.
+// see how it'll fit before letting go (CORE-077), and so does a Cubby, so you
+// can see what it'll hold. Everything else keeps its size until you let go.
 function liveSize(item: HearthItem, ghost: GridRect | null, stride: number) {
-  const resizing = ghost && item.kind === "label" && ghost.x === item.x && ghost.y === item.y;
+  const resizing = ghost && (item.kind === "label" || item.kind === "cubby") && ghost.x === item.x && ghost.y === item.y;
   const rect = resizing ? ghost : item;
   return { width: rect.w * stride - GRID_GAP, height: rect.h * stride - GRID_GAP };
 }
@@ -341,9 +359,9 @@ function shadowShape(item: HearthItem, stride: number) {
 }
 
 // Text labels and see-through (outline) widgets float flat on the Hearth;
-// everything solid gets a shadow.
+// everything solid gets a shadow. A Cubby draws its own, around its edge.
 function isRaised(item: HearthItem) {
-  if (item.kind === "label" || item.kind === "trinket") return false;
+  if (item.kind === "label" || item.kind === "trinket" || item.kind === "cubby") return false;
   // A shadow you asked for is always drawn, even under an outline.
   if (item.lift) return true;
   if (item.kind === "widget") return item.widget.look !== "outline";
@@ -357,6 +375,8 @@ function GridItem({
   editing,
   seed,
   active,
+  carry,
+  carried,
   accent,
   shadow,
   dragScroll,
@@ -385,6 +405,9 @@ function GridItem({
   editing: boolean;
   seed: number;
   active: boolean;
+  // Inside a Cubby that's being dragged: it moves along by `carry`.
+  carry: SharedValue<{ x: number; y: number }>;
+  carried: boolean;
   accent: string;
   shadow?: string;
   dragScroll: DragScroll;
@@ -409,7 +432,8 @@ function GridItem({
   children: ReactNode;
 }) {
   const min = minSize(item);
-  const halfRows = item.kind === "label";
+  const halfRows = usesHalfRows(item);
+  const carries = item.kind === "cubby";
   const left = useSharedValue(item.x * stride);
   const top = useSharedValue(item.y * stride);
   const dragX = useSharedValue(0);
@@ -426,7 +450,8 @@ function GridItem({
   const grabY = useSharedValue(0);
   const fingerX = useSharedValue(-1);
   const fingerY = useSharedValue(-1);
-  const wiggle = useWiggle(editing && !active, seed);
+  // A big box rocking about would be a lot, so Cubbies hold still.
+  const wiggle = useWiggle(editing && !active && !carries, seed);
   // Edit mode as the gesture sees it (it must not be rebuilt when it changes).
   const editingNow = useSharedValue(editing);
   useEffect(() => {
@@ -464,11 +489,28 @@ function GridItem({
   }, [flash, glow]);
   const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value, transform: [{ scale: 1 + glow.value * 0.03 }] }));
 
+  // Riding along in a dragged Cubby, as the item's own animations see it.
+  const carriedNow = useSharedValue(false);
+
   // New position from the layout: glide there. If this is the tile that was
-  // just dropped, carry on from where the finger let go instead of jumping.
+  // just dropped, carry on from where the finger let go instead of jumping;
+  // the same if it was riding in a Cubby that was just let go.
   useEffect(() => {
     const nextLeft = item.x * stride;
     const nextTop = item.y * stride;
+    if (carriedNow.value !== carried) {
+      if (!carried) {
+        const c = carry.value;
+        dragX.value = left.value + dragX.value + c.x - nextLeft;
+        dragY.value = top.value + dragY.value + c.y - nextTop;
+        left.value = nextLeft;
+        top.value = nextTop;
+        dragX.value = withTiming(0, ease);
+        dragY.value = withTiming(0, ease);
+      }
+      carriedNow.value = carried;
+      if (!carried) return;
+    }
     if (dropping.value) {
       dragX.value = left.value + dragX.value - nextLeft;
       dragY.value = top.value + dragY.value - nextTop;
@@ -481,7 +523,7 @@ function GridItem({
       left.value = withTiming(nextLeft, ease);
       top.value = withTiming(nextTop, ease);
     }
-  }, [item.x, item.y, stride, left, top, dragX, dragY, dropping]);
+  }, [item.x, item.y, stride, left, top, dragX, dragY, dropping, carried, carriedNow, carry]);
 
   // Latest callbacks without rebuilding gestures mid-drag.
   const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop });
@@ -525,6 +567,7 @@ function GridItem({
     const dy = rawY.value + (scrollY.value - startScroll.value);
     dragX.value = rawX.value;
     dragY.value = dy;
+    if (carries) carry.value = { x: rawX.value, y: dy };
     const nextX = Math.min(COLUMNS - g.w, Math.max(0, Math.round(g.x + rawX.value / g.stride)));
     // Up and down snap to half rows (CORE-076).
     const nextY = Math.max(0, Math.round((g.y + dy / g.stride) * 2) / 2);
@@ -689,7 +732,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [selecting, item.locked, free, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, tabs, tabOver, tabHover, tabDrop, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [selecting, item.locked, free, carries, carry, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, tabs, tabOver, tabHover, tabDrop, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
@@ -722,8 +765,8 @@ function GridItem({
     left: left.value,
     top: top.value,
     transform: [
-      { translateX: dragX.value },
-      { translateY: dragY.value },
+      { translateX: dragX.value + (carriedNow.value ? carry.value.x : 0) },
+      { translateY: dragY.value + (carriedNow.value ? carry.value.y : 0) },
       { scale: 1 + lifted.value * 0.04 - pressed.value * 0.03 - doomed.value * 0.35 },
     ],
     opacity: 1 - doomed.value * 0.4,
@@ -731,7 +774,17 @@ function GridItem({
   }));
 
   return (
-    <Animated.View style={[styles.item, { zIndex: active ? 100 : focused ? 50 : 1, elevation: active ? 12 : focused ? 6 : 0 }, style]}>
+    <Animated.View
+      style={[
+        styles.item,
+        // A Cubby stays behind everything even while it's dragged; what's in
+        // it rides along on top.
+        carries
+          ? { zIndex: 0, elevation: 0 }
+          : { zIndex: active || carried ? 100 : focused ? 50 : 1, elevation: active || carried ? 12 : focused ? 6 : 0 },
+        style,
+      ]}
+    >
       {/* Keyed by shape: the phone doesn't redraw a shadow when only the corner
           radii change, so a new shape gets a fresh view. */}
       <GestureDetector gesture={moveGesture}>

@@ -35,7 +35,7 @@ export function WallpaperLayer({ wallpaper, background, dark }: { wallpaper: Wal
         ) : (
           <>
             <Defs>
-              <Pattern id="wall" patternUnits="userSpaceOnUse" {...tile(wallpaper.pattern)}>
+              <Pattern id="wall" patternUnits="userSpaceOnUse" {...patternTileSize(wallpaper.pattern)}>
                 <PatternTile pattern={wallpaper.pattern} ink={deepOf(wallpaper.color)} opacity={dark ? 0.22 : 0.17} />
               </Pattern>
             </Defs>
@@ -60,12 +60,12 @@ function PhotoWallpaper({ path, dim, background }: { path: string; dim: number; 
 }
 
 // The size of one repeat of each pattern.
-function tile(pattern: PatternKey) {
+export function patternTileSize(pattern: PatternKey) {
   const size = { dots: 30, stripes: 26, gingham: 36, leaves: 52, stars: 44, diamonds: 34 }[pattern];
   return { width: size, height: size };
 }
 
-function PatternTile({ pattern, ink, opacity }: { pattern: PatternKey; ink: string; opacity: number }) {
+export function PatternTile({ pattern, ink, opacity }: { pattern: PatternKey; ink: string; opacity: number }) {
   switch (pattern) {
     case "dots":
       return (

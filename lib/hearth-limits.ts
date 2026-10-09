@@ -10,7 +10,7 @@ export const PAGE_LIMIT = 60;
 // The page shared with your Home is redrawn on everyone's phone whenever it
 // changes, so it holds fewer.
 export const HOME_PAGE_LIMIT = 40;
-// Trinkets are light decorations, so two count as one.
+// Trinkets and Cubbies are light decorations, so two count as one.
 const TRINKET_WEIGHT = 0.5;
 
 // How much of the space these items use. A stack is one spot (CORE-050), and
@@ -23,7 +23,7 @@ export function spaceLoad(items: HearthItem[]): number {
       if (stacks.has(item.stack)) continue;
       stacks.add(item.stack);
     }
-    load += item.kind === "trinket" ? TRINKET_WEIGHT : 1;
+    load += item.kind === "trinket" || item.kind === "cubby" ? TRINKET_WEIGHT : 1;
   }
   return load;
 }

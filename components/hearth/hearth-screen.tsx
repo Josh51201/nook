@@ -23,7 +23,7 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../../lib/auth-context";
-import { activeAmbience, effectiveWallpaper, wallpaperPath, type Ambience, type Corners, type TileShape, type Wallpaper } from "../../lib/decor";
+import { activeAmbience, effectiveWallpaper, liftLevel, wallpaperPath, type Ambience, type Corners, type TileShape, type Wallpaper } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { keepPhotosForScenes, removeUnusedPhotos } from "../../lib/hearth-photos";
 import {
@@ -46,12 +46,14 @@ import { stackMates, stackPosition, visibleItems as oneOfEachStack } from "../..
 import type { FoundItem } from "../../lib/hearth-find";
 import { copyMany, lockMany, moveManyToPage, moveManyToScope, recolorMany, removeMany } from "../../lib/hearth-select";
 import { trinketInfo, type TrinketKey } from "../../lib/trinkets";
+import { cubbyStyleInfo, type CubbyStyle } from "../../lib/cubbies";
 import { inSeason } from "../../lib/widget-extras";
 import { colors, useTheme } from "../../lib/theme";
 import {
   addItem,
   COLUMNS,
   copyItem,
+  cubbyContents,
   deepColor,
   everyTopLevel,
   findHollow,
@@ -79,6 +81,7 @@ import {
   updateItem,
   type HearthItem,
   type HearthLayout,
+  type CubbyItem,
   type HollowItem,
   type LabelItem,
   type NookItem,
@@ -98,6 +101,7 @@ import { Firelight, GlowVeil } from "../firelight";
 import { AmbienceLayer } from "./ambience";
 import { DecorateSheet } from "./decorate-sheet";
 import { TrinketArt } from "./trinket-art";
+import { CubbyArt } from "./cubby-art";
 import { WallpaperLayer } from "./wallpaper";
 import { Icon, IconBadge, type IconName } from "../icon";
 import { Skeleton, Tap } from "../motion";
@@ -766,6 +770,18 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     setOptionsFor(id);
   }
 
+  // A Cubby (CORE-084): a decorated box to put behind things. It goes in the
+  // first open spot, ready to be dragged around whatever it should hold.
+  function addCubby(style: CubbyStyle) {
+    setAdding(false);
+    const info = cubbyStyleInfo(style);
+    const id = newItemId("b");
+    if (!persistHere((inner) => addItem(inner, { id, kind: "cubby", style, color: info.color, w: 4, h: 2 }))) return;
+    tap("success");
+    setEditing(true);
+    setOptionsFor(id);
+  }
+
   // Wallpaper for this space and ambience for the whole Hearth (CORE-041, 047).
   // A photo that's no longer used anywhere is deleted from storage.
   function changeWallpaper(next: Wallpaper | undefined) {
@@ -804,6 +820,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     if (item.kind === "nook") return nookLabel(item);
     if (item.kind === "hollow") return item.name;
     if (item.kind === "trinket") return trinketInfo(item.piece).label;
+    if (item.kind === "cubby") return cubbyStyleInfo(item.style).label;
     return item.text;
   }
 
@@ -1073,6 +1090,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     | LabelItem
     | HollowItem
     | TrinketItem
+    | CubbyItem
     | null;
 
   // Where the item in the options sheet could move to.
@@ -1202,6 +1220,21 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         </StackShell>
       );
     }
+    if (item.kind === "cubby") {
+      return (
+        <CubbyArt
+          uid={item.id}
+          styleKey={item.style}
+          color={itemColor(item)}
+          pattern={item.pattern}
+          fill={item.fill}
+          corners={item.corners}
+          shadow={shadowAtLevel(themeKey, liftLevel(item.lift, false))}
+          width={size.width}
+          height={size.height}
+        />
+      );
+    }
     if (item.kind === "trinket") {
       return (
         <TrinketArt
@@ -1247,6 +1280,11 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
     const size = { width: item.w * stride - GRID_GAP, height: item.h * stride - GRID_GAP };
     if (!gridWidth) return null;
+    // A Cubby is shown with what's in it, so you can see how it looks together.
+    const inside =
+      item.kind === "cubby"
+        ? cubbyContents(oneOfEachStack(items, stackShown), item).sort((a, b) => (a.kind === "cubby" ? 0 : 1) - (b.kind === "cubby" ? 0 : 1))
+        : [];
     return (
       <ItemPreview
         {...size}
@@ -1255,6 +1293,20 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         backdrop={<WallpaperLayer wallpaper={wallpaper} background={theme.background} dark={theme.dark} />}
       >
         {renderInner(item, size)}
+        {inside.map((inner) => (
+          <View
+            key={inner.id}
+            style={{
+              position: "absolute",
+              left: (inner.x - item.x) * stride,
+              top: (inner.y - item.y) * stride,
+              width: inner.w * stride - GRID_GAP,
+              height: inner.h * stride - GRID_GAP,
+            }}
+          >
+            {renderInner(inner, { width: inner.w * stride - GRID_GAP, height: inner.h * stride - GRID_GAP })}
+          </View>
+        ))}
       </ItemPreview>
     );
   }
@@ -1853,6 +1905,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         onAddLabel={addLabel}
         onAddHollow={scope || onHome ? undefined : addHollow}
         onAddTrinket={addTrinket}
+        onAddCubby={addCubby}
         hollowName={hollow?.name}
         onOpenMarket={() => {
           setAdding(false);
