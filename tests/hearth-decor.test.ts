@@ -231,3 +231,15 @@ describe("Photo frame (CORE-046)", () => {
     expect([...photoPathsInUse(layout)].sort()).toEqual(["u/a.jpg", "u/b.jpg", "u/c.jpg", "u/d.jpg", "u/e.jpg"]);
   });
 });
+
+describe("fireplace sound (CORE-047)", () => {
+  it("is off unless chosen, and never loud", async () => {
+    const { fireVolume, fireSounds } = await import("../lib/decor");
+    const { migrateLayout } = await import("../lib/hearth-layout");
+    expect(fireVolume(undefined)).toBe(0);
+    expect(fireVolume("off")).toBe(0);
+    expect(Math.max(...fireSounds.map((f) => f.volume))).toBeLessThanOrEqual(0.5);
+    expect(migrateLayout({}).fireSound).toBeUndefined();
+    expect(migrateLayout({ fireSound: "soft" }).fireSound).toBe("soft");
+  });
+});

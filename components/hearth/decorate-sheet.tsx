@@ -5,6 +5,8 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import {
   ambienceLabel,
   ambiences,
+  fireSounds,
+  type FireSound,
   gradientPresets,
   patterns,
   photoDims,
@@ -36,6 +38,8 @@ export function DecorateSheet({
   onWallpaper,
   ambience,
   onAmbience,
+  fireSound,
+  onFireSound,
   weatherPlace,
 }: {
   visible: boolean;
@@ -48,6 +52,9 @@ export function DecorateSheet({
   onWallpaper: (next: Wallpaper | undefined) => void;
   ambience: Ambience;
   onAmbience: (next: Ambience) => void;
+  // The soft fireplace sound (CORE-047).
+  fireSound: FireSound | undefined;
+  onFireSound: (next: FireSound) => void;
   // The town "Match the weather" follows, if any (CORE-058).
   weatherPlace?: string;
 }) {
@@ -218,6 +225,30 @@ export function DecorateSheet({
               }
             />
           ) : null}
+        </Collapsible>
+
+        <Collapsible
+          id="decorate-fire"
+          icon="flame"
+          title="Fireplace sound"
+          summary={fireSounds.find((f) => f.key === (fireSound ?? "off"))?.label}
+        >
+          <View style={ui.chips}>
+            {fireSounds.map((f) => (
+              <Chip
+                key={f.key}
+                icon={f.key === "off" ? "close" : "flame"}
+                selected={(fireSound ?? "off") === f.key}
+                onPress={() => (tap(), onFireSound(f.key))}
+              >
+                {f.label}
+              </Chip>
+            ))}
+          </View>
+          <Text style={ui.muted}>
+            A crackling fire while you're on your Hearth or in a Hollow. It fades away when you open a Nook or leave
+            the app, stays quiet when your phone is on silent, and plays along with any music you have on.
+          </Text>
         </Collapsible>
 
         <Button title="Done" icon="check" onPress={onClose} style={{ marginTop: 6 }} />

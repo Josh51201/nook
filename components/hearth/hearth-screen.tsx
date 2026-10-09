@@ -116,6 +116,7 @@ import { useHearthView } from "../../lib/hearth-view";
 import { canGoOnHomePage, HOME_PAGE } from "../../lib/home-hearth";
 import { fridgePlace, fridgeRoute, placeKey } from "../../lib/fridge";
 import { markFridgesSeen, useFridgeNews } from "../../lib/fridge-data";
+import { useFireSound } from "./fire-sound";
 import { fullMessage, overflowing } from "../../lib/hearth-limits";
 import { HollowFace } from "./hollow-face";
 import { NookZoom, type ZoomRect } from "./nook-zoom";
@@ -216,6 +217,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const [barHeight, setBarHeight] = useState(0);
   // The page row under the bar (CORE-051), so the fade starts below it.
   const [stripHeight, setStripHeight] = useState(0);
+  // The soft fireplace sound, if it's on (CORE-047).
+  useFireSound(layout.fireSound);
   // Fridge doors (CORE-086): which fridges have a note you haven't seen, so
   // their page tabs (the Home page's above all) wear a little note.
   const fridgeNews = useFridgeNews(home.homeId, refreshKey);
@@ -1910,6 +1913,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         onWallpaper={changeWallpaper}
         ambience={layout.ambience}
         onAmbience={changeAmbience}
+        fireSound={layout.fireSound}
+        onFireSound={(fireSound) => save({ fireSound }).catch((saveError: Error) => Alert.alert("Couldn't save that", saveError.message))}
         weatherPlace={weatherPlaceOf(everyTopLevel(layout))?.place.name}
       />
 

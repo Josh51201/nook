@@ -33,6 +33,14 @@
           "photosPermission": "Nook uses your photos so you can keep pictures of the cards you get.",
           "cameraPermission": "Nook uses your camera so you can snap the cards you get."
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
       ]
     ],
     "ios": {

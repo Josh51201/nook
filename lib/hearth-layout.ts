@@ -3,7 +3,7 @@ import { deepOf } from "./colors";
 import type { CustomTheme, SeasonalThemes } from "./custom-theme";
 import type { ShowIn } from "./widget-extras";
 import { cubbyStyleInfo, type CubbyFill, type CubbyStyle } from "./cubbies";
-import { wallpaperPath, type Ambience, type Corners, type Lift, type PatternKey, type TileShape, type Wallpaper } from "./decor";
+import { wallpaperPath, type Ambience, type Corners, type FireSound, type Lift, type PatternKey, type TileShape, type Wallpaper } from "./decor";
 import { findNook } from "./nooks";
 import { trinketInfo, type TrinketKey } from "./trinkets";
 import { defaultWidget, newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
@@ -231,6 +231,8 @@ export type HearthLayout = {
   // Behind everything (CORE-041), and the weather in the air (CORE-047).
   wallpaper: Wallpaper;
   ambience: Ambience;
+  // The fireplace sound (CORE-047); unset is off.
+  fireSound?: FireSound;
   // Themes you've made (CORE-043), and themes that change with the seasons.
   customThemes: CustomTheme[];
   seasonal: SeasonalThemes;
@@ -913,6 +915,7 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
     haptics: saved.haptics ?? defaultHearthLayout.haptics,
     wallpaper: saved.wallpaper ?? defaultHearthLayout.wallpaper,
     ambience: saved.ambience ?? defaultHearthLayout.ambience,
+    fireSound: saved.fireSound,
     customThemes: saved.customThemes ?? defaultHearthLayout.customThemes,
     seasonal: saved.seasonal ?? defaultHearthLayout.seasonal,
     hideHomePage: saved.hideHomePage,

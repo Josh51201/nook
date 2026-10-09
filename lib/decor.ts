@@ -87,6 +87,22 @@ export const ambiences: { key: Ambience; label: string; icon: IconName }[] = [
   { key: "rain", label: "Rain", icon: "drop" },
 ];
 
+// The soft fireplace sound (CORE-047): off unless chosen, and never loud.
+// Plays while you're on the Hearth or in a Hollow, quiet when the phone's
+// on silent, and alongside any music you're playing.
+export type FireSound = "off" | "quiet" | "soft" | "cozy";
+
+export const fireSounds: { key: FireSound; label: string; volume: number }[] = [
+  { key: "off", label: "Off", volume: 0 },
+  { key: "quiet", label: "Barely there", volume: 0.12 },
+  { key: "soft", label: "Soft", volume: 0.25 },
+  { key: "cozy", label: "Cozy", volume: 0.45 },
+];
+
+export function fireVolume(sound: FireSound | undefined) {
+  return fireSounds.find((f) => f.key === sound)?.volume ?? 0;
+}
+
 // Night is fireflies; by day it follows the season (northern hemisphere):
 // snow in winter, petals in spring, drifting dust in the sun of summer,
 // leaves in autumn.
