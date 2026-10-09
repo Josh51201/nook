@@ -16,6 +16,7 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 
 import { tap } from "../../lib/feedback";
+import { CUBBY_OUTSET } from "../../lib/cubbies";
 import { cornerRadius, liftLevel } from "../../lib/decor";
 import {
   canNudge,
@@ -773,6 +774,24 @@ function GridItem({
     shadowOpacity: lifted.value * 0.22,
   }));
 
+  // A Cubby can be grabbed by its edge too, which shows around the things in
+  // it, and its buttons sit on that edge in the middle of a cell, so they
+  // never land on the buttons at the corners of the things inside it.
+  const outset = carries ? CUBBY_OUTSET : 0;
+  const cellSize = stride - GRID_GAP;
+  const boxWidth = w * stride - GRID_GAP;
+  const boxHeight = h * stride - GRID_GAP;
+  const nearX = (w >= 2 ? cellSize / 2 : cellSize * 0.25) - 13;
+  const farX = (w >= 2 ? boxWidth - cellSize / 2 : cellSize * 0.75) - 13;
+  const edgeSpots = carries
+    ? {
+        lock: { left: farX, top: -outset - 13 },
+        copy: { left: nearX, top: boxHeight + outset - 13 },
+        handle: { left: farX, top: boxHeight + outset - 13 },
+      }
+    : null;
+  const showGrip = carries && editing && !selecting && !item.locked && !active;
+
   return (
     <Animated.View
       style={[
@@ -790,10 +809,16 @@ function GridItem({
       <GestureDetector gesture={moveGesture}>
         <Animated.View
           key={`${item.kind === "nook" ? (item.shape ?? "arch") : ""}-${item.corners ?? ""}-${shadow ?? ""}`}
-          style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, wiggle]}
+          style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, wiggle]}
           {...spokenAs(item, editing, { press, hold, nudge: onNudge })}
         >
           {children}
+          {showGrip ? (
+            // Something to hold to pick the box up, on its top edge.
+            <Animated.View entering={FadeIn.duration(200)} style={[styles.copyButton, styles.grip, { left: outset + nearX, borderColor: accent }]}>
+              <Icon name="drag" size={12} color={accent} />
+            </Animated.View>
+          ) : null}
         </Animated.View>
       </GestureDetector>
       <Animated.View
@@ -822,7 +847,7 @@ function GridItem({
         </>
       ) : null}
       {editing && !selecting && onToggleLock && !active ? (
-        <Animated.View entering={FadeIn.duration(200)} style={styles.lockBadge}>
+        <Animated.View entering={FadeIn.duration(200)} style={edgeSpots ? [styles.at, edgeSpots.lock] : styles.lockBadge}>
           <Tap
             onPress={() => {
               tap("success");
@@ -842,7 +867,7 @@ function GridItem({
         <GestureDetector gesture={resizeGesture}>
           <Animated.View
             entering={FadeIn.duration(200)}
-            style={[styles.handle, { borderColor: accent }]}
+            style={[edgeSpots ? [styles.edgeHandle, edgeSpots.handle] : styles.handle, { borderColor: accent }]}
             hitSlop={14}
             accessibilityLabel="Drag to resize"
           >
@@ -851,7 +876,7 @@ function GridItem({
         </GestureDetector>
       ) : null}
       {editing && !selecting && onCopy && !active ? (
-        <Animated.View entering={FadeIn.duration(200)} style={styles.copy}>
+        <Animated.View entering={FadeIn.duration(200)} style={edgeSpots ? [styles.at, edgeSpots.copy] : styles.copy}>
           <Tap
             onPress={() => {
               tap("success");
@@ -884,6 +909,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   copy: { position: "absolute", left: -6, top: -6 },
+  // Placed by `left` and `top` alone (a Cubby's edge buttons).
+  at: { position: "absolute" },
+  grip: { position: "absolute", top: -13 },
   lockBadge: { position: "absolute", right: -6, top: -6 },
   pick: {
     position: "absolute",
@@ -910,6 +938,16 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: -6,
     bottom: -6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  edgeHandle: {
+    position: "absolute",
     width: 26,
     height: 26,
     borderRadius: 13,

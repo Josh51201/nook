@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addItem,
   cubbyContents,
   defaultHearthLayout,
   itemSpokenName,
@@ -42,7 +43,23 @@ describe("what's in a Cubby", () => {
   });
 });
 
+describe("adding a Cubby", () => {
+  it("never lands on top of another Cubby", () => {
+    const first = addItem(layoutOf([]), { id: "one", kind: "cubby", style: "crate", w: 4, h: 2 });
+    const second = addItem(layoutOf(first), { id: "two", kind: "cubby", style: "gift", w: 4, h: 2 });
+    expect(at(second, "one")).toMatchObject({ x: 0, y: 0 });
+    expect(at(second, "two")).toMatchObject({ x: 0, y: 2 });
+  });
+});
+
 describe("moving a Cubby", () => {
+  it("carries a smaller Cubby inside it, but not one the same size", () => {
+    const items = [cubby("big", 0, 0, 4, 4), cubby("small", 0, 0, 2, 2), cubby("twin", 0, 0, 4, 4)];
+    const next = moveItem(layoutOf(items), "big", 0, 5);
+    expect(at(next, "small")).toMatchObject({ y: 5 });
+    expect(at(next, "twin")).toMatchObject({ y: 0 });
+  });
+
   it("brings what's inside along", () => {
     const items = [cubby("box", 0, 0, 4, 2), nook("a", 0, 0), nook("b", 2, 0)];
     const next = moveItem(layoutOf(items), "box", 0, 3);

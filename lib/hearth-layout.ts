@@ -428,6 +428,7 @@ export const sizePresets: Record<HearthItem["kind"], { label: string; w: number;
     { label: "Large", w: 4, h: 3 },
   ],
   cubby: [
+    { label: "Narrow", w: 1, h: 2 },
     { label: "Small", w: 2, h: 2 },
     { label: "Wide", w: 4, h: 2 },
     { label: "Tall", w: 2, h: 4 },
@@ -482,14 +483,18 @@ function isLoose(item: HearthItem) {
 }
 
 // What's in a Cubby: everything (but itself) that sits wholly inside its
-// cells. Locked things stay where they are, so they aren't carried.
+// cells. Locked things stay where they are, so they aren't carried, and so
+// does a Cubby as big as this one (two boxes in one spot can be pulled apart).
 export function cubbyContents(items: HearthItem[], cubby: GridRect & { id: string }): HearthItem[] {
+  const area = cubby.w * cubby.h;
   const inside = (item: HearthItem) =>
     item.x >= cubby.x - 0.01 &&
     item.y >= cubby.y - 0.01 &&
     item.x + item.w <= cubby.x + cubby.w + 0.01 &&
     item.y + item.h <= cubby.y + cubby.h + 0.01;
-  return items.filter((item) => item.id !== cubby.id && !item.locked && inside(item));
+  return items.filter(
+    (item) => item.id !== cubby.id && !item.locked && !(item.kind === "cubby" && item.w * item.h >= area) && inside(item)
+  );
 }
 
 const hundredths = (n: number) => Math.round(n * 100) / 100;
@@ -715,7 +720,13 @@ export function addItem(
     | Omit<TrinketItem, "x" | "y">
     | Omit<CubbyItem, "x" | "y">
 ): HearthItem[] {
-  const spot = findFreeSpot(layout.items.filter((other) => !isFloating(other)), item.w, item.h);
+  // A new Cubby keeps clear of other Cubbies as well, so boxes never land
+  // on top of each other.
+  const spot = findFreeSpot(
+    layout.items.filter((other) => !isFloating(other) || (item.kind === "cubby" && other.kind === "cubby")),
+    item.w,
+    item.h
+  );
   return [...layout.items, { ...item, ...spot } as HearthItem];
 }
 

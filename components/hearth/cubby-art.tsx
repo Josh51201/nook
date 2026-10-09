@@ -48,12 +48,14 @@ export function CubbyArt({
   const s = cubbyShades(color);
   const box = { x: BLEED, y: BLEED, w: W, h: H, r };
   const id = uid.replace(/[^a-zA-Z0-9_-]/g, "");
+  // Takes up its cells (so it can be held and dragged there), and draws
+  // around them.
   return (
-    <View pointerEvents="none" style={{ position: "absolute", left: -O - BLEED, top: -O - BLEED, width: W + BLEED * 2, height: H + BLEED * 2 }}>
+    <View pointerEvents="none" style={{ width, height }}>
       {shadow ? (
-        <View style={{ position: "absolute", left: BLEED, top: BLEED, width: W, height: H, borderRadius: r, boxShadow: shadow }} />
+        <View style={{ position: "absolute", left: -O, top: -O, width: W, height: H, borderRadius: r, boxShadow: shadow }} />
       ) : null}
-      <Svg width={W + BLEED * 2} height={H + BLEED * 2}>
+      <Svg width={W + BLEED * 2} height={H + BLEED * 2} style={{ position: "absolute", left: -O - BLEED, top: -O - BLEED }}>
         <Defs>
           <ClipPath id={`clip-${id}`}>
             <Path d={roundRect(box.x, box.y, box.w, box.h, r)} />
@@ -344,7 +346,9 @@ export function CubbyThumb({ styleKey, color, size }: { styleKey: CubbyStyle; co
   return (
     <View style={{ width: size, height: (height + room * 2) * scale }}>
       <View style={{ position: "absolute", left: room * scale, top: room * scale, width, height, transform: [{ scale }], transformOrigin: "top left" }}>
-        <CubbyArt uid={`thumb-${styleKey}`} styleKey={styleKey} color={color} width={width} height={height} />
+        <View style={{ position: "absolute", left: 0, top: 0 }}>
+          <CubbyArt uid={`thumb-${styleKey}`} styleKey={styleKey} color={color} width={width} height={height} />
+        </View>
         <View style={{ position: "absolute", left: 0, top: 0, width: 50, height, borderRadius: 14, backgroundColor: "#ffffffd9" }} />
         <View style={{ position: "absolute", left: 62, top: 0, width: 50, height, borderRadius: 14, backgroundColor: "#ffffffd9" }} />
       </View>
