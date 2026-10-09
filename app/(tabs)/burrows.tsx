@@ -204,7 +204,7 @@ export default function Burrows() {
                     <Avatar
                       name={member.profiles?.display_name}
                       icon={member.profiles?.avatar_icon}
-                      color={member.profiles?.avatar_color}
+                      color={member.profiles?.avatar_color} photo={member.profiles?.avatar_path}
                       size={26}
                     />
                   </View>

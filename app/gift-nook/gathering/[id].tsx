@@ -273,7 +273,7 @@ export default function GatheringScreen() {
           <NavCard
             key={person.id}
             index={i}
-            leading={<Avatar name={person.display_name} icon={person.avatar_icon} color={person.avatar_color} />}
+            leading={<Avatar name={person.display_name} icon={person.avatar_icon} color={person.avatar_color} photo={person.avatar_path} />}
             icon={isMe || manages ? "heart" : "wishbook"}
             title={`${displayName(person)}${isMe ? " (you)" : ""}`}
             subtitle={

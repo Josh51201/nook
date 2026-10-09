@@ -65,7 +65,7 @@ export function Faces({ people, size = 30, max = 6 }: { people: Profile[]; size?
     <View style={[ui.row, { gap: -8 }]}>
       {people.slice(0, max).map((p) => (
         <View key={p.id} style={{ borderRadius: size, borderWidth: 2, borderColor: colors.surface }}>
-          <Avatar name={displayName(p)} icon={p.avatar_icon} color={p.avatar_color} size={size} />
+          <Avatar name={displayName(p)} icon={p.avatar_icon} color={p.avatar_color} photo={p.avatar_path} size={size} />
         </View>
       ))}
       {people.length > max ? <Text style={[ui.muted, { marginLeft: 12 }]}>+{people.length - max}</Text> : null}

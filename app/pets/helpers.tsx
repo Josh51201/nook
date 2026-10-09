@@ -103,7 +103,7 @@ export default function Helpers() {
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
               >
-                <Avatar name={displayName(person)} icon={person.avatar_icon} color={person.avatar_color} size={40} />
+                <Avatar name={displayName(person)} icon={person.avatar_icon} color={person.avatar_color} photo={person.avatar_path} size={40} />
                 <Text style={[ui.cardTitle, { flex: 1 }]}>{displayName(person)}</Text>
                 {on ? <Icon name="check" size={20} color={colors.bark} /> : null}
               </Tap>

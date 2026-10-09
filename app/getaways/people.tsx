@@ -79,7 +79,7 @@ export default function GetawayPeople() {
           const removable = p.id === userId || starter || myKids.has(p.id);
           return (
             <View key={p.id} style={[ui.row, { gap: 12 }]}>
-              <Avatar name={displayName(p)} icon={p.avatar_icon} color={p.avatar_color} size={36} />
+              <Avatar name={displayName(p)} icon={p.avatar_icon} color={p.avatar_color} photo={p.avatar_path} size={36} />
               <View style={{ flex: 1 }}>
                 <Text style={ui.cardTitle}>{name}</Text>
                 {p.id === data.trip.created_by ? <Text style={[ui.muted, { fontSize: 13 }]}>Started this Getaway</Text> : null}

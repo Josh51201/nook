@@ -52,7 +52,7 @@ export type LetterboxData = {
   profiles: Map<string, LinkedProfile>;
 };
 
-const PROFILE = "id, display_name, avatar_icon, avatar_color, birthday";
+const PROFILE = "id, display_name, avatar_icon, avatar_color, avatar_path, birthday";
 const ADDRESS = "profile_id, line1, line2, city, region, postal_code, country";
 
 export async function loadLetterbox(): Promise<LetterboxData> {

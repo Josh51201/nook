@@ -126,7 +126,7 @@ export default function HearthSettings() {
             <Avatar
               name={profile.display_name}
               icon={profile.avatar_icon}
-              color={profile.avatar_color}
+              color={profile.avatar_color} photo={profile.avatar_path}
               size={44}
             />
           ) : undefined

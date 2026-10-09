@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { useLeaveGuard } from "./leave-guard";
 import { Text, TextInput } from "./text";
 import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
@@ -14,6 +14,7 @@ import {
   toDateString,
   type MyProfile,
 } from "../lib/profile";
+import { pickProfilePhoto, rememberProfilePhoto, removeProfilePhoto, uploadProfilePhoto } from "../lib/profile-photos";
 import { colors, themed, ui } from "../lib/theme";
 import { Avatar } from "./avatar";
 import { DateField } from "./date-field";
@@ -21,10 +22,12 @@ import { Icon } from "./icon";
 import { Tap } from "./motion";
 import { Button, SectionHeader } from "./ui";
 
-export type ProfileValues = Pick<MyProfile, "display_name" | "avatar_icon" | "avatar_color" | "birthday" | "bio">;
+export type ProfileValues = Pick<MyProfile, "display_name" | "avatar_icon" | "avatar_color" | "avatar_path" | "birthday" | "bio">;
 
 // Name, picture, birthday and a short bio (PROF-001). Used both for the
 // first-time welcome and for editing later. Name is the only required part.
+// The picture can be a photo (PROF-006), uploaded when the form is saved;
+// the color and icon stay chosen underneath, for if the photo is removed.
 export function ProfileForm({
   initial,
   submitLabel,
@@ -42,10 +45,33 @@ export function ProfileForm({
   const [color, setColor] = useState<string | null>(initial?.avatar_color ?? null);
   const [birthday, setBirthday] = useState<string | null>(initial?.birthday ?? null);
   const [bio, setBio] = useState(initial?.bio ?? "");
+  // The saved photo (kept unless removed or replaced), and a newly chosen one.
+  const [photoPath, setPhotoPath] = useState<string | null>(initial?.avatar_path ?? null);
+  const [newPhoto, setNewPhoto] = useState<{ uri: string; mimeType?: string | null } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Leaving with unsaved changes asks first (CORE-075).
-  const { allowLeave, blockLeave } = useLeaveGuard({ name, icon, color, birthday, bio });
+  const { allowLeave, blockLeave } = useLeaveGuard({ name, icon, color, birthday, bio, photoPath, newPhoto: newPhoto?.uri ?? null });
+  const profileId = initial?.id;
+  const hasPhoto = Boolean(newPhoto || photoPath);
+  // What the preview shows: the new photo straight from the phone, or the saved one.
+  const previewPhoto = newPhoto ? `local:${newPhoto.uri}` : photoPath;
+
+  async function choosePhoto(from: "camera" | "library") {
+    const picked = await pickProfilePhoto(from);
+    if (!picked) return;
+    tap();
+    rememberProfilePhoto(`local:${picked.uri}`, picked.uri);
+    setNewPhoto(picked);
+  }
+
+  function photoOptions() {
+    Alert.alert(hasPhoto ? "Change the photo" : "Add a photo", undefined, [
+      { text: "Take a photo", onPress: () => choosePhoto("camera") },
+      { text: "Choose from library", onPress: () => choosePhoto("library") },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
 
   async function submit() {
     const trimmed = name.trim();
@@ -53,27 +79,47 @@ export function ProfileForm({
     if (trimmed.includes("@")) return setError("Use your name here, not your email address.");
     setIsSaving(true);
     setError(null);
+
+    // Upload a new photo first, so saving the profile points at it.
+    let uploaded: string | null = null;
+    if (newPhoto && profileId) {
+      try {
+        uploaded = await uploadProfilePhoto(profileId, newPhoto.uri, newPhoto.mimeType);
+        rememberProfilePhoto(uploaded, newPhoto.uri);
+      } catch {
+        setIsSaving(false);
+        return setError("Couldn't upload the photo. Check your connection and try again.");
+      }
+    }
+    const savedPath = initial?.avatar_path ?? null;
+    const nextPath = uploaded ?? photoPath;
+
     // Saving may leave the screen; only ask again if it didn't work.
     allowLeave();
     const message = await onSubmit({
       display_name: trimmed,
       avatar_icon: icon,
       avatar_color: color,
+      avatar_path: nextPath,
       birthday,
       bio: bio.trim() || null,
     });
     setIsSaving(false);
     if (message) {
+      if (uploaded) removeProfilePhoto(uploaded);
       blockLeave();
       setError(message);
+    } else if (savedPath && savedPath !== nextPath) {
+      // The old photo isn't anyone's picture any more.
+      removeProfilePhoto(savedPath);
     }
   }
 
   return (
     <>
       <View style={{ alignItems: "center", paddingVertical: 8 }}>
-        <Animated.View key={`${icon}-${color}`} entering={ZoomIn.duration(220)}>
-          <Avatar name={name || "?"} icon={icon} color={color} size={104} />
+        <Animated.View key={`${icon}-${color}-${previewPhoto}`} entering={ZoomIn.duration(220)}>
+          <Avatar name={name || "?"} icon={icon} color={color} photo={previewPhoto} size={104} />
         </Animated.View>
         <Text style={[styles.previewName, !name.trim() && { color: colors.muted }]} numberOfLines={1}>
           {name.trim() || "Your name"}
@@ -95,7 +141,37 @@ export function ProfileForm({
       />
 
       <SectionHeader title="Your picture" icon="palette" />
-      <View style={styles.swatches}>
+      {profileId ? (
+        <>
+          <View style={[ui.row, { gap: 10 }]}>
+            <Button
+              title={hasPhoto ? "Change photo" : "Add a photo"}
+              icon="camera"
+              variant="secondary"
+              style={{ flex: 1 }}
+              onPress={photoOptions}
+            />
+            {hasPhoto ? (
+              <Button
+                title="Remove"
+                icon="trash"
+                variant="secondary"
+                onPress={() => {
+                  tap();
+                  setNewPhoto(null);
+                  setPhotoPath(null);
+                }}
+              />
+            ) : null}
+          </View>
+          <Text style={ui.muted}>
+            {hasPhoto
+              ? "Your photo shows instead of the icon. The color and icon below are kept for if you take the photo away."
+              : "Or skip the photo and pick a color and an icon (Aa for your initials)."}
+          </Text>
+        </>
+      ) : null}
+      <View style={[styles.swatches, hasPhoto && { opacity: 0.6 }]}>
         {avatarColors.map((swatch) => {
           const selected = color === swatch;
           return (
@@ -118,7 +194,7 @@ export function ProfileForm({
           );
         })}
       </View>
-      <View style={styles.swatches}>
+      <View style={[styles.swatches, hasPhoto && { opacity: 0.6 }]}>
         <Tap
           pressedScale={0.9}
           onPress={() => {

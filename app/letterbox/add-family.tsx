@@ -24,6 +24,7 @@ type Mate = {
   display_name: string | null;
   avatar_icon: string | null;
   avatar_color: string | null;
+  avatar_path?: string | null;
   burrows: string[];
   hasAddress: boolean;
   // Same street, city and ZIP as someone else = they live together.
@@ -45,12 +46,12 @@ export default function AddFamily() {
     if (!userId) return;
     supabase
       .from("burrow_members")
-      .select("burrows(name), profiles(id, display_name, avatar_icon, avatar_color, is_managed)")
+      .select("burrows(name), profiles(id, display_name, avatar_icon, avatar_color, avatar_path, is_managed)")
       .then(async ({ data: rows }) => {
         const byId = new Map<string, Mate>();
         type Row = {
           burrows: { name: string } | null;
-          profiles: { id: string; display_name: string | null; avatar_icon: string | null; avatar_color: string | null; is_managed: boolean } | null;
+          profiles: { id: string; display_name: string | null; avatar_icon: string | null; avatar_color: string | null; avatar_path?: string | null; is_managed: boolean } | null;
         };
         for (const row of (rows ?? []) as unknown as Row[]) {
           const p = row.profiles;
@@ -159,7 +160,7 @@ export default function AddFamily() {
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: on }}
                 >
-                  <Avatar name={displayName(mate)} icon={mate.avatar_icon} color={mate.avatar_color} size={42} />
+                  <Avatar name={displayName(mate)} icon={mate.avatar_icon} color={mate.avatar_color} photo={mate.avatar_path} size={42} />
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={ui.cardTitle}>{displayName(mate)}</Text>
                     <Text style={[ui.muted, { fontSize: 13 }]} numberOfLines={1}>

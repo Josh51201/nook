@@ -13,12 +13,14 @@ export type MyProfile = {
   display_name: string | null;
   avatar_icon: string | null;
   avatar_color: string | null;
+  // A photo instead of the icon/initials (PROF-006): its storage path.
+  avatar_path: string | null;
   birthday: string | null; // YYYY-MM-DD
   bio: string | null;
   onboarded_at: string | null;
 };
 
-export const PROFILE_SELECT = "id, display_name, avatar_icon, avatar_color, birthday, bio, onboarded_at";
+export const PROFILE_SELECT = "id, display_name, avatar_icon, avatar_color, avatar_path, birthday, bio, onboarded_at";
 
 // Avatar choices. `null` icon = the person's initials.
 export const avatarIcons: IconName[] = [

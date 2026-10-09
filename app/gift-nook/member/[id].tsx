@@ -94,7 +94,7 @@ export default function MemberWishbook() {
             await Promise.all([
               supabase
                 .from("profiles")
-                .select("id, display_name, is_managed, avatar_icon, avatar_color, birthday, bio")
+                .select("id, display_name, is_managed, avatar_icon, avatar_color, avatar_path, birthday, bio")
                 .eq("id", profileId)
                 .single(),
               supabase
@@ -408,7 +408,7 @@ export default function MemberWishbook() {
       {person ? (
         <Appear>
           <View style={[ui.card, ui.row, { gap: 14, alignItems: "flex-start" }]}>
-            <Avatar name={person.display_name} icon={person.avatar_icon} color={person.avatar_color} size={64} />
+            <Avatar name={person.display_name} icon={person.avatar_icon} color={person.avatar_color} photo={person.avatar_path} size={64} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text }} numberOfLines={2}>
                 {name}

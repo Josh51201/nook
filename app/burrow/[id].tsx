@@ -201,7 +201,7 @@ export default function BurrowScreen() {
               <Avatar
                 name={member.profiles?.display_name}
                 icon={member.profiles?.avatar_icon}
-                color={member.profiles?.avatar_color}
+                color={member.profiles?.avatar_color} photo={member.profiles?.avatar_path}
               />
             }
             icon={member.profiles?.is_managed ? "kid" : "person"}

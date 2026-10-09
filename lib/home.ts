@@ -22,6 +22,7 @@ export type MyKid = {
   display_name: string | null;
   avatar_icon: string | null;
   avatar_color: string | null;
+  avatar_path: string | null;
   home_id: string | null;
   lives_with_me: boolean;
 };

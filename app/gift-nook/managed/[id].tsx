@@ -53,7 +53,7 @@ export default function ManageProfile() {
           ] = await Promise.all([
             supabase
               .from("profiles")
-              .select("display_name, avatar_icon, avatar_color, bio")
+              .select("display_name, avatar_icon, avatar_color, avatar_path, bio")
               .eq("id", id)
               .single(),
             supabase.from("burrows").select("id, name").order("name"),
@@ -198,7 +198,7 @@ export default function ManageProfile() {
         title="Picture, birthday & about"
         subtitle={kid?.bio?.trim() || "Make their profile feel like them"}
         leading={
-          kid ? <Avatar name={kid.display_name} icon={kid.avatar_icon} color={kid.avatar_color} size={44} /> : undefined
+          kid ? <Avatar name={kid.display_name} icon={kid.avatar_icon} color={kid.avatar_color} photo={kid.avatar_path} size={44} /> : undefined
         }
         onPress={() => router.push(`/gift-nook/managed-profile/${id}`)}
       />

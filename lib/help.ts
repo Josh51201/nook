@@ -48,7 +48,7 @@ const screens: Record<string, HelpTopic> = {
   },
   profile: {
     title: "Your profile",
-    body: "What your family sees of you: your name, picture and birthday. Add your birthday and your Burrows get a Birthday Gathering for you.",
+    body: "What your family sees of you: your name, picture (a photo, or an icon on a color) and birthday. Add your birthday and your Burrows get a Birthday Gathering for you.",
   },
   "theme-editor": {
     title: "Make a theme",

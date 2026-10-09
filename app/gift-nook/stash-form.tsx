@@ -130,7 +130,7 @@ export default function StashForm() {
               accessibilityRole="button"
               accessibilityState={{ selected: aboutId === person.id }}
             >
-              <Avatar name={displayName(person)} icon={person.avatar_icon} color={person.avatar_color} size={22} />
+              <Avatar name={displayName(person)} icon={person.avatar_icon} color={person.avatar_color} photo={person.avatar_path} size={22} />
               <Text style={[ui.chipText, aboutId === person.id && ui.chipTextSelected]}>{displayName(person)}</Text>
             </Tap>
           ))}

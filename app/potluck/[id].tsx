@@ -226,7 +226,7 @@ export default function PotluckScreen() {
         <View style={styles.avatars}>
           {coming.slice(0, 10).map((person, i) => (
             <View key={person.id} style={[styles.avatarRing, { marginLeft: i ? -8 : 0 }]}>
-              <Avatar name={person.name} icon={person.profile?.avatar_icon} color={person.profile?.avatar_color} size={30} />
+              <Avatar name={person.name} icon={person.profile?.avatar_icon} color={person.profile?.avatar_color} photo={person.profile?.avatar_path} size={30} />
             </View>
           ))}
         </View>

@@ -21,7 +21,7 @@ import { colors, ui } from "../../lib/theme";
 import { useLetterbox } from "../../lib/use-letterbox";
 
 type DraftPerson = { key: string; id?: string; name: string; birthday: string | null; profile_id: string | null };
-type Mate = { id: string; display_name: string | null; avatar_icon: string | null; avatar_color: string | null; birthday: string | null };
+type Mate = { id: string; display_name: string | null; avatar_icon: string | null; avatar_color: string | null; avatar_path?: string | null; birthday: string | null };
 
 let keySeed = 0;
 const newKey = () => `p${++keySeed}`;
@@ -82,7 +82,7 @@ export default function ContactForm() {
     if (!userId) return;
     supabase
       .from("burrow_members")
-      .select("profiles(id, display_name, avatar_icon, avatar_color, birthday)")
+      .select("profiles(id, display_name, avatar_icon, avatar_color, avatar_path, birthday)")
       .then(async ({ data: rows }) => {
         const byId = new Map<string, Mate>();
         for (const row of (rows ?? []) as unknown as { profiles: Mate | null }[]) {
@@ -230,7 +230,7 @@ export default function ContactForm() {
           >
             <View style={[ui.row, { gap: 10 }]}>
               {person.profile_id ? (
-                <Avatar name={person.name} icon={mate?.avatar_icon} color={mate?.avatar_color} size={36} />
+                <Avatar name={person.name} icon={mate?.avatar_icon} color={mate?.avatar_color} photo={mate?.avatar_path} size={36} />
               ) : null}
               <TextInput
                 style={[ui.input, { flex: 1 }]}

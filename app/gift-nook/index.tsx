@@ -35,6 +35,7 @@ type Kid = {
   name: string;
   avatarIcon: string | null;
   avatarColor: string | null;
+  avatarPhoto: string | null;
   burrowIds: Set<string>;
 };
 type ReceivedPrompt = {
@@ -90,7 +91,7 @@ export default function GiftNookHome() {
             supabase
               .from("profile_managers")
               .select(
-                "profile_id, profiles!profile_managers_profile_id_fkey(display_name, avatar_icon, avatar_color, burrow_members(burrow_id))",
+                "profile_id, profiles!profile_managers_profile_id_fkey(display_name, avatar_icon, avatar_color, avatar_path, burrow_members(burrow_id))",
               )
               .eq("manager_id", userId),
             supabase
@@ -131,6 +132,7 @@ export default function GiftNookHome() {
               display_name: string | null;
               avatar_icon: string | null;
               avatar_color: string | null;
+              avatar_path: string | null;
               burrow_members: { burrow_id: string }[];
             } | null;
             return {
@@ -138,6 +140,7 @@ export default function GiftNookHome() {
               name: displayName(profile),
               avatarIcon: profile?.avatar_icon ?? null,
               avatarColor: profile?.avatar_color ?? null,
+              avatarPhoto: profile?.avatar_path ?? null,
               burrowIds: new Set(
                 (profile?.burrow_members ?? []).map((m) => m.burrow_id),
               ),
@@ -352,7 +355,7 @@ export default function GiftNookHome() {
           icon="kid"
           iconColor="#4f7fb0"
           iconBackground={colors.sky}
-          leading={<Avatar name={kid.name} icon={kid.avatarIcon} color={kid.avatarColor} />}
+          leading={<Avatar name={kid.name} icon={kid.avatarIcon} color={kid.avatarColor} photo={kid.avatarPhoto} />}
           title={`${kid.name}'s Wishbook`}
           onPress={() => router.push(`/gift-nook/member/${kid.id}`)}
         />

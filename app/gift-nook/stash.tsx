@@ -129,7 +129,7 @@ export default function Stash() {
                     key={idea.id}
                     index={i}
                     icon={idea.kind === "idea" ? "suggest" : "doc"}
-                    leading={!aboutId && i === 0 ? <Avatar name={name} icon={person?.avatar_icon} color={person?.avatar_color} /> : undefined}
+                    leading={!aboutId && i === 0 ? <Avatar name={name} icon={person?.avatar_icon} color={person?.avatar_color} photo={person?.avatar_path} /> : undefined}
                     title={idea.title}
                     subtitle={[
                       idea.kind === "note" ? "Good to know" : idea.suggested_at ? "Suggested on their list" : null,

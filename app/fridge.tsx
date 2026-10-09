@@ -215,7 +215,7 @@ function NoteUpClose({
         <FridgeNoteCard note={note} width={size} height={size} big />
       </View>
       <View style={[ui.row, { gap: 10, alignSelf: "stretch" }]}>
-        <Avatar name={note.author?.display_name} icon={note.author?.avatar_icon} color={note.author?.avatar_color} size={38} />
+        <Avatar name={note.author?.display_name} icon={note.author?.avatar_icon} color={note.author?.avatar_color} photo={note.author?.avatar_path} size={38} />
         <View style={{ flex: 1 }}>
           <Text style={ui.cardTitle}>From {note.author?.display_name?.trim() || "someone"}</Text>
           <Text style={ui.muted}>

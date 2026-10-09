@@ -183,7 +183,7 @@ export default function HomePage() {
           <Avatar
             name={displayName(member.profiles)}
             icon={member.profiles?.avatar_icon}
-            color={member.profiles?.avatar_color}
+            color={member.profiles?.avatar_color} photo={member.profiles?.avatar_path}
             size={40}
           />
           <Text style={[ui.cardTitle, { flex: 1 }]}>
@@ -214,7 +214,7 @@ export default function HomePage() {
             accessibilityRole="button"
             accessibilityLabel={`${displayName(kid.profiles)}, options`}
           >
-            <Avatar name={displayName(kid.profiles)} icon={kid.profiles?.avatar_icon} color={kid.profiles?.avatar_color} size={40} />
+            <Avatar name={displayName(kid.profiles)} icon={kid.profiles?.avatar_icon} color={kid.profiles?.avatar_color} photo={kid.profiles?.avatar_path} size={40} />
             <Text style={[ui.cardTitle, { flex: 1 }]}>{displayName(kid.profiles)}</Text>
             <Icon name="more" size={18} color={colors.muted} />
           </Tap>
@@ -222,7 +222,7 @@ export default function HomePage() {
       ))}
       {notHome.map((kid) => (
         <View key={kid.id} style={[ui.card, ui.row, { gap: 12 }]}>
-          <Avatar name={kid.display_name} icon={kid.avatar_icon} color={kid.avatar_color} size={40} />
+          <Avatar name={kid.display_name} icon={kid.avatar_icon} color={kid.avatar_color} photo={kid.avatar_path} size={40} />
           <View style={{ flex: 1 }}>
             <Text style={ui.cardTitle}>{kid.display_name ?? "Someone"}</Text>
             <Text style={ui.muted}>You look after them. Do they live here?</Text>
@@ -270,7 +270,7 @@ export default function HomePage() {
               disabled={busy}
               style={[ui.card, ui.row, { gap: 12 }]}
             >
-              <Avatar name={displayName(person)} icon={person.avatar_icon} color={person.avatar_color} size={36} />
+              <Avatar name={displayName(person)} icon={person.avatar_icon} color={person.avatar_color} photo={person.avatar_path} size={36} />
               <Text style={[ui.cardTitle, { flex: 1 }]}>{displayName(person)}</Text>
               <Text style={[ui.link, { fontWeight: "700" }]}>Invite</Text>
             </Tap>

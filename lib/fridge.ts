@@ -23,11 +23,11 @@ export type FridgeNote = {
   lasts_days: number;
   created_at: string;
   expires_at: string;
-  author?: { display_name: string | null; avatar_icon: string | null; avatar_color: string | null } | null;
+  author?: { display_name: string | null; avatar_icon: string | null; avatar_color: string | null; avatar_path?: string | null } | null;
 };
 
 export const NOTE_SELECT =
-  "id, home_id, burrow_id, author_id, kind, body, doodle, paper, lasts_days, created_at, expires_at, author:profiles!fridge_notes_author_id_fkey(display_name, avatar_icon, avatar_color)";
+  "id, home_id, burrow_id, author_id, kind, body, doodle, paper, lasts_days, created_at, expires_at, author:profiles!fridge_notes_author_id_fkey(display_name, avatar_icon, avatar_color, avatar_path)";
 
 export const MAX_NOTE_LENGTH = 200;
 // The database refuses more than this many on one fridge at once.

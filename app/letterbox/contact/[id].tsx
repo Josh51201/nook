@@ -192,7 +192,7 @@ export default function ContactPage() {
             const next = birthday ? nextBirthday(birthday) : null;
             return (
               <Appear key={person.id} index={i} style={[ui.card, ui.row, { gap: 12 }]}>
-                <Avatar name={name} icon={linked?.avatar_icon} color={linked?.avatar_color} size={40} />
+                <Avatar name={name} icon={linked?.avatar_icon} color={linked?.avatar_color} photo={linked?.avatar_path} size={40} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={ui.cardTitle}>{name}</Text>
                   <Text style={ui.muted}>
