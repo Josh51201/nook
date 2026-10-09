@@ -289,7 +289,7 @@ export function HearthGrid({
             if (w !== item.w || h !== item.h) onResize(item.id, w, h);
           }}
         >
-          <ItemContent item={item} width={item.w * stride - GRID_GAP} height={item.h * stride - GRID_GAP} render={renderItem} />
+          <ItemContent item={item} {...liveSize(item, activeId === item.id ? ghost : null, stride)} render={renderItem} />
         </GridItem>
       ))}
     </View>
@@ -315,6 +315,15 @@ const ItemContent = memo(
   },
   (a, b) => a.item === b.item && a.width === b.width && a.height === b.height && a.render === b.render
 );
+
+// Text being resized redraws at the new size as you drag the corner, so you
+// see how it'll fit before letting go (CORE-077). Everything else keeps its
+// size until you let go.
+function liveSize(item: HearthItem, ghost: GridRect | null, stride: number) {
+  const resizing = ghost && item.kind === "label" && ghost.x === item.x && ghost.y === item.y;
+  const rect = resizing ? ghost : item;
+  return { width: rect.w * stride - GRID_GAP, height: rect.h * stride - GRID_GAP };
+}
 
 // The shadow follows the item's outline: Nook tiles are arched (CORE-036).
 function shadowShape(item: HearthItem, stride: number) {
