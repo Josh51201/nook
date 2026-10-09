@@ -366,7 +366,7 @@ export default function WidgetEditor() {
 
       <SectionHeader title="Make a copy" icon="copy" />
       <View style={ui.chips}>
-        <Chip icon={sharedPage ? "burrow" : "hearth"} onPress={() => saveWidget(null)}>
+        <Chip icon="hearth" onPress={() => saveWidget(null)}>
           {hereName}
         </Chip>
         {hollowsOf(layout).map((hollowItem) => (

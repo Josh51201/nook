@@ -103,7 +103,7 @@ export default function WidgetPage() {
       body = <NotePage widget={widget} {...card} onEdit={edit} />;
       break;
     default:
-      body = <BigWidget item={item} themeText={theme.text} refreshKey={refreshKey} />;
+      body = <BigWidget item={item} themeText={theme.text} refreshKey={refreshKey} onChange={saveWidget} />;
   }
 
   return (
@@ -597,7 +597,18 @@ function NotePage({ widget, onEdit, ...card }: CardProps & { widget: WidgetOf<"n
 
 // --- Anything else: the widget itself, big --------------------------------------------
 
-function BigWidget({ item, themeText, refreshKey }: { item: WidgetItem; themeText: string; refreshKey: number }) {
+// `onChange` lets the buttons inside work here too (e.g. a habit's "Done today").
+function BigWidget({
+  item,
+  themeText,
+  refreshKey,
+  onChange,
+}: {
+  item: WidgetItem;
+  themeText: string;
+  refreshKey: number;
+  onChange: (widget: WidgetItem["widget"]) => void;
+}) {
   const { width } = useWindowDimensions();
   return (
     <Appear style={{ alignItems: "center" }}>
@@ -609,6 +620,7 @@ function BigWidget({ item, themeText, refreshKey }: { item: WidgetItem; themeTex
         height={340}
         refreshKey={refreshKey}
         themeText={themeText}
+        onChange={onChange}
       />
     </Appear>
   );

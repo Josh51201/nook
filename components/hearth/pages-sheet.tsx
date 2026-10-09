@@ -56,29 +56,35 @@ export function PageStrip({
         {pages.map((page) => {
           const on = page.id === activeId;
           const hover = hoverId === page.id;
+          const shared = page.id === homeId;
           return (
-            <View key={page.id} ref={(node) => tabRef?.(page.id, node)} collapsable={false} style={{ transform: [{ scale: hover ? 1.1 : 1 }] }}>
+            <View key={page.id} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {/* The shared Home page (CORE-054) sits apart from your own pages:
+                a little divider, a house, and a squarer, warmer tab. */}
+            {shared ? <View style={{ width: 1.5, height: 20, borderRadius: 1, backgroundColor: `${accent}40` }} /> : null}
+            <View ref={(node) => tabRef?.(page.id, node)} collapsable={false} style={{ transform: [{ scale: hover ? 1.1 : 1 }] }}>
               <Tap
                 onPress={() => onSwitch(page.id)}
                 pressedScale={0.94}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
                 style={{
-                  paddingHorizontal: 14,
+                  paddingHorizontal: shared ? 12 : 14,
                   paddingVertical: 6,
-                  borderRadius: 999,
-                  backgroundColor: hover ? accent : on ? accent : `${accent}14`,
-                  borderWidth: hover ? 2 : 1,
-                  borderColor: on || hover ? accent : `${accent}33`,
+                  borderRadius: shared ? 10 : 999,
+                  backgroundColor: hover || on ? accent : shared ? `${accent}26` : `${accent}14`,
+                  borderWidth: hover || shared ? 2 : 1,
+                  borderColor: on || hover || shared ? accent : `${accent}33`,
                 }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                  {page.id === homeId ? <Icon name="burrow" size={13} color={on || hover ? background : accent} /> : null}
+                  {shared ? <Icon name="hearth" size={14} color={on || hover ? background : accent} /> : null}
                   <Text style={{ fontSize: 14, fontWeight: on || hover ? "800" : "600", color: on || hover ? background : text }} numberOfLines={1}>
                     {page.name}
                   </Text>
                 </View>
               </Tap>
+            </View>
             </View>
           );
         })}
@@ -171,10 +177,10 @@ export function PagesSheet({
           />
         ))}
         {homeId ? (
-          <Text style={ui.muted}>The page with the little house is shared with everyone in your Home: anyone can add to it, rearrange it or rename it. Hiding it only hides it for you.</Text>
+          <Text style={ui.muted}>The page with the house is shared with everyone in your Home: anyone can add to it, rearrange it or rename it. Hiding it only hides it for you.</Text>
         ) : null}
         {homeHidden && onShowHome ? (
-          <Button title={`Show “${homeName ?? "Home"}” again`} icon="burrow" variant="secondary" onPress={onShowHome} />
+          <Button title={`Show “${homeName ?? "Home"}” again`} icon="hearth" variant="secondary" onPress={onShowHome} />
         ) : null}
         {full ? (
           <Text style={ui.muted}>That's the most pages ({MAX_PAGES}).</Text>
@@ -225,7 +231,7 @@ function PageRow({
   const [name, setName] = useState(page.name);
   return (
     <View style={[ui.row, { gap: 10 }]}>
-      {shared ? <Icon name="burrow" size={20} color={colors.bark} /> : null}
+      {shared ? <Icon name="hearth" size={20} color={colors.bark} /> : null}
       <View style={{ flex: 1 }}>
         <TextInput
           style={ui.input}
