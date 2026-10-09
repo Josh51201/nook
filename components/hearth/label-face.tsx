@@ -85,7 +85,7 @@ export function LabelFace({
   const vJustify = valign === "top" ? "flex-start" : valign === "middle" ? "center" : "flex-end";
   // A little breathing room from the edge it sits against.
   const vPad = { paddingTop: valign === "top" ? 2 : 0, paddingBottom: valign === "bottom" ? 2 : 0 };
-  const inset = decorInset(decor, fontSize, fit.snug);
+  const inset = decorInset(decor, fontSize, fit.snug, fit.padding);
 
   // Measures each word (and a space) once, out of sight. Until that's back,
   // the fit uses a guess from the letters.
@@ -194,7 +194,7 @@ function Decorated({
     case "underline": {
       const thick = Math.max(2, inset.outerY * 0.55);
       return (
-        <View style={{ flexShrink: 1, alignItems: "stretch", minWidth }}>
+        <View style={{ flexShrink: 1, alignItems: "stretch", ...pad }}>
           {children}
           <View style={{ height: thick, borderRadius: thick, marginTop: inset.outerY - thick, backgroundColor: `${tint}55`, marginHorizontal: 2 }} />
         </View>
@@ -267,7 +267,7 @@ function Decorated({
     }
     case "flourish":
       return (
-        <View style={{ flexShrink: 1, flexDirection: "row", alignItems: "center", gap: inset.gap, minWidth }}>
+        <View style={{ flexShrink: 1, flexDirection: "row", alignItems: "center", gap: inset.gap, ...pad }}>
           <Icon name="sparkles" size={inset.icon} color={`${tint}aa`} />
           {/* Stretched, the sparkles go out to the ends. */}
           <View style={{ flexShrink: 1, flexGrow: minWidth ? 1 : 0 }}>{children}</View>
@@ -275,6 +275,6 @@ function Decorated({
         </View>
       );
     default:
-      return <View style={{ flexShrink: 1 }}>{children}</View>;
+      return <View style={{ flexShrink: 1, ...pad }}>{children}</View>;
   }
 }

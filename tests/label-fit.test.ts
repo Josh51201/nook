@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decorInset, decorMinWidth, estimateMeasure, fitLabel, fitText, labelRules, labelVAlign, wrapCount } from "../lib/label-fit";
+import { decorInset, decorMinWidth, estimateMeasure, fitLabel, fitText, labelRules, labelPadding, labelVAlign, wrapCount } from "../lib/label-fit";
 import type { LabelItem } from "../lib/hearth-layout";
 
 // Sizes on a typical phone: a 4-column grid, cells about 80 wide with 12
@@ -10,7 +10,7 @@ const FULL_WIDTH = 356;
 const SLIM = 34;
 const ROW = 80;
 
-type Look = Pick<LabelItem, "size" | "caps" | "decor" | "font" | "divider">;
+type Look = Pick<LabelItem, "size" | "caps" | "decor" | "font" | "divider" | "padding">;
 
 function fit(text: string, look: Partial<Look>, box: { width: number; height: number }) {
   const item: Look = { size: "title", ...look };
@@ -148,5 +148,36 @@ describe("Where text sits and how far its decoration stretches (CORE-078)", () =
     expect(decorMinWidth({ decor: "none", span: 1 }, FULL_WIDTH)).toBe(0);
     expect(decorMinWidth({ span: 1 }, FULL_WIDTH)).toBe(0);
     expect(decorMinWidth({ decor: "pill", span: 1, divider: true }, FULL_WIDTH)).toBe(0);
+  });
+});
+
+describe("Padding around the words (CORE-080)", () => {
+  const box = { width: FULL_WIDTH, height: 2 * 92 - 12 };
+
+  it("adds room around the words, making them smaller to fit", () => {
+    const none = fit("Hello", {}, box);
+    const lots = fit("Hello", { padding: 1 }, box);
+    expect(none.padding).toBe(0);
+    expect(lots.padding).toBeCloseTo(labelPadding({ padding: 1 }, box));
+    expect(lots.padding).toBeGreaterThan(20);
+    expect(lots.fontSize).toBeLessThan(none.fontSize);
+  });
+
+  it("works with a decoration too: the shape gets roomier around the words", () => {
+    const plain = fit("Holidays", { decor: "pill" }, box);
+    const roomy = fit("Holidays", { decor: "pill", padding: 1 }, box);
+    expect(decorInset("pill", roomy.fontSize, roomy.snug, roomy.padding).padY).toBeGreaterThan(
+      decorInset("pill", plain.fontSize, plain.snug, plain.padding).padY
+    );
+  });
+
+  it("gives way in a tight spot instead of cutting the words off", () => {
+    const tight = fit("Recipes", { decor: "sign", padding: 1 }, { width: ONE_COL, height: SLIM });
+    expect(tight.fits).toBe(true);
+    expect(tight.padding).toBeLessThan(labelPadding({ padding: 1 }, { width: ONE_COL, height: SLIM }));
+  });
+
+  it("dividers don't get padding", () => {
+    expect(labelPadding({ padding: 1, divider: true }, box)).toBe(0);
   });
 });

@@ -86,9 +86,9 @@ export function ItemOptions({
   renderPreview?: (item: Editable) => ReactNode;
 }) {
   const [text, setText] = useState("");
-  // The stretch slider's spot while it's being dragged, shown in the preview
-  // before it's saved.
-  const [sliding, setSliding] = useState<number | null>(null);
+  // A slider's spot while it's being dragged (stretch, padding), shown in the
+  // preview before it's saved.
+  const [sliding, setSliding] = useState<Partial<LabelItem>>({});
 
   // Keep showing the last item while the sheet slides away.
   const lastItem = useRef<Editable | null>(null);
@@ -97,7 +97,7 @@ export function ItemOptions({
 
   useEffect(() => {
     if (!item) return;
-    setSliding(null);
+    setSliding({});
     setText(item.kind === "nook" ? item.label ?? "" : item.kind === "hollow" ? item.name : item.kind === "trinket" ? "" : item.text);
   }, [item?.id]);
 
@@ -125,7 +125,7 @@ export function ItemOptions({
   const draft: Editable | null = !shown
     ? null
     : shown.kind === "label"
-      ? { ...shown, text: typed || shown.text, span: sliding ?? shown.span }
+      ? { ...shown, text: typed || shown.text, ...sliding }
       : shown.kind === "nook"
         ? { ...shown, label: typed || undefined }
         : shown.kind === "hollow"
@@ -381,9 +381,9 @@ export function ItemOptions({
                         <Slider
                           label="How far the decoration stretches across its space"
                           value={shown.span ?? 0}
-                          onSlide={setSliding}
+                          onSlide={(span) => setSliding({ span })}
                           onChange={(span) => {
-                            setSliding(null);
+                            setSliding({});
                             onChange({ span } as Partial<LabelItem>);
                           }}
                           startLabel="Just the words"
@@ -391,6 +391,19 @@ export function ItemOptions({
                         />
                       </>
                     ) : null}
+                    <Text style={ui.label}>Padding</Text>
+                    <Slider
+                      label="Room around the words"
+                      value={shown.padding ?? 0}
+                      onSlide={(padding) => setSliding({ padding })}
+                      onChange={(padding) => {
+                        setSliding({});
+                        onChange({ padding } as Partial<LabelItem>);
+                      }}
+                      startLabel="None"
+                      endLabel="Lots"
+                    />
+                    <Text style={ui.muted}>Room around the words, as long as there's space. In a tight spot it gives way so the words still fit.</Text>
                   </>
                 )}
               </>
