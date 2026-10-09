@@ -343,8 +343,9 @@ export function CubbyThumb({ styleKey, color, size }: { styleKey: CubbyStyle; co
   const height = 74;
   const room = CUBBY_OUTSET + BLEED;
   const scale = size / (width + room * 2);
+  // Drawn once and kept as a picture, so a sheet full of them scrolls smoothly.
   return (
-    <View style={{ width: size, height: (height + room * 2) * scale }}>
+    <View style={{ width: size, height: (height + room * 2) * scale }} shouldRasterizeIOS renderToHardwareTextureAndroid>
       <View style={{ position: "absolute", left: room * scale, top: room * scale, width, height, transform: [{ scale }], transformOrigin: "top left" }}>
         <View style={{ position: "absolute", left: 0, top: 0 }}>
           <CubbyArt uid={`thumb-${styleKey}`} styleKey={styleKey} color={color} width={width} height={height} />

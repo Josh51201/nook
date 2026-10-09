@@ -85,11 +85,13 @@ export function AddSheet({
                 <Tap
                   key={t.key}
                   onPress={() => onAddTrinket(t.key)}
-                  style={[ui.card, { backgroundColor: colors.background }, { width: "30.5%", alignItems: "center", gap: 6, paddingVertical: 12, paddingHorizontal: 6 }]}
+                  style={[ui.card, insetStyle(), { width: "30.5%", alignItems: "center", gap: 6, paddingVertical: 12, paddingHorizontal: 6 }]}
                   accessibilityRole="button"
                   accessibilityLabel={`Add ${t.label}`}
                 >
-                  <TrinketThumb piece={t.key} color={t.color} size={52} />
+                  <View shouldRasterizeIOS renderToHardwareTextureAndroid>
+                    <TrinketThumb piece={t.key} color={t.color} size={52} />
+                  </View>
                   <Text style={{ fontSize: 12, fontWeight: "600", color: colors.text, textAlign: "center" }} numberOfLines={2}>
                     {t.label}
                   </Text>
@@ -117,7 +119,7 @@ export function AddSheet({
                 <Tap
                   key={c.key}
                   onPress={() => onAddCubby(c.key)}
-                  style={[ui.card, { backgroundColor: colors.background }, { width: "47.5%", alignItems: "center", gap: 6, paddingVertical: 12, paddingHorizontal: 6 }]}
+                  style={[ui.card, insetStyle(), { width: "47.5%", alignItems: "center", gap: 6, paddingVertical: 12, paddingHorizontal: 6 }]}
                   accessibilityRole="button"
                   accessibilityLabel={`Add a ${c.label}`}
                 >
@@ -189,7 +191,7 @@ function Row({
 }) {
   return (
     <Animated.View entering={FadeIn.delay(Math.min(index, 10) * 30).duration(220)}>
-      <Tap onPress={onPress} style={[ui.card, ui.row, { gap: 12 }, inset ? { backgroundColor: colors.background } : null]} accessibilityRole="button">
+      <Tap onPress={onPress} style={[ui.card, ui.row, { gap: 12 }, inset ? insetStyle() : null]} accessibilityRole="button">
         <IconBadge name={icon} size={42} background={tint ?? colors.barkSoft} />
         <View style={{ flex: 1 }}>
           <Text style={ui.cardTitle}>{title}</Text>
@@ -199,4 +201,11 @@ function Row({
       </Tap>
     </Animated.View>
   );
+}
+
+// Inside a section that folds away: set apart by its color, and flat. The
+// usual card shadow is soft and blurred, and dozens of them inside the
+// section's own card made scrolling the sheet jittery.
+function insetStyle() {
+  return { backgroundColor: colors.background, boxShadow: [] };
 }
