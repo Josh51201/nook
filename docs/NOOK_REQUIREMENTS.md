@@ -119,11 +119,17 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **House Binder** — home info in one place: paint colors, appliance models, warranty dates, filter sizes, trusted contacts like the plumber, and service history.
 - **Quote Jar** — save funny things people say, with the date and who said it; a Hearth widget shows a random one each day.
 - **Fridge Door** — family sticky notes and doodles, shown as a Hearth widget.
+- **Recipe Box** — family recipes with who made them, a photo of the handwritten card, and the story behind them; pairs with Potluck. _(Josh picked it 2026-10-08: "I like the recipe box one".)_
+- **Heads-Up Board** — one-tap household status like "on my way", "dinner at 6?" or "need milk"; no location tracking. _(Josh picked it 2026-10-08.)_
+- **Sick Day** — log a child's symptoms, temperature and medicine doses with a "next dose safe at…" timer so two parents can't double-dose; could feed the Sitter Sheet. _(Josh picked it 2026-10-08: "sick day nook is also good".)_
+- **Subscriptions** — every recurring charge with renewal date, price and a "cancel by" reminder, plus a monthly total. _(Josh picked it 2026-10-08.)_
+- **Little Log** — log anything with a date (blood pressure, mileage, a symptom, a mood); you pick the fields and it charts them over time. _(Josh picked it 2026-10-08.)_
+- **Trip** — packing list, confirmations, itinerary and a "have I booked the dog sitter?" checklist, with a countdown widget. _(Josh picked it 2026-10-08.)_
 - **Idea Stash** — part of the Gift Nook (GIFT-036), not a separate Nook.
 
 Earlier faint, very broad ideas (lower priority, may be dropped): Food tracker, To-do list.
 
-Other ideas Claude mentioned that Josh hasn't picked: Surprise Planner (plan a surprise with a hidden to-do list, hidden from the guest of honor), Keepsakes (letters sealed until a date, e.g. a kid's 18th birthday).
+Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was curious, not yet picked), Hand-Me-Downs, Guest Book, Growth Marks, Kid Art, Gift Closet, Daily Question; Surprise Planner (plan a surprise with a hidden to-do list, hidden from the guest of honor), Keepsakes (letters sealed until a date, e.g. a kid's 18th birthday).
 
 ## 7. Up next
 Josh's stated priority, in order:
