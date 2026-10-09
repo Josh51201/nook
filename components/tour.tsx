@@ -421,7 +421,7 @@ function TourOverlay({
               </View>
             ) : null}
             <Tap onPress={next} style={styles.next} accessibilityRole="button">
-              <Text style={styles.nextText}>{isLast ? "Got it" : index === 0 && !rect ? "Show me" : "Next"}</Text>
+              <Text style={styles.nextText}>{isLast ? "Let's go" : index === 0 && !rect ? "Show me" : "Next"}</Text>
               {isLast ? null : <Icon name="chevron" size={12} color={colors.onAccent} />}
             </Tap>
           </View>
