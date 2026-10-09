@@ -59,7 +59,15 @@ export type LabelItem = ItemBase & {
   bold?: boolean;
   caps?: boolean;
   decor?: LabelDecor;
+  // Where it sits up and down in its space (CORE-078). Unset: slim text in
+  // the middle, taller text at the bottom (see labelVAlign).
+  valign?: LabelVAlign;
+  // How far the decoration stretches across its space (CORE-078): 0 hugs the
+  // words, 1 reaches edge to edge. Unset is 0.
+  span?: number;
 };
+
+export type LabelVAlign = "top" | "middle" | "bottom";
 
 export type LabelDecor = "none" | "underline" | "pill" | "stitched" | "ribbon" | "sign" | "flourish";
 

@@ -3,6 +3,7 @@ import { ScrollView, Switch, View } from "react-native";
 import { Text, TextInput } from "../text";
 
 import { cornerChoices, liftChoices, tileShapes } from "../../lib/decor";
+import { Slider } from "../slider";
 import { tap } from "../../lib/feedback";
 import {
   hollowDecors,
@@ -308,6 +309,19 @@ export function ItemOptions({
                     </Chip>
                   ))}
                 </View>
+                <Text style={ui.label}>Up and down</Text>
+                <View style={ui.chips}>
+                  {(["top", "middle", "bottom"] as const).map((valign) => (
+                    <Chip
+                      key={valign}
+                      // Unset: slim text sits in the middle, taller text at the bottom.
+                      selected={(shown.valign ?? (shown.h < 1 ? "middle" : "bottom")) === valign}
+                      onPress={() => onChange({ valign } as Partial<LabelItem>)}
+                    >
+                      {valign[0].toUpperCase() + valign.slice(1)}
+                    </Chip>
+                  ))}
+                </View>
                 <Text style={ui.label}>Font</Text>
                 <View style={ui.chips}>
                   {labelFonts.map((f) => (
@@ -340,6 +354,18 @@ export function ItemOptions({
                       ))}
                     </View>
                     <Text style={ui.muted}>The color below tints the pill, patch, ribbon or sign.</Text>
+                    {(shown.decor ?? "none") !== "none" ? (
+                      <>
+                        <Text style={ui.label}>Stretch across</Text>
+                        <Slider
+                          label="How far the decoration stretches across its space"
+                          value={shown.span ?? 0}
+                          onChange={(span) => onChange({ span } as Partial<LabelItem>)}
+                          startLabel="Just the words"
+                          endLabel="Edge to edge"
+                        />
+                      </>
+                    ) : null}
                   </>
                 )}
               </>

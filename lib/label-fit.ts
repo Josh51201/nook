@@ -8,7 +8,7 @@
 // even the smallest size can't fit does it fall back to "…".
 
 import type { LabelFont } from "./fonts";
-import type { LabelDecor, LabelItem } from "./hearth-layout";
+import type { LabelDecor, LabelItem, LabelVAlign } from "./hearth-layout";
 
 export type TextMeasure = { words: number[]; space: number };
 
@@ -186,4 +186,20 @@ export function estimateMeasure(text: string, font: LabelFont | undefined, caps?
 
 export function splitWords(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);
+}
+
+// Where text sits up and down (CORE-078): your choice, or by default slim
+// text in the middle and taller text at the bottom, like a heading over what
+// comes next.
+export function labelVAlign(item: Pick<LabelItem, "valign">, height: number): LabelVAlign {
+  return item.valign ?? (height < SLIM_HEIGHT ? "middle" : "bottom");
+}
+
+// How wide the decoration is drawn (CORE-078): at least `span` of the space
+// across, never wider than the space. 0 (or no decoration) leaves it hugging
+// the words.
+export function decorMinWidth(item: Pick<LabelItem, "span" | "decor" | "divider">, width: number): number {
+  if (item.divider || !item.decor || item.decor === "none") return 0;
+  const span = Math.min(1, Math.max(0, item.span ?? 0));
+  return span * Math.max(0, width - SIDE_PAD * 2);
 }

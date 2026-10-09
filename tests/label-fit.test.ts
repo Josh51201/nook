@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decorInset, estimateMeasure, fitLabel, fitText, labelRules, wrapCount } from "../lib/label-fit";
+import { decorInset, decorMinWidth, estimateMeasure, fitLabel, fitText, labelRules, labelVAlign, wrapCount } from "../lib/label-fit";
 import type { LabelItem } from "../lib/hearth-layout";
 
 // Sizes on a typical phone: a 4-column grid, cells about 80 wide with 12
@@ -125,5 +125,28 @@ describe("Hearth text always fits (CORE-077)", () => {
     const result = fitText(estimateMeasure("Holidays", "app", false, true), box, rules);
     expect(result.fits).toBe(true);
     expect(result.lines).toBe(1);
+  });
+});
+
+describe("Where text sits and how far its decoration stretches (CORE-078)", () => {
+  it("sits where you choose, or by default slim in the middle and taller at the bottom", () => {
+    expect(labelVAlign({}, SLIM)).toBe("middle");
+    expect(labelVAlign({}, ROW)).toBe("bottom");
+    expect(labelVAlign({ valign: "top" }, ROW)).toBe("top");
+    expect(labelVAlign({ valign: "middle" }, ROW)).toBe("middle");
+    expect(labelVAlign({ valign: "bottom" }, SLIM)).toBe("bottom");
+  });
+
+  it("stretches a decoration as far across as you ask, up to edge to edge", () => {
+    expect(decorMinWidth({ decor: "sign" }, FULL_WIDTH)).toBe(0);
+    expect(decorMinWidth({ decor: "stitched", span: 0.5 }, FULL_WIDTH)).toBe((FULL_WIDTH - 8) / 2);
+    expect(decorMinWidth({ decor: "ribbon", span: 1 }, FULL_WIDTH)).toBe(FULL_WIDTH - 8);
+    expect(decorMinWidth({ decor: "pill", span: 3 }, FULL_WIDTH)).toBe(FULL_WIDTH - 8);
+  });
+
+  it("has nothing to stretch without a decoration, or on a divider", () => {
+    expect(decorMinWidth({ decor: "none", span: 1 }, FULL_WIDTH)).toBe(0);
+    expect(decorMinWidth({ span: 1 }, FULL_WIDTH)).toBe(0);
+    expect(decorMinWidth({ decor: "pill", span: 1, divider: true }, FULL_WIDTH)).toBe(0);
   });
 });

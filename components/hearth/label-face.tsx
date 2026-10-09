@@ -6,10 +6,11 @@ import { boldened, labelFamily } from "../../lib/fonts";
 import { deepColor, labelIsBold, type LabelItem } from "../../lib/hearth-layout";
 import {
   decorInset,
+  decorMinWidth,
   estimateMeasure,
   fitLabel,
+  labelVAlign,
   SIDE_PAD,
-  SLIM_HEIGHT,
   splitWords,
   type Inset,
   type TextMeasure,
@@ -80,7 +81,10 @@ export function LabelFace({
     lineHeight: fontSize * fit.lineHeight,
     letterSpacing: spacing * fontSize,
   };
-  const slim = height < SLIM_HEIGHT;
+  const valign = labelVAlign(item, height);
+  const vJustify = valign === "top" ? "flex-start" : valign === "middle" ? "center" : "flex-end";
+  // A little breathing room from the edge it sits against.
+  const vPad = { paddingTop: valign === "top" ? 2 : 0, paddingBottom: valign === "bottom" ? 2 : 0 };
   const inset = decorInset(decor, fontSize, fit.snug);
 
   // Measures each word (and a space) once, out of sight. Until that's back,
@@ -129,17 +133,17 @@ export function LabelFace({
     const line = item.color ? deepColor(item.color) : theme.text;
     return (
       <View
-        style={{ width, height, flexDirection: "row", alignItems: slim ? "center" : "flex-end", gap: 10, paddingHorizontal: SIDE_PAD, paddingBottom: slim ? 0 : 4 }}
+        style={{ width, height, flexDirection: "row", alignItems: vJustify, gap: 10, paddingHorizontal: SIDE_PAD, ...vPad }}
       >
         {measurer}
         {shown}
-        <View style={{ flex: 1, minWidth: 24, height: 2, borderRadius: 1, backgroundColor: `${line}33`, marginBottom: slim ? 0 : fontSize * 0.55 }} />
+        <View style={{ flex: 1, minWidth: 24, height: 2, borderRadius: 1, backgroundColor: `${line}33`, alignSelf: "center" }} />
         {folded && hiddenCount ? (
-          <RNText allowFontScaling={false} style={{ color: theme.muted, fontSize: 13, marginBottom: slim ? 0 : fontSize * 0.3 }}>
+          <RNText allowFontScaling={false} style={{ color: theme.muted, fontSize: 13, alignSelf: "center" }}>
             {hiddenCount} hidden
           </RNText>
         ) : null}
-        <View style={{ transform: [{ rotate: folded ? "0deg" : "90deg" }], marginBottom: slim ? 0 : fontSize * 0.3 }}>
+        <View style={{ transform: [{ rotate: folded ? "0deg" : "90deg" }], alignSelf: "center" }}>
           <Icon name="chevron" size={16} color={line} />
         </View>
       </View>
@@ -149,10 +153,10 @@ export function LabelFace({
   const justify = item.align === "left" ? "flex-start" : item.align === "right" ? "flex-end" : "center";
 
   return (
-    <View style={{ width, height, justifyContent: slim ? "center" : "flex-end", paddingHorizontal: SIDE_PAD, paddingBottom: slim ? 0 : 2 }}>
+    <View style={{ width, height, justifyContent: vJustify, paddingHorizontal: SIDE_PAD, ...vPad }}>
       {measurer}
       <View style={{ flexDirection: "row", justifyContent: justify }}>
-        <Decorated decor={decor} tint={tint} soft={item.color} accent={theme.accent} inset={inset}>
+        <Decorated decor={decor} tint={tint} soft={item.color} accent={theme.accent} inset={inset} minWidth={decorMinWidth(item, width)}>
           {shown}
         </Decorated>
       </View>
@@ -169,6 +173,7 @@ function Decorated({
   soft,
   accent,
   inset,
+  minWidth,
   children,
 }: {
   decor: NonNullable<LabelItem["decor"]>;
@@ -176,17 +181,20 @@ function Decorated({
   soft?: string;
   accent: string;
   inset: Inset;
+  // Stretched across its space (CORE-078); the words keep their own line-up
+  // inside it.
+  minWidth: number;
   children: React.ReactNode;
 }) {
   const [box, setBox] = useState({ w: 0, h: 0 });
   const fill = soft ?? `${accent}24`;
-  const pad = { paddingHorizontal: inset.padX, paddingVertical: inset.padY };
+  const pad = { paddingHorizontal: inset.padX, paddingVertical: inset.padY, minWidth };
 
   switch (decor) {
     case "underline": {
       const thick = Math.max(2, inset.outerY * 0.55);
       return (
-        <View style={{ flexShrink: 1, alignItems: "stretch" }}>
+        <View style={{ flexShrink: 1, alignItems: "stretch", minWidth }}>
           {children}
           <View style={{ height: thick, borderRadius: thick, marginTop: inset.outerY - thick, backgroundColor: `${tint}55`, marginHorizontal: 2 }} />
         </View>
@@ -259,9 +267,10 @@ function Decorated({
     }
     case "flourish":
       return (
-        <View style={{ flexShrink: 1, flexDirection: "row", alignItems: "center", gap: inset.gap }}>
+        <View style={{ flexShrink: 1, flexDirection: "row", alignItems: "center", gap: inset.gap, minWidth }}>
           <Icon name="sparkles" size={inset.icon} color={`${tint}aa`} />
-          <View style={{ flexShrink: 1 }}>{children}</View>
+          {/* Stretched, the sparkles go out to the ends. */}
+          <View style={{ flexShrink: 1, flexGrow: minWidth ? 1 : 0 }}>{children}</View>
           <Icon name="sparkles" size={inset.icon} color={`${tint}aa`} />
         </View>
       );
