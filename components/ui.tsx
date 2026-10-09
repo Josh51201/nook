@@ -224,15 +224,13 @@ export function HeaderIcon({
   badge?: number;
 }) {
   return (
-    // Padded so the badge and the icon sit inside the button's box: a
+    // A small fixed box, with the badge inside it: a
     // navigation header crops anything drawn outside it.
-    <Tap onPress={onPress} hitSlop={6} pressedScale={0.85} accessibilityLabel={label} accessibilityRole="button" style={{ padding: 9 }}>
-      <Icon name={icon} size={22} />
+    <Tap onPress={onPress} hitSlop={6} pressedScale={0.85} accessibilityLabel={label} accessibilityRole="button" style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center" }}>
+      <Icon name={icon} size={20} />
       {badge > 0 ? (
         <Animated.View entering={ZoomIn.springify().damping(12)} style={headerBadge}>
-          {/* A set line height: the chosen font's own spacing is taller than the
-              badge, and the number's top was getting cut off. */}
-          <Text style={{ color: colors.white, fontSize: 11, lineHeight: 14, fontWeight: "700", textAlign: "center", includeFontPadding: false }}>
+          <Text style={{ color: colors.white, fontSize: 9.5, lineHeight: 12, fontWeight: "700", textAlign: "center", includeFontPadding: false }}>
             {badge > 9 ? "9+" : badge}
           </Text>
         </Animated.View>
@@ -243,12 +241,12 @@ export function HeaderIcon({
 
 const headerBadge = themed(() => ({
   position: "absolute" as const,
-  top: 1,
-  right: 1,
-  minWidth: 20,
-  height: 20,
-  borderRadius: 10,
-  paddingHorizontal: 4,
+  top: 0,
+  right: 0,
+  minWidth: 15,
+  height: 15,
+  borderRadius: 7.5,
+  paddingHorizontal: 3,
   backgroundColor: colors.heart,
   alignItems: "center" as const,
   justifyContent: "center" as const,
