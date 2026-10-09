@@ -311,6 +311,14 @@ export default function HearthSettings() {
         </>
       )}
 
+      <SectionHeader title="Notifications" icon="bell" />
+      <NavCard
+        icon="bell"
+        title="Notifications"
+        subtitle="Choose what every Nook tells you about, all in one place"
+        onPress={() => router.push("/notifications")}
+      />
+
       <SectionHeader title="Help" icon="help" />
       <NavCard
         icon="sparkles"

@@ -95,6 +95,7 @@ function RootStack() {
       <Stack.Screen name="home" options={{ ...headerOptions, title: "Your Home", headerBackTitle: "Burrows" }} />
       <Stack.Screen name="theme-editor" options={{ ...headerOptions, title: "Theme", headerBackTitle: "Settings" }} />
       <Stack.Screen name="theme-seasons" options={{ ...headerOptions, title: "Seasonal themes", headerBackTitle: "Settings" }} />
+      <Stack.Screen name="notifications" options={{ ...headerOptions, title: "Notifications", headerBackTitle: "Settings" }} />
       <Stack.Screen name="inbox" options={{ ...headerOptions, title: "Inbox" }} />
       <Stack.Screen name="fridge" options={{ ...headerOptions, title: "Fridge", headerBackTitle: "Back" }} />
       <Stack.Screen name="fridge-note" options={{ ...headerOptions, title: "Stick something up", headerBackTitle: "Fridge" }} />
