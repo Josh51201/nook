@@ -119,7 +119,7 @@ export const firstTour: TourStep[] = [
   {
     icon: "heart",
     title: "Make yourself at home",
-    body: "That's the whole tour! Wander in, open a Nook, and shape your Hearth to your heart's content — pick a theme, move things around, tuck Nooks into Hollows. This little nook is all yours. And if you ever get stuck, tap the ? at the top of any screen.",
+    body: "That's the whole tour! Wander in, open a Nook, and shape your Hearth to your heart's content — pick a theme, move things around, tuck Nooks into Hollows. This little nook is all yours. And if you ever get stuck, tap the ? at the top of a screen (on your Hearth, it's under Edit) or open Settings → Help.",
   },
 ];
 

@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-09 (rev 61)_
+_Last updated: 2026-10-09 (rev 62)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -20,7 +20,7 @@ _Last updated: 2026-10-09 (rev 61)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*. _(Exception, CORE-072: a brand-new Hearth starts with one Greeting widget.)_
 - **CORE-067** Every Nook is reachable from one menu, even ones not added to the Hearth, so someone invited to a Gathering (or who joined just for the Gift Nook) knows where to tap. _(Built as a "Nooks" tab in the bottom bar: Nooks with something new sit at the top, a dot on the tab shows news, one tap opens any Nook, and a Nook can be put on the Hearth from there; the tour points at it. Placement and layout are Claude's call, proposed.)_
 - **CORE-068** Text size setting (Settings → Text size): Normal (follows the phone), Large, Extra large. Applies everywhere except the Hearth's own tiles, widgets and Hollows, which keep their size so layouts never break. _(Built 2026-10-09. Large/Extra large mean "at least this big", so it never stacks on the phone's own big text.)_
-- **CORE-069** A "?" in the header of every screen: a couple of plain sentences about that screen, with buttons to the Help page and to replay the tour. _(Built 2026-10-09: on the Hearth, the tabs and every Nook's screens; form screens that use the header for Save don't have it.)_
+- **CORE-069** A "?" in the header of every screen: a couple of plain sentences about that screen, with buttons to the Help page and to replay the tour. _(Built 2026-10-09: on the tabs and every Nook's screens; form screens that use the header for Save don't have it. On the Hearth and in Hollows it's a Help button with the Edit tools instead, so the header has room for your name — Josh 2026-10-09: "the names get cut off on the hearth page at the very top ... maybe move that to somewhere less important".)_
 - **CORE-070** A Help page (Settings → Help, or from the "?"): tap-to-open answers to common questions, plus replay the tour. _(Built 2026-10-09; the answers are Claude's wording, proposed.)_
 - **CORE-071** Friendlier emailed-code sign-in: the phone can offer the code from the email, pasted codes with spaces work, a spam-folder hint, a "Send a new code" button (after a 60-second wait), "Wrong email? Go back", and plain-words errors. _(Built 2026-10-09.)_
 - **CORE-072** A brand-new Hearth starts with one Greeting widget across the top (saying "Welcome to your Hearth") and nothing else; it can be edited, moved or removed like any widget. Existing Hearths are untouched. _(Josh 2026-10-09: "maybe with just the Greeting widget at the top". An exception to CORE-015's "nothing on the Hearth until you add it".)_

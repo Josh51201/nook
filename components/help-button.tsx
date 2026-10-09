@@ -13,11 +13,30 @@ import { useTour } from "./tour";
 // a phone alert, so it's big, clear and works with the phone's own text size.
 // `color` is for screens with their own look (the Hearth).
 export function HelpButton({ color }: { color?: string }) {
+  const show = useShowHelp();
+  return (
+    <Tap
+      onPress={show}
+      hitSlop={10}
+      pressedScale={0.85}
+      style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center" }}
+      accessibilityRole="button"
+      accessibilityLabel="Help with this screen"
+    >
+      <Icon name="help" size={22} color={color} />
+    </Tap>
+  );
+}
+
+// Shows this screen's help, for screens that put it somewhere other than
+// the header (the Hearth keeps it with its Edit tools, so its header has
+// room for your name).
+export function useShowHelp() {
   const pathname = usePathname();
   const router = useRouter();
   const tour = useTour();
 
-  function show() {
+  return function show() {
     tap();
     const topic = helpFor(pathname);
     Alert.alert(topic.title, topic.body, [
@@ -36,20 +55,7 @@ export function HelpButton({ color }: { color?: string }) {
         : []),
       { text: "Got it", style: "cancel" },
     ]);
-  }
-
-  return (
-    <Tap
-      onPress={show}
-      hitSlop={10}
-      pressedScale={0.85}
-      style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center" }}
-      accessibilityRole="button"
-      accessibilityLabel="Help with this screen"
-    >
-      <Icon name="help" size={22} color={color} />
-    </Tap>
-  );
+  };
 }
 
 // A screen's own header buttons (settings, inbox…) with the "?" beside them.

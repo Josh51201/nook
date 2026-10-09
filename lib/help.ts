@@ -12,7 +12,7 @@ export type HelpTopic = { title: string; body: string };
 const screens: Record<string, HelpTopic> = {
   hearth: {
     title: "Your Hearth",
-    body: "This is home. Tap a tile to open a Nook. Tap Edit (or hold a tile) to move things around, and the bell is your inbox.",
+    body: "This is home. Tap a tile to open a Nook. Tap Edit (or hold a tile) to move things around, and the bell is your inbox. This help is under Edit too.",
   },
   nooks: {
     title: "Nooks",

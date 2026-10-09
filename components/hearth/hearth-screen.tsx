@@ -3,7 +3,7 @@ import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Alert, StyleSheet, useWindowDimensions, View } from "react-native";
 import { FixedTextSize, Text } from "../text";
-import { HelpButton } from "../help-button";
+import { useShowHelp } from "../help-button";
 import { ItemPreview } from "./item-preview";
 import { LabelFace } from "./label-face";
 import { MoveBar } from "./move-bar";
@@ -222,6 +222,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const [barHeight, setBarHeight] = useState(0);
   // The page row under the bar (CORE-051), so the fade starts below it.
   const [stripHeight, setStripHeight] = useState(0);
+  const showHelp = useShowHelp();
   // The soft fireplace sound, if it's on (CORE-047).
   useFireSound(layout.fireSound);
   // Fridge doors (CORE-086): which fridges have a note you haven't seen, so
@@ -1538,8 +1539,6 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   <Icon name="settings" size={24} color={theme.accent} />
                 </Tap>
               ) : null}
-              {/* Out of the way while arranging, when the header is busiest. */}
-              {editing ? null : <HelpButton color={theme.accent} />}
             </View>
           </View>
         </View>
@@ -1656,6 +1655,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                       )}
                     </>
                   )}
+                  {/* The "?" lives here rather than in the header, so the
+                      header has room for your name (CORE-069). */}
+                  <Pill icon="help" label="Help" accent={theme.accent} background={theme.background} onPress={showHelp} />
                 </View>
               </Animated.View>
             ) : null}

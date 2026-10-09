@@ -9,7 +9,7 @@ import { fireVolume, type FireSound } from "../../lib/decor";
 // Hearth and each Hollow ask for it while they're on screen, and it plays
 // at the loudest volume anyone's asking for. It fades in, fades out when
 // you open a Nook or leave the app, and stepping from the Hearth into a
-// Hollow carries straight on. The sound is made by scripts/make-fire-sound.mjs.
+// Hollow carries straight on. The sound is Josh's pick, assets/sounds/fireplace.mp3.
 
 let player: AudioPlayer | null = null;
 let modeReady = false;
@@ -45,7 +45,7 @@ function update() {
       setAudioModeAsync({ playsInSilentMode: false, interruptionMode: "mixWithOthers", shouldPlayInBackground: false }).catch(() => {});
     }
     if (!player) {
-      player = createAudioPlayer(require("../../assets/sounds/fireplace.wav"));
+      player = createAudioPlayer(require("../../assets/sounds/fireplace.mp3"));
       player.loop = true;
       player.volume = 0;
     }
