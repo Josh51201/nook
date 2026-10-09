@@ -28,10 +28,16 @@ export type Notice = {
 
 type KindInfo = { icon: IconName; route: (data: Notice["data"]) => string | null };
 
+const potluckRoute = (data: Notice["data"]) => (data.potluck_id ? `/potluck/${data.potluck_id}` : "/potluck");
+
 const kinds: Record<string, Record<string, KindInfo>> = {
   "gift-nook": {
     gathering_soon: {
       icon: "calendar",
+      route: (data) => (data.gathering_id ? `/gift-nook/gathering/${data.gathering_id}` : null),
+    },
+    gathering_new: {
+      icon: "celebration",
       route: (data) => (data.gathering_id ? `/gift-nook/gathering/${data.gathering_id}` : null),
     },
     new_gifts: {
@@ -45,10 +51,11 @@ const kinds: Record<string, Record<string, KindInfo>> = {
     },
   },
   potluck: {
-    potluck_reminder: {
-      icon: "potluck",
-      route: (data) => (data.potluck_id ? `/potluck/${data.potluck_id}` : null),
-    },
+    potluck_reminder: { icon: "potluck", route: (data) => potluckRoute(data) },
+    potluck_new: { icon: "invite", route: (data) => potluckRoute(data) },
+    potluck_changed: { icon: "edit", route: (data) => potluckRoute(data) },
+    potluck_rsvp: { icon: "check", route: (data) => potluckRoute(data) },
+    potluck_dish: { icon: "food", route: (data) => potluckRoute(data) },
   },
   pets: {
     pet_fed: { icon: "paw", route: (data) => (data.pet_id ? `/pets/${data.pet_id}` : "/pets") },

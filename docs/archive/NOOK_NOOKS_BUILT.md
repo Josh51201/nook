@@ -32,6 +32,7 @@ _Gift, Potluck, Letterbox, Pet Care and Rhythms Nook requirements, moved out of 
 - **GIFT-027** An event is archived at its end date and deleted 90 days later.
 - **GIFT-028** Family admins can remove a member, rename or delete the family, make others admins, and delete any event. Other members can only delete events they created. A family always keeps at least one admin.
 - **GIFT-029** Notifications, each turned on or off per person in Gift Nook settings: an event coming up, new gifts added, a gift you claimed changed, and someone joined your family. These start as an in-app inbox; phone push notifications come later (GIFT-031).
+- **GIFT-037** A new-Gathering notice: when someone plans a Gathering in your Burrow, the rest of the Burrow hears (switch in Gift Nook settings). Automatic Birthday Gatherings stay quiet. _(Built 2026-10-09. Nothing about claims, GIFT-007.)_
 - **GIFT-031** Notifications are also sent as phone push notifications. (Later — not built yet.)
 - **GIFT-032** *(proposed)* An owner can mark a gift ❤️ Most wanted; those show first on their list.
 - **GIFT-033** *(proposed)* A gift can have an approximate price, and givers can filter someone's list by budget (under $25 / $50 / $100) and by Shelf.
@@ -49,6 +50,7 @@ _Gift, Potluck, Letterbox, Pet Care and Rhythms Nook requirements, moved out of 
 - **POT-005** When a dish clashes with the allergy or diet of someone coming, the Potluck warns about it and names the person ("Contains peanuts — Mia has a peanut allergy").
 - **POT-006** People RSVP — Going / Maybe / Can't make it — with how many they're bringing ("+2"), so the host knows how much food is needed. Warnings only count people who are coming. _(Proposed: a kid's managers RSVP for the kid; "Maybe" counts as coming for warnings.)_
 - **POT-007** The day before, everyone bringing something gets an inbox reminder ("Tomorrow: you're bringing mashed potatoes"); it can be turned off in Potluck settings.
+- **POT-009** More inbox notices, each with its own switch in Potluck settings: a new Potluck is planned in your Burrow, and its time, place or name changes (to people going, maybe going, or bringing something) are on; someone RSVPs and someone picks a dish (to the hosts) are off until turned on. _(Built 2026-10-09; the person who made the change is never told about it.)_
 - **POT-008** Whoever makes a Potluck is its host and can add co-hosts; hosts and co-hosts can change it (slots, date, details). Burrow admins can step in too.
 
 ## 2c. Letterbox Nook

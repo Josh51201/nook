@@ -49,6 +49,14 @@ export default function GiftNookSettings() {
         onChange={(notifyGatheringSoon) => change({ notifyGatheringSoon })}
       />
       <SettingRow
+        index={1}
+        icon="celebration"
+        title="A new Gathering"
+        description="When someone plans one in your Burrow. Automatic birthday ones stay quiet."
+        value={settings.notifyGatheringNew}
+        onChange={(notifyGatheringNew) => change({ notifyGatheringNew })}
+      />
+      <SettingRow
         index={2}
         icon="gift"
         title="New gifts added"

@@ -31,18 +31,25 @@ export default function PotluckSettings() {
   return (
     <NookScroll>
       <SectionHeader title="Notifications" icon="bell" />
-      <View style={[ui.card, ui.row, { gap: 12 }]}>
-        <IconBadge name="potluck" size={38} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={ui.cardTitle}>Remind me the day before</Text>
-          <Text style={ui.muted}>“Tomorrow: you're bringing mashed potatoes” — in your inbox.</Text>
+      <Text style={ui.muted}>Pick what shows up in your inbox from Potlucks.</Text>
+      {(
+        [
+          ["notifyNew", "invite", "A new Potluck", "When someone in your Burrow plans one."],
+          ["notifyReminder", "potluck", "Remind me the day before", "“Tomorrow: you're bringing mashed potatoes.”"],
+          ["notifyChanged", "edit", "The plan changes", "If the time, place or name changes and you're going or bringing something."],
+          ["notifyRsvps", "check", "Someone RSVPs", "For Potlucks you host. Off unless you turn it on, since it can get busy."],
+          ["notifyDishes", "food", "Someone picks a dish", "For Potlucks you host. Off unless you turn it on."],
+        ] as const
+      ).map(([key, icon, title, description]) => (
+        <View key={key} style={[ui.card, ui.row, { gap: 12 }]}>
+          <IconBadge name={icon} size={38} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={ui.cardTitle}>{title}</Text>
+            <Text style={ui.muted}>{description}</Text>
+          </View>
+          <Switch value={settings[key]} onValueChange={(value) => change({ [key]: value })} trackColor={{ true: colors.bark }} />
         </View>
-        <Switch
-          value={settings.notifyReminder}
-          onValueChange={(notifyReminder) => change({ notifyReminder })}
-          trackColor={{ true: colors.bark }}
-        />
-      </View>
+      ))}
 
       {session ? <DietaryNeeds profileId={session.user.id} who="you" /> : null}
     </NookScroll>

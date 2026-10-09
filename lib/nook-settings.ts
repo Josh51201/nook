@@ -92,6 +92,7 @@ export function useNookSettings<T extends Saved>(nook: string, defaults: T) {
 export const giftNookSettingDefaults = {
   hideTakenGifts: false,
   notifyGatheringSoon: true, // GIFT-029
+  notifyGatheringNew: true, // someone plans a Gathering in your Burrow
   notifyNewGifts: true,
   notifyTuckChanged: true,
   notifyMemberJoined: true,
@@ -120,8 +121,13 @@ export const letterboxSettingDefaults = {
   notifyBirthdays: true, // LET-010
 };
 
-// Potluck settings. notifyReminder is also read by the database
-// (public.wants_potluck_reminder) — rename it in both places or not at all.
+// Potluck settings. The notify* keys are also read by the database
+// (public.wants_potluck_reminder, public.wants_potluck_notice): rename them in
+// both places or not at all. The chatty ones are off until you turn them on.
 export const potluckSettingDefaults = {
-  notifyReminder: true, // POT-007
+  notifyReminder: true, // POT-007: the day before, for what you're bringing
+  notifyNew: true, // a Potluck is planned in your Burrow
+  notifyChanged: true, // its time, place or name changes (if you're going or bringing)
+  notifyRsvps: false, // hosts: someone RSVPs
+  notifyDishes: false, // hosts: someone picks a dish
 };

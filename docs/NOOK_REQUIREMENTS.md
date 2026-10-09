@@ -2,7 +2,7 @@
 
 _Fine print for built features is in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 49)_
+_Last updated: 2026-10-08 (rev 50)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -99,8 +99,8 @@ Josh wants every organization idea below ("I think all of them"). None are built
 
 ## 2. Built Nooks (requirements archived)
 Full requirements for these live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_NOOKS_BUILT.md). **Grep it by ID before changing one of these Nooks**; edit requirements there.
-- **Gift Nook** (GIFT-001..036): wish lists ("Wishbooks") per person across Burrows, Gatherings, claims ("Tucks"), kids' managed profiles. Idea Stash (GIFT-036) built 2026-10-09.
-- **Potluck Nook** (POT-001..008): who brings what, RSVPs, allergy warnings.
+- **Gift Nook** (GIFT-001..037): wish lists ("Wishbooks") per person across Burrows, Gatherings, claims ("Tucks"), kids' managed profiles. Idea Stash (GIFT-036) built 2026-10-09.
+- **Potluck Nook** (POT-001..009): who brings what, RSVPs, allergy warnings.
 - **Letterbox Nook** (LET-001..011): holiday cards, addresses, labels, thank-yous.
 - **Pet Care Nook** (PET-001..007): feeding, vet/meds, helpers.
 - **Rhythms Nook** (RHY-001..008): yearly home chores.
@@ -165,7 +165,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 
 ## 6. Nook Backlog
 Josh's picks, in no particular order. Names and details are proposed until he confirms them; each will get proper requirement IDs when it's about to be built.
-- **Potluck** — now being built: see section 2b (POT-001..008).
+- **Potluck** — now being built: see section 2b (POT-001..009).
 - **Card & Contact List** — now being built as the Letterbox Nook: see section 2c (LET-001..011).
 - **Pet Care** — now being built as the Pet Care Nook: see section 2d (PET-001..007).
 - **Lent Out** — track things you've lent or borrowed (the drill, the casserole dish), to or from whom, with gentle reminders to ask for them back.

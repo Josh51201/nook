@@ -23,6 +23,15 @@ describe("noticeRoute", () => {
     expect(noticeIcon({ nook: "letterbox", kind: "birthday_card" })).toBe("birthday");
   });
 
+  it("sends the newer Gift Nook and Potluck notices where they belong", () => {
+    expect(noticeRoute({ nook: "gift-nook", kind: "gathering_new", data: { gathering_id: "g1" } })).toBe("/gift-nook/gathering/g1");
+    for (const kind of ["potluck_new", "potluck_changed", "potluck_rsvp", "potluck_dish", "potluck_reminder"]) {
+      expect(noticeRoute({ nook: "potluck", kind, data: { potluck_id: "p1" } })).toBe("/potluck/p1");
+      expect(noticeRoute({ nook: "potluck", kind, data: {} })).toBe("/potluck");
+      expect(noticeIcon({ nook: "potluck", kind })).not.toBe("bell");
+    }
+  });
+
   it("goes nowhere when the notice is missing what it needs to point at", () => {
     expect(noticeRoute({ nook: "gift-nook", kind: "gathering_soon", data: {} })).toBeNull();
   });
