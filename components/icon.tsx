@@ -120,6 +120,7 @@ const icons = {
   shield: { ios: "checkmark.shield.fill", android: "verified_user" },
   thermo: { ios: "thermometer.medium", android: "thermostat" },
   doc: { ios: "doc.text.fill", android: "description" },
+  sitter: { ios: "list.clipboard.fill", android: "assignment" },
 } satisfies Record<string, { ios: SymbolViewProps["name"] & string; android: AndroidName }>;
 
 type AndroidName = Exclude<Extract<SymbolViewProps["name"], object>["android"], undefined>;

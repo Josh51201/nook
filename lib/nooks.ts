@@ -91,6 +91,18 @@ export const nookCatalog: NookDefinition[] = [
     color: "#f1e4c8",
   },
   {
+    id: "sitter",
+    title: "Sitter Sheet Nook",
+    icon: "sitter",
+    iconColor: "#7a4f8f",
+    tagline: "For whoever's looking after things",
+    description:
+      "One page for babysitters, grandparents and house-sitters: emergency numbers, bedtime, house rules, and the kids' allergies and pets' meals if you want them. Send a link for each stay — no app needed, and it stops working when the stay ends.",
+    route: "/sitter",
+    available: true,
+    color: "#e8dcef",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

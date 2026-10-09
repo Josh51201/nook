@@ -106,6 +106,17 @@ Full requirements for these live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_N
 - **Rhythms Nook** (RHY-001..008): yearly home chores.
 - **GIFT-007 (never break):** the list owner can NEVER see claims on their own gifts — no UI, API, counts, notifications or hints. Enforced by row-level security, with tests.
 
+## 2g. Sitter Sheet Nook
+- **SIT-001** A Sitter Sheet Nook: one page for babysitters, grandparents or house-sitters (allergies, bedtime, house rules, emergency numbers, the doctor) that can be opened by link without the app. _(Josh: "maybe the sitter sheet, that one is pretty useful".)_
+- **SIT-002** A sheet belongs to your Home (HOME-001, HOME-005): everyone in the Home can see and edit it. _(Josh picked one per Home.)_
+- **SIT-003** Sharing is by a secret link made for a specific stay (start and end dates). It stops working after the end date, and anyone in the Home can turn it off early. _(Josh picked "secret link, expires".)_
+- **SIT-004** The sheet mixes sections you type (bedtime, house rules, emergency numbers, doctor) with optional pulls from data already in Nook (e.g. Pet Care feeding and meds, kids' allergies). You choose what to include for each link. _(Josh picked "mix of both".)_
+- **SIT-005** The link is read-only: the sitter can't change anything or leave notes, they just text you. _(Josh: "no that can just be texting after that".)_ _(Proposed: every phone number on the page has Call and Text buttons.)_
+- **SIT-006** Anything pulled in from other Nooks is optional and off by default; you tick each kid and pet per link. _(Josh: "I wanna stay legal… things can be optional", and left the details to Claude.)_ _(Proposed: kids show only first name, allergies and diets, with no birthdays, photos or last names. Pets show name, food, meals, medications, vet and notes. Only kids managed by someone in the Home and pets in the Home can be picked.)_
+- **SIT-007** _(Proposed.)_ The link only exposes what you chose, enforced in Postgres (not just hidden in the screens). An expired, switched-off or made-up link shows nothing. Tests prove it, in the same spirit as GIFT-007. The page tells search engines not to index it, and the secret part of the link never reaches the web host.
+- **SIT-008** _(Proposed.)_ A link works from when it's made until the end of its last day (so the sitter can read ahead), and a stay is at most 60 days. You can see how many times it's been opened.
+- _Built 2026-10-09:_ the Nook in the Market (sheet, links, "see what they see" preview), the database rules, and the sitter's page in `web/sitter` (`npm run build:sitter`). Waiting on: the page being put on a web host and its address in `.env` as `EXPO_PUBLIC_SITTER_PAGE_URL` (Q-031).
+
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
 - **MON-002** A subscription belongs to a **Home** and covers everyone in it, up to the Home's cap of 6 (HOME-006). It never covers a Burrow, so joining someone's Burrow unlocks nothing paid. The paid customization follows the Home too, not the person. _(Josh: "I like the per home idea but yes needs capped at 6".)_
@@ -131,6 +142,7 @@ Full requirements for these live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_N
 - **Q-025** The app ID (bundle identifier) is currently `com.josh51201.nook`. It is permanent once the app is published. Should it use the domain Josh buys for email (Q-023) instead?
 
 - **Q-028** Exactly where the free/paid line sits, the price and the trial length (MON-003, MON-004). Decided so far: subscription, no ads, one plan per Home, capped at 6, and the free/paid list is easy to change later (MON-005). The how-it-works details in MON-006..010 are Claude's proposals for Josh to confirm. Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. Also depends on Q-020 (account deletion) and Q-025 (app ID) before an App Store release.
+- **Q-031** Where should the Sitter Sheet's web page live? It's one small file. Options: a free static host (Netlify or Cloudflare Pages) now, then the domain bought for email (Q-023) later, e.g. `sitter.<domain>`. Links made before a move stop working, but they only last one stay anyway.
 
 ## 4. Decision Log
 Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need the history of a decision). Add new entries there.
@@ -145,6 +157,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The card & contact list Nook | Letterbox Nook | approved |
 | The pet-care Nook | Pet Care Nook | approved |
 | The yearly-chores Nook | Rhythms Nook | approved |
+| The babysitter/house-sitter info Nook | Sitter Sheet Nook | proposed |
 | One recurring chore in the Rhythms Nook | Rhythm | proposed |
 | The paid subscription, per Home | Nook Plus | proposed |
 | A decorative object placed on the Hearth | Trinket | proposed |
@@ -171,7 +184,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **Lent Out** — track things you've lent or borrowed (the drill, the casserole dish), to or from whom, with gentle reminders to ask for them back.
 - **Yearly Rhythms** — now being built as the Rhythms Nook: see section 2e (RHY-001..008).
 - **House Binder** — home info in one place: paint colors, appliance models, warranty dates, filter sizes, trusted contacts like the plumber, and service history.
-- **Sitter Sheet** — one page for babysitters, grandparents or house-sitters: allergies, bedtime, house rules, emergency numbers and the doctor. Shareable by link without them needing the app.
+- **Sitter Sheet** — now being designed as the Sitter Sheet Nook: see section 2g (SIT-001..008). Original idea: one page for babysitters, grandparents or house-sitters: allergies, bedtime, house rules, emergency numbers and the doctor. Shareable by link without them needing the app.
 - **Quote Jar** — save funny things people say, with the date and who said it; a Hearth widget shows a random one each day.
 - **Fridge Door** — family sticky notes and doodles, shown as a Hearth widget.
 - **Idea Stash** — part of the Gift Nook (GIFT-036), not a separate Nook.
@@ -187,4 +200,5 @@ Josh's stated priority, in order:
 3. ~~**Letterbox Nook**~~ — built 2026-10-08 (section 2c).
 4. ~~**Pet Care Nook**~~ — built 2026-10-08 (section 2d).
 5. ~~**Rhythms Nook**~~ — built 2026-10-08 (section 2e).
-6. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. 048 and 054 built 2026-10-08. Still to do: 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 built 2026-10-08: lock (061), tidy up (062), find (063). Round 3 built 2026-10-08: dividers (064), Scenes (052), tags (065).
+6. **Sitter Sheet Nook (SIT-001..008)** — built 2026-10-09; needs its web page hosted (Q-031).
+7. **Hearth customization, round two (CORE-041..055):** first round built 2026-10-08 — wallpapers + color picker (041, 042), Trinkets + photo frames (045, 046), seasonal ambience (047). CORE-043, 044, 049, 053 and weather (056..058) built too. 048 and 054 built 2026-10-08. Still to do: 055 and the fireplace sound. Organization round three (CORE-060..065): round 1 built 2026-10-08 (pages 051, stacks 050, select-many 060). Round 2 built 2026-10-08: lock (061), tidy up (062), find (063). Round 3 built 2026-10-08: dividers (064), Scenes (052), tags (065).

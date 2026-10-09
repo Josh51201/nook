@@ -47,7 +47,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "vitest run",
-    "test:rls": "vitest run tests/gift-nook-rls.test.ts tests/gift-nook-round-three-rls.test.ts tests/potluck-rls.test.ts"
+    "build:sitter": "node scripts/build-sitter-page.mjs",
+    "test:rls": "vitest run tests/gift-nook-rls.test.ts tests/gift-nook-round-three-rls.test.ts tests/potluck-rls.test.ts tests/sitter-sheet-rls.test.ts"
   },
   "private": true
 }
