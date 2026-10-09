@@ -65,9 +65,11 @@ export function sectionFilled(sheet: SitterSheet | null, key: SectionKey) {
 
 // The web page the sitter opens. The secret goes after "#", which browsers
 // never send to the web host (SIT-007).
-export function sitterPageUrl() {
-  const base = process.env.EXPO_PUBLIC_SITTER_PAGE_URL?.trim();
-  return base ? base.replace(/[#?].*$/, "") : null;
+export function sitterPageUrl(base = process.env.EXPO_PUBLIC_SITTER_PAGE_URL) {
+  const trimmed = base?.trim().replace(/[#?].*$/, "");
+  if (!trimmed) return null;
+  // "nook-sitter.netlify.app" on its own isn't a link a phone will open.
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 export function linkUrl(token: string, base = sitterPageUrl()) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cleanContacts, linkState, linkUrl, sectionFilled, shareMessage, stayProblem, stayWords, viewsWords, type SitterSheet } from "../lib/sitter";
+import { cleanContacts, linkState, linkUrl, sectionFilled, shareMessage, sitterPageUrl, stayProblem, stayWords, viewsWords, type SitterSheet } from "../lib/sitter";
 
 const sheet = (fields: Partial<SitterSheet>): SitterSheet => ({
   home_id: "h",
@@ -21,6 +21,12 @@ describe("Sitter Sheet helpers", () => {
   it("puts the secret after #, so the web host never sees it (SIT-007)", () => {
     expect(linkUrl("abc123", "https://sitter.example.com/")).toBe("https://sitter.example.com/#abc123");
     expect(linkUrl("abc123", null)).toBeNull();
+  });
+
+  it("adds https:// when the page address is missing it", () => {
+    expect(sitterPageUrl("nook-sitter.netlify.app")).toBe("https://nook-sitter.netlify.app");
+    expect(sitterPageUrl(" https://nook-sitter.netlify.app ")).toBe("https://nook-sitter.netlify.app");
+    expect(sitterPageUrl("")).toBeNull();
   });
 
   it("a link works until it ends or is switched off (SIT-008)", () => {
