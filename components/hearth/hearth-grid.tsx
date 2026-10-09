@@ -91,6 +91,7 @@ export function HearthGrid({
   flashId,
   focusId,
   selecting = false,
+  cubbyMode = false,
   selectedIds,
   onToggleLock,
   onTabHover,
@@ -130,6 +131,10 @@ export function HearthGrid({
   // Select many (CORE-060): taps pick items instead of opening them, and
   // nothing drags or resizes.
   selecting?: boolean;
+  // Cubby mode (CORE-085): only Cubbies can be touched, and everything else
+  // is faded so you can see and reach the boxes behind it. Out of it, Cubbies
+  // can't be touched at all, so they never get in the way.
+  cubbyMode?: boolean;
   selectedIds?: string[];
   // The lock button in Edit (CORE-061).
   onToggleLock?: (item: HearthItem) => void;
@@ -250,6 +255,8 @@ export function HearthGrid({
           active={activeId === item.id}
           carry={carry}
           carried={carriedIds.includes(item.id)}
+          asleep={item.kind === "cubby" ? !(editing && cubbyMode) : editing && cubbyMode}
+          faded={editing && cubbyMode && item.kind !== "cubby"}
           accent={accent}
           shadow={isRaised(item) ? shadowAt?.(liftLevel(item.lift, item.kind === "nook")) : undefined}
           dragScroll={dragScroll}
@@ -378,6 +385,8 @@ function GridItem({
   active,
   carry,
   carried,
+  asleep,
+  faded,
   accent,
   shadow,
   dragScroll,
@@ -409,6 +418,9 @@ function GridItem({
   // Inside a Cubby that's being dragged: it moves along by `carry`.
   carry: SharedValue<{ x: number; y: number }>;
   carried: boolean;
+  // Can't be touched right now (Cubby mode, CORE-085), and faded out of the way.
+  asleep: boolean;
+  faded: boolean;
   accent: string;
   shadow?: string;
   dragScroll: DragScroll;
@@ -790,7 +802,9 @@ function GridItem({
         handle: { left: farX, top: boxHeight + outset - 13 },
       }
     : null;
-  const showGrip = carries && editing && !selecting && !item.locked && !active;
+  const showGrip = carries && editing && !asleep && !selecting && !item.locked && !active;
+  // Edit buttons, for whatever can be touched right now.
+  const controls = editing && !selecting && !asleep;
 
   return (
     <Animated.View
@@ -803,13 +817,14 @@ function GridItem({
           : { zIndex: active || carried ? 100 : focused ? 50 : 1, elevation: active || carried ? 12 : focused ? 6 : 0 },
         style,
       ]}
+      pointerEvents={asleep ? "none" : "auto"}
     >
       {/* Keyed by shape: the phone doesn't redraw a shadow when only the corner
           radii change, so a new shape gets a fresh view. */}
       <GestureDetector gesture={moveGesture}>
         <Animated.View
           key={`${item.kind === "nook" ? (item.shape ?? "arch") : ""}-${item.corners ?? ""}-${shadow ?? ""}`}
-          style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, wiggle]}
+          style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, wiggle]}
           {...spokenAs(item, editing, { press, hold, nudge: onNudge })}
         >
           {children}
@@ -846,7 +861,7 @@ function GridItem({
           </View>
         </>
       ) : null}
-      {editing && !selecting && onToggleLock && !active ? (
+      {controls && onToggleLock && !active ? (
         <Animated.View entering={FadeIn.duration(200)} style={edgeSpots ? [styles.at, edgeSpots.lock] : styles.lockBadge}>
           <Tap
             onPress={() => {
@@ -863,7 +878,7 @@ function GridItem({
           </Tap>
         </Animated.View>
       ) : null}
-      {editing && !selecting && !item.locked ? (
+      {controls && !item.locked ? (
         <GestureDetector gesture={resizeGesture}>
           <Animated.View
             entering={FadeIn.duration(200)}
@@ -875,7 +890,7 @@ function GridItem({
           </Animated.View>
         </GestureDetector>
       ) : null}
-      {editing && !selecting && onCopy && !active ? (
+      {controls && onCopy && !active ? (
         <Animated.View entering={FadeIn.duration(200)} style={edgeSpots ? [styles.at, edgeSpots.copy] : styles.copy}>
           <Tap
             onPress={() => {
@@ -909,6 +924,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   copy: { position: "absolute", left: -6, top: -6 },
+  faded: { opacity: 0.3 },
   // Placed by `left` and `top` alone (a Cubby's edge buttons).
   at: { position: "absolute" },
   grip: { position: "absolute", top: -13 },

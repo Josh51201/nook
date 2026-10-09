@@ -187,6 +187,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const [revealId, setRevealId] = useState<string | null>(reveal ?? null);
   // Select many (CORE-060): picking several things to act on together.
   const [selecting, setSelecting] = useState(false);
+  // Cubby mode (CORE-085): reach the boxes behind your widgets.
+  const [cubbyMode, setCubbyMode] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [pickSheet, setPickSheet] = useState<"move" | "color" | "tag" | null>(null);
   // Which widget of each stack is showing (CORE-050).
@@ -779,6 +781,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     if (!persistHere((inner) => addItem(inner, { id, kind: "cubby", style, color: info.color, w: 4, h: 2 }))) return;
     tap("success");
     setEditing(true);
+    stopSelecting();
+    setCubbyMode(true);
     setOptionsFor(id);
   }
 
@@ -861,10 +865,18 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     persistHere((inner) => removeItem(inner, item.id));
   }
 
-  // Select many (CORE-060). Leaving Edit puts the picking away.
+  // Select many (CORE-060). Leaving Edit puts the picking away, and Cubby
+  // mode (CORE-085) too.
   useEffect(() => {
-    if (!editing) stopSelecting();
+    if (!editing) {
+      stopSelecting();
+      setCubbyMode(false);
+    }
   }, [editing]);
+  const hasCubby = items.some((item) => item.kind === "cubby");
+  useEffect(() => {
+    if (!hasCubby) setCubbyMode(false);
+  }, [hasCubby]);
 
   // Picked things that are really still here.
   const pickedIds = picked.filter((id) => items.some((i) => i.id === id));
@@ -1024,6 +1036,10 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       return Alert.alert("Couldn't go there", (switchError as Error).message);
     }
     tap("success");
+    if (found.item.kind === "cubby" && !found.hollowId) {
+      stopSelecting();
+      setCubbyMode(true);
+    }
     if (found.hollowId) router.push({ pathname: "/hollow/[id]", params: { id: found.hollowId, flash: found.item.id } });
     else setRevealId(found.item.id);
   }
@@ -1471,14 +1487,29 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                 style={[styles.hint, { backgroundColor: `${theme.accent}18`, flexDirection: "column", alignItems: "stretch", gap: 10 }]}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <Icon name="drag" size={18} color={theme.accent} />
+                  <Icon name={cubbyMode ? "category" : "drag"} size={18} color={theme.accent} />
                   <Text style={{ color: theme.text, flex: 1 }}>
-                    {scope
+                    {cubbyMode
+                      ? "Cubby mode: everything else is faded so you can reach the boxes behind it. Hold a box (or its grip) and drag it — what's inside comes along. Drag ↘ to resize, tap a box to decorate it."
+                      : scope
                       ? "Hold anything and drag it anywhere, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."
                       : "Hold anything and drag it anywhere — onto a Hollow to put it inside, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."}
                   </Text>
                 </View>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {hasCubby ? (
+                    <Pill
+                      icon="category"
+                      label={cubbyMode ? "Done with Cubbies" : "Cubbies"}
+                      accent={theme.accent}
+                      background={theme.background}
+                      onPress={() => {
+                        tap();
+                        stopSelecting();
+                        setCubbyMode((on) => !on);
+                      }}
+                    />
+                  ) : null}
                   <Pill icon="palette" label="Decorate" accent={theme.accent} background={theme.background} onPress={() => setDecorating(true)} />
                   {scope ? null : (
                     <Pill icon="widgets" label="Pages" accent={theme.accent} background={theme.background} onPress={() => setPagesOpen(true)} />
@@ -1492,6 +1523,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                         background={theme.background}
                         onPress={() => {
                           tap();
+                          setCubbyMode(false);
                           setSelecting((s) => !s);
                           setPicked([]);
                         }}
@@ -1603,6 +1635,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   onTrashArmed={setTrashArmed}
                   flashId={flashId}
                   selecting={selecting}
+                  cubbyMode={cubbyMode}
                   selectedIds={picked}
                   onToggleLock={toggleLock}
                   onTabHover={setHoverTab}
