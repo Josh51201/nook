@@ -10,6 +10,9 @@ import { RsvpCard } from "../../components/rsvp";
 import { Text } from "../../components/text";
 import { EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
+import { addItem, gatheringWidgets, newItemId, removeEverywhere, useHearthLayout } from "../../lib/hearth";
+import { fullMessage, overflowing } from "../../lib/hearth-limits";
+import { gatheringWhenOver, gatheringWidget, widgetKindInfo } from "../../lib/widgets";
 import { friendlyError, guarded, tap } from "../../lib/feedback";
 import { guestSummary, rsvpChoices, whenWords, type Guest } from "../../lib/gatherings";
 import { addPotluck, loadGathering, setRsvp, type GatheringData } from "../../lib/gatherings-data";
@@ -19,7 +22,8 @@ import { colors, themed, ui } from "../../lib/theme";
 
 // One Gathering (GATH-001..007): when and where, are you coming, what it
 // has (gift lists in the Gift Nook, a Potluck), and who's invited with
-// their answers. Hosts can change it.
+// their answers. Hosts can change it. At the top, you can put it on your
+// Hearth as a widget (GATH-009).
 export default function GatheringScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -113,6 +117,8 @@ export default function GatheringScreen() {
         }}
       />
       {error ? <Text style={ui.error}>{error}</Text> : null}
+
+      <HearthPin gatheringId={id} title={gathering.title} over={archived} />
 
       <Appear>
         <View style={[ui.card, { gap: 10 }]}>
@@ -209,6 +215,74 @@ export default function GatheringScreen() {
         </View>
       ))}
     </NookScroll>
+  );
+}
+
+// "Put it on my Hearth" (GATH-009): a widget with its day, who's coming,
+// your gift shopping and the Potluck, all in one. Once it's on, tapping
+// here offers to go there or take it off.
+function HearthPin({ gatheringId, title, over }: { gatheringId: string; title: string; over: boolean }) {
+  const router = useRouter();
+  const { layout, save, isLoading } = useHearthLayout();
+  const pinned = gatheringWidgets(layout, gatheringId);
+  const onHearth = pinned.length > 0;
+
+  if (isLoading || (over && !onHearth)) return null;
+
+  async function pin() {
+    const size = widgetKindInfo("gathering").size;
+    const items = addItem(layout, { id: newItemId("w"), kind: "widget", widget: gatheringWidget(gatheringId, title), ...size });
+    // A page only holds so much (CORE-066).
+    const full = overflowing(layout, { ...layout, items });
+    if (full) {
+      const message = fullMessage(full);
+      return Alert.alert(message.title, message.body);
+    }
+    try {
+      await save({ items });
+      tap("success");
+    } catch (saveError) {
+      Alert.alert("Couldn't put it on your Hearth", friendlyError(saveError as { message?: string }));
+    }
+  }
+
+  function takeOff() {
+    tap();
+    const ids = new Set(pinned.map((item) => item.id));
+    save(removeEverywhere(layout, (item) => ids.has(item.id))).catch(
+      (saveError) => Alert.alert("Couldn't take it off", friendlyError(saveError as { message?: string }))
+    );
+  }
+
+  if (!onHearth) {
+    return (
+      <NavCard
+        icon="hearth"
+        iconColor={colors.bark}
+        iconBackground={colors.barkSoft}
+        title="Put it on my Hearth"
+        subtitle="The day, who's coming, your gifts and the Potluck, all in one place"
+        right={<Icon name="add" size={20} color={colors.bark} />}
+        onPress={pin}
+      />
+    );
+  }
+  return (
+    <NavCard
+      icon="hearth"
+      iconColor="#3f7a4f"
+      iconBackground="#dcebdc"
+      title="On your Hearth"
+      subtitle={`${over ? "" : `${gatheringWhenOver.find((c) => c.key === pinned[0].widget.settings.whenOver)?.hint ?? ""} `}Tap to go there or take it off.`}
+      right={<Icon name="check" size={20} color="#3f7a4f" />}
+      onPress={() =>
+        Alert.alert("On your Hearth", undefined, [
+          { text: "Go to my Hearth", onPress: () => router.navigate("/hearth") },
+          { text: "Take it off", style: "destructive", onPress: takeOff },
+          { text: "Cancel", style: "cancel" },
+        ])
+      }
+    />
   );
 }
 

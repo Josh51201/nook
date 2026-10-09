@@ -9,7 +9,7 @@ import type { Condition, Place, Unit, WindowFrame } from "./weather";
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "sitter" | "recipe" | "subscriptions" | "sickday" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion" | "fridge";
+export type WidgetKind = "countdown" | "gatherings" | "gathering" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "sitter" | "recipe" | "subscriptions" | "sickday" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion" | "fridge";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -27,6 +27,16 @@ export type Reminder = {
   // Phone notification id on the device that scheduled it.
   notificationId?: string;
 };
+
+// What a Gathering widget does once its day has passed (GATH-010): take
+// itself off your Hearth, switch to your next Gathering, or stay up.
+export type GatheringWhenOver = "remove" | "next" | "keep";
+
+export const gatheringWhenOver: { key: GatheringWhenOver; label: string; hint: string }[] = [
+  { key: "remove", label: "Take it off my Hearth", hint: "The day after, it takes itself off your Hearth." },
+  { key: "next", label: "Switch to my next one", hint: "The day after, it shows your next Gathering instead." },
+  { key: "keep", label: "Keep it up", hint: "It stays, showing how it went, until you take it off." },
+];
 
 // The frame around a Photo frame widget's pictures (CORE-046).
 export type FrameStyle = "wood" | "gold" | "white" | "polaroid" | "none";
@@ -60,6 +70,10 @@ export type WidgetSettings = {
     display: "number" | "words";
   };
   gatherings: { burrowId: string | null; kinds: GatheringKind[]; count: number; showCountdown: boolean };
+  // One Gathering at a glance (GATH-009): a picked one (`gatheringId`) or,
+  // with null, whichever's next. `whenOver` is what a picked one does once
+  // its day has passed (GATH-010).
+  gathering: { gatheringId: string | null; whenOver: GatheringWhenOver };
   reminders: { items: Reminder[]; hideDone: boolean };
   tucks: { include: "planning" | "open"; count: number };
   note: { text: string; textSize: "small" | "medium" | "large"; align: "left" | "center" };
@@ -135,6 +149,7 @@ export const widgetKinds: {
 }[] = [
   { kind: "countdown", label: "Countdown", description: "Days until your next Gathering, a specific one, or any date you like.", icon: "calendar", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "gatherings", label: "Coming up", description: "Upcoming Gatherings, filtered by Burrow or kind.", icon: "celebration", size: { w: 4, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "gathering", label: "A Gathering", description: "One Gathering at a glance: when and where, who's coming, your gift shopping and the Potluck.", icon: "celebration", size: { w: 4, h: 3 }, minSize: { w: 1, h: 1 } },
   { kind: "reminders", label: "Reminders", description: "A checklist with optional phone reminders — daily, weekly, or once.", icon: "todo", size: { w: 4, h: 3 }, minSize: { w: 1, h: 1 } },
   { kind: "tucks", label: "Gifts to buy", description: "Your shopping list from the gifts you've tucked away.", icon: "tucks", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "note", label: "Sticky note", description: "Anything you want to see every day.", icon: "edit", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
@@ -161,7 +176,7 @@ export const widgetKinds: {
 // How the "Add" sheet groups widgets so it isn't one long list (CORE-059).
 // Every kind belongs to exactly one category (a test checks this).
 export const widgetCategories: { id: string; label: string; blurb: string; icon: IconName; kinds: WidgetKind[] }[] = [
-  { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["gatherings", "tucks", "inbox", "cards", "pets", "rhythms", "sitter", "recipe", "subscriptions", "sickday"] },
+  { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["gatherings", "gathering", "tucks", "inbox", "cards", "pets", "rhythms", "sitter", "recipe", "subscriptions", "sickday"] },
   { id: "lists", label: "Lists & routines", blurb: "Things to remember, tick off and jump to", icon: "todo", kinds: ["reminders", "note", "streak", "launch"] },
   { id: "time", label: "Time & weather", blurb: "Dates, the clock and the sky", icon: "clock", kinds: ["countdown", "clock", "weather", "window"] },
   { id: "cozy", label: "Cozy touches", blurb: "Pictures, words and a warm hello", icon: "sparkles", kinds: ["fridge", "companion", "frame", "quote", "greeting"] },
@@ -200,6 +215,8 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
       return { ...base, kind, settings: { source: "next", customTitle: "", display: "number" } };
     case "gatherings":
       return { ...base, kind, settings: { burrowId: null, kinds: [], count: 3, showCountdown: true } };
+    case "gathering":
+      return { ...base, kind, title: "Next Gathering", showTitle: false, settings: { gatheringId: null, whenOver: "remove" } };
     case "reminders":
       return { ...base, kind, settings: { items: [], hideDone: false } };
     case "tucks":
@@ -252,6 +269,11 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
     case "fridge":
       return { ...base, kind, settings: { place: "home", burrowId: null } };
   }
+}
+
+// A widget for one Gathering, as "Put it on my Hearth" makes it (GATH-009).
+export function gatheringWidget(gatheringId: string, title: string): WidgetOf<"gathering"> {
+  return { ...(defaultWidget("gathering") as WidgetOf<"gathering">), title, settings: { gatheringId, whenOver: "remove" } };
 }
 
 export function newReminderId() {

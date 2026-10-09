@@ -59,6 +59,7 @@ import {
   describeSchedule,
   frameStyles,
   frameTimings,
+  gatheringWhenOver,
   MAX_FRAME_PHOTOS,
   newReminderId,
   widgetKindInfo,
@@ -820,6 +821,8 @@ function KindSettings({
       return <CountdownSettings widget={widget} setSettings={setSettings} />;
     case "gatherings":
       return <GatheringsSettings widget={widget} setSettings={setSettings} />;
+    case "gathering":
+      return <GatheringSettings widget={widget} setSettings={setSettings} setWidget={setWidget} />;
     case "reminders":
       return <RemindersSettings widget={widget} setSettings={setSettings} />;
     case "tucks":
@@ -1259,6 +1262,82 @@ function GatheringsSettings({
       </View>
       <Stepper label="How many" value={count} min={1} max={6} onChange={(next) => setSettings({ count: next })} />
       <SwitchRow label="Show how long until each" value={showCountdown} onChange={(next) => setSettings({ showCountdown: next })} />
+    </>
+  );
+}
+
+// One Gathering (GATH-009): which one, and what it does once it's over (GATH-010).
+function GatheringSettings({
+  widget,
+  setSettings,
+  setWidget,
+}: {
+  widget: WidgetOf<"gathering">;
+  setSettings: (changes: Partial<WidgetOf<"gathering">["settings"]>) => void;
+  setWidget: (changes: Partial<WidgetConfig>) => void;
+}) {
+  const { gatheringId, whenOver } = widget.settings;
+  const [gatherings, setGatherings] = useState<{ id: string; title: string; ends_at: string }[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from("gatherings")
+      .select("id, title, ends_at")
+      .gt("ends_at", new Date().toISOString())
+      .order("ends_at")
+      .limit(20)
+      .then(({ data }) => setGatherings(data ?? []));
+  }, []);
+
+  // The picked one may already be over, so it isn't in the list above.
+  const [picked, setPicked] = useState<{ id: string; title: string; ends_at: string } | null>(null);
+  useEffect(() => {
+    if (!gatheringId || gatherings.some((g) => g.id === gatheringId)) return setPicked(null);
+    supabase
+      .from("gatherings")
+      .select("id, title, ends_at")
+      .eq("id", gatheringId)
+      .maybeSingle()
+      .then(({ data }) => setPicked(data ?? null));
+  }, [gatheringId, gatherings]);
+
+  const choices = picked ? [picked, ...gatherings] : gatherings;
+  const pick = (g: { id: string; title: string } | null) => {
+    setSettings({ gatheringId: g?.id ?? null });
+    // Its name is how you'll find it on your Hearth (Find, screen readers).
+    setWidget({ title: g?.title ?? "Next Gathering" });
+  };
+
+  return (
+    <>
+      <Text style={ui.label}>Which Gathering</Text>
+      <View style={ui.chips}>
+        <Chip selected={!gatheringId} onPress={() => pick(null)}>
+          Whichever's next
+        </Chip>
+        {choices.map((g) => (
+          <Chip key={g.id} selected={gatheringId === g.id} onPress={() => pick(g)}>
+            {g.title} · {formatDate(g.ends_at)}
+          </Chip>
+        ))}
+      </View>
+      {!choices.length ? <Text style={ui.muted}>No upcoming Gatherings yet.</Text> : null}
+      {gatheringId ? (
+        <Animated.View entering={FadeIn.duration(200)} style={{ gap: 8 }}>
+          <Text style={ui.label}>When it's over</Text>
+          <View style={ui.chips}>
+            {gatheringWhenOver.map((choice) => (
+              <Chip key={choice.key} selected={whenOver === choice.key} onPress={() => setSettings({ whenOver: choice.key })}>
+                {choice.label}
+              </Chip>
+            ))}
+          </View>
+          <Text style={ui.muted}>{gatheringWhenOver.find((c) => c.key === whenOver)?.hint}</Text>
+        </Animated.View>
+      ) : (
+        <Text style={ui.muted}>Once one's over, it moves on to the next by itself.</Text>
+      )}
+      <Text style={ui.muted}>Your gift shopping here is only ever yours: nobody else sees it, least of all whoever the gifts are for.</Text>
     </>
   );
 }

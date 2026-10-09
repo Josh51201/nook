@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 
-import { PROFILE_FIELDS, type Profile } from "./gift-nook";
+import { gatheringGlance, glanceSource, widgetsToTakeOff, type GatheringGlance } from "./gathering-glance";
+import type { MyTuck } from "./gift-shopping";
+import { PROFILE_FIELDS, type Profile, type TuckStatus } from "./gift-nook";
 import type { GatheringRow, Guest } from "./gatherings";
-import type { RsvpStatus } from "./potluck";
+import type { RsvpStatus, Slot } from "./potluck";
 import { supabase } from "./supabase";
+import type { WidgetOf } from "./widgets";
 
 // Loading and saving Gatherings (GATH-001..). Row level security decides
 // what comes back: a Gathering you aren't invited to simply isn't found.
@@ -165,4 +168,128 @@ export function useUpcomingGatherings(enabled: boolean, refreshKey: number) {
     };
   }, [enabled, refreshKey]);
   return rows;
+}
+
+// --- One Gathering at a glance, for its Hearth widget (GATH-009/010) -------------
+
+const GLANCE_FIELDS = "id, title, kind, ends_at, starts_at, place, gifts";
+type GlanceRow = GatheringGlance["gathering"];
+
+async function nextGathering(): Promise<GlanceRow | null> {
+  const { data, error } = await supabase
+    .from("gatherings")
+    .select(GLANCE_FIELDS)
+    .gt("ends_at", new Date().toISOString())
+    .order("ends_at")
+    .limit(1);
+  if (error) throw error;
+  return (data?.[0] as GlanceRow | undefined) ?? null;
+}
+
+// Which Gathering a widget shows: its picked one (or, once that's over and
+// it's set to switch, your next one), or whichever's next. "gone" if the
+// picked one was deleted or you're no longer invited; null if nothing's
+// coming up.
+export async function widgetGathering(settings: WidgetOf<"gathering">["settings"]): Promise<GlanceRow | "gone" | null> {
+  if (!settings.gatheringId) return nextGathering();
+  const { data, error } = await supabase.from("gatherings").select(GLANCE_FIELDS).eq("id", settings.gatheringId).maybeSingle();
+  if (error) throw error;
+  const source = glanceSource(data as GlanceRow | null, settings.whenOver);
+  if (source === "gone") return "gone";
+  return source === "next" ? nextGathering() : (data as GlanceRow);
+}
+
+// Everything the widget shows. Only your own tucks and "not getting" marks
+// are read for the gift part (GIFT-007), as in the Gift Nook's "Your shopping".
+export async function loadGatheringGlance(
+  settings: WidgetOf<"gathering">["settings"],
+  userId: string
+): Promise<GatheringGlance | "gone" | null> {
+  const gathering = await widgetGathering(settings);
+  if (!gathering || gathering === "gone") return gathering;
+  const id = gathering.id;
+
+  const [guestsResult, honoreesResult, potluckResult, tucksResult, skipsResult] = await Promise.all([
+    supabase.rpc("gathering_guest_list", { target_gathering: id }),
+    supabase.from("gathering_honorees").select("profile_id").eq("gathering_id", id),
+    supabase.from("potlucks").select("id").eq("gathering_id", id).order("created_at").limit(1),
+    gathering.gifts
+      ? supabase
+          .from("claims")
+          .select("id, gathering_id, status, gifts!inner(title, wishbooks!inner(owner_id))")
+          .eq("claimed_by", userId)
+          .is("released_at", null)
+      : Promise.resolve({ data: [], error: null }),
+    gathering.gifts
+      ? supabase.from("gathering_skips").select("profile_id").eq("gathering_id", id).eq("giver_id", userId)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const firstError = guestsResult.error ?? honoreesResult.error ?? potluckResult.error ?? tucksResult.error ?? skipsResult.error;
+  if (firstError) throw firstError;
+
+  const potluckId = (potluckResult.data?.[0]?.id as string | undefined) ?? null;
+  let potluck = null;
+  if (potluckId) {
+    const [slots, dishes] = await Promise.all([
+      supabase.from("potluck_slots").select("id, label, wanted").eq("potluck_id", potluckId),
+      supabase.from("potluck_dishes").select("slot_id, brought_by, name").eq("potluck_id", potluckId),
+    ]);
+    if (slots.error ?? dishes.error) throw slots.error ?? dishes.error;
+    potluck = {
+      id: potluckId,
+      slots: (slots.data ?? []) as Slot[],
+      dishes: (dishes.data ?? []) as { slot_id: string | null; brought_by: string; name: string }[],
+    };
+  }
+
+  const myTucks: MyTuck[] = ((tucksResult.data ?? []) as unknown as {
+    id: string;
+    gathering_id: string | null;
+    status: TuckStatus;
+    gifts: { title: string; wishbooks: { owner_id: string } };
+  }[]).map((row) => ({
+    id: row.id,
+    ownerId: row.gifts.wishbooks.owner_id,
+    giftTitle: row.gifts.title,
+    status: row.status,
+    gatheringId: row.gathering_id,
+    gatheringTitle: null,
+  }));
+
+  return gatheringGlance({
+    gathering,
+    userId,
+    guests: (guestsResult.data ?? []) as Guest[],
+    honorees: (honoreesResult.data ?? []).map((row) => row.profile_id as string),
+    myTucks,
+    skipped: new Set((skipsResult.data ?? []).map((row) => row.profile_id as string)),
+    potluck,
+  });
+}
+
+// Undefined while loading.
+export function useGatheringGlance(settings: WidgetOf<"gathering">["settings"], userId: string | undefined, refreshKey: number) {
+  const [glance, setGlance] = useState<GatheringGlance | "gone" | null | undefined>(undefined);
+  const { gatheringId, whenOver } = settings;
+  useEffect(() => {
+    if (!userId) return;
+    let live = true;
+    loadGatheringGlance({ gatheringId, whenOver }, userId)
+      .then((result) => live && setGlance(result))
+      .catch(() => live && setGlance((prev) => prev ?? null));
+    return () => {
+      live = false;
+    };
+  }, [gatheringId, whenOver, userId, refreshKey]);
+  return glance;
+}
+
+// Of these Gathering widgets, the ids of the ones that should come off the
+// Hearth now (GATH-010). Nothing, if the database couldn't be reached.
+export async function gatheringWidgetsToTakeOff(widgets: { id: string; gatheringId: string; whenOver: WidgetOf<"gathering">["settings"]["whenOver"] }[]) {
+  const ids = [...new Set(widgets.filter((w) => w.whenOver === "remove").map((w) => w.gatheringId))];
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("gatherings").select("id, ends_at").in("id", ids);
+  if (error) return [];
+  return widgetsToTakeOff(widgets, (data ?? []) as { id: string; ends_at: string }[]);
 }

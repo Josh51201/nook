@@ -59,6 +59,7 @@ import {
   tilePalette,
   everyTopLevel,
   findHollow,
+  gatheringWidgets,
   hearthThemes,
   hollowLookInfo,
   hollowLooks,
@@ -75,6 +76,7 @@ import {
   newItemId,
   tidyItems,
   nookLabel,
+  removeEverywhere,
   removeHollow,
   removeItem,
   resizeItem,
@@ -134,6 +136,7 @@ import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WidgetView } from "./widgets";
 import { loadRecipesSummary } from "../../lib/recipes-data";
+import { gatheringWidgetsToTakeOff, widgetGathering } from "../../lib/gatherings-data";
 
 const PADDING = 20;
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
@@ -409,6 +412,31 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       if (!scope) planBirthdays().then((created) => created && setRefreshKey((k) => k + 1));
     }, [scope])
   );
+
+  // A Gathering widget set to take itself off does so the day after its
+  // Gathering (GATH-010), wherever it is on your own pages. Never on the Home
+  // page: that's everyone's, and they may not all be invited.
+  const personalRef = useRef(personal);
+  personalRef.current = personal;
+  useEffect(() => {
+    if (scope || isLoading || editing) return;
+    const widgets = gatheringWidgets(personalRef.current.layout).map((item) => ({
+      id: item.id,
+      gatheringId: item.widget.settings.gatheringId!,
+      whenOver: item.widget.settings.whenOver,
+    }));
+    if (!widgets.some((w) => w.whenOver === "remove")) return;
+    let live = true;
+    gatheringWidgetsToTakeOff(widgets).then((ids) => {
+      if (!live || !ids.length) return;
+      const gone = new Set(ids);
+      const latest = personalRef.current;
+      latest.save(removeEverywhere(latest.layout, (item) => gone.has(item.id))).catch(() => {});
+    });
+    return () => {
+      live = false;
+    };
+  }, [refreshKey, scope, isLoading, editing]);
 
   // A page or Hollow only holds so much (CORE-066). True, after saying so, if
   // this change would put one over.
@@ -763,6 +791,11 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         return loadRecipesSummary(session.user.id, item.widget.settings.shelf)
           .then((summary) => router.push(summary.today ? `/recipes/${summary.today.id}` : "/recipes"))
           .catch(() => router.push("/recipes"));
+      case "gathering":
+        // Opens the Gathering it's showing (GATH-009).
+        return widgetGathering(item.widget.settings)
+          .then((row) => router.push(row && row !== "gone" ? `/gatherings/${row.id}` : "/gatherings"))
+          .catch(() => router.push("/gatherings"));
       case "greeting":
         return;
       case "fridge": {

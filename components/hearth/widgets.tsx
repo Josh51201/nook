@@ -51,6 +51,8 @@ import { FridgeDoor, FridgeNoteCard, LetterMagnets, Magnet } from "../fridge-doo
 import { fridgeGrid, fridgePlace, hashOf, magnets, noteMagnet } from "../../lib/fridge";
 import { useFridgeNotes } from "../../lib/fridge-data";
 import { useHomeHearth } from "../../lib/home-hearth-data";
+import { glanceLines, type GlanceLine } from "../../lib/gathering-glance";
+import { useGatheringGlance } from "../../lib/gatherings-data";
 
 // Renders any Hearth widget (CORE-018) in its chosen look, laid out for the
 // shape it's been given (CORE-030): a single icon with a count, a one-line
@@ -237,6 +239,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <Countdown {...props} widget={widget} />;
     case "gatherings":
       return <Gatherings {...props} widget={widget} />;
+    case "gathering":
+      return <OneGathering {...props} widget={widget} />;
     case "reminders":
       return <Reminders {...props} widget={widget} />;
     case "tucks":
@@ -647,6 +651,102 @@ function Gatherings({ widget, palette, refreshKey, height, shape, icon }: BodyPr
         <View style={{ gap: 8, paddingHorizontal: 4 }}>{rest.slice(0, restFit).map(listRow)}</View>
       )}
     </View>
+  );
+}
+
+// --- A Gathering ------------------------------------------------------------------
+// One Gathering at a glance (GATH-009): its day and place, your answer and
+// who's coming, your gift shopping (only ever your own — GIFT-007) and the
+// Potluck. Tapping it opens the Gathering.
+
+function OneGathering({ widget, palette, refreshKey, height, width, shape }: BodyProps<"gathering">) {
+  const { session } = useAuth();
+  const glance = useGatheringGlance(widget.settings, session?.user.id, refreshKey);
+
+  if (glance === undefined) return null;
+  if (glance === "gone" || !glance) {
+    if (shape === "icon") return <IconFace icon="celebration" palette={palette} />;
+    return (
+      <Empty
+        icon="celebration"
+        palette={palette}
+        text={glance === "gone" ? "This Gathering isn't here any more" : "Nothing coming up"}
+      />
+    );
+  }
+
+  const { gathering, over } = glance;
+  const kind = gatheringKindInfo(gathering.kind);
+  const when = over ? "Already happened" : countdown(gathering.ends_at);
+  const lines = glanceLines(glance);
+  const whenWhere = [formatDate(gathering.starts_at ?? gathering.ends_at), gathering.place].filter(Boolean).join(" · ");
+
+  if (shape === "icon") {
+    const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.round((start(new Date(gathering.ends_at)) - start(new Date())) / 86400000);
+    if (over) return <IconFace icon={kind.icon} palette={palette} />;
+    return <IconFace icon={kind.icon} palette={palette} value={days === 0 ? "Today" : String(days)} caption={days === 0 ? undefined : "days"} />;
+  }
+  if (shape === "strip") {
+    return <Strip icon={kind.icon} palette={palette} text={gathering.title} sub={[when, lines[0]?.text].filter(Boolean).join(" · ")} />;
+  }
+
+  const big = shape !== "small";
+  // The header takes about this much; each line below about lineHeight.
+  const header = big ? 74 : 52;
+  const lineHeight = big ? 44 : 22;
+  const room = Math.max(0, Math.floor((height - header) / lineHeight));
+  const shown = lines.slice(0, room);
+
+  return (
+    <Animated.View entering={FadeIn.duration(250)} style={{ flex: 1, gap: big ? 10 : 6 }}>
+      {big ? (
+        <Panel palette={palette} style={[styles.row, { gap: 12 }]}>
+          <IconBadge name={kind.icon} size={42} color={palette.deep} background="rgba(255,255,255,0.7)" />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.body, { color: palette.text, fontWeight: "800", fontSize: 16 }]} numberOfLines={1}>
+              {gathering.title}
+            </Text>
+            <Muted palette={palette}>{whenWhere}</Muted>
+          </View>
+          {width > 200 ? <Pill palette={palette} text={over ? "Done" : when} /> : null}
+        </Panel>
+      ) : (
+        <View style={{ gap: 2 }}>
+          <View style={[styles.row, { gap: 6 }]}>
+            <Icon name={kind.icon} size={15} color={palette.accent} />
+            <Text style={[styles.body, { color: palette.text, fontWeight: "800", flex: 1 }]} numberOfLines={1}>
+              {gathering.title}
+            </Text>
+          </View>
+          <Muted palette={palette}>{when}</Muted>
+        </View>
+      )}
+      <View style={{ gap: big ? 8 : 4, paddingHorizontal: big ? 4 : 0 }}>
+        {shown.map((line, i) => (
+          <GlanceRow key={line.key} line={line} palette={palette} big={big} index={i} />
+        ))}
+      </View>
+    </Animated.View>
+  );
+}
+
+function GlanceRow({ line, palette, big, index }: { line: GlanceLine; palette: Palette; big: boolean; index: number }) {
+  return (
+    <Animated.View entering={FadeInRight.delay(index * 50).springify().damping(18)} style={[styles.row, { gap: 8, alignItems: big ? "flex-start" : "center" }]}>
+      <Icon name={line.icon} size={15} color={palette.accent} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[styles.body, { color: palette.text, fontWeight: big ? "700" : "500" }]} numberOfLines={1}>
+          {line.text}
+        </Text>
+        {big && line.progress ? (
+          <ProgressBar palette={palette} done={line.progress.done} total={line.progress.total} />
+        ) : big && line.sub ? (
+          <Muted palette={palette}>{line.sub}</Muted>
+        ) : null}
+      </View>
+      {big && line.progress && line.sub ? <Muted palette={palette}>{`${line.progress.done}/${line.progress.total}`}</Muted> : null}
+    </Animated.View>
   );
 }
 

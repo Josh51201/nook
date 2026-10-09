@@ -99,6 +99,9 @@ function shareableWidget(widget: WidgetConfig): WidgetConfig {
     case "recipe":
       // Shelves are named in your own Recipe Box.
       return { ...widget, settings: { shelf: null } };
+    case "gathering":
+      // A picked Gathering is yours; theirs shows their next one.
+      return { ...widget, title: "Next Gathering", settings: { ...widget.settings, gatheringId: null } };
     case "countdown":
       // A picked Getaway or Gathering is yours; theirs counts to their next one.
       return { ...widget, settings: { ...widget.settings, getawayId: undefined, gatheringId: undefined } };

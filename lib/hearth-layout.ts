@@ -6,7 +6,7 @@ import { cubbyStyleInfo, type CubbyFill, type CubbyStyle } from "./cubbies";
 import { wallpaperPath, type Ambience, type Corners, type FireSound, type Lift, type PatternKey, type TileShape, type Wallpaper } from "./decor";
 import { findNook } from "./nooks";
 import { trinketInfo, type TrinketKey } from "./trinkets";
-import { defaultWidget, newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
+import { defaultWidget, newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook, type WidgetOf } from "./widgets";
 
 // Pure Hearth layout logic (no React/Supabase, so it's unit-testable).
 //
@@ -798,11 +798,31 @@ export function copyItem(layout: HearthLayout, id: string, to: Scope): { items: 
 
 // Takes every tile of a Nook off the Hearth, on every page and in every Hollow.
 export function removeNook(layout: HearthLayout, nookId: string): { items: HearthItem[]; otherPages: HearthLayout["otherPages"] } {
-  const isIt = (item: HearthItem) => item.kind === "nook" && item.nookId === nookId;
+  return removeEverywhere(layout, (item) => item.kind === "nook" && item.nookId === nookId);
+}
+
+// Every widget for one Gathering (GATH-009), on any page or in any Hollow.
+export function gatheringWidgets(layout: Pick<HearthLayout, "items" | "otherPages">, gatheringId?: string) {
+  return allItems(layout).filter(
+    (item): item is WidgetItem & { widget: WidgetOf<"gathering"> } =>
+      item.kind === "widget" &&
+      item.widget.kind === "gathering" &&
+      Boolean(item.widget.settings.gatheringId) &&
+      (!gatheringId || item.widget.settings.gatheringId === gatheringId)
+  );
+}
+
+// Takes off everything `isIt` matches, on every page and in every Hollow.
+export function removeEverywhere(
+  layout: Pick<HearthLayout, "items" | "otherPages">,
+  isIt: (item: HearthItem) => boolean
+): { items: HearthItem[]; otherPages: HearthLayout["otherPages"] } {
   const clean = (items: HearthItem[]) =>
-    items
-      .filter((item) => !isIt(item))
-      .map((item) => (item.kind === "hollow" ? { ...item, items: item.items.filter((inner) => !isIt(inner)) } : item));
+    normalizeStacks(
+      items
+        .filter((item) => !isIt(item))
+        .map((item) => (item.kind === "hollow" ? { ...item, items: normalizeStacks(item.items.filter((inner) => !isIt(inner))) } : item))
+    );
   const otherPages: HearthLayout["otherPages"] = {};
   for (const [id, items] of Object.entries(layout.otherPages ?? {})) otherPages[id] = clean(items);
   return { items: clean(layout.items), otherPages };

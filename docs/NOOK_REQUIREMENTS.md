@@ -165,6 +165,8 @@ Josh asked 2026-10-09 for an easier place to see and plan Gatherings ("right now
 - **GATH-006** Every Gathering has RSVPs: Going, Maybe, Can't make it, shared with its Potluck. _(Josh picked "Yes, on every Gathering".)_ _(Proposed: extra guests count toward "coming"; you answer for kids you look after.)_
 - **GATH-007** _(Proposed.)_ GIFT-007 is unchanged: inviting someone from another Burrow never shows them anyone's Wishbook or tucks. The Gift Nook shows only the Wishbooks of guests you share a Burrow with. Guests see each other's names and pictures on the guest list (photos only for people they share a Burrow with).
 - **GATH-008** _(Proposed.)_ Inbox notices when you're invited, when the day, time or place changes (not if you said no), a week and a day before, and (for hosts) when someone answers. Each can be switched off in the Nook's settings; automatic birthday ones stay quiet. The Gift Nook's two Gathering switches moved here.
+- **GATH-009** At the top of a Gathering, an option to put it on your Hearth, where it shows its details "all in one": the day and place, RSVPs, gifts and Potluck info; tapping it opens the Gathering (Josh). There's also a widget that can show your available Gatherings (Josh). _(Built 2026-10-09 as the "A Gathering" widget, proposed: your answer and who's coming, your own gift shopping for it (GIFT-038, never tucks on your gifts — GIFT-007), what you're bringing and open Potluck spots. In Add → From your Nooks it can be one Gathering or "Whichever's next".)_
+- **GATH-010** A Gathering widget "needs to do something when the Gathering is over" (Josh). _(Built, proposed: you choose Take it off my Hearth (the default; it goes the day after, or if the Gathering is deleted), Switch to my next one, or Keep it up (shows how many came). Never automatic on the shared Home page.)_
 - _Built 2026-10-09:_ GATH-001..008 in `app/gatherings`, with the database rules in the `gatherings` migration. The privacy tests (including GIFT-007 for guests from other Burrows) skip until a service key is in `.env.test.local`.
 
 ## 2f. Subscription (Nook Plus)
@@ -238,6 +240,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | Claiming a gift | Tuck (it's "tucked away") | proposed |
 | An event | Gathering | proposed |
 | The Nook listing every Gathering (GATH-001) | Gathering Nook | proposed |
+| The Hearth widget showing one Gathering all in one (GATH-009) | A Gathering (button: "Put it on my Hearth") | proposed |
 | Gift categories, and recipe categories (REC-006) | Shelves | proposed |
 | The Nook shop | The Market | proposed |
 | The bottom tab listing every Nook (CORE-067) | Nooks | proposed |
