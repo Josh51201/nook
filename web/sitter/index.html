@@ -162,6 +162,10 @@
     return new Date(2000, 0, 1, p[0], p[1]).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   }
 
+  function clock(iso) {
+    return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
   function render(s) {
     app.textContent = "";
     document.title = s.label + " · Sitter Sheet";
@@ -192,6 +196,28 @@
           add(card, el("div", "muted", "No allergies listed"));
         }
         if (k.diets.length) add(card, add(el("div", "row"), el("span", "label", "Diet: "), el("span", null, k.diets.join(", "))));
+        add(app, card);
+      });
+    }
+
+    // Sick today (SICK-010): only if ticked on the link, only kids on it who are sick now.
+    if (s.sick && s.sick.length) {
+      add(app, section("Sick today"));
+      s.sick.forEach(function (k) {
+        var card = add(el("div", "card"), el("div", "name", k.what ? k.name + " · " + k.what : k.name));
+        if (k.temp) {
+          var c = Number(k.temp.temp_c), f = c * 9 / 5 + 32;
+          add(card, add(el("div", "row"),
+            el("span", c >= 38 ? "alert" : "label", "Last temperature: " + f.toFixed(1) + "°F (" + c.toFixed(1) + "°C) at " + clock(k.temp.at))));
+        }
+        if (!k.medicines.length) add(card, el("div", "muted", "No medicine given yet"));
+        k.medicines.forEach(function (m) {
+          var line = m.name + (m.amount ? " " + m.amount : "") + ": last at " + clock(m.last_given);
+          if (m.next_ok) line += ". Next OK at " + clock(m.next_ok);
+          else if (m.every_hours) line += ". OK now";
+          add(card, add(el("div", "row"), el("span", null, line)));
+        });
+        add(card, el("div", "muted", "As of when you opened this page. Refresh to update; text the family before giving anything."));
         add(app, card);
       });
     }

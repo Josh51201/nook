@@ -48,6 +48,7 @@ export default function NewSitterLink() {
   const [picked, setPicked] = useState<SectionKey[]>([]);
   const [kidIds, setKidIds] = useState<string[]>([]);
   const [petIds, setPetIds] = useState<string[]>([]);
+  const [showSick, setShowSick] = useState(false);
   const [quick, setQuick] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -100,6 +101,7 @@ export default function NewSitterLink() {
     setPicked(picks.sections.filter((s) => sectionFilled(data!.sheet, s)));
     setKidIds(picks.kidIds);
     setPetIds(picks.petIds);
+    setShowSick(!!link.show_sick);
     setLabel(link.label);
     setQuick(link.id);
   }
@@ -121,6 +123,7 @@ export default function NewSitterLink() {
         sections: picked,
         kid_ids: kidIds,
         pet_ids: petIds,
+        show_sick: showSick && kidIds.length > 0,
         created_by: session!.user.id,
       })
       .select("*")
@@ -245,6 +248,17 @@ export default function NewSitterLink() {
             ))}
           </View>
           <Text style={ui.muted}>Off unless you tick them. The sitter sees only a first name, allergies and diets, from each kid's profile.</Text>
+          {kidIds.length ? (
+            <>
+              <Chip icon="sick" selected={showSick} onPress={() => setShowSick(!showSick)}>
+                Sick day: medicine and next dose
+              </Chip>
+              <Text style={ui.muted}>
+                While a kid you ticked is sick (Sick Day Nook), the sitter sees what it is, the latest temperature, and each medicine with when
+                the next dose is OK. They can't log anything; they text you. Off unless you tick it.
+              </Text>
+            </>
+          ) : null}
         </>
       ) : null}
 

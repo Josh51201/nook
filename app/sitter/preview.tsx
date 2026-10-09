@@ -8,6 +8,7 @@ import { Text } from "../../components/text";
 import { Button, EmptyState, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { formatTimeOfDay } from "../../lib/pets";
+import { clockTime, formatTemp, isFever } from "../../lib/sickday";
 import { routineNow, stayWords } from "../../lib/sitter";
 import { previewLink, useSitter, type SitterView } from "../../lib/sitter-data";
 import { colors, ui } from "../../lib/theme";
@@ -87,6 +88,34 @@ export default function SitterPreview() {
                 {k.allergies.length ? `Allergic to ${k.allergies.join(", ")}` : "No allergies listed"}
               </Text>
               {k.diets.length ? <Text style={ui.muted}>{k.diets.join(", ")}</Text> : null}
+            </View>
+          ))}
+        </>
+      ) : null}
+
+      {view.sick?.length ? (
+        <>
+          <SectionHeader title="Sick today" icon="sick" />
+          {view.sick.map((k, i) => (
+            <View key={`${k.name}-sick-${i}`} style={[ui.card, { gap: 4 }]}>
+              <Text style={ui.cardTitle}>
+                {k.name}
+                {k.what ? ` · ${k.what}` : ""}
+              </Text>
+              {k.temp ? (
+                <Text style={isFever(k.temp.temp_c) ? { color: colors.error, fontWeight: "600" } : ui.muted}>
+                  Last temperature {formatTemp(Number(k.temp.temp_c), "f")} ({formatTemp(Number(k.temp.temp_c), "c")}) at{" "}
+                  {clockTime(new Date(k.temp.at).getTime())}
+                </Text>
+              ) : null}
+              {k.medicines.map((m) => (
+                <Text key={m.name}>
+                  {m.name}
+                  {m.amount ? ` ${m.amount}` : ""}: last at {clockTime(new Date(m.last_given).getTime())}
+                  {m.next_ok ? `, next OK at ${clockTime(new Date(m.next_ok).getTime())}` : m.every_hours ? ", OK now" : ""}
+                </Text>
+              ))}
+              {!k.medicines.length ? <Text style={ui.muted}>No medicine given yet</Text> : null}
             </View>
           ))}
         </>

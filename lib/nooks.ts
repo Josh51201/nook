@@ -139,6 +139,18 @@ export const nookCatalog: NookDefinition[] = [
     color: "#d4eaf1",
   },
   {
+    id: "sickday",
+    title: "Sick Day Nook",
+    icon: "sick",
+    iconColor: "#b04a5a",
+    tagline: "Who had what, and when",
+    description:
+      "When someone's sick: log temperatures, symptoms and medicine, with a “next dose OK at…” timer so nobody doubles up. Keep a medicine cabinet with the doses you were told, get a summary to read to the doctor, mark missed school or work days, and let Grandma help while she's watching them.",
+    route: "/sickday",
+    available: true,
+    color: "#f4dde0",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

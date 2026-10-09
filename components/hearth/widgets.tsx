@@ -27,6 +27,9 @@ import { useRecipeImage } from "../recipe-thumb";
 import { formatMoney } from "../../lib/subscriptions";
 import { kindInfo } from "../../lib/getaways";
 import { useSubscriptionsSummary } from "../../lib/subscriptions-data";
+import { sickdaySettingDefaults, useNookSettings } from "../../lib/nook-settings";
+import { formatTemp as sickTemp, isFever, untilWords } from "../../lib/sickday";
+import { useNow, useSickSummary } from "../../lib/sickday-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
 import { conditionIcon, conditionLabel, dayName, formatTemp, windowSky } from "../../lib/weather";
@@ -256,6 +259,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <RecipeOfTheDay {...props} widget={widget} />;
     case "subscriptions":
       return <Subscriptions {...props} widget={widget} />;
+    case "sickday":
+      return <SickDay {...props} widget={widget} />;
     case "frame":
       return null; // drawn whole by PhotoFrame, above
     case "clock":
@@ -1402,6 +1407,77 @@ function Subscriptions({ widget, palette, refreshKey, height, shape, icon }: Bod
           {list}
         </Panel>
       ) : null}
+    </View>
+  );
+}
+
+// --- Next dose (SICK-008) -------------------------------------------------------
+
+function SickDay({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"sickday">) {
+  const { session } = useAuth();
+  const summary = useSickSummary(session?.user.id, refreshKey);
+  const { settings } = useNookSettings("sickday", sickdaySettingDefaults);
+  const now = useNow();
+  if (!summary) return null;
+
+  const sick = summary.sick;
+  if (shape === "icon") {
+    return sick.length ? <IconFace icon={icon} palette={palette} badge={sick.length} /> : <IconFace icon={icon} palette={palette} />;
+  }
+  if (!sick.length) return <Empty icon="heart" palette={palette} text="Everyone's well" />;
+
+  const temp = (c: number | null) => (widget.settings.showTemp && c != null ? sickTemp(c, settings.tempUnit) : null);
+  const nextWords = (t: (typeof sick)[number]["timers"][number]) =>
+    !t.hasTimer ? "given" : !t.wait ? "OK now" : untilWords(t.wait.safeAt - now);
+
+  if (shape === "strip") {
+    const first = sick[0];
+    const timer = first.timers.find((t) => t.hasTimer);
+    return (
+      <Strip
+        icon={icon}
+        palette={palette}
+        text={timer ? `${first.name} · ${timer.name} ${timer.wait ? `in ${untilWords(timer.wait.safeAt - now)}` : "OK now"}` : `${first.name} · ${first.title}`}
+        sub={[temp(first.tempC), sick.length > 1 ? `${sick.length} sick` : first.title].filter(Boolean).join(" · ") || null}
+      />
+    );
+  }
+
+  // One heading per person, then a line per medicine, as many as fit.
+  type Line = { key: string; kind: "person"; s: (typeof sick)[number] } | { key: string; kind: "dose"; t: (typeof sick)[number]["timers"][number] };
+  const lines: Line[] = [];
+  for (const s of sick) {
+    lines.push({ key: s.spellId, kind: "person", s });
+    for (const t of s.timers) lines.push({ key: `${s.spellId}:${t.key}`, kind: "dose", t });
+  }
+  const shown = lines.slice(0, rowsThatFit(height, 22, 44));
+
+  return (
+    <View style={{ gap: 5, flex: 1, justifyContent: shape === "wide" ? "center" : "flex-start" }}>
+      {shown.map((line) =>
+        line.kind === "person" ? (
+          <View key={line.key} style={styles.row}>
+            <Text style={[styles.body, { color: palette.text, flex: 1, fontWeight: "800" }]} numberOfLines={1}>
+              {line.s.name}
+              <Text style={{ fontWeight: "500", color: palette.muted }}>{line.s.title !== "Sick" ? ` · ${line.s.title}` : ""}</Text>
+            </Text>
+            {temp(line.s.tempC) ? (
+              <Text style={[styles.small, { color: isFever(line.s.tempC) ? palette.accent : palette.muted, fontWeight: "700" }]}>{temp(line.s.tempC)}</Text>
+            ) : null}
+          </View>
+        ) : (
+          <View key={line.key} style={[styles.row, { paddingLeft: 4 }]}>
+            <Icon name={line.t.hasTimer && !line.t.wait ? "check" : "pill"} size={12} color={palette.accent} />
+            <Text style={[styles.small, { color: palette.text, flex: 1 }]} numberOfLines={1}>
+              {line.t.name}
+            </Text>
+            <Text style={[styles.small, { color: line.t.hasTimer && !line.t.wait ? palette.accent : palette.muted, fontWeight: "700" }]}>
+              {nextWords(line.t)}
+            </Text>
+          </View>
+        )
+      )}
+      {sick.every((s) => !s.timers.length) && lines.length <= shown.length ? <Muted palette={palette}>No medicine given yet</Muted> : null}
     </View>
   );
 }

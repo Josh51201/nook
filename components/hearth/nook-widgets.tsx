@@ -18,6 +18,9 @@ import { formatMoney } from "../../lib/subscriptions";
 import { useSubscriptionsSummary } from "../../lib/subscriptions-data";
 import { kindInfo, rangeWords, whenWords } from "../../lib/getaways";
 import { useGetawaysSummary } from "../../lib/getaways-data";
+import { sickdaySettingDefaults, useNookSettings } from "../../lib/nook-settings";
+import { formatTemp as sickTemp, spellDay, untilWords } from "../../lib/sickday";
+import { useNow, useSickSummary } from "../../lib/sickday-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
@@ -396,6 +399,29 @@ function GetawaysWidget({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// Sick Day (SICK-008): who's sick, then when each medicine is OK again.
+function SickDayWidget({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const summary = useSickSummary(session?.user.id, refreshKey);
+  const { settings } = useNookSettings("sickday", sickdaySettingDefaults);
+  const now = useNow();
+  if (!summary) return null;
+  if (!summary.sick.length) return <Facts facts={[{ kind: "note", text: "Everyone's well" }]} {...props} />;
+
+  const facts: Fact[] = [];
+  for (const s of summary.sick) {
+    facts.push({
+      kind: "headline",
+      text: s.title === "Sick" ? `${s.name} is sick` : `${s.name} · ${s.title}`,
+      trailing: s.tempC != null ? sickTemp(s.tempC, settings.tempUnit) : `day ${spellDay({ started_on: s.startedOn, ended_on: null }, summary.today)}`,
+    });
+    for (const t of s.timers.filter((x) => x.hasTimer)) {
+      facts.push({ kind: "detail", icon: t.wait ? "timer" : "check", text: t.name, trailing: t.wait ? untilWords(t.wait.safeAt - now) : "OK now", strong: !t.wait });
+    }
+  }
+  return <Facts facts={facts} {...props} />;
+}
+
 export const nookWidgets: Record<string, NookWidget> = {
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
   potluck: { label: "Next Potluck", Component: PotluckWidget },
@@ -406,4 +432,5 @@ export const nookWidgets: Record<string, NookWidget> = {
   recipes: { label: "Today's pick", Component: RecipesWidget },
   subscriptions: { label: "Renewing soon", Component: SubscriptionsWidget },
   getaways: { label: "Next Getaway", Component: GetawaysWidget },
+  sickday: { label: "Next dose", Component: SickDayWidget },
 };

@@ -1008,6 +1008,19 @@ function KindSettings({
       );
     case "recipe":
       return <RecipeShelfPicker shelf={widget.settings.shelf} onChange={(shelf) => setSettings({ shelf })} />;
+    case "sickday":
+      return (
+        <>
+          <View style={[ui.row, { gap: 12 }]}>
+            <Text style={[ui.label, { flex: 1 }]}>Show the latest temperature</Text>
+            <Switch value={widget.settings.showTemp} onValueChange={(showTemp) => setSettings({ showTemp })} trackColor={{ true: colors.bark }} />
+          </View>
+          <Text style={ui.muted}>
+            Who's sick and when each medicine they've had is OK again, counting down, from your Sick Day Nook. Says “Everyone's well” the rest of the
+            time.
+          </Text>
+        </>
+      );
     case "sitter":
       return (
         <>

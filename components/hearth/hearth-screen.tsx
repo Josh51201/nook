@@ -748,6 +748,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         return router.push("/sitter");
       case "subscriptions":
         return router.push("/subscriptions");
+      case "sickday":
+        return router.push("/sickday");
       case "countdown":
         // A Getaway countdown opens that Getaway (TRIP-010).
         if (item.widget.settings.source === "getaway") {

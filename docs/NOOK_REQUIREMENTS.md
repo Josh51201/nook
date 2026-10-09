@@ -125,6 +125,24 @@ The backlog's "Trip" Nook. Josh picked it on 2026-10-09 ("lets do the trip nook 
 - **TRIP-014** _(Proposed.)_ Leaving takes your own packing list with you, tasks you were doing go back to "anyone", and costs stay so the sums add up; when the last person leaves, the Getaway is deleted.
 - _Built 2026-10-09:_ TRIP-001..014 in `app/getaways`, with the database rules in the `getaways` migration. The privacy tests skip until a service key is in `.env.test.local`.
 
+## 2k. Sick Day Nook
+Josh picked it from the backlog on 2026-10-09 ("lets do the sick day nook next"), kept the name, chose who sees it and every part below. Anything marked _(Proposed)_ is Claude's detail for him to confirm.
+- **SICK-001** A Sick Day Nook: when someone in the Home is sick, log symptoms, temperatures and medicine doses, with a "next dose OK at…" timer so two people can't double-dose. _(Josh kept the name "Sick Day Nook".)_ _(Proposed: anyone in the Home can be the sick one, grown-ups and the kids it looks after; each illness is "a sick spell" with what it is, when it started and notes; one at a time per person.)_
+- **SICK-002** Seen by your Home, plus helpers. _(Josh picked "Home, plus helpers".)_ _(Proposed: a helper is someone from your Burrows who doesn't live with you, added to one sick spell until a day you pick or until they're better (access stops the day after "Feeling better"); they can log temperatures, symptoms and doses, and see the medicine cabinet, but can't change the spell or the cabinet.)_
+- **SICK-003** _(Proposed.)_ Temperatures (°F or °C, a setting; where it was taken) and symptoms from one-tap picks or typed, plus notes, each with who logged it and when (now, or earlier). A fever is 100.4 °F / 38 °C.
+- **SICK-004** _(Proposed.)_ Doses with a "next dose OK at…" timer. The database refuses a dose that's too soon (the gap since the last one, or the most a day), and two phones tapping "Give" at once can't both get through. "Give it anyway" (when the doctor says so) goes through, marked as given early.
+- **SICK-005** A medicine cabinet. _(Josh picked it.)_ _(Proposed: each medicine saved once with the dose, hours between doses and most a day from the label or doctor, and what's in it; medicines sharing an ingredient count together (Tylenol and NyQuil are both acetaminophen); one can be saved for a single person; Nook never works out a dose.)_
+- **SICK-006** A temperature chart. _(Josh picked it.)_ _(Proposed: one line over the sick spell with the fever line marked; tap to read a value.)_
+- **SICK-007** A doctor summary. _(Josh picked it.)_ _(Proposed: when it started, allergies, highest and latest temperature, symptoms, every dose and notes, as text to read out, copy or share.)_
+- **SICK-008** A Hearth widget. _(Josh picked it.)_ _(Proposed: "Next dose": who's sick, their latest temperature, and each medicine counting down to OK; the Nook's tile shows the same.)_
+- **SICK-009** A dose-ready alert. _(Josh picked it.)_ _(Proposed: an alert on the phone that gave the dose, plus an inbox notice, when the gap is up; also a notice to the rest of the Home when someone gives a dose, and to a helper when they're added. Each can be switched off.)_
+- **SICK-010** Sitter Sheet link. _(Josh picked it.)_ _(Proposed: a "Sick day" tick on a link, off by default; for kids on that link who are sick now, the sitter's page shows what it is, the latest temperature, and each medicine with when it was last given and when the next is OK. Read-only (SIT-005), with no notes or who gave what.)_
+- **SICK-011** Illness history. _(Josh picked it.)_ _(Proposed: "Feeling better" ends a sick spell and keeps it, by person, until deleted; it shows "Last had strep in March" next time.)_
+- **SICK-012** Missed days. _(Josh picked it.)_ _(Proposed: school, daycare or work; tick the days on the sick spell; a ready-to-send note for school or work.)_
+- **SICK-013** _(Proposed.)_ Nobody outside the Home or a sick spell's active helpers can see anything about it, and doses are only written by the database's dose check, enforced in Postgres, with tests. A sitter link shows the sick part only when ticked, and only for kids on it.
+- **SICK-014** _(Proposed.)_ A Home that was only yours brings its sick spells and cabinet along when you join another (HOME-003, HOME-005); leaving a shared one takes your own sick spells and the medicines saved just for you. Kids' spells stay.
+- _Built 2026-10-09:_ SICK-001..014 in `app/sickday`, with the database rules in the `sick_day` migration (the dose-ready inbox notice needs pg_cron). The privacy tests skip until a service key is in `.env.test.local`.
+
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
 - **MON-002** A subscription belongs to a **Home** and covers everyone in it, up to the Home's cap of 6 (HOME-006). It never covers a Burrow, so joining someone's Burrow unlocks nothing paid. The paid customization follows the Home too, not the person. _(Josh: "I like the per home idea but yes needs capped at 6".)_
@@ -149,8 +167,9 @@ The backlog's "Trip" Nook. Josh picked it on 2026-10-09 ("lets do the trip nook 
 - **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
 - **Q-025** The app ID (bundle identifier) is currently `com.josh51201.nook`. It is permanent once the app is published. Should it use the domain Josh buys for email (Q-023) instead?
 
-- **Q-028** Exactly where the free/paid line sits, the price and the trial length (MON-003, MON-004). Decided so far: subscription, no ads, one plan per Home, capped at 6, and the free/paid list is easy to change later (MON-005). The how-it-works details in MON-006..010 are Claude's proposals for Josh to confirm. The Subscriptions Nook (SUB-001) keeps things in a Home, so under MON-003 it would be Plus too (proposed); the Getaway Nook (TRIP-001) shares across Burrows, so it could stay free like the Gift Nook (proposed). Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. Also depends on Q-020 (account deletion) and Q-025 (app ID) before an App Store release.
+- **Q-028** Exactly where the free/paid line sits, the price and the trial length (MON-003, MON-004). Decided so far: subscription, no ads, one plan per Home, capped at 6, and the free/paid list is easy to change later (MON-005). The how-it-works details in MON-006..010 are Claude's proposals for Josh to confirm. The Subscriptions Nook (SUB-001) keeps things in a Home, so under MON-003 it would be Plus too (proposed); the Getaway Nook (TRIP-001) shares across Burrows, so it could stay free like the Gift Nook (proposed); the Sick Day Nook (SICK-001) keeps things in a Home, so it would be Plus (proposed). Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. Also depends on Q-020 (account deletion) and Q-025 (app ID) before an App Store release.
 - **Q-031** Where should the Sitter Sheet's web page live? It's one small file. Options: a free static host (Netlify or Cloudflare Pages) now, then the domain bought for email (Q-023) later, e.g. `sitter.<domain>`. Links made before a move stop working, but they only last one stay anyway.
+- **Q-032** A kid with two Homes (parents who live apart): should the Sick Day dose timer count doses given in the other Home, so neither house doubles up? Built for now (proposed): each Home only sees and counts its own, so nothing about one Home shows in the other.
 
 ## 4. Decision Log
 Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need the history of a decision). Add new entries there.
@@ -172,6 +191,10 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The trip-planning Nook (TRIP-001) | Getaway Nook | approved |
 | One trip in it | a Getaway | approved |
 | The ready-made countdown to your next trip (TRIP-010) | Getaway countdown | proposed |
+| The sick-day Nook (SICK-001) | Sick Day Nook | approved |
+| One illness in it, for one person | a sick spell | proposed |
+| Where medicines and their doses are kept (SICK-005) | Medicine cabinet | proposed |
+| The Hearth widget with who's sick and when the next dose is OK (SICK-008) | Next dose | proposed |
 | A Hearth widget with one recipe a day (REC-011) | Recipe of the day | proposed |
 | One recurring chore in the Rhythms Nook | Rhythm | proposed |
 | The paid subscription, per Home | Nook Plus | proposed |
@@ -204,7 +227,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **Fridge Door** — now built as the Fridge door widget: see CORE-086.
 - **Recipe Box** — now being built as the Recipe Box Nook: see section 2h (REC-001..014).
 - **Heads-Up Board** — one-tap household status like "on my way", "dinner at 6?" or "need milk"; no location tracking. _(Josh picked it 2026-10-08.)_
-- **Sick Day** — log a child's symptoms, temperature and medicine doses with a "next dose safe at…" timer so two parents can't double-dose; could feed the Sitter Sheet. _(Josh picked it 2026-10-08: "sick day nook is also good".)_
+- **Sick Day** — now built as the Sick Day Nook: see section 2k (SICK-001..014).
 - **Subscriptions** — now built as the Subscriptions Nook: see section 2i (SUB-001..012).
 - **Little Log** — log anything with a date (blood pressure, mileage, a symptom, a mood); you pick the fields and it charts them over time. _(Josh picked it 2026-10-08.)_
 - **Trip** — now built as the Getaway Nook: see section 2j (TRIP-001..014).
@@ -218,6 +241,6 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 Josh's stated priority, in order:
 1. ~~**Hearth:** CORE-055 (share a look) and the fireplace sound (CORE-047)~~ — built 2026-10-09; the Hearth rounds are done.
 2. ~~**Recipe Box Nook (REC-001..014)**~~ — built 2026-10-09 (section 2h).
-3. **Backlog Nooks** (section 6) — Josh picks the next one. Subscriptions and Getaway (Trip) built 2026-10-09 (sections 2i, 2j).
+3. **Backlog Nooks** (section 6) — Josh picks the next one. Subscriptions, Getaway (Trip) and Sick Day built 2026-10-09 (sections 2i, 2j, 2k).
 
 _Built and done: Hollows, Potluck, Letterbox, Pet Care, Rhythms, Sitter Sheet (page on Netlify for now, Q-031), and Hearth rounds two and three._

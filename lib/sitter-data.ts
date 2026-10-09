@@ -127,6 +127,14 @@ export type SitterView = {
   food?: string | null;
   notes?: string | null;
   kids: { name: string; allergies: string[]; diets: string[] }[];
+  // Kids on the link who are sick right now (SICK-010), if ticked.
+  sick?: {
+    name: string;
+    what: string | null;
+    since: string;
+    temp: { temp_c: number; at: string } | null;
+    medicines: { name: string; amount: string | null; every_hours: number | null; last_given: string; next_ok: string | null }[];
+  }[];
   pets: {
     name: string;
     species: string;

@@ -22,6 +22,7 @@ export type Notice = {
     rhythm_id?: string;
     subscription_id?: string;
     getaway_id?: string;
+    spell_id?: string;
     link_id?: string;
     invite_id?: string;
     home_id?: string;
@@ -88,6 +89,11 @@ const kinds: Record<string, Record<string, KindInfo>> = {
     getaway_added: { icon: "plane", route: (data) => (data.getaway_id ? `/getaways/${data.getaway_id}` : "/getaways") },
     getaway_todo: { icon: "todo", route: (data) => (data.getaway_id ? `/getaways/todos?id=${data.getaway_id}` : "/getaways") },
     getaway_tomorrow: { icon: "calendar", route: (data) => (data.getaway_id ? `/getaways/${data.getaway_id}` : "/getaways") },
+  },
+  sickday: {
+    sick_dose_given: { icon: "pill", route: (data) => (data.spell_id ? `/sickday/${data.spell_id}` : "/sickday") },
+    sick_dose_ready: { icon: "timer", route: (data) => (data.spell_id ? `/sickday/${data.spell_id}` : "/sickday") },
+    sick_helper: { icon: "sick", route: (data) => (data.spell_id ? `/sickday/${data.spell_id}` : "/sickday") },
   },
   sitter: {
     sitter_opened: { icon: "check", route: () => "/sitter" },

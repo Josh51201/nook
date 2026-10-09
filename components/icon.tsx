@@ -134,6 +134,7 @@ const icons = {
   card: { ios: "creditcard.fill", android: "credit_card" },
   bed: { ios: "bed.double.fill", android: "bed" },
   train: { ios: "tram.fill", android: "train" },
+  sick: { ios: "cross.case.fill", android: "medical_services" },
 } satisfies Record<string, { ios: SymbolViewProps["name"] & string; android: AndroidName }>;
 
 type AndroidName = Exclude<Extract<SymbolViewProps["name"], object>["android"], undefined>;

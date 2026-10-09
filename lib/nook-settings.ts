@@ -136,6 +136,16 @@ export const getawaySettingDefaults = {
   notifyLeaving: true, // the day before it starts, with what's left to pack
 };
 
+// Sick Day settings (SICK-003, SICK-009). The notify* keys are also read by
+// the database (public.wants_sick_notice) — rename them in both places or not
+// at all. All on to start: while someone's sick, you want to know.
+export const sickdaySettingDefaults = {
+  notifyDoseReady: true, // the next dose you gave is OK again (inbox + this phone)
+  notifyDoseGiven: true, // someone else gave a dose
+  notifyHelper: true, // you're asked to help with someone who's sick
+  tempUnit: "f" as "f" | "c",
+};
+
 // Letterbox settings. notifyBirthdays is also read by the database
 // (public.wants_letterbox_reminder) — rename it in both places or not at all.
 export const sitterSettingDefaults = {

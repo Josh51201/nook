@@ -38,6 +38,8 @@ export type SitterLink = {
   sections: SectionKey[];
   kid_ids: string[];
   pet_ids: string[];
+  // Sick Day (SICK-010): how the kids on it are doing, while they're sick.
+  show_sick?: boolean;
   revoked_at: string | null;
   views: number;
   last_viewed_at: string | null;
