@@ -39,7 +39,8 @@ export function Text({ style, ...props }: TextProps) {
   const sized = scale === 1 ? style : [style, scaledStyle(style, scale, nested)];
 
   let text;
-  if (font === "classic") {
+  // Text that names its own font (Hearth text, CORE-076) keeps it.
+  if (font === "classic" || StyleSheet.flatten(style)?.fontFamily) {
     text = <RNText {...props} style={sized} />;
   } else {
     const asked = StyleSheet.flatten(style)?.fontWeight;

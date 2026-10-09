@@ -5,8 +5,9 @@ import { Text, TextInput } from "../text";
 import { cornerChoices, liftChoices, tileShapes } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import {
-  canNudge,
   hollowDecors,
+  labelDecors,
+  labelIsBold,
   hollowLookInfo,
   hollowLooks,
   itemColor,
@@ -14,12 +15,12 @@ import {
   sizePresets,
   type HearthItem,
   type HollowItem,
-  type Nudge,
   type LabelItem,
   type NookItem,
   type Scope,
   type TrinketItem,
 } from "../../lib/hearth";
+import { labelFonts } from "../../lib/fonts";
 import { lookSummary, sizeSummary, tagsSummary } from "../../lib/summaries";
 import { trinketInfo, trinkets } from "../../lib/trinkets";
 import { showInWords } from "../../lib/widget-extras";
@@ -33,7 +34,6 @@ import { ColorPicker } from "./color-picker";
 import { SeasonPicker } from "./season-picker";
 import { TagsEditor } from "./tag-bar";
 import { IconPicker } from "./icon-picker";
-import { NudgePad } from "./nudge-pad";
 import { TrinketThumb } from "./trinket-art";
 
 type Editable = NookItem | LabelItem | HollowItem | TrinketItem;
@@ -59,7 +59,7 @@ export function ItemOptions({
   onMoveTo,
   copyTargets = [],
   onCopyTo,
-  onNudge,
+  onStartMove,
 }: {
   item: Editable | null;
   onChange: (changes: Partial<HearthItem>) => void;
@@ -77,8 +77,8 @@ export function ItemOptions({
   // Places a copy could go (here, the Hearth, other Hollows).
   copyTargets?: MoveTarget[];
   onCopyTo?: (scope: Scope) => void;
-  // One step in a direction, for the arrow buttons (CORE-075).
-  onNudge?: (way: Nudge) => void;
+  // Close this and move it with arrows while watching the Hearth (CORE-076).
+  onStartMove?: () => void;
 }) {
   const [text, setText] = useState("");
 
@@ -119,7 +119,11 @@ export function ItemOptions({
       : shown.kind === "hollow"
         ? `${hollowLookInfo(shown.look).label} · ${hollowDecors.find((d) => d.decor === (shown.decor ?? "none"))?.label ?? "Plain"}`
         : shown.kind === "label"
-          ? `${{ title: "Title", heading: "Heading", caption: "Caption" }[shown.size]} · ${shown.align[0].toUpperCase()}${shown.align.slice(1)}`
+          ? [
+              { title: "Title", heading: "Heading", caption: "Caption" }[shown.size],
+              labelFonts.find((f) => f.key === (shown.font ?? "app"))?.label,
+              shown.divider ? "Divider" : labelDecors.find((d) => d.key === (shown.decor ?? "none"))?.label,
+            ].join(" · ")
           : shown.flip
             ? "Flipped"
             : "As drawn";
@@ -304,6 +308,40 @@ export function ItemOptions({
                     </Chip>
                   ))}
                 </View>
+                <Text style={ui.label}>Font</Text>
+                <View style={ui.chips}>
+                  {labelFonts.map((f) => (
+                    <Chip key={f.key} selected={(shown.font ?? "app") === f.key} onPress={() => onChange({ font: f.key } as Partial<LabelItem>)}>
+                      {f.label}
+                    </Chip>
+                  ))}
+                </View>
+                <View style={ui.chips}>
+                  <Chip icon="text" selected={labelIsBold(shown)} onPress={() => onChange({ bold: !labelIsBold(shown) } as Partial<LabelItem>)}>
+                    Bold
+                  </Chip>
+                  <Chip icon="text" selected={Boolean(shown.caps)} onPress={() => onChange({ caps: !shown.caps } as Partial<LabelItem>)}>
+                    CAPITALS
+                  </Chip>
+                </View>
+                {shown.divider ? null : (
+                  <>
+                    <Text style={ui.label}>Decoration</Text>
+                    <View style={ui.chips}>
+                      {labelDecors.map((d) => (
+                        <Chip
+                          key={d.key}
+                          icon={d.icon}
+                          selected={(shown.decor ?? "none") === d.key}
+                          onPress={() => onChange({ decor: d.key } as Partial<LabelItem>)}
+                        >
+                          {d.label}
+                        </Chip>
+                      ))}
+                    </View>
+                    <Text style={ui.muted}>The color below tints the pill, patch, ribbon or sign.</Text>
+                  </>
+                )}
               </>
             ) : null}
             <Text style={ui.label}>{shown.kind === "trinket" ? "Main color" : "Color"}</Text>
@@ -393,7 +431,9 @@ export function ItemOptions({
                 trackColor={{ true: colors.bark }}
               />
             </View>
-            {onNudge ? <NudgePad can={(way) => canNudge(shown, way)} onNudge={onNudge} at={shown} /> : null}
+            {onStartMove && !shown.locked ? (
+              <Button title="Move it with arrows" icon="arrowUp" variant="secondary" onPress={onStartMove} />
+            ) : null}
             {moveTargets.length && onMoveTo && shown.kind !== "hollow" ? (
               <>
                 <Text style={ui.label}>Move to</Text>

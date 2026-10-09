@@ -1,9 +1,12 @@
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { AccessibilityInfo, Alert, StyleSheet, View } from "react-native";
 import { FixedTextSize, Text } from "../text";
 import { HelpButton } from "../help-button";
+import { LabelFace } from "./label-face";
+import { MoveBar } from "./move-bar";
+import { takeMoveRequest } from "../../lib/move-request";
 import { Gesture, GestureDetector, ScrollView } from "react-native-gesture-handler";
 import Animated, {
   FadeIn,
@@ -60,6 +63,9 @@ import {
   locate,
   moveItem,
   nudgeItem,
+  canNudge,
+  itemDisplayName,
+  type Nudge,
   moveToScope,
   newItemId,
   tidyItems,
@@ -150,6 +156,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const [editing, setEditing] = useState(false);
   const [gridWidth, setGridWidth] = useState(0);
   const [optionsFor, setOptionsFor] = useState<string | null>(null);
+  // Moving a tile with the arrow bar, watching the Hearth (CORE-076).
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [decorating, setDecorating] = useState(false);
   const [pagesOpen, setPagesOpen] = useState(false);
@@ -334,7 +342,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const gridRef = useRef<View>(null);
   const reduceMotion = useReducedMotion();
 
-  const sheetOpen = adding || decorating || pagesOpen || finding || scenesOpen || pickSheet !== null || optionsFor !== null || zoom !== null;
+  const sheetOpen = adding || decorating || pagesOpen || finding || scenesOpen || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -654,6 +662,12 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   function onPressItem(item: HearthItem) {
     // A checkbox inside a widget was just pressed; that's not an "open".
     if (touchesGuarded()) return;
+    // While moving with the arrows, tapping another tile moves that one.
+    if (movingId) {
+      tap();
+      setMovingId(item.id);
+      return;
+    }
     if (item.kind === "label" && item.divider && !editing && !selecting) {
       tap();
       setFolded((prev) => (prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id]));
@@ -713,7 +727,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     setAdding(false);
     const id = newItemId("l");
     if (!persistHere((inner) =>
-      addItem(inner, { id, kind: "label", text: scope ? "Up top" : "My Nooks", size: "heading", align: "left", w: 4, h: 1 })
+      addItem(inner, { id, kind: "label", text: scope ? "Up top" : "My Nooks", size: "heading", align: "left", w: 4, h: 0.5 })
     )) return;
     setEditing(true);
     setOptionsFor(id);
@@ -1015,6 +1029,43 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     }, 250);
   }, [revealId, gridWidth, items]);
 
+  // Moving with the arrow bar (CORE-076): keep the tile in view above the
+  // bar as it goes, stop when editing ends, and pick up a "Move it on your
+  // Hearth" from the widget editor.
+  const movingItem = movingId ? items.find((i) => i.id === movingId) : undefined;
+  useEffect(() => {
+    if (!movingItem || !gridWidth) return;
+    const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
+    const top = gridTop.current + movingItem.y * stride;
+    const bottom = top + movingItem.h * stride;
+    const shown = scrollY.value;
+    const room = viewHeight.value - 250;
+    if (top < shown + 16) tourScroll.scrollRef.current?.scrollTo({ y: Math.max(0, top - 24), animated: true });
+    else if (room > 0 && bottom > shown + room) tourScroll.scrollRef.current?.scrollTo({ y: bottom - room + 16, animated: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movingItem?.id, movingItem?.x, movingItem?.y, gridWidth]);
+  useEffect(() => {
+    if (!editing) setMovingId(null);
+  }, [editing]);
+  useEffect(() => {
+    if (movingId && !isLoading && !movingItem) setMovingId(null);
+  }, [movingId, movingItem, isLoading]);
+  useFocusEffect(
+    useCallback(() => {
+      const id = takeMoveRequest();
+      if (!id) return;
+      measureViewport();
+      setEditing(true);
+      setMovingId(id);
+    }, [measureViewport])
+  );
+
+  function nudgeMoving(way: Nudge) {
+    if (!movingId) return;
+    persistHere((inner) => nudgeItem(inner, movingId, way));
+    AccessibilityInfo.announceForAccessibility(`Moved ${way}`);
+  }
+
   const optionsItem = (items.find((i) => i.id === optionsFor && i.kind !== "widget") ?? null) as
     | NookItem
     | LabelItem
@@ -1161,41 +1212,14 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         />
       );
     }
-    const fontSize = { title: 30, heading: 19, caption: 14 }[item.size];
-    if (item.divider) {
-      const isFolded = folded.includes(item.id) && !editing;
-      const hidden = hiddenBy(items, item.id);
-      const tint = item.color ? deepColor(item.color) : theme.text;
-      return (
-        <View style={[size, { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 4, paddingBottom: 4 }]}>
-          <Text numberOfLines={1} style={{ fontSize, fontWeight: "800", color: tint, flexShrink: 1 }}>
-            {item.text}
-          </Text>
-          <View style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: `${tint}33`, marginBottom: fontSize * 0.32 }} />
-          {isFolded && hidden ? (
-            <Text style={{ color: theme.muted, fontSize: 13, marginBottom: 1 }}>{hidden} hidden</Text>
-          ) : null}
-          <View style={{ transform: [{ rotate: isFolded ? "0deg" : "90deg" }], marginBottom: 1 }}>
-            <Icon name="chevron" size={16} color={tint} />
-          </View>
-        </View>
-      );
-    }
     return (
-      <View style={[size, { justifyContent: "flex-end", paddingHorizontal: 4, paddingBottom: 2 }]}>
-        <Text
-          numberOfLines={2}
-          style={{
-            fontSize,
-            fontWeight: item.size === "caption" ? "500" : "800",
-            textAlign: item.align,
-            color: item.color ? deepColor(item.color) : item.size === "caption" ? theme.muted : theme.text,
-            letterSpacing: item.size === "title" ? -0.5 : 0,
-          }}
-        >
-          {item.text}
-        </Text>
-      </View>
+      <LabelFace
+        item={item}
+        {...size}
+        theme={theme}
+        folded={item.divider && folded.includes(item.id) && !editing}
+        hiddenCount={item.divider ? hiddenBy(items, item.id) : 0}
+      />
     );
   }
 
@@ -1363,7 +1387,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           <AnimatedScrollView
             ref={scrollView}
             {...scrollProps}
-            contentContainerStyle={styles.container}
+            // Room to scroll the last row above the arrow bar while moving.
+            contentContainerStyle={[styles.container, movingId ? { paddingBottom: 240 } : null]}
             scrollEnabled={!dragging}
             keyboardShouldPersistTaps="handled"
           >
@@ -1486,6 +1511,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   shadowAt={(level) => shadowAtLevel(themeKey, level)}
                   onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
                   onNudge={(id, way) => persistHere((inner) => nudgeItem(inner, id, way))}
+                  focusId={movingId}
                   onResize={(id, w, h) => persistHere((inner) => resizeItem(inner, id, w, h))}
                   onDropIntoHollow={
                     scope
@@ -1641,13 +1667,31 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         />
       ) : null}
 
+      {movingItem ? (
+        <MoveBar
+          name={itemDisplayName(movingItem)}
+          at={movingItem}
+          can={(way) => canNudge(movingItem, way)}
+          onNudge={nudgeMoving}
+          onDone={() => {
+            tap("success");
+            setMovingId(null);
+          }}
+          theme={theme}
+        />
+      ) : null}
+
       {/* Sheets sit inside the screen (not system pop-ups) so opening another
           screen from them can't collide with a half-dismissed pop-up. */}
       <ItemOptions
         item={optionsItem}
         onChange={(changes) => optionsFor && persistHere((inner) => updateItem(inner, optionsFor, changes))}
         onResize={(w, h) => optionsFor && persistHere((inner) => resizeItem(inner, optionsFor, w, h))}
-        onNudge={(way) => optionsFor && persistHere((inner) => nudgeItem(inner, optionsFor, way))}
+        onStartMove={() => {
+          const id = optionsFor;
+          setOptionsFor(null);
+          setMovingId(id);
+        }}
         onOpen={
           optionsItem?.kind === "nook"
             ? () => {

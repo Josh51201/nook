@@ -27,7 +27,45 @@ const fraunces: Record<number, string> = {
 };
 
 // Every font file the choices use (they're loaded when the app starts).
-export const fontFiles = [...Object.values(nunito), ...Object.values(fraunces)];
+// Handwriting, for text on the Hearth only (CORE-076).
+const caveat: Record<number, string> = {
+  400: "Caveat_400Regular",
+  500: "Caveat_500Medium",
+  600: "Caveat_600SemiBold",
+  700: "Caveat_700Bold",
+};
+
+export const fontFiles = [...Object.values(nunito), ...Object.values(fraunces), ...Object.values(caveat)];
+
+// Fonts a piece of Hearth text can wear (CORE-076). "app" follows the app's
+// own font choice.
+export type LabelFont = "app" | "rounded" | "storybook" | "handwritten" | "classic";
+
+export const labelFonts: { key: LabelFont; label: string }[] = [
+  { key: "app", label: "Same as the app" },
+  { key: "rounded", label: "Rounded" },
+  { key: "storybook", label: "Storybook" },
+  { key: "handwritten", label: "Handwritten" },
+  { key: "classic", label: "Classic" },
+];
+
+// The font file for Hearth text, or null for the phone's own font.
+export function labelFamily(font: LabelFont | undefined, weight: number, appFont: FontKey): string | null {
+  const w = weightOf(weight);
+  switch (font ?? "app") {
+    case "app":
+      return familyFor(appFont, w);
+    case "rounded":
+      return nunito[w] ?? nunito[400];
+    case "storybook":
+      // Fraunces comes in semi-bold and up.
+      return fraunces[Math.max(600, w)] ?? fraunces[700];
+    case "handwritten":
+      return caveat[Math.min(700, w)] ?? caveat[400];
+    case "classic":
+      return null;
+  }
+}
 
 // "bold", 700, "700" → 700; anything lighter than regular → 400.
 export function weightOf(weight: string | number | undefined): number {

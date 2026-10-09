@@ -53,7 +53,30 @@ export type LabelItem = ItemBase & {
   // A full-width divider you can fold shut to hide the section under it
   // (CORE-064).
   divider?: boolean;
+  // How it's written (CORE-076): the font, bold or not, CAPITALS, and a
+  // little decoration behind or around it.
+  font?: LabelFont;
+  bold?: boolean;
+  caps?: boolean;
+  decor?: LabelDecor;
 };
+
+export type LabelDecor = "none" | "underline" | "pill" | "stitched" | "ribbon" | "sign" | "flourish";
+
+export const labelDecors: { key: LabelDecor; label: string; icon: IconName }[] = [
+  { key: "none", label: "Plain", icon: "close" },
+  { key: "underline", label: "Underline", icon: "minus" },
+  { key: "pill", label: "Soft pill", icon: "category" },
+  { key: "stitched", label: "Stitched", icon: "clothes" },
+  { key: "ribbon", label: "Ribbon", icon: "gift" },
+  { key: "sign", label: "Wood sign", icon: "tree" },
+  { key: "flourish", label: "Flourish", icon: "sparkles" },
+];
+
+// Plain-text labels are bold unless they're captions (as they always were).
+export function labelIsBold(item: Pick<LabelItem, "bold" | "size">) {
+  return item.bold ?? item.size !== "caption";
+}
 // A Hollow (CORE-022..024): a little place on the Hearth that you step
 // into. It holds its own grid of items. One level only: a Hollow never
 // holds another Hollow.
@@ -124,7 +147,7 @@ export type HearthLayout = {
 };
 
 export type { FontKey } from "./fonts";
-import type { FontKey } from "./fonts";
+import type { FontKey, LabelFont } from "./fonts";
 import type { TextSizeKey } from "./text-size";
 
 // Soft tile colors that all work with dark text, each with a deep partner
@@ -289,8 +312,10 @@ export const sizePresets: Record<HearthItem["kind"], { label: string; w: number;
     { label: "Large", w: 4, h: 4 },
   ],
   label: [
-    { label: "Full", w: 4, h: 1 },
-    { label: "Half", w: 2, h: 1 },
+    { label: "Slim", w: 4, h: 0.5 },
+    { label: "Slim half", w: 2, h: 0.5 },
+    { label: "Tall", w: 4, h: 1 },
+    { label: "Tall half", w: 2, h: 1 },
   ],
   hollow: [
     { label: "Icon", w: 1, h: 1 },
@@ -310,7 +335,18 @@ export const sizePresets: Record<HearthItem["kind"], { label: string; w: number;
 
 export function minSize(item: HearthItem): { w: number; h: number } {
   if (item.kind === "widget") return widgetKindInfo(item.widget.kind).minSize;
+  // Text can be a slim half-row tall (CORE-076).
+  if (item.kind === "label") return { w: 1, h: ROW_STEP };
   return { w: 1, h: 1 };
+}
+
+// Things sit on half rows (CORE-076), so slim text can take half a row and
+// the tiles under it sit right up against it. Widths, and the heights of
+// everything but text, are still whole cells.
+export const ROW_STEP = 0.5;
+
+export function snapRow(n: number) {
+  return Math.round(n / ROW_STEP) * ROW_STEP;
 }
 
 // --- Grid geometry ------------------------------------------------------------
@@ -335,10 +371,10 @@ const hundredths = (n: number) => Math.round(n * 100) / 100;
 function clampRect<T extends HearthItem>(item: T): T {
   const min = minSize(item);
   const w = Math.max(min.w, Math.min(COLUMNS, Math.round(item.w)));
-  const h = Math.max(min.h, Math.min(8, Math.round(item.h)));
+  const h = Math.max(min.h, Math.min(8, item.kind === "label" ? snapRow(item.h) : Math.round(item.h)));
   const free = isFloating(item);
   const x = Math.max(0, Math.min(COLUMNS - w, free ? hundredths(item.x) : Math.round(item.x)));
-  const y = Math.max(0, free ? hundredths(item.y) : Math.round(item.y));
+  const y = Math.max(0, free ? hundredths(item.y) : snapRow(item.y));
   return { ...item, x, y, w, h };
 }
 
@@ -379,7 +415,7 @@ export function settle(items: HearthItem[], fixedId: string): HearthItem[] {
 
 // First spot (top to bottom, left to right) where a w×h item fits.
 export function findFreeSpot(items: GridRect[], w: number, h: number): { x: number; y: number } {
-  for (let y = 0; ; y++) {
+  for (let y = 0; ; y += ROW_STEP) {
     for (let x = 0; x + w <= COLUMNS; x++) {
       const candidate = { x, y, w, h };
       if (!items.some((item) => overlaps(item, candidate))) return { x, y };
@@ -439,7 +475,7 @@ function nearestOpenSpot(obstacles: GridRect[], want: GridRect): { x: number; y:
   const bottom = Math.max(want.y, rowsUsed(obstacles)) + 1;
   let best = { x: want.x, y: want.y };
   let bestDistance = Infinity;
-  for (let y = 0; y <= bottom; y++) {
+  for (let y = 0; y <= bottom; y += ROW_STEP) {
     for (let x = 0; x + want.w <= COLUMNS; x++) {
       if (obstacles.some((o) => overlaps(o, { x, y, w: want.w, h: want.h }))) continue;
       const distance = (x - want.x) ** 2 + (y - want.y) ** 2;
@@ -469,7 +505,7 @@ export function tidyItems(items: HearthItem[]): HearthItem[] {
       continue;
     }
     let y = 0;
-    while (placed.some((other) => overlaps({ x: item.x, y, w: item.w, h: item.h }, other))) y++;
+    while (placed.some((other) => overlaps({ x: item.x, y, w: item.w, h: item.h }, other))) y += ROW_STEP;
     item.y = y;
     if (item.stack) stackRow.set(item.stack, y);
     placed.push(item);
@@ -591,20 +627,29 @@ export function nookLabel(item: NookItem) {
   return item.label?.trim() || findNook(item.nookId)?.title || "Nook";
 }
 
-// What a screen reader says for a tile (CORE-075): its name and what it is.
-export function itemSpokenName(item: HearthItem): string {
+// A tile's name as people see it.
+export function itemDisplayName(item: HearthItem): string {
   switch (item.kind) {
     case "nook":
       return nookLabel(item);
     case "widget":
-      return `${item.widget.title?.trim() || widgetKindInfo(item.widget.kind).label}, widget`;
+      return item.widget.title?.trim() || widgetKindInfo(item.widget.kind).label;
     case "hollow":
-      return `${item.name}, Hollow`;
+      return item.name;
     case "label":
       return item.text;
     case "trinket":
-      return `${trinketInfo(item.piece).label}, decoration`;
+      return trinketInfo(item.piece).label;
   }
+}
+
+// What a screen reader says for a tile (CORE-075): its name and what it is.
+export function itemSpokenName(item: HearthItem): string {
+  const name = itemDisplayName(item);
+  if (item.kind === "widget") return `${name}, widget`;
+  if (item.kind === "hollow") return `${name}, Hollow`;
+  if (item.kind === "trinket") return `${name}, decoration`;
+  return name;
 }
 
 // Moving without dragging (CORE-075): one step in a direction, for the
@@ -627,9 +672,11 @@ export function canNudge(item: GridRect & { locked?: boolean }, way: Nudge): boo
 }
 
 // Where one step that way lands (unchanged if it can't go).
-export function nudgedSpot(item: GridRect & { locked?: boolean }, way: Nudge): { x: number; y: number } {
+// Text moves up and down by half rows; everything else by whole ones.
+export function nudgedSpot(item: GridRect & { locked?: boolean; kind?: string }, way: Nudge): { x: number; y: number } {
   if (!canNudge(item, way)) return { x: item.x, y: item.y };
-  return { x: item.x + nudgeSteps[way].dx, y: item.y + nudgeSteps[way].dy };
+  const step = item.kind === "label" ? ROW_STEP : 1;
+  return { x: item.x + nudgeSteps[way].dx, y: Math.max(0, item.y + nudgeSteps[way].dy * step) };
 }
 
 export function nudgeItem(layout: HearthLayout, id: string, way: Nudge): HearthItem[] {

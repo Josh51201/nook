@@ -21,7 +21,10 @@ import {
   starterItems,
   canNudge,
   itemSpokenName,
+  labelIsBold,
+  nudgedSpot,
   nudgeItem,
+  snapRow,
   type HearthItem,
   type HearthLayout,
 } from "../lib/hearth-layout";
@@ -394,5 +397,47 @@ describe("moving without dragging", () => {
     expect(itemSpokenName(tile(0, 0))).toBe("Gift Nook");
     expect(itemSpokenName({ id: "h", kind: "hollow", name: "Kids", look: "house", x: 0, y: 0, w: 1, h: 1, items: [] } as unknown as HearthItem)).toBe("Kids, Hollow");
     expect(itemSpokenName({ id: "w", kind: "widget", widget: defaultWidget("clock"), x: 0, y: 0, w: 2, h: 2 } as HearthItem)).toContain("widget");
+  });
+});
+
+describe("half rows and slim text (CORE-076)", () => {
+  const slim = { id: "l", kind: "label", text: "Gifts", size: "heading", align: "left", x: 0, y: 0, w: 4, h: 0.5 } as HearthItem;
+  const tile = (id: string, x: number, y: number) => ({ id, kind: "nook", nookId: "gift-nook", x, y, w: 2, h: 2 }) as HearthItem;
+
+  it("snaps to half rows", () => {
+    expect(snapRow(0.3)).toBe(0.5);
+    expect(snapRow(1.2)).toBe(1);
+    expect(snapRow(1.26)).toBe(1.5);
+  });
+
+  it("lets a new tile sit right under slim text, with no gap", () => {
+    expect(findFreeSpot([slim], 2, 2)).toEqual({ x: 0, y: 0.5 });
+  });
+
+  it("keeps text slim, and tiles whole, when resized", () => {
+    const layout: HearthLayout = { ...defaultHearthLayout, items: [slim, tile("t", 0, 1)] };
+    expect(resizeItem(layout, "l", 4, 0.5).find((i) => i.id === "l")!.h).toBe(0.5);
+    expect(resizeItem(layout, "t", 2, 1.5).find((i) => i.id === "t")!.h).toBe(2);
+  });
+
+  it("moves to half rows, pushing what's under it down", () => {
+    const layout: HearthLayout = { ...defaultHearthLayout, items: [slim, tile("t", 0, 0.5)] };
+    const items = moveItem(layout, "l", 0, 1.5);
+    const text = items.find((i) => i.id === "l")!;
+    const under = items.find((i) => i.id === "t")!;
+    expect(text.y).toBe(1.5);
+    expect(overlaps(text, under)).toBe(false);
+  });
+
+  it("steps text by half rows and tiles by whole ones", () => {
+    expect(nudgedSpot({ ...slim, y: 1 }, "up")).toEqual({ x: 0, y: 0.5 });
+    expect(nudgedSpot(tile("t", 0, 2), "up")).toEqual({ x: 0, y: 1 });
+    expect(nudgedSpot(tile("t", 0, 0.5), "up")).toEqual({ x: 0, y: 0 });
+  });
+
+  it("bolds headings but not captions unless asked", () => {
+    expect(labelIsBold({ size: "heading" })).toBe(true);
+    expect(labelIsBold({ size: "caption" })).toBe(false);
+    expect(labelIsBold({ size: "caption", bold: true })).toBe(true);
   });
 });

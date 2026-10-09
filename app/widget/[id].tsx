@@ -12,7 +12,6 @@ import { allTags } from "../../lib/hearth-tags";
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
 import { IconPicker } from "../../components/hearth/icon-picker";
 import { PlacePicker } from "../../components/hearth/place-picker";
-import { NudgePad } from "../../components/hearth/nudge-pad";
 import { WidgetView } from "../../components/hearth/widgets";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
@@ -41,10 +40,7 @@ import {
   hollowsOf,
   inScope,
   locate,
-  canNudge,
-  moveItem,
   moveToScope,
-  nudgedSpot,
   removeItem,
   resizeItem,
   sizePresets,
@@ -72,6 +68,7 @@ import {
   type WidgetOf,
 } from "../../lib/widgets";
 import { addToStack, MAX_STACK, stackMates, unstack } from "../../lib/hearth-stacks";
+import { requestMove } from "../../lib/move-request";
 
 // Customize one Hearth widget (CORE-018): what it shows and how it looks,
 // with a live preview at its real size. Nothing is saved until "Save".
@@ -125,7 +122,8 @@ export default function WidgetEditor() {
   // Saves, then (with `copyTo`) makes a copy there and opens it (CORE-039).
   // `stackWith` puts a new widget of that kind in this one's stack and opens
   // it; "out" takes this one out of its stack (CORE-050).
-  async function saveWidget(copyTo?: Scope, stackWith?: WidgetKind | "out") {
+  // `thenMove` goes back to the Hearth ready to move it with the arrows (CORE-076).
+  async function saveWidget(copyTo?: Scope, stackWith?: WidgetKind | "out", thenMove = false) {
     if (!draft || !original || isSaving) return;
     setIsSaving(true);
     try {
@@ -151,10 +149,6 @@ export default function WidgetEditor() {
       );
       if (draft.w !== original.w || draft.h !== original.h) {
         items = inScope({ ...layout, items }, home, (inner) => resizeItem(inner, draft.id, draft.w, draft.h));
-      }
-      // Moved with the arrows (CORE-075).
-      if (draft.x !== original.x || draft.y !== original.y) {
-        items = inScope({ ...layout, items }, home, (inner) => moveItem(inner, draft.id, draft.x, draft.y));
       }
       // Moving it to the Hearth or another Hollow.
       if (livesIn !== undefined && livesIn !== home) {
@@ -188,7 +182,10 @@ export default function WidgetEditor() {
       allowLeave();
       if (stackedId) router.replace({ pathname: "/widget/[id]", params: { id: stackedId, stacked: "1" } });
       else if (copyId) router.replace({ pathname: "/widget/[id]", params: { id: copyId, copied: "1" } });
-      else router.back();
+      else {
+        if (thenMove) requestMove(draft.id);
+        router.back();
+      }
       pending.catch((error: Error) => Alert.alert("Couldn't save your widget", error.message));
     } catch (error) {
       setIsSaving(false);
@@ -375,7 +372,14 @@ export default function WidgetEditor() {
         <Text style={ui.muted}>Or drag its corner on the Hearth for any size.</Text>
         <SwitchRow label="Lock in place" value={Boolean(draft.locked)} onChange={(locked) => setDraft({ ...draft, locked: locked || undefined })} />
         <Text style={ui.muted}>Can't be dragged, resized or removed until you unlock it.</Text>
-        <NudgePad can={(way) => canNudge(draft, way)} onNudge={(way) => setDraft({ ...draft, ...nudgedSpot(draft, way) })} at={draft} />
+        {draft.locked ? null : (
+          <Button
+            title="Save and move it on your Hearth"
+            icon="arrowUp"
+            variant="secondary"
+            onPress={() => saveWidget(undefined, undefined, true)}
+          />
+        )}
         {hollowsOf(layout).length ? (
           <>
             <Text style={ui.label}>Where it lives</Text>

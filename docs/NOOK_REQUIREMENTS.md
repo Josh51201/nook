@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-09 (rev 57)_
+_Last updated: 2026-10-09 (rev 58)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -27,6 +27,7 @@ _Last updated: 2026-10-09 (rev 57)_
 - **CORE-073** Blank screens point to a first step with a button where there's an obvious one, and small icon buttons have bigger tap areas and spoken labels without changing how anything looks. _(Built 2026-10-09.)_
 - **CORE-074** Long menus are organized into sections that open and close, each showing a few words on what's chosen while closed. _(Built 2026-10-09 in Settings, Decorate, the widget editor and the tile options sheet; which sections start open, and remembering them while the app is open, are Claude's calls, proposed.)_
 - **CORE-075** Accessibility round: grey and accent text pass 4.5:1 contrast in every theme (custom ones too); tiles can be moved with arrow buttons (Size & place) and screen-reader actions; Hearth tiles have spoken names; a "Vibrate on taps" switch; the iPhone's Bold Text setting makes Nook's own fonts bolder; leaving a form or editor with unsaved changes asks first; and an offline notice shows when there's no internet. _(Built 2026-10-09.)_
+- **CORE-076** Hearth text overhaul: text can be slim (half a row tall; new text starts slim) because the grid now steps in half rows, and it can have its own font (incl. a new Handwritten one), bold, CAPITALS and a decoration (underline, soft pill, stitched, ribbon, wood sign, flourish). Moving with arrows happens on the Hearth itself: a bar docks at the bottom, the tile glows and the page follows it; the widget editor's "Save and move it on your Hearth" opens the same bar. _(Built 2026-10-09; the styles and the bar are Claude's design, proposed. Existing text keeps its full-row height until changed to Slim.)_
 
 ### Still to do from the Hearth rounds
 Everything else in CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md) — grep it by ID. Josh said yes to every idea in these rounds; details are Claude's proposals until he confirms. Some is paid under Nook Plus (Q-028).

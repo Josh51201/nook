@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { boldened, familyFor, fontFiles, weightOf } from "../lib/fonts";
+import { boldened, familyFor, fontFiles, labelFamily, weightOf } from "../lib/fonts";
 
 describe("fonts (CORE-035)", () => {
   it("reads any way of writing a weight", () => {
@@ -40,5 +40,23 @@ describe("boldened (CORE-075)", () => {
     expect(boldened(400, true)).toBe(600);
     expect(boldened(800, true)).toBe(900);
     expect(boldened(600, false)).toBe(600);
+  });
+});
+
+describe("labelFamily (CORE-076)", () => {
+  it("follows the app's font by default", () => {
+    expect(labelFamily(undefined, 800, "rounded")).toBe(familyFor("rounded", 800));
+    expect(labelFamily("app", 400, "classic")).toBeNull();
+  });
+
+  it("uses each chosen font, with the nearest weight it has", () => {
+    expect(labelFamily("handwritten", 800, "classic")).toBe("Caveat_700Bold");
+    expect(labelFamily("storybook", 400, "classic")).toBe("Fraunces_600SemiBold");
+    expect(labelFamily("rounded", 600, "storybook")).toBe("Nunito_600SemiBold");
+    expect(labelFamily("classic", 800, "rounded")).toBeNull();
+  });
+
+  it("loads the handwriting font at start-up", () => {
+    expect(fontFiles).toContain("Caveat_400Regular");
   });
 });

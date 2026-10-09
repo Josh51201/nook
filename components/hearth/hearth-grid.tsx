@@ -86,6 +86,7 @@ export function HearthGrid({
   onTrashHover,
   onTrashArmed,
   flashId,
+  focusId,
   selecting = false,
   selectedIds,
   onToggleLock,
@@ -121,6 +122,8 @@ export function HearthGrid({
   onTrashArmed?: (armed: boolean) => void;
   // An item to make glow for a moment, e.g. a copy just made (CORE-039).
   flashId?: string | null;
+  // The tile being moved with the arrow bar glows until it's done (CORE-076).
+  focusId?: string | null;
   // Select many (CORE-060): taps pick items instead of opening them, and
   // nothing drags or resizes.
   selecting?: boolean;
@@ -139,7 +142,8 @@ export function HearthGrid({
   const [dropHollow, setDropHollow] = useState<HollowItem | null>(null);
   const dropHollowRef = useRef<HollowItem | null>(null);
 
-  const rows = rowsUsed(items) + (editing ? EXTRA_EDIT_ROWS : 0);
+  // Things can end on a half row (CORE-076); the grid shows whole rows.
+  const rows = Math.ceil(rowsUsed(items)) + (editing ? EXTRA_EDIT_ROWS : 0);
   const height = Math.max(0, rows * stride - GRID_GAP);
 
   const begin = useCallback(
@@ -237,6 +241,7 @@ export function HearthGrid({
           onTrashHover={(over) => onTrashHover?.(over)}
           onTrashArmed={(armed) => onTrashArmed?.(armed)}
           flash={flashId === item.id}
+          focused={focusId === item.id}
           selecting={selecting}
           selected={selectedIds?.includes(item.id) ?? false}
           onToggleLock={onToggleLock ? () => onToggleLock(item) : undefined}
@@ -354,6 +359,7 @@ function GridItem({
   onTrashHover,
   onTrashArmed,
   flash,
+  focused,
   selecting,
   selected,
   onToggleLock,
@@ -381,6 +387,7 @@ function GridItem({
   onTrashHover: (over: boolean) => void;
   onTrashArmed: (armed: boolean) => void;
   flash?: boolean;
+  focused?: boolean;
   selecting: boolean;
   selected: boolean;
   onToggleLock?: () => void;
@@ -393,6 +400,7 @@ function GridItem({
   children: ReactNode;
 }) {
   const min = minSize(item);
+  const halfRows = item.kind === "label";
   const left = useSharedValue(item.x * stride);
   const top = useSharedValue(item.y * stride);
   const dragX = useSharedValue(0);
@@ -509,7 +517,8 @@ function GridItem({
     dragX.value = rawX.value;
     dragY.value = dy;
     const nextX = Math.min(COLUMNS - g.w, Math.max(0, Math.round(g.x + rawX.value / g.stride)));
-    const nextY = Math.max(0, Math.round(g.y + dy / g.stride));
+    // Up and down snap to half rows (CORE-076).
+    const nextY = Math.max(0, Math.round((g.y + dy / g.stride) * 2) / 2);
     const fx = Math.floor((g.x * g.stride + grabX.value + rawX.value) / g.stride);
     const fy = Math.floor((g.y * g.stride + grabY.value + dy) / g.stride);
     if (nextX !== targetX.value || nextY !== targetY.value || fx !== fingerX.value || fy !== fingerY.value) {
@@ -685,7 +694,9 @@ function GridItem({
         })
         .onUpdate((event) => {
           const nextW = Math.min(COLUMNS - x, Math.max(min.w, Math.round(w + event.translationX / stride)));
-          const nextH = Math.min(8, Math.max(min.h, Math.round(h + event.translationY / stride)));
+          // Text can be half a row tall; everything else is whole rows.
+          const rawH = h + event.translationY / stride;
+          const nextH = Math.min(8, Math.max(min.h, halfRows ? Math.round(rawH * 2) / 2 : Math.round(rawH)));
           if (nextW !== targetW.value || nextH !== targetH.value) {
             targetW.value = nextW;
             targetH.value = nextH;
@@ -695,7 +706,7 @@ function GridItem({
         .onEnd(() => {
           scheduleOnRN(resizeEnd, targetW.value, targetH.value);
         }),
-    [x, y, w, h, min.w, min.h, stride, begin, ghost, sizeTick, resizeEnd, targetW, targetH]
+    [x, y, w, h, min.w, min.h, stride, halfRows, begin, ghost, sizeTick, resizeEnd, targetW, targetH]
   );
 
   const style = useAnimatedStyle(() => ({
@@ -711,7 +722,7 @@ function GridItem({
   }));
 
   return (
-    <Animated.View style={[styles.item, { zIndex: active ? 100 : 1, elevation: active ? 12 : 0 }, style]}>
+    <Animated.View style={[styles.item, { zIndex: active ? 100 : focused ? 50 : 1, elevation: active ? 12 : focused ? 6 : 0 }, style]}>
       {/* Keyed by shape: the phone doesn't redraw a shadow when only the corner
           radii change, so a new shape gets a fresh view. */}
       <GestureDetector gesture={moveGesture}>
@@ -727,6 +738,12 @@ function GridItem({
         pointerEvents="none"
         style={[styles.glow, shadowShape(item, stride), { borderColor: accent, boxShadow: `0px 0px 18px 2px ${accent}` }, glowStyle]}
       />
+      {focused ? (
+        <View
+          pointerEvents="none"
+          style={[styles.glow, shadowShape(item, stride), { borderColor: accent, borderWidth: 3, opacity: 1, boxShadow: `0px 0px 16px 2px ${accent}99` }]}
+        />
+      ) : null}
       {selecting ? (
         <>
           <View

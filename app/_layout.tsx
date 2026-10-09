@@ -1,3 +1,4 @@
+import * as Caveat from "@expo-google-fonts/caveat";
 import * as Fraunces from "@expo-google-fonts/fraunces";
 import * as Nunito from "@expo-google-fonts/nunito";
 import { useFonts } from "expo-font";
@@ -21,7 +22,10 @@ configureReminders();
 
 // The font choices' files (CORE-035), by name.
 const fontSources = Object.fromEntries(
-  fontFiles.map((name) => [name, (Nunito as Record<string, unknown>)[name] ?? (Fraunces as Record<string, unknown>)[name]])
+  fontFiles.map((name) => [
+    name,
+    (Nunito as Record<string, unknown>)[name] ?? (Fraunces as Record<string, unknown>)[name] ?? (Caveat as Record<string, unknown>)[name],
+  ])
 ) as Record<string, number>;
 
 export default function RootLayout() {
