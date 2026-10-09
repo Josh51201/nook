@@ -136,7 +136,9 @@ export default function Inbox() {
                 <Text style={styles.actionText}>Delete</Text>
               </View>
             )}
-            onSwipeableOpen={(direction) => (direction === "left" ? toggleRead(notice) : remove(notice))}
+            // The direction is the way you swiped: right opens the Read panel on the
+            // left, left opens Delete on the right.
+            onSwipeableOpen={(direction) => (direction === "right" ? toggleRead(notice) : remove(notice))}
           >
           <NavCard
             index={i}
