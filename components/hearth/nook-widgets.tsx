@@ -12,6 +12,8 @@ import { usePetsSummary } from "../../lib/pets-data";
 import { useRhythmsSummary } from "../../lib/rhythms-data";
 import { endsWords } from "../../lib/sitter";
 import { useSitterSummary } from "../../lib/sitter-data";
+import { formatMinutes } from "../../lib/recipes";
+import { useRecipesSummary } from "../../lib/recipes-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
@@ -332,6 +334,22 @@ function SitterWidget({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// Recipe Box (REC-011): today's pick, how many recipes, what you made last.
+function RecipesWidget({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const summary = useRecipesSummary(session?.user.id, refreshKey);
+  if (!summary) return null;
+  if (!summary.count) return <Facts facts={[{ kind: "note", text: "Add your first recipe" }]} {...props} />;
+
+  const facts: Fact[] = [];
+  if (summary.today) {
+    facts.push({ kind: "headline", text: summary.today.title, trailing: formatMinutes((summary.today.prep_minutes ?? 0) + (summary.today.cook_minutes ?? 0)) ?? undefined });
+  }
+  facts.push({ kind: "detail", icon: "recipe", text: `${summary.count} recipe${summary.count === 1 ? "" : "s"}` });
+  if (summary.lastMade) facts.push({ kind: "detail", icon: "check", text: `Made last: ${summary.lastMade.title}` });
+  return <Facts facts={facts} {...props} />;
+}
+
 export const nookWidgets: Record<string, NookWidget> = {
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
   potluck: { label: "Next Potluck", Component: PotluckWidget },
@@ -339,4 +357,5 @@ export const nookWidgets: Record<string, NookWidget> = {
   pets: { label: "Today", Component: PetCareWidget },
   rhythms: { label: "Due soon", Component: RhythmsWidget },
   sitter: { label: "Sitter links", Component: SitterWidget },
+  recipes: { label: "Today's pick", Component: RecipesWidget },
 };

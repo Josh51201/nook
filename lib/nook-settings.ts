@@ -126,6 +126,11 @@ export const letterboxSettingDefaults = {
   notifyBirthdays: true, // LET-010
 };
 
+// Recipe Box settings (REC-002): whether new recipes start as "Just me".
+export const recipeSettingDefaults = {
+  newPrivate: false,
+};
+
 // Potluck settings. The notify* keys are also read by the database
 // (public.wants_potluck_reminder, public.wants_potluck_notice): rename them in
 // both places or not at all. The chatty ones are off until you turn them on.

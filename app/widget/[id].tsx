@@ -46,6 +46,7 @@ import {
   type WidgetItem,
 } from "../../lib/hearth";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
+import { shelvesIn } from "../../lib/recipes";
 import { supabase } from "../../lib/supabase";
 import { colors, themed, ui, useTheme } from "../../lib/theme";
 import {
@@ -924,6 +925,8 @@ function KindSettings({
           <Text style={ui.muted}>What's overdue or due today, then what's coming in the next month, from your Rhythms Nook.</Text>
         </>
       );
+    case "recipe":
+      return <RecipeShelfPicker shelf={widget.settings.shelf} onChange={(shelf) => setSettings({ shelf })} />;
     case "sitter":
       return (
         <>
@@ -1253,5 +1256,37 @@ function SwitchRow({ label, value, onChange }: { label: string; value: boolean; 
       <Text style={ui.cardTitle}>{label}</Text>
       <Switch value={value} onValueChange={onChange} trackColor={{ true: colors.bark }} />
     </View>
+  );
+}
+
+// Recipe of the day (REC-011): all of your Recipe Box, or one of its Shelves.
+function RecipeShelfPicker({ shelf, onChange }: { shelf: string | null; onChange: (shelf: string | null) => void }) {
+  const { session } = useAuth();
+  const [shelves, setShelves] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!session) return;
+    supabase
+      .from("recipes")
+      .select("shelves")
+      .eq("owner_id", session.user.id)
+      .then(({ data }) => setShelves(shelvesIn((data ?? []) as { shelves: string[] }[])));
+  }, [session]);
+
+  return (
+    <>
+      <Text style={ui.label}>Pick from</Text>
+      <View style={ui.chips}>
+        <Chip selected={!shelf} onPress={() => onChange(null)}>
+          My whole box
+        </Chip>
+        {[...new Set([...(shelf ? [shelf] : []), ...shelves])].map((name) => (
+          <Chip key={name} selected={shelf === name} onPress={() => onChange(name)}>
+            {name}
+          </Chip>
+        ))}
+      </View>
+      <Text style={ui.muted}>A different recipe each day from your Recipe Box Nook. Tap it on your Hearth to open it.</Text>
+    </>
   );
 }

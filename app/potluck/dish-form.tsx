@@ -11,12 +11,14 @@ import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
 import { allergens, dishWarnings, otherContents, slotRoom } from "../../lib/potluck";
 import { loadPotluck, type PotluckData } from "../../lib/potluck-data";
+import { searchRecipes } from "../../lib/recipes";
 import { supabase } from "../../lib/supabase";
 import { colors, ui } from "../../lib/theme";
 
 // Sign up to bring something, or change what you're bringing (POT-003/004).
 // As you tag what's in it, any clash with someone coming shows straight
-// away (POT-005).
+// away (POT-005). You can pick one of your Recipe Box recipes as the dish
+// (REC-009): its name and tags fill in, and guests can open it.
 //   ?potluckId=…&slotId=…  bring something for that spot
 //   ?potluckId=…&dishId=…  edit your dish
 export default function DishForm() {
@@ -31,6 +33,9 @@ export default function DishForm() {
   const [slotId, setSlotId] = useState<string | null>(params.slotId ?? null);
   const [tags, setTags] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  const [recipeId, setRecipeId] = useState<string | null>(null);
+  const [myRecipes, setMyRecipes] = useState<{ id: string; title: string; tags: string[]; ingredients: string[]; shelves: string[] }[]>([]);
+  const [recipeQuery, setRecipeQuery] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -44,11 +49,22 @@ export default function DishForm() {
           setSlotId(dish.slot_id);
           setTags(dish.tags);
           setNote(dish.note ?? "");
+          setRecipeId(dish.recipe_id);
         }
       })
       .catch((error: Error) => Alert.alert("Couldn't load the Potluck", error.message))
       .finally(() => setIsLoading(false));
   }, [params.potluckId, params.dishId, params.slotId, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("recipes")
+      .select("id, title, tags, ingredients, shelves")
+      .eq("owner_id", userId)
+      .order("title")
+      .then(({ data: rows }) => setMyRecipes((rows ?? []) as typeof myRecipes));
+  }, [userId]);
 
   if (isLoading) return <LoadingScreen cards={2} />;
   if (!data || !userId) return <EmptyState icon="potluck" title="This Potluck isn't here" />;
@@ -61,6 +77,17 @@ export default function DishForm() {
   );
   const warnings = dishWarnings(tags, data.coming);
 
+  function pickRecipe(recipe: (typeof myRecipes)[number]) {
+    tap();
+    if (recipeId === recipe.id) return setRecipeId(null);
+    setRecipeId(recipe.id);
+    setName(recipe.title.slice(0, 80));
+    setTags((current) => [...new Set([...current, ...recipe.tags])]);
+  }
+
+  const recipeMatches = searchRecipes(myRecipes, recipeQuery).slice(0, recipeQuery ? 8 : 6);
+  const linked = myRecipes.find((r) => r.id === recipeId);
+
   function toggleTag(key: string) {
     tap();
     setTags((current) => (current.includes(key) ? current.filter((t) => t !== key) : [...current, key]));
@@ -69,7 +96,7 @@ export default function DishForm() {
   async function save() {
     if (!name.trim()) return Alert.alert("What are you bringing?", "Give your dish a name.");
     setSaving(true);
-    const fields = { name: name.trim(), slot_id: slotId, tags, note: note.trim() || null };
+    const fields = { name: name.trim(), slot_id: slotId, tags, note: note.trim() || null, recipe_id: recipeId };
     const { error } = editing
       ? await supabase.from("potluck_dishes").update(fields).eq("id", params.dishId!)
       : await supabase.from("potluck_dishes").insert({ ...fields, potluck_id: params.potluckId, brought_by: userId });
@@ -104,6 +131,29 @@ export default function DishForm() {
     <NookScroll>
       <Stack.Screen options={{ title: editing ? "Your dish" : "Bring something" }} />
       <Text style={ui.muted}>For {data.potluck.title}</Text>
+
+      {myRecipes.length ? (
+        <>
+          <Text style={ui.label}>From your Recipe Box</Text>
+          {myRecipes.length > 6 ? (
+            <TextInput
+              style={ui.input}
+              value={recipeQuery}
+              onChangeText={setRecipeQuery}
+              placeholder="Search your recipes"
+              placeholderTextColor={colors.muted}
+            />
+          ) : null}
+          <View style={ui.chips}>
+            {(linked && !recipeMatches.includes(linked) ? [linked, ...recipeMatches] : recipeMatches).map((recipe) => (
+              <Chip key={recipe.id} icon="recipe" selected={recipeId === recipe.id} onPress={() => pickRecipe(recipe)}>
+                {recipe.title}
+              </Chip>
+            ))}
+          </View>
+          {linked ? <Text style={ui.muted}>Guests who can see your recipes can open it from the list.</Text> : null}
+        </>
+      ) : null}
 
       <Text style={ui.label}>What are you bringing?</Text>
       <TextInput

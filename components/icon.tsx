@@ -121,6 +121,10 @@ const icons = {
   thermo: { ios: "thermometer.medium", android: "thermostat" },
   doc: { ios: "doc.text.fill", android: "description" },
   sitter: { ios: "list.clipboard.fill", android: "assignment" },
+  recipe: { ios: "book.pages.fill", android: "auto_stories" },
+  timer: { ios: "timer", android: "timer" },
+  play: { ios: "play.fill", android: "play_arrow" },
+  pause: { ios: "pause.fill", android: "pause" },
 } satisfies Record<string, { ios: SymbolViewProps["name"] & string; android: AndroidName }>;
 
 type AndroidName = Exclude<Extract<SymbolViewProps["name"], object>["android"], undefined>;

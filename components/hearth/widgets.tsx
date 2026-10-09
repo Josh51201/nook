@@ -21,6 +21,8 @@ import { bedLayout, isNight, petSizeForBox } from "../../lib/hearth-pet";
 import { useRhythmsSummary } from "../../lib/rhythms-data";
 import { endsWords } from "../../lib/sitter";
 import { useSitterSummary } from "../../lib/sitter-data";
+import { formatMinutes } from "../../lib/recipes";
+import { useRecipesSummary } from "../../lib/recipes-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
 import { conditionIcon, conditionLabel, dayName, formatTemp, windowSky } from "../../lib/weather";
@@ -214,6 +216,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <Rhythms {...props} widget={widget} />;
     case "sitter":
       return <Sitter {...props} widget={widget} />;
+    case "recipe":
+      return <RecipeOfTheDay {...props} widget={widget} />;
     case "frame":
       return null; // drawn whole by PhotoFrame, above
     case "clock":
@@ -1325,6 +1329,60 @@ function Sitter({ widget, palette, refreshKey, height, shape, icon }: BodyProps<
       <Panel palette={palette} style={{ flex: 1 }}>
         {list}
       </Panel>
+    </View>
+  );
+}
+
+// --- Recipe of the day (REC-011) ---------------------------------------------------
+
+function RecipeOfTheDay({ widget, palette, refreshKey, shape, icon }: BodyProps<"recipe">) {
+  const { session } = useAuth();
+  const summary = useRecipesSummary(session?.user.id, refreshKey, widget.settings.shelf);
+  if (!summary) return null;
+  const today = summary.today;
+
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+  if (!today) {
+    return (
+      <Empty
+        icon="recipe"
+        palette={palette}
+        text={summary.count ? `Nothing on ${widget.settings.shelf ?? "that Shelf"} yet` : "Add a recipe to your Recipe Box"}
+      />
+    );
+  }
+  const time = formatMinutes((today.prep_minutes ?? 0) + (today.cook_minutes ?? 0));
+  const sub = [time, widget.settings.shelf ?? today.shelves[0]].filter(Boolean).join(" · ") || null;
+  if (shape === "strip") return <Strip icon={icon} palette={palette} text={today.title} sub={sub} />;
+
+  const title = (
+    <View style={{ gap: 2 }}>
+      <Muted palette={palette}>Today's pick</Muted>
+      <Text style={{ fontSize: isBig(shape) ? 19 : 16, fontWeight: "800", color: palette.text, letterSpacing: -0.3 }} numberOfLines={isBig(shape) ? 2 : 3}>
+        {today.title}
+      </Text>
+      {sub ? <Muted palette={palette}>{sub}</Muted> : null}
+    </View>
+  );
+  const picture = today.image_url ? (
+    <Image source={{ uri: today.image_url }} style={{ flex: 1, borderRadius: 14, minHeight: 60 }} contentFit="cover" transition={200} />
+  ) : null;
+
+  if (shape === "small") {
+    return <View style={{ flex: 1, justifyContent: "flex-end", gap: 8 }}>{title}</View>;
+  }
+  if (shape === "wide") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 14, alignItems: "stretch" }]}>
+        <View style={{ flex: 1, justifyContent: "center" }}>{title}</View>
+        {picture ? <View style={{ width: "42%" }}>{picture}</View> : null}
+      </View>
+    );
+  }
+  return (
+    <View style={{ flex: 1, gap: 10 }}>
+      {picture}
+      {title}
     </View>
   );
 }

@@ -25,6 +25,7 @@ const places: Record<string, { label: string; icon: IconName }> = {
   pets: { label: "Pet Care Nook", icon: "paw" },
   rhythms: { label: "Rhythms Nook", icon: "rhythm" },
   sitter: { label: "Sitter Sheet Nook", icon: "sitter" },
+  recipes: { label: "Recipe Box Nook", icon: "recipe" },
 };
 
 function cameFrom(navigation: Navigation) {

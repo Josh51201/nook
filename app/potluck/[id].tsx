@@ -114,6 +114,11 @@ export default function PotluckScreen() {
     }
   }
 
+  function recipeOpener(dish: Dish) {
+    const recipeId = dish.recipe_id;
+    return recipeId && data!.openRecipes.has(recipeId) ? () => router.push(`/recipes/${recipeId}`) : undefined;
+  }
+
   function addCoHost() {
     const choices = data!.members.filter(
       (m) => !hosts.includes(m.profile_id) && !m.profiles?.is_managed
@@ -266,6 +271,7 @@ export default function PotluckScreen() {
                   who={nameOf(dish.brought_by)}
                   warnings={dishWarnings(dish.tags, coming)}
                   onPress={dish.brought_by === userId || isHost ? () => openDish(dish) : undefined}
+                  onRecipe={recipeOpener(dish)}
                 />
               ))}
               {room.open ? (
@@ -298,6 +304,7 @@ export default function PotluckScreen() {
               who={nameOf(dish.brought_by)}
               warnings={dishWarnings(dish.tags, coming)}
               onPress={dish.brought_by === userId || isHost ? () => openDish(dish) : undefined}
+              onRecipe={recipeOpener(dish)}
             />
           ))}
         </View>
@@ -381,11 +388,14 @@ function DishRow({
   who,
   warnings,
   onPress,
+  onRecipe,
 }: {
   dish: Dish;
   who: string;
   warnings: string[];
   onPress?: () => void;
+  // Opens the Recipe Box recipe it's made from (REC-009).
+  onRecipe?: () => void;
 }) {
   return (
     <Tap onPress={onPress} disabled={!onPress} style={{ gap: 6 }}>
@@ -407,6 +417,12 @@ function DishRow({
             </Text>
           ))}
         </View>
+      ) : null}
+      {onRecipe ? (
+        <Tap onPress={onRecipe} hitSlop={6} style={[ui.row, { gap: 5, alignSelf: "flex-start" }]} accessibilityRole="link">
+          <Icon name="recipe" size={13} />
+          <Text style={[ui.link, { fontSize: 13 }]}>See the recipe</Text>
+        </Tap>
       ) : null}
       {warnings.map((warning) => (
         <View key={warning} style={[ui.row, styles.warning]}>

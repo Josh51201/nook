@@ -27,6 +27,8 @@ export type Dish = {
   name: string;
   tags: string[];
   note: string | null;
+  // The Recipe Box recipe it's made from (REC-009).
+  recipe_id: string | null;
 };
 
 export type Member = { profile_id: string; role: "admin" | "member"; profiles: Profile | null };
@@ -43,6 +45,8 @@ export type PotluckData = {
   // Kids the viewer manages who are in this Burrow (they RSVP for them).
   myKids: string[];
   isHost: boolean;
+  // Recipes behind dishes that the viewer is allowed to open (REC-009).
+  openRecipes: Set<string>;
   // People coming (Going or Maybe), for warnings.
   coming: (Person & { profile: Profile | null })[];
 };
@@ -61,7 +65,7 @@ export async function loadPotluck(id: string, userId: string): Promise<PotluckDa
     supabase.from("potluck_slots").select("id, label, wanted").eq("potluck_id", id).order("position"),
     supabase
       .from("potluck_dishes")
-      .select("id, slot_id, brought_by, name, tags, note")
+      .select("id, slot_id, brought_by, name, tags, note, recipe_id")
       .eq("potluck_id", id)
       .order("created_at"),
     supabase.from("potluck_rsvps").select("profile_id, status, extra_guests").eq("potluck_id", id),
@@ -91,6 +95,14 @@ export async function loadPotluck(id: string, userId: string): Promise<PotluckDa
     });
   }
 
+  // Row level security returns only the recipes this viewer may see, so a
+  // "Just me" recipe never gets a link.
+  const dishes = (dishesResult.data ?? []) as Dish[];
+  const recipeIds = [...new Set(dishes.map((d) => d.recipe_id).filter(Boolean) as string[])];
+  const { data: recipeRows } = recipeIds.length
+    ? await supabase.from("recipes").select("id").in("id", recipeIds)
+    : { data: [] };
+
   const hosts = (hostsResult.data ?? []).map((h) => h.profile_id as string);
   const rsvps = (rsvpsResult.data ?? []) as Rsvp[];
   const managed = new Set((kidsResult.data ?? []).map((k) => k.profile_id as string));
@@ -100,7 +112,8 @@ export async function loadPotluck(id: string, userId: string): Promise<PotluckDa
     potluck: potluck as unknown as PotluckRow,
     hosts,
     slots: (slotsResult.data ?? []) as Slot[],
-    dishes: (dishesResult.data ?? []) as Dish[],
+    dishes,
+    openRecipes: new Set((recipeRows ?? []).map((r) => r.id as string)),
     rsvps,
     members,
     people,

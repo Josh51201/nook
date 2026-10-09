@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-08 (rev 51)_
+_Last updated: 2026-10-08 (rev 52)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -54,6 +54,22 @@ Full requirements for these live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_N
 - **GIFT-007 (never break):** the list owner can NEVER see claims on their own gifts — no UI, API, counts, notifications or hints. Enforced by row-level security, with tests.
 
 
+## 2h. Recipe Box Nook
+Josh picked it from the backlog on 2026-10-08 ("Lets do the recipe box") and chose the sharing, recipe parts, ways in and links below. Anything marked _(Proposed)_ is Claude's detail for him to confirm.
+- **REC-001** A Recipe Box Nook where each person keeps their own recipes. _(Proposed: free, like the Gift Nook, since it's shared across a family rather than kept in a Home — see Q-028.)_
+- **REC-002** Your recipes are shared with family in your Burrows, like Wishbooks: they can see them and save a copy into their own box. _(Josh picked "each person, shared to Burrows".)_ _(Proposed: a recipe can be set to "Just me"; a saved copy says whose box it came from and is yours to change; nobody is told when you save one.)_
+- **REC-003** A recipe holds a title, ingredients and steps. _(Proposed: also servings, prep and cook time, notes, the website it came from with its picture, and what's in it, using the same tags as Potluck dishes — POT-004.)_
+- **REC-004** Cook mode: big text, the screen stays on, tick off ingredients and steps as you go, and timers. _(Josh picked it.)_ _(Proposed: a step that says "bake 25 minutes" gets a tap-to-start timer, and the phone alerts you when it's done; finishing marks the recipe as made today.)_
+- **REC-005** Scale servings: change 4 servings to 8 and the amounts update. _(Josh picked it.)_ _(Proposed: handles whole numbers, decimals and fractions like 1 1/2 or ½; anything it can't read is left as written.)_
+- **REC-006** Shelves and search: sort recipes onto Shelves (Dinners, Desserts, Holidays…) and search by name or ingredient. _(Josh picked it.)_ _(Proposed: a recipe can sit on several Shelves; search covers your box and family's.)_
+- **REC-007** Type a recipe in with a simple form. _(Josh picked it.)_
+- **REC-008** Paste a website link and the recipe is filled in from the page. _(Josh picked it.)_ _(Proposed: read from the recipe data most cooking sites publish; if a site doesn't have it, at least the title and picture come in and the rest is typed.)_
+- **REC-009** Potluck: pick a recipe as your Potluck dish. _(Josh picked it.)_ _(Proposed: its name and what's-in-it tags fill in, so Potluck's allergy warnings work (POT-005), and guests who can see the recipe can open it from the dish.)_
+- **REC-010** Allergy warnings: a recipe shows whose allergies or diets it clashes with (PROF-004). _(Josh picked it.)_ _(Proposed: checked against everyone in your Burrows, using only the tags the cook set — never guessed from the ingredients.)_
+- **REC-011** A Hearth widget. _(Josh picked it.)_ _(Proposed: "Recipe of the day" from your box or one Shelf, changing each day; tapping opens it. The Nook's tile shows how many recipes and what you made last.)_
+- **REC-012** _(Proposed.)_ Only you and family in your Burrows can see your recipes, enforced in Postgres, with tests. "Just me" recipes are seen by nobody else. Nobody can change or delete a recipe but its owner.
+- _Built 2026-10-09:_ REC-001..012 in `app/recipes`, with the database rules in the `recipe_box` migration. The privacy tests skip until a service key is in `.env.test.local`.
+
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
 - **MON-002** A subscription belongs to a **Home** and covers everyone in it, up to the Home's cap of 6 (HOME-006). It never covers a Burrow, so joining someone's Burrow unlocks nothing paid. The paid customization follows the Home too, not the person. _(Josh: "I like the per home idea but yes needs capped at 6".)_
@@ -95,6 +111,8 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The pet-care Nook | Pet Care Nook | approved |
 | The yearly-chores Nook | Rhythms Nook | approved |
 | The babysitter/house-sitter info Nook | Sitter Sheet Nook | proposed |
+| The recipes Nook | Recipe Box Nook | proposed |
+| A Hearth widget with one recipe a day (REC-011) | Recipe of the day | proposed |
 | One recurring chore in the Rhythms Nook | Rhythm | proposed |
 | The paid subscription, per Home | Nook Plus | proposed |
 | A decorative object placed on the Hearth | Trinket | proposed |
@@ -109,7 +127,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | A person's wish list | Wishbook | proposed |
 | Claiming a gift | Tuck (it's "tucked away") | proposed |
 | An event | Gathering | proposed |
-| Gift categories | Shelves | proposed |
+| Gift categories, and recipe categories (REC-006) | Shelves | proposed |
 | The Nook shop | The Market | proposed |
 | A house/stump on the Hearth you enter to reach its own organized screen | Hollow | approved |
 
@@ -119,7 +137,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **House Binder** — home info in one place: paint colors, appliance models, warranty dates, filter sizes, trusted contacts like the plumber, and service history.
 - **Quote Jar** — save funny things people say, with the date and who said it; a Hearth widget shows a random one each day.
 - **Fridge Door** — family sticky notes and doodles, shown as a Hearth widget.
-- **Recipe Box** — family recipes with who made them, a photo of the handwritten card, and the story behind them; pairs with Potluck. _(Josh picked it 2026-10-08: "I like the recipe box one".)_
+- **Recipe Box** — now being built as the Recipe Box Nook: see section 2h (REC-001..012).
 - **Heads-Up Board** — one-tap household status like "on my way", "dinner at 6?" or "need milk"; no location tracking. _(Josh picked it 2026-10-08.)_
 - **Sick Day** — log a child's symptoms, temperature and medicine doses with a "next dose safe at…" timer so two parents can't double-dose; could feed the Sitter Sheet. _(Josh picked it 2026-10-08: "sick day nook is also good".)_
 - **Subscriptions** — every recurring charge with renewal date, price and a "cancel by" reminder, plus a monthly total. _(Josh picked it 2026-10-08.)_
@@ -134,6 +152,7 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 ## 7. Up next
 Josh's stated priority, in order:
 1. **Hearth:** only CORE-055 (share a look) and the fireplace sound (CORE-047) are left.
-2. **Backlog Nooks** (section 6) — Josh picks the next one.
+2. ~~**Recipe Box Nook (REC-001..012)**~~ — built 2026-10-09 (section 2h).
+3. **Backlog Nooks** (section 6) — Josh picks the next one.
 
 _Built and done: Hollows, Potluck, Letterbox, Pet Care, Rhythms, Sitter Sheet (page on Netlify for now, Q-031), and Hearth rounds two and three._

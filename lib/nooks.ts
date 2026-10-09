@@ -103,6 +103,18 @@ export const nookCatalog: NookDefinition[] = [
     color: "#e8dcef",
   },
   {
+    id: "recipes",
+    title: "Recipe Box Nook",
+    icon: "recipe",
+    iconColor: "#9a4a2a",
+    tagline: "The family cookbook",
+    description:
+      "Your recipes on Shelves, typed in or pulled from a website link, shared with family in your Burrows. Scale the servings, cook with big text and timers, and see straight away if a dish clashes with someone's allergy.",
+    route: "/recipes",
+    available: true,
+    color: "#f3dccb",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

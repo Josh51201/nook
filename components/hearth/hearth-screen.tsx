@@ -113,6 +113,7 @@ import { StackShell } from "./stack-shell";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WidgetView } from "./widgets";
+import { loadRecipesSummary } from "../../lib/recipes-data";
 
 const PADDING = 20;
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
@@ -609,6 +610,12 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
         return router.push("/rhythms");
       case "sitter":
         return router.push("/sitter");
+      case "recipe":
+        // Today's pick opens straight to its page (REC-011).
+        if (!session?.user.id) return router.push("/recipes");
+        return loadRecipesSummary(session.user.id, item.widget.settings.shelf)
+          .then((summary) => router.push(summary.today ? `/recipes/${summary.today.id}` : "/recipes"))
+          .catch(() => router.push("/recipes"));
       case "greeting":
         return;
       case "companion":
