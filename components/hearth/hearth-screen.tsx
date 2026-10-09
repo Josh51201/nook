@@ -1,9 +1,10 @@
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, Alert, StyleSheet, View } from "react-native";
+import { AccessibilityInfo, Alert, StyleSheet, useWindowDimensions, View } from "react-native";
 import { FixedTextSize, Text } from "../text";
 import { HelpButton } from "../help-button";
+import { ItemPreview } from "./item-preview";
 import { LabelFace } from "./label-face";
 import { MoveBar } from "./move-bar";
 import { takeMoveRequest } from "../../lib/move-request";
@@ -155,6 +156,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
 
   const [editing, setEditing] = useState(false);
   const [gridWidth, setGridWidth] = useState(0);
+  const { height: windowHeight } = useWindowDimensions();
   const [optionsFor, setOptionsFor] = useState<string | null>(null);
   // Moving a tile with the arrow bar, watching the Hearth (CORE-076).
   const [movingId, setMovingId] = useState<string | null>(null);
@@ -1238,6 +1240,24 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
 
   const title = scope ? hollow?.name ?? "" : layout.title || "The Hearth";
   const wallpaper = effectiveWallpaper(layout.wallpaper, hollow?.wallpaper, Boolean(scope));
+
+  // The item as it'll look on the Hearth, kept at the top of its options
+  // while you change it (CORE-079).
+  function renderPreview(item: HearthItem) {
+    const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
+    const size = { width: item.w * stride - GRID_GAP, height: item.h * stride - GRID_GAP };
+    if (!gridWidth) return null;
+    return (
+      <ItemPreview
+        {...size}
+        maxHeight={windowHeight * 0.22}
+        background={theme.background}
+        backdrop={<WallpaperLayer wallpaper={wallpaper} background={theme.background} dark={theme.dark} />}
+      >
+        {renderInner(item, size)}
+      </ItemPreview>
+    );
+  }
   const ambienceKind = activeAmbience(
     layout.ambience,
     new Date(),
@@ -1687,6 +1707,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         item={optionsItem}
         onChange={(changes) => optionsFor && persistHere((inner) => updateItem(inner, optionsFor, changes))}
         onResize={(w, h) => optionsFor && persistHere((inner) => resizeItem(inner, optionsFor, w, h))}
+        renderPreview={renderPreview}
         onStartMove={() => {
           const id = optionsFor;
           setOptionsFor(null);
@@ -1744,6 +1765,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           item={hollowOptions ? hollow : null}
           onChange={(changes) => persist(updateItem(layout, hollow.id, changes))}
           onResize={(w, h) => persist(resizeItem(layout, hollow.id, w, h))}
+          renderPreview={renderPreview}
           onRemove={() => {
             setHollowOptions(false);
             persist(removeHollow(layout, hollow.id));

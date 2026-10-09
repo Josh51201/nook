@@ -19,6 +19,7 @@ const KNOB = 26;
 export function Slider({
   value,
   onChange,
+  onSlide,
   label,
   startLabel,
   endLabel,
@@ -26,6 +27,8 @@ export function Slider({
 }: {
   value: number;
   onChange: (value: number) => void;
+  // Every step while dragging, before it's let go (e.g. for a live preview).
+  onSlide?: (value: number) => void;
   // What it changes, read aloud by a screen reader.
   label: string;
   startLabel?: string;
@@ -51,6 +54,7 @@ export function Slider({
       if (prev !== next) tap();
       return next;
     });
+    onSlide?.(next);
   }
   function done(next: number) {
     if (Math.abs(next - value) > 0.001) onChange(next);

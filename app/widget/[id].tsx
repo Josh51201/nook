@@ -12,6 +12,7 @@ import { allTags } from "../../lib/hearth-tags";
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
 import { IconPicker } from "../../components/hearth/icon-picker";
 import { PlacePicker } from "../../components/hearth/place-picker";
+import { ItemPreview } from "../../components/hearth/item-preview";
 import { WidgetView } from "../../components/hearth/widgets";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
@@ -77,7 +78,7 @@ export default function WidgetEditor() {
   const { id, copied, stacked } = useLocalSearchParams<{ id: string; copied?: string; stacked?: string }>();
   // The widget may be on the page shared with your Home (CORE-054).
   const { layout, save, isLoading, onHome, home: homeHearth } = useHearthView();
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   // Hooks first: the screen returns early below while it loads.
   const { key: themeKey } = useTheme();
   // The widget may live on the Hearth or inside a Hollow (CORE-022).
@@ -225,8 +226,33 @@ export default function WidgetEditor() {
     ? `In a stack of ${stackMates(layout.items, original).length}`
     : "Copy it, or stack more widgets in its spot";
 
+  // Live preview, at the size it'll be on your Hearth, kept at the top while
+  // you scroll through the settings (CORE-079). A tall one is shrunk to fit.
+  const preview = (
+    <ItemPreview
+      width={draft.w * stride - GRID_GAP}
+      height={draft.h * stride - GRID_GAP}
+      maxHeight={screenHeight * 0.3}
+      background={theme.background}
+      interactive
+    >
+      <WidgetView
+        widget={widget}
+        color={draft.color}
+        icon={draft.icon}
+        width={draft.w * stride - GRID_GAP}
+        height={draft.h * stride - GRID_GAP}
+        refreshKey={0}
+        themeText={theme.text}
+        corners={draft.corners}
+        border={draft.border}
+        onChange={(changed) => setWidget(changed)}
+      />
+    </ItemPreview>
+  );
+
   return (
-    <NookScroll>
+    <NookScroll pinned={preview}>
       <Stack.Screen
         options={{
           title: info.label,
@@ -256,24 +282,6 @@ export default function WidgetEditor() {
         />
       ) : null}
 
-      {/* Live preview, at the size it'll be on your Hearth */}
-      <Animated.View
-        layout={LinearTransition.duration(220)}
-        style={{ alignItems: "center", padding: 12, borderRadius: 24, backgroundColor: theme.background }}
-      >
-        <WidgetView
-          widget={widget}
-          color={draft.color}
-          icon={draft.icon}
-          width={Math.min(draft.w * stride - GRID_GAP, screenWidth - 64)}
-          height={draft.h * stride - GRID_GAP}
-          refreshKey={0}
-          themeText={theme.text}
-          corners={draft.corners}
-          border={draft.border}
-          onChange={(changed) => setWidget(changed)}
-        />
-      </Animated.View>
 
       <Collapsible id="widget-shows" icon={info.icon} title="What it shows" defaultOpen>
         <KindSettings

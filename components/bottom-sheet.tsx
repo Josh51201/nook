@@ -22,12 +22,16 @@ export function BottomSheet({
   visible,
   onClose,
   header,
+  preview,
   children,
 }: {
   visible: boolean;
   onClose: () => void;
   // Shown under the grabber; dragging it also closes the sheet.
   header?: ReactNode;
+  // Stays put under the header while the content scrolls (a live preview of
+  // what you're changing, CORE-079).
+  preview?: ReactNode;
   children: ReactNode;
 }) {
   const { height } = useWindowDimensions();
@@ -87,6 +91,7 @@ export function BottomSheet({
               {header}
             </View>
           </GestureDetector>
+          {preview ? <View style={{ marginBottom: 12 }}>{preview}</View> : null}
           {children}
         </Animated.View>
       </KeyboardAvoidingView>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ScrollView, Switch, View } from "react-native";
 import { Text, TextInput } from "../text";
 
@@ -37,7 +37,7 @@ import { TagsEditor } from "./tag-bar";
 import { IconPicker } from "./icon-picker";
 import { TrinketThumb } from "./trinket-art";
 
-type Editable = NookItem | LabelItem | HollowItem | TrinketItem;
+export type Editable = NookItem | LabelItem | HollowItem | TrinketItem;
 
 export type MoveTarget = { scope: Scope; label: string };
 
@@ -61,6 +61,7 @@ export function ItemOptions({
   copyTargets = [],
   onCopyTo,
   onStartMove,
+  renderPreview,
 }: {
   item: Editable | null;
   onChange: (changes: Partial<HearthItem>) => void;
@@ -80,8 +81,14 @@ export function ItemOptions({
   onCopyTo?: (scope: Scope) => void;
   // Close this and move it with arrows while watching the Hearth (CORE-076).
   onStartMove?: () => void;
+  // Draws it as it'll look on the Hearth, kept at the top while you change
+  // it (CORE-079).
+  renderPreview?: (item: Editable) => ReactNode;
 }) {
   const [text, setText] = useState("");
+  // The stretch slider's spot while it's being dragged, shown in the preview
+  // before it's saved.
+  const [sliding, setSliding] = useState<number | null>(null);
 
   // Keep showing the last item while the sheet slides away.
   const lastItem = useRef<Editable | null>(null);
@@ -90,6 +97,7 @@ export function ItemOptions({
 
   useEffect(() => {
     if (!item) return;
+    setSliding(null);
     setText(item.kind === "nook" ? item.label ?? "" : item.kind === "hollow" ? item.name : item.kind === "trinket" ? "" : item.text);
   }, [item?.id]);
 
@@ -111,6 +119,18 @@ export function ItemOptions({
   }
 
   const nook = shown?.kind === "nook" ? findNook(shown.nookId) : undefined;
+
+  // The preview shows what you're typing and sliding before it's saved.
+  const typed = text.trim();
+  const draft: Editable | null = !shown
+    ? null
+    : shown.kind === "label"
+      ? { ...shown, text: typed || shown.text, span: sliding ?? shown.span }
+      : shown.kind === "nook"
+        ? { ...shown, label: typed || undefined }
+        : shown.kind === "hollow"
+          ? { ...shown, name: typed || shown.name }
+          : shown;
 
   // What's chosen, for the closed sections (CORE-074).
   const looksSummary = !shown
@@ -163,6 +183,7 @@ export function ItemOptions({
           </View>
         ) : null
       }
+      preview={draft && renderPreview ? renderPreview(draft) : null}
     >
       {shown ? (
         <ScrollView
@@ -360,7 +381,11 @@ export function ItemOptions({
                         <Slider
                           label="How far the decoration stretches across its space"
                           value={shown.span ?? 0}
-                          onChange={(span) => onChange({ span } as Partial<LabelItem>)}
+                          onSlide={setSliding}
+                          onChange={(span) => {
+                            setSliding(null);
+                            onChange({ span } as Partial<LabelItem>);
+                          }}
                           startLabel="Just the words"
                           endLabel="Edge to edge"
                         />
