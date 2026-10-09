@@ -14,6 +14,8 @@ import { endsWords } from "../../lib/sitter";
 import { useSitterSummary } from "../../lib/sitter-data";
 import { formatMinutes } from "../../lib/recipes";
 import { useRecipesSummary } from "../../lib/recipes-data";
+import { formatMoney } from "../../lib/subscriptions";
+import { useSubscriptionsSummary } from "../../lib/subscriptions-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
@@ -350,6 +352,30 @@ function RecipesWidget({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// Subscriptions (SUB-006): the monthly total, then what renews next.
+function SubscriptionsWidget({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const summary = useSubscriptionsSummary(session?.user.id, refreshKey);
+  if (!summary) return null;
+  if (!summary.count) return <Facts facts={[{ kind: "note", text: "Add what you pay for" }]} {...props} />;
+
+  const when = (day: string) => {
+    const days = daysToDue(day, summary.today);
+    return days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
+  };
+  const facts: Fact[] = [{ kind: "headline", text: `${formatMoney(summary.monthly)} a month` }];
+  for (const s of summary.next) {
+    facts.push({
+      kind: "detail",
+      icon: s.on_trial ? "warning" : "card",
+      text: s.on_trial ? `${s.name} trial ends` : s.name,
+      trailing: when(s.renews_on),
+      strong: s.on_trial && daysToDue(s.renews_on, summary.today) <= 7,
+    });
+  }
+  return <Facts facts={facts} {...props} />;
+}
+
 export const nookWidgets: Record<string, NookWidget> = {
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
   potluck: { label: "Next Potluck", Component: PotluckWidget },
@@ -358,4 +384,5 @@ export const nookWidgets: Record<string, NookWidget> = {
   rhythms: { label: "Due soon", Component: RhythmsWidget },
   sitter: { label: "Sitter links", Component: SitterWidget },
   recipes: { label: "Today's pick", Component: RecipesWidget },
+  subscriptions: { label: "Renewing soon", Component: SubscriptionsWidget },
 };

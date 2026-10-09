@@ -131,6 +131,7 @@ const icons = {
   timer: { ios: "timer", android: "timer" },
   play: { ios: "play.fill", android: "play_arrow" },
   pause: { ios: "pause.fill", android: "pause" },
+  card: { ios: "creditcard.fill", android: "credit_card" },
 } satisfies Record<string, { ios: SymbolViewProps["name"] & string; android: AndroidName }>;
 
 type AndroidName = Exclude<Extract<SymbolViewProps["name"], object>["android"], undefined>;

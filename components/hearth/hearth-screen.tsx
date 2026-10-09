@@ -746,6 +746,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         return router.push("/rhythms");
       case "sitter":
         return router.push("/sitter");
+      case "subscriptions":
+        return router.push("/subscriptions");
       case "recipe":
         // Today's pick opens straight to its page (REC-011).
         if (!session?.user.id) return router.push("/recipes");

@@ -981,6 +981,29 @@ function KindSettings({
           <Text style={ui.muted}>What's overdue or due today, then what's coming in the next month, from your Rhythms Nook.</Text>
         </>
       );
+    case "subscriptions":
+      return (
+        <>
+          <Stepper label="Subscriptions to list" value={widget.settings.count} min={0} max={6} onChange={(count) => setSettings({ count })} />
+          <Text style={ui.label}>Show</Text>
+          <View style={ui.chips}>
+            <Chip selected={!widget.settings.mineOnly} onPress={() => setSettings({ mineOnly: false })}>
+              Everything
+            </Chip>
+            <Chip icon="person" selected={widget.settings.mineOnly} onPress={() => setSettings({ mineOnly: true })}>
+              Just mine
+            </Chip>
+          </View>
+          <View style={[ui.row, { gap: 12 }]}>
+            <Text style={[ui.label, { flex: 1 }]}>Show the monthly total</Text>
+            <Switch value={widget.settings.showTotal} onValueChange={(showTotal) => setSettings({ showTotal })} trackColor={{ true: colors.bark }} />
+          </View>
+          <Text style={ui.muted}>
+            What renews next, soonest first, with free trials marked, from your Subscriptions Nook. Just mine means ones you pay for or keep
+            to yourself.
+          </Text>
+        </>
+      );
     case "recipe":
       return <RecipeShelfPicker shelf={widget.settings.shelf} onChange={(shelf) => setSettings({ shelf })} />;
     case "sitter":

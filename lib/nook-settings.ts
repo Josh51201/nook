@@ -117,6 +117,16 @@ export const rhythmSettingDefaults = {
   notifyDone: false, // RHY-007: someone did one (off unless turned on)
 };
 
+// Subscriptions settings (SUB-003). The notify* keys are also read by the
+// database (public.wants_subscription_notice) — rename them in both places or
+// not at all. Monthly reminders would come every few weeks, so they're off
+// unless turned on.
+export const subscriptionSettingDefaults = {
+  notifyTrials: true, // before a free trial ends
+  notifyYearly: true, // before one billed every 3, 6 or 12 months renews
+  notifyMonthly: false, // before a weekly or monthly one renews
+};
+
 // Letterbox settings. notifyBirthdays is also read by the database
 // (public.wants_letterbox_reminder) — rename it in both places or not at all.
 export const sitterSettingDefaults = {

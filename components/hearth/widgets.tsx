@@ -24,6 +24,8 @@ import { useSitterSummary } from "../../lib/sitter-data";
 import { formatMinutes } from "../../lib/recipes";
 import { useRecipesSummary } from "../../lib/recipes-data";
 import { useRecipeImage } from "../recipe-thumb";
+import { formatMoney } from "../../lib/subscriptions";
+import { useSubscriptionsSummary } from "../../lib/subscriptions-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { guardTouches } from "../../lib/touch-guard";
 import { conditionIcon, conditionLabel, dayName, formatTemp, windowSky } from "../../lib/weather";
@@ -251,6 +253,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <Sitter {...props} widget={widget} />;
     case "recipe":
       return <RecipeOfTheDay {...props} widget={widget} />;
+    case "subscriptions":
+      return <Subscriptions {...props} widget={widget} />;
     case "frame":
       return null; // drawn whole by PhotoFrame, above
     case "clock":
@@ -1282,6 +1286,99 @@ function Rhythms({ widget, palette, refreshKey, height, shape, icon }: BodyProps
       <Panel palette={palette} style={{ flex: 1 }}>
         {list}
       </Panel>
+    </View>
+  );
+}
+
+// --- Renewing soon (SUB-006) -------------------------------------------------------
+
+function Subscriptions({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"subscriptions">) {
+  const { session } = useAuth();
+  const summary = useSubscriptionsSummary(session?.user.id, refreshKey);
+  if (!summary) return null;
+
+  const next = summary.next.filter((s) => !widget.settings.mineOnly || s.mine);
+  const monthly = next.reduce((sum, s) => sum + (s.on_trial ? 0 : s.monthly), 0);
+  const showTotal = widget.settings.showTotal;
+  const inDays = (day: string) => {
+    const days = daysToDue(day, summary.today);
+    return days === 0 ? "today" : days === 1 ? "tmrw" : days < 7 ? `${days}d` : days < 60 ? `${Math.round(days / 7)}w` : `${Math.round(days / 30)}mo`;
+  };
+  const thisWeek = next.filter((s) => daysToDue(s.renews_on, summary.today) <= 7);
+
+  if (shape === "icon") {
+    return thisWeek.length ? <IconFace icon={icon} palette={palette} badge={thisWeek.length} /> : <IconFace icon={icon} palette={palette} />;
+  }
+  if (!next.length) {
+    return <Empty icon="card" palette={palette} text={summary.count ? "Nothing of yours renews" : "Add what you pay for in Subscriptions"} />;
+  }
+  if (shape === "strip") {
+    const first = next[0];
+    return (
+      <Strip
+        icon={first.on_trial ? "warning" : icon}
+        palette={palette}
+        text={`${first.name} · ${first.on_trial ? "trial ends" : "renews"} ${inDays(first.renews_on)}`}
+        sub={showTotal ? `${formatMoney(monthly)} a month` : next[1] ? `Then ${next[1].name}` : null}
+      />
+    );
+  }
+
+  const rows = next.slice(0, Math.min(widget.settings.count, rowsThatFit(height, 24, showTotal ? (shape === "small" ? 110 : 120) : 52)));
+
+  const Total = () => (
+    <View>
+      <Text style={{ fontSize: isBig(shape) ? 34 : 26, fontWeight: "800", color: palette.text, letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
+        {formatMoney(monthly)}
+      </Text>
+      <Muted palette={palette}>a month</Muted>
+    </View>
+  );
+  const list = rows.length ? (
+    <View style={{ gap: 6 }}>
+      {rows.map((s) => (
+        <View key={s.id} style={styles.row}>
+          <Icon name={s.on_trial ? "warning" : "card"} size={13} color={palette.accent} />
+          <Text style={[styles.body, { color: palette.text, flex: 1, fontWeight: s.on_trial ? "700" : "500" }]} numberOfLines={1}>
+            {s.name}
+          </Text>
+          <Text style={[styles.small, { color: palette.muted }]}>{inDays(s.renews_on)}</Text>
+        </View>
+      ))}
+    </View>
+  ) : null;
+
+  if (!showTotal) return <View style={{ flex: 1, justifyContent: "center" }}>{list}</View>;
+  if (shape === "small") {
+    return (
+      <View style={{ gap: 8, flex: 1 }}>
+        <Total />
+        {list}
+      </View>
+    );
+  }
+  if (shape === "wide") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 14, alignItems: "stretch" }]}>
+        <View style={{ justifyContent: "center", minWidth: 110 }}>
+          <Total />
+        </View>
+        {list ? (
+          <Panel palette={palette} style={{ flex: 1, justifyContent: "center" }}>
+            {list}
+          </Panel>
+        ) : null}
+      </View>
+    );
+  }
+  return (
+    <View style={{ gap: 10, flex: 1 }}>
+      <Total />
+      {list ? (
+        <Panel palette={palette} style={{ flex: 1 }}>
+          {list}
+        </Panel>
+      ) : null}
     </View>
   );
 }

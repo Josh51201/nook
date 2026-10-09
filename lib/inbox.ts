@@ -20,6 +20,7 @@ export type Notice = {
     contact_id?: string;
     pet_id?: string;
     rhythm_id?: string;
+    subscription_id?: string;
     link_id?: string;
     invite_id?: string;
     home_id?: string;
@@ -71,6 +72,16 @@ const kinds: Record<string, Record<string, KindInfo>> = {
     rhythm_due: { icon: "rhythm", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
     rhythm_overdue: { icon: "warning", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
     rhythm_done: { icon: "check", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
+  },
+  subscriptions: {
+    trial_ending: {
+      icon: "warning",
+      route: (data) => (data.subscription_id ? `/subscriptions/${data.subscription_id}` : "/subscriptions"),
+    },
+    renewal_soon: {
+      icon: "card",
+      route: (data) => (data.subscription_id ? `/subscriptions/${data.subscription_id}` : "/subscriptions"),
+    },
   },
   sitter: {
     sitter_opened: { icon: "check", route: () => "/sitter" },

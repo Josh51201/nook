@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-09 (rev 62)_
+_Last updated: 2026-10-09 (rev 63)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -91,6 +91,22 @@ Josh picked it from the backlog on 2026-10-08 ("Lets do the recipe box") and cho
 - **REC-014** Watch the TikTok inside Nook, on the recipe's page and in cook mode, with a button to open it in TikTok. _(Josh picked it 2026-10-09.)_
 - _Built 2026-10-09:_ REC-001..014 in `app/recipes`, with the database rules in the `recipe_box` migration. The privacy tests skip until a service key is in `.env.test.local`.
 
+## 2i. Subscriptions Nook
+Josh picked it from the backlog on 2026-10-08 and on 2026-10-09 chose who sees it and every part below ("lets do the subscription nook"). Anything marked _(Proposed)_ is Claude's detail for him to confirm.
+- **SUB-001** A Subscriptions Nook listing every recurring charge with its price, how often it bills and when it next renews. _(Proposed: the date moves on by itself after each charge; typing a name offers common ones (Netflix, Spotify, Costco…) that fill in the kind and usual billing, never a price.)_
+- **SUB-002** Shared with your Home, and any single one can be "Just me". _(Josh picked "Home, with Just me option".)_ _(Proposed: anyone in the Home can change a shared one; only whoever added one can make it Just me; a Just me one isn't in anyone else's totals.)_
+- **SUB-003** Cancel-by reminders: an inbox reminder a few days before it renews, and a "free trial ends" date so you can cancel before the first charge. _(Josh picked it.)_ _(Proposed: each one picks Off, 1, 3, 7 or 14 days (3 to start); trial and yearly/3-/6-monthly reminders are on, weekly/monthly ones off unless turned on in settings; it goes to whoever pays, or everyone in the Home if nobody's picked; the page shows "cancel by" the day before.)_
+- **SUB-004** Totals: what it all costs a month and a year, each one counted the same way whatever it bills by. _(Josh picked it.)_ _(Proposed: free trials aren't counted until they charge, shown as "$X more a month after trials".)_
+- **SUB-005** Who pays and which card: a person in the Home, and the card's name plus its last 4 digits, never the full number. _(Josh picked it.)_ _(Proposed: the database refuses a full card number.)_
+- **SUB-006** A Hearth widget showing what renews next and the monthly total; tapping it opens the Nook. _(Josh picked it.)_ _(Proposed: called "Renewing soon"; can show just yours or hide the total; the Nook's tile shows the total and next renewals too.)_
+- **SUB-007** Categories, with a total for each. _(Josh picked it.)_ _(Proposed list: Streaming, Music, Gaming, News & reading, Apps & cloud, Fitness, Food & delivery, Home & phone, Memberships, Other.)_
+- **SUB-008** Price history: changing the price keeps the old one, e.g. "went up from $15.49 to $17.99 in March". _(Josh picked it.)_ _(Proposed: written by the database with who changed it, so it can't be made up.)_
+- **SUB-009** Save the website where you manage or cancel it; one tap opens it. _(Josh picked it.)_ _(Proposed: "Through Apple" / "Through Google Play" shortcuts open the phone's store subscriptions.)_
+- **SUB-010** Paused or cancelled ones move to a "Paused & cancelled" list instead of being deleted, with a running total of what stopping has saved. _(Josh picked it.)_ _(Proposed: counted from the day it stopped at the price then; "I started it again" picks the next renewal day.)_
+- **SUB-011** _(Proposed.)_ Subscriptions follow the Home (HOME-003, HOME-005): a Home that was only yours brings them along when you join another; leaving takes your Just me ones with you and stops you being the payer of shared ones.
+- **SUB-012** _(Proposed.)_ Nobody outside the Home can see any of them, and nobody but its owner can see, change or count a Just me one, enforced in Postgres, with tests.
+- _Built 2026-10-09:_ SUB-001..012 in `app/subscriptions`, with the database rules in the `subscriptions` migration. The privacy tests skip until a service key is in `.env.test.local`.
+
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
 - **MON-002** A subscription belongs to a **Home** and covers everyone in it, up to the Home's cap of 6 (HOME-006). It never covers a Burrow, so joining someone's Burrow unlocks nothing paid. The paid customization follows the Home too, not the person. _(Josh: "I like the per home idea but yes needs capped at 6".)_
@@ -115,7 +131,7 @@ Josh picked it from the backlog on 2026-10-08 ("Lets do the recipe box") and cho
 - **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
 - **Q-025** The app ID (bundle identifier) is currently `com.josh51201.nook`. It is permanent once the app is published. Should it use the domain Josh buys for email (Q-023) instead?
 
-- **Q-028** Exactly where the free/paid line sits, the price and the trial length (MON-003, MON-004). Decided so far: subscription, no ads, one plan per Home, capped at 6, and the free/paid list is easy to change later (MON-005). The how-it-works details in MON-006..010 are Claude's proposals for Josh to confirm. Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. Also depends on Q-020 (account deletion) and Q-025 (app ID) before an App Store release.
+- **Q-028** Exactly where the free/paid line sits, the price and the trial length (MON-003, MON-004). Decided so far: subscription, no ads, one plan per Home, capped at 6, and the free/paid list is easy to change later (MON-005). The how-it-works details in MON-006..010 are Claude's proposals for Josh to confirm. The Subscriptions Nook (SUB-001) keeps things in a Home, so under MON-003 it would be Plus too (proposed). Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. Also depends on Q-020 (account deletion) and Q-025 (app ID) before an App Store release.
 - **Q-031** Where should the Sitter Sheet's web page live? It's one small file. Options: a free static host (Netlify or Cloudflare Pages) now, then the domain bought for email (Q-023) later, e.g. `sitter.<domain>`. Links made before a move stop working, but they only last one stay anyway.
 
 ## 4. Decision Log
@@ -133,6 +149,8 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The yearly-chores Nook | Rhythms Nook | approved |
 | The babysitter/house-sitter info Nook | Sitter Sheet Nook | proposed |
 | The recipes Nook | Recipe Box Nook | proposed |
+| The recurring-charges Nook | Subscriptions Nook | proposed |
+| The Hearth widget with what renews next (SUB-006) | Renewing soon | proposed |
 | A Hearth widget with one recipe a day (REC-011) | Recipe of the day | proposed |
 | One recurring chore in the Rhythms Nook | Rhythm | proposed |
 | The paid subscription, per Home | Nook Plus | proposed |
@@ -166,7 +184,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **Recipe Box** — now being built as the Recipe Box Nook: see section 2h (REC-001..014).
 - **Heads-Up Board** — one-tap household status like "on my way", "dinner at 6?" or "need milk"; no location tracking. _(Josh picked it 2026-10-08.)_
 - **Sick Day** — log a child's symptoms, temperature and medicine doses with a "next dose safe at…" timer so two parents can't double-dose; could feed the Sitter Sheet. _(Josh picked it 2026-10-08: "sick day nook is also good".)_
-- **Subscriptions** — every recurring charge with renewal date, price and a "cancel by" reminder, plus a monthly total. _(Josh picked it 2026-10-08.)_
+- **Subscriptions** — now built as the Subscriptions Nook: see section 2i (SUB-001..012).
 - **Little Log** — log anything with a date (blood pressure, mileage, a symptom, a mood); you pick the fields and it charts them over time. _(Josh picked it 2026-10-08.)_
 - **Trip** — packing list, confirmations, itinerary and a "have I booked the dog sitter?" checklist, with a countdown widget. _(Josh picked it 2026-10-08.)_
 - **Idea Stash** — part of the Gift Nook (GIFT-036), not a separate Nook.
@@ -179,6 +197,6 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 Josh's stated priority, in order:
 1. ~~**Hearth:** CORE-055 (share a look) and the fireplace sound (CORE-047)~~ — built 2026-10-09; the Hearth rounds are done.
 2. ~~**Recipe Box Nook (REC-001..014)**~~ — built 2026-10-09 (section 2h).
-3. **Backlog Nooks** (section 6) — Josh picks the next one.
+3. **Backlog Nooks** (section 6) — Josh picks the next one. Subscriptions built 2026-10-09 (section 2i).
 
 _Built and done: Hollows, Potluck, Letterbox, Pet Care, Rhythms, Sitter Sheet (page on Netlify for now, Q-031), and Hearth rounds two and three._

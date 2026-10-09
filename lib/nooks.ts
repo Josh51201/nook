@@ -115,6 +115,18 @@ export const nookCatalog: NookDefinition[] = [
     color: "#f3dccb",
   },
   {
+    id: "subscriptions",
+    title: "Subscriptions Nook",
+    icon: "card",
+    iconColor: "#2f6f62",
+    tagline: "What renews when",
+    description:
+      "Every recurring charge in your Home — streaming, apps, the gym, Amazon Prime — with what it all costs a month, a reminder before each one renews or a free trial ends, who pays and on which card, and a running total of what cancelling has saved you.",
+    route: "/subscriptions",
+    available: true,
+    color: "#d6ebe4",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",
