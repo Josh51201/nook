@@ -63,6 +63,7 @@ const icons = {
   share: { ios: "square.and.arrow.up", android: "share" },
   copy: { ios: "doc.on.doc", android: "content_copy" },
   chevron: { ios: "chevron.right", android: "chevron_right" },
+  back: { ios: "chevron.left", android: "chevron_left" },
   settings: { ios: "gearshape.fill", android: "settings" },
   logout: { ios: "rectangle.portrait.and.arrow.right", android: "logout" },
   palette: { ios: "paintpalette.fill", android: "palette" },

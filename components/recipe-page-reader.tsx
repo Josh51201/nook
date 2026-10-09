@@ -47,6 +47,7 @@ export function RecipePageReader({ url, onDone }: { url: string; onDone: (page: 
     <View style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }} pointerEvents="none">
       <WebView
         source={{ uri: url }}
+        originWhitelist={["*"]}
         injectedJavaScript={READ_PAGE}
         onMessage={(event) => {
           try {

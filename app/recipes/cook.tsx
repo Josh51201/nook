@@ -1,6 +1,6 @@
 import { useKeepAwake } from "expo-keep-awake";
 import * as Notifications from "expo-notifications";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -69,8 +69,14 @@ export default function CookMode() {
     if (silent.length) Alert.alert("Time's up", silent.map((t) => `Step ${t.step + 1}: ${t.label}`).join("\n"));
   }, [now, timers]);
 
-  if (isLoading) return <LoadingScreen cards={3} />;
-  if (!recipe) return <EmptyState icon="recipe" title="This recipe isn't here" />;
+  if (isLoading || !recipe) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <TopBar title="Cook mode" top={insets.top} onBack={() => router.back()} />
+        {isLoading ? <LoadingScreen cards={3} /> : <EmptyState icon="recipe" title="This recipe isn't here" />}
+      </View>
+    );
+  }
 
   const current = recipe.steps.findIndex((_, i) => !done.has(i));
   // A TikTok recipe keeps its video at the top to follow along (REC-014).
@@ -130,15 +136,7 @@ export default function CookMode() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View style={[ui.row, { paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 8, justifyContent: "space-between" }]}>
-        <Text style={{ flex: 1, fontSize: 20, fontWeight: "800", color: colors.text }} numberOfLines={1}>
-          {recipe.title}
-        </Text>
-        <Tap onPress={leave} accessibilityLabel="Leave cook mode" accessibilityRole="button" hitSlop={10} style={{ padding: 6 }}>
-          <Icon name="close" size={22} />
-        </Tap>
-      </View>
+      <TopBar title={recipe.title} top={insets.top} onBack={leave} />
 
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 140 + insets.bottom }}>
         {videoId ? (
@@ -232,6 +230,21 @@ export default function CookMode() {
           })}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+// Back on the left (as on every other screen), the recipe's name beside it.
+function TopBar({ title, top, onBack }: { title: string; top: number; onBack: () => void }) {
+  return (
+    <View style={[ui.row, { paddingTop: top + 8, paddingHorizontal: 12, paddingBottom: 8, gap: 4 }]}>
+      <Tap onPress={onBack} accessibilityLabel="Back to the recipe" accessibilityRole="button" hitSlop={10} style={[ui.row, { gap: 2, paddingVertical: 6, paddingRight: 8 }]}>
+        <Icon name="back" size={20} />
+        <Text style={{ fontSize: 17, color: colors.bark, fontWeight: "500" }}>Back</Text>
+      </Tap>
+      <Text style={{ flex: 1, fontSize: 18, fontWeight: "800", color: colors.text, textAlign: "right", paddingRight: 8 }} numberOfLines={1}>
+        {title}
+      </Text>
     </View>
   );
 }

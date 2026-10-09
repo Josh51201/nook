@@ -19,7 +19,10 @@ export default function RecipesLayout() {
       <Stack.Screen name="index" options={{ title: "Recipe Box Nook", ...largeTitle }} />
       <Stack.Screen name="[id]" options={{ title: "Recipe" }} />
       <Stack.Screen name="form" options={{ title: "New recipe", presentation: "modal" }} />
-      <Stack.Screen name="cook" options={{ title: "Cook mode", presentation: "fullScreenModal", gestureEnabled: false }} />
+      {/* Cook mode draws its own top bar with a Back button. The header must
+          be hidden here, not from the screen: hiding a modal's header after
+          it opens rebuilds the screen, over and over. */}
+      <Stack.Screen name="cook" options={{ title: "Cook mode", presentation: "fullScreenModal", gestureEnabled: false, headerShown: false }} />
       <Stack.Screen name="settings" options={{ title: "Recipe Box Settings" }} />
     </Stack>
   );

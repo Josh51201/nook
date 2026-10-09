@@ -20,6 +20,9 @@ export function TikTokPlayer({ videoId, url, maxHeight = 560 }: { videoId: strin
       <View style={{ width, height, borderRadius: 20, overflow: "hidden", backgroundColor: "#000" }}>
         <WebView
           source={{ uri: tiktokPlayerUrl(videoId) }}
+          // The player builds parts of itself from blank pages (about:srcdoc,
+          // about:blank); let those load instead of trying to open them.
+          originWhitelist={["*"]}
           style={{ flex: 1, backgroundColor: "#000" }}
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
@@ -28,8 +31,9 @@ export function TikTokPlayer({ videoId, url, maxHeight = 560 }: { videoId: strin
           // Taps on links inside the player (the creator, "watch more") go
           // to the TikTok app rather than loading TikTok inside the box.
           onShouldStartLoadWithRequest={(request) => {
-            if (request.url.startsWith("https://www.tiktok.com/player/") || request.url === "about:blank") return true;
-            if (request.navigationType === "click") {
+            if (!request.url.startsWith("http") || request.url.startsWith("https://www.tiktok.com/player/")) return true;
+            // Only a tap on a link in the player itself, not its inner frames.
+            if (request.navigationType === "click" && request.isTopFrame !== false) {
               Linking.openURL(request.url).catch(() => {});
               return false;
             }
