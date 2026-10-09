@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-09 (rev 64)_
+_Last updated: 2026-10-09 (rev 65)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -64,7 +64,7 @@ All of CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](arc
 
 ## 2. Built Nooks (requirements archived)
 Full requirements for these live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_NOOKS_BUILT.md). **Grep it by ID before changing one of these Nooks**; edit requirements there.
-- **Sitter Sheet Nook** (SIT-001..013): one page for sitters, shared by a link that runs out. Page hosted on Netlify for now (Q-031).
+- **Sitter Sheet Nook** (SIT-001..014): one page for sitters, shared by a link that runs out. Page hosted on Netlify for now (Q-031).
 - **Gift Nook** (GIFT-001..037): wish lists ("Wishbooks") per person across Burrows, Gatherings, claims ("Tucks"), kids' managed profiles. Idea Stash (GIFT-036) built 2026-10-09.
 - **Potluck Nook** (POT-001..009): who brings what, RSVPs, allergy warnings.
 - **Letterbox Nook** (LET-001..011): holiday cards, addresses, labels, thank-yous.

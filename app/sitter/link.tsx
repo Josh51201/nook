@@ -7,7 +7,7 @@ import { DateField } from "../../components/date-field";
 import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
 import { Text, TextInput } from "../../components/text";
-import { Button, Chip, SectionHeader } from "../../components/ui";
+import { Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
 import { phoneTimeZone } from "../../lib/pets";
@@ -53,15 +53,34 @@ export default function NewSitterLink() {
 
   useEffect(() => {
     if (ready || !data) return;
+    if (!sections.some((s) => sectionFilled(data.sheet, s.key)) && !data.kids.length && !data.pets.length) return;
     // Everything you've filled in except codes, to start; kids and pets stay off.
     setPicked(sections.filter((s) => s.key !== "codes" && sectionFilled(data.sheet, s.key)).map((s) => s.key));
     setReady(true);
   }, [data, ready]);
 
-  if (!data || !ready) return <LoadingScreen cards={2} />;
+  if (!data) return <LoadingScreen cards={2} />;
+
+  // A link shows parts of the sheet. With nothing written (and no kids or
+  // pets to show), say so and point to the sheet instead of an empty form.
+  if (!sections.some((s) => sectionFilled(data.sheet, s.key)) && !data.kids.length && !data.pets.length) {
+    return (
+      <NookScroll>
+        <EmptyState
+          icon="sitter"
+          title="Write your sheet first"
+          body="A link shows parts of your Sitter Sheet, and yours is empty so far. Fill in what a sitter needs (emergency numbers, your address, bedtime, the Wi-Fi), then come back here to make the link."
+        />
+        <Button title="Fill in the sheet" icon="edit" onPress={() => router.push("/sitter/edit")} />
+        <Text style={ui.muted}>You only write it once. Each link after that just picks the days and which parts to show.</Text>
+      </NookScroll>
+    );
+  }
+  if (!ready) return <LoadingScreen cards={2} />;
 
   const toggle = <T,>(list: T[], item: T) => (list.includes(item) ? list.filter((x) => x !== item) : [...list, item]);
   const filled = sections.filter((s) => sectionFilled(data.sheet, s.key));
+  const unwritten = sections.filter((s) => !sectionFilled(data.sheet, s.key));
   const allKids = data.kids.map((k) => k.id);
   const allPets = data.pets.map((p) => p.id);
   const past = pastSitters(data.links);
@@ -199,6 +218,14 @@ export default function NewSitterLink() {
       ) : (
         <Text style={ui.muted}>Nothing written on the sheet yet.</Text>
       )}
+      {unwritten.length ? (
+        <Text style={ui.muted}>
+          Not on your sheet yet, so they can't go on a link: {unwritten.map((s) => s.label).join(", ")}.{" "}
+          <Text style={ui.link} onPress={() => router.push("/sitter/edit")}>
+            Add to the sheet
+          </Text>
+        </Text>
+      ) : null}
       {picked.includes("codes") ? (
         <Text style={[ui.muted, { color: colors.error }]}>
           Door and alarm codes are on this link. Anyone with the link can see them until it ends, so only send it to someone you'd give a key to.

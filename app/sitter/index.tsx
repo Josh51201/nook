@@ -1,6 +1,6 @@
 import * as Clipboard from "expo-clipboard";
 import { Stack, useRouter } from "expo-router";
-import { Alert, Share, View } from "react-native";
+import { Alert, Share, StyleSheet, View } from "react-native";
 
 import { Icon } from "../../components/icon";
 import { LoadingScreen } from "../../components/motion";
@@ -133,6 +133,24 @@ export default function SitterHome() {
         ]}
       />
 
+      {!filled.length ? (
+        <View style={[ui.card, { gap: 10 }]}>
+          <Text style={ui.cardTitle}>How it works</Text>
+          {[
+            "Write the sheet once: emergency numbers, address, bedtime, house rules, whatever a sitter needs. Skip anything that doesn't apply.",
+            "Each time someone's watching the kids, pets or house, make a link: who it's for, which days, and which parts of the sheet they see.",
+            "Send them the link. They open it on their phone with no app or account, and it stops working after the last day.",
+          ].map((step, i) => (
+            <View key={i} style={[ui.row, { gap: 10, alignItems: "flex-start" }]}>
+              <View style={[styles.step, { backgroundColor: nook.color }]}>
+                <Text style={{ color: nook.iconColor, fontWeight: "800" }}>{i + 1}</Text>
+              </View>
+              <Text style={[ui.muted, { flex: 1, color: colors.text }]}>{step}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       <SectionHeader title="The sheet" icon="doc" />
       <NavCard
         icon="edit"
@@ -148,8 +166,11 @@ export default function SitterHome() {
         Make a link for each stay. The sitter opens it on their phone, no app needed, and it stops working after the last day.
       </Text>
       {live.map((l, i) => linkCard(l, i))}
-      <Button title="Make a link" icon="add" onPress={() => router.push("/sitter/link")} disabled={nothingToShare} />
-      {nothingToShare ? <Text style={ui.muted}>Fill in the sheet first.</Text> : null}
+      {nothingToShare ? (
+        <Text style={ui.muted}>Once the sheet has something on it, you can make a link here.</Text>
+      ) : (
+        <Button title="Make a link" icon="add" onPress={() => router.push("/sitter/link")} />
+      )}
 
       {past.length ? (
         <View style={{ gap: 10 }}>
@@ -169,3 +190,7 @@ export default function SitterHome() {
     </NookScroll>
   );
 }
+
+const styles = StyleSheet.create({
+  step: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+});
