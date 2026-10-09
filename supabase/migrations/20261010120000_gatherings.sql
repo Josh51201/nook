@@ -196,15 +196,15 @@ on conflict do nothing;
 -- none. Potluck hosts become the Gathering's hosts, Potluck RSVPs its RSVPs.
 do $$
 declare
-  p record;
+  solo record;
   new_gathering uuid;
 begin
-  for p in select * from public.potlucks where gathering_id is null loop
+  for solo in select * from public.potlucks where gathering_id is null loop
     insert into public.gatherings (burrow_id, title, kind, ends_at, starts_at, place, notes, gifts, created_by, created_at)
-    values (p.burrow_id, left(p.title, 120), 'dinner', p.starts_at + interval '2 hours', p.starts_at, p.place, p.notes, false, p.created_by, p.created_at)
+    values (solo.burrow_id, left(solo.title, 120), 'dinner', solo.starts_at + interval '2 hours', solo.starts_at, solo.place, solo.notes, false, solo.created_by, solo.created_at)
     returning id into new_gathering;
-    insert into public.gathering_burrows (gathering_id, burrow_id) values (new_gathering, p.burrow_id);
-    update public.potlucks set gathering_id = new_gathering where id = p.id;
+    insert into public.gathering_burrows (gathering_id, burrow_id) values (new_gathering, solo.burrow_id);
+    update public.potlucks set gathering_id = new_gathering where id = solo.id;
   end loop;
 
   update public.gatherings g
