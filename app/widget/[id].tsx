@@ -16,8 +16,9 @@ import { WidgetView } from "../../components/hearth/widgets";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { Collapsible } from "../../components/collapsible";
 import { DateField } from "../../components/date-field";
-import { Banner, Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
+import { Banner, Button, Chip, EmptyState } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { useHearthView } from "../../lib/hearth-view";
 import { fullMessage, overflowing } from "../../lib/hearth-limits";
@@ -27,7 +28,8 @@ import { usePets } from "../../lib/pets-data";
 import { cornerChoices, liftChoices } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { conditions, windowFrames, type Place, type Unit } from "../../lib/weather";
-import { launchTargets, MAX_LAUNCH_TARGETS, MAX_OWN_QUOTES, parseQuotes } from "../../lib/widget-extras";
+import { launchTargets, MAX_LAUNCH_TARGETS, MAX_OWN_QUOTES, parseQuotes, showInWords } from "../../lib/widget-extras";
+import { lookSummary, sizeSummary, tagsSummary } from "../../lib/summaries";
 import { pickAndUploadPhoto, removeUnusedPhotos, usePhotoUrls } from "../../lib/hearth-photos";
 import { formatDate, gatheringKinds, type GatheringKind } from "../../lib/gift-nook";
 import {
@@ -202,6 +204,17 @@ export default function WidgetEditor() {
     ]);
   }
 
+  // What's chosen, for the closed sections (CORE-074).
+  const looksSummary = lookSummary({ look: widget.look, corners: draft.corners, lift: draft.lift, border: draft.border });
+  const whereId = livesIn ?? home;
+  const whereName = whereId ? hollowsOf(layout).find((h) => h.id === whereId)?.name ?? "A Hollow" : "The Hearth";
+  const placeSummary = [sizeSummary(sizePresets.widget, draft.w, draft.h, draft.locked), hollowsOf(layout).length ? whereName : null]
+    .filter(Boolean)
+    .join(" · ");
+  const copySummary = original.stack
+    ? `In a stack of ${stackMates(layout.items, original).length}`
+    : "Copy it, or stack more widgets in its spot";
+
   return (
     <NookScroll>
       <Stack.Screen
@@ -252,165 +265,171 @@ export default function WidgetEditor() {
         />
       </Animated.View>
 
-      <SectionHeader title="What it shows" icon={info.icon} />
-      <KindSettings
-        widget={widget}
-        setSettings={setSettings}
-        setWidget={setWidget}
-        photoFolder={sharedPage && homeHearth.homeId ? homePhotoFolder(homeHearth.homeId) : undefined}
-      />
-
-      {hollowsOf(layout).length ? (
-        <>
-          <SectionHeader title="Where it lives" icon="burrow" />
-          <View style={ui.chips}>
-            <Chip icon="hearth" selected={(livesIn ?? home) === null} onPress={() => setLivesIn(null)}>
-              The Hearth
-            </Chip>
-            {hollowsOf(layout).map((hollowItem) => (
-              <Chip
-                key={hollowItem.id}
-                icon="burrow"
-                selected={(livesIn ?? home) === hollowItem.id}
-                onPress={() => setLivesIn(hollowItem.id)}
-              >
-                {hollowItem.name}
-              </Chip>
-            ))}
-          </View>
-        </>
-      ) : null}
-
-      <SectionHeader title="How it looks" icon="palette" />
-      <Text style={ui.label}>Title</Text>
-      <View style={[ui.row, { gap: 10 }]}>
-        <TextInput
-          style={[ui.input, { flex: 1 }]}
-          value={widget.title}
-          onChangeText={(title) => setWidget({ title })}
-          placeholder={info.label}
-          placeholderTextColor={colors.muted}
+      <Collapsible id="widget-shows" icon={info.icon} title="What it shows" defaultOpen>
+        <KindSettings
+          widget={widget}
+          setSettings={setSettings}
+          setWidget={setWidget}
+          photoFolder={sharedPage && homeHearth.homeId ? homePhotoFolder(homeHearth.homeId) : undefined}
         />
-        <Switch value={widget.showTitle} onValueChange={(showTitle) => setWidget({ showTitle })} trackColor={{ true: colors.bark }} />
-      </View>
+      </Collapsible>
 
-      <Text style={ui.label}>Style</Text>
-      <View style={ui.chips}>
-        {(
-          [
-            ["soft", "Soft"],
-            ["bold", "Bold"],
-            ["outline", "Outline"],
-          ] as [WidgetLook, string][]
-        ).map(([look, label]) => (
-          <Chip key={look} selected={widget.look === look} onPress={() => setWidget({ look })}>
-            {label}
-          </Chip>
-        ))}
-      </View>
-      {widget.kind === "companion" ? <Text style={ui.muted}>Outline leaves out the card, so the bed sits right on your Hearth. The title switch shows or hides the pet's name.</Text> : null}
+      <Collapsible id="widget-looks" icon="palette" title="How it looks" summary={looksSummary}>
+        <Text style={ui.label}>Title</Text>
+        <View style={[ui.row, { gap: 10 }]}>
+          <TextInput
+            style={[ui.input, { flex: 1 }]}
+            value={widget.title}
+            onChangeText={(title) => setWidget({ title })}
+            placeholder={info.label}
+            placeholderTextColor={colors.muted}
+          />
+          <Switch value={widget.showTitle} onValueChange={(showTitle) => setWidget({ showTitle })} trackColor={{ true: colors.bark }} />
+        </View>
 
-      {widget.kind === "frame" || widget.kind === "window" ? null : (
-        <>
-          <Text style={ui.label}>Color</Text>
-          <ColorPicker value={draft.color} onChange={(color) => setDraft({ ...draft, color })} />
-        </>
-      )}
-
-      <Text style={ui.label}>Corners</Text>
-      <View style={ui.chips}>
-        {cornerChoices.map((c) => (
-          <Chip key={c.key} selected={(draft.corners ?? "soft") === c.key} onPress={() => setDraft({ ...draft, corners: c.key })}>
-            {c.label}
-          </Chip>
-        ))}
-      </View>
-      <Text style={ui.label}>Shadow</Text>
-      <View style={ui.chips}>
-        {liftChoices.map((c) => (
-          <Chip key={c.key} selected={(draft.lift ?? "soft") === c.key} onPress={() => setDraft({ ...draft, lift: c.key })}>
-            {c.label}
-          </Chip>
-        ))}
-      </View>
-      {widget.kind === "frame" || widget.kind === "window" ? null : (
-        <>
-          <Text style={ui.label}>Border</Text>
-          <View style={ui.chips}>
-            <Chip selected={!draft.border} onPress={() => setDraft({ ...draft, border: false })}>
-              None
-            </Chip>
-            <Chip selected={Boolean(draft.border)} onPress={() => setDraft({ ...draft, border: true })}>
-              Outlined
-            </Chip>
-          </View>
-        </>
-      )}
-
-      <Text style={ui.label}>Icon</Text>
-      <IconPicker value={draft.icon} fallback={info.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
-
-      <SectionHeader title="Tags" icon="price" />
-      <TagsEditor tags={draft.tags} known={allTags(layout)} onChange={(tags) => setDraft({ ...draft, tags })} />
-
-      <SectionHeader title="When it shows" icon="calendar" />
-      <SeasonPicker value={draft.showIn} onChange={(showIn) => setDraft({ ...draft, showIn })} />
-
-      <Text style={ui.label}>Size</Text>
-      <View style={ui.chips}>
-        {sizePresets.widget
-          .filter((preset) => preset.w >= info.minSize.w && preset.h >= info.minSize.h)
-          .map((preset) => (
-            <Chip
-              key={preset.label}
-              selected={draft.w === preset.w && draft.h === preset.h}
-              onPress={() => setDraft({ ...draft, w: preset.w, h: preset.h })}
-            >
-              {preset.label}
+        <Text style={ui.label}>Style</Text>
+        <View style={ui.chips}>
+          {(
+            [
+              ["soft", "Soft"],
+              ["bold", "Bold"],
+              ["outline", "Outline"],
+            ] as [WidgetLook, string][]
+          ).map(([look, label]) => (
+            <Chip key={look} selected={widget.look === look} onPress={() => setWidget({ look })}>
+              {label}
             </Chip>
           ))}
-      </View>
-      <Text style={ui.muted}>Or drag its corner on the Hearth for any size.</Text>
-      <SwitchRow label="Lock in place" value={Boolean(draft.locked)} onChange={(locked) => setDraft({ ...draft, locked: locked || undefined })} />
-      <Text style={ui.muted}>Can't be dragged, resized or removed until you unlock it.</Text>
+        </View>
+        {widget.kind === "companion" ? <Text style={ui.muted}>Outline leaves out the card, so the bed sits right on your Hearth. The title switch shows or hides the pet's name.</Text> : null}
 
-      <SectionHeader title="Make a copy" icon="copy" />
-      <View style={ui.chips}>
-        <Chip icon="hearth" onPress={() => saveWidget(null)}>
-          {hereName}
-        </Chip>
-        {hollowsOf(layout).map((hollowItem) => (
-          <Chip key={hollowItem.id} icon="burrow" onPress={() => saveWidget(hollowItem.id)}>
-            {hollowItem.name}
-          </Chip>
-        ))}
-      </View>
-      <Text style={ui.muted}>
-        Saves this one, then opens the copy so you can make it its own.
-        {widget.kind === "reminders" ? " The copy's list starts without phone alerts, so nothing rings twice." : ""}
-      </Text>
+        {widget.kind === "frame" || widget.kind === "window" ? null : (
+          <>
+            <Text style={ui.label}>Color</Text>
+            <ColorPicker value={draft.color} onChange={(color) => setDraft({ ...draft, color })} />
+          </>
+        )}
 
-      <SectionHeader title="Stack" icon="widgets" />
-      <Text style={ui.muted}>
-        A stack keeps several widgets in one spot: swipe sideways on the Hearth to flip through them.
-        {original.stack ? ` This one is in a stack of ${stackMates(layout.items, original).length}.` : ""}
-      </Text>
-      {stackMates(layout.items, original).length < MAX_STACK ? (
-        <>
-          <Text style={ui.label}>Put another widget in the stack</Text>
-          <View style={ui.chips}>
-            {widgetKinds.map((kind) => (
-              <Chip key={kind.kind} icon={kind.icon} onPress={() => saveWidget(undefined, kind.kind)}>
-                {kind.label}
+        <Text style={ui.label}>Corners</Text>
+        <View style={ui.chips}>
+          {cornerChoices.map((c) => (
+            <Chip key={c.key} selected={(draft.corners ?? "soft") === c.key} onPress={() => setDraft({ ...draft, corners: c.key })}>
+              {c.label}
+            </Chip>
+          ))}
+        </View>
+        <Text style={ui.label}>Shadow</Text>
+        <View style={ui.chips}>
+          {liftChoices.map((c) => (
+            <Chip key={c.key} selected={(draft.lift ?? "soft") === c.key} onPress={() => setDraft({ ...draft, lift: c.key })}>
+              {c.label}
+            </Chip>
+          ))}
+        </View>
+        {widget.kind === "frame" || widget.kind === "window" ? null : (
+          <>
+            <Text style={ui.label}>Border</Text>
+            <View style={ui.chips}>
+              <Chip selected={!draft.border} onPress={() => setDraft({ ...draft, border: false })}>
+                None
+              </Chip>
+              <Chip selected={Boolean(draft.border)} onPress={() => setDraft({ ...draft, border: true })}>
+                Outlined
+              </Chip>
+            </View>
+          </>
+        )}
+
+        <Text style={ui.label}>Icon</Text>
+        <IconPicker value={draft.icon} fallback={info.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
+      </Collapsible>
+
+      <Collapsible id="widget-size" icon="resize" title="Size & place" summary={placeSummary}>
+        <Text style={ui.label}>Size</Text>
+        <View style={ui.chips}>
+          {sizePresets.widget
+            .filter((preset) => preset.w >= info.minSize.w && preset.h >= info.minSize.h)
+            .map((preset) => (
+              <Chip
+                key={preset.label}
+                selected={draft.w === preset.w && draft.h === preset.h}
+                onPress={() => setDraft({ ...draft, w: preset.w, h: preset.h })}
+              >
+                {preset.label}
               </Chip>
             ))}
-          </View>
-          <Text style={ui.muted}>Saves this one, then opens the new widget so you can set it up.</Text>
-        </>
-      ) : (
-        <Text style={ui.muted}>That's as many as a stack holds ({MAX_STACK}).</Text>
-      )}
-      {original.stack ? <Button title="Take it out of the stack" icon="close" variant="secondary" onPress={() => saveWidget(undefined, "out")} /> : null}
+        </View>
+        <Text style={ui.muted}>Or drag its corner on the Hearth for any size.</Text>
+        <SwitchRow label="Lock in place" value={Boolean(draft.locked)} onChange={(locked) => setDraft({ ...draft, locked: locked || undefined })} />
+        <Text style={ui.muted}>Can't be dragged, resized or removed until you unlock it.</Text>
+        {hollowsOf(layout).length ? (
+          <>
+            <Text style={ui.label}>Where it lives</Text>
+            <View style={ui.chips}>
+              <Chip icon="hearth" selected={(livesIn ?? home) === null} onPress={() => setLivesIn(null)}>
+                The Hearth
+              </Chip>
+              {hollowsOf(layout).map((hollowItem) => (
+                <Chip
+                  key={hollowItem.id}
+                  icon="burrow"
+                  selected={(livesIn ?? home) === hollowItem.id}
+                  onPress={() => setLivesIn(hollowItem.id)}
+                >
+                  {hollowItem.name}
+                </Chip>
+              ))}
+            </View>
+          </>
+        ) : null}
+      </Collapsible>
+
+      <Collapsible id="widget-when" icon="calendar" title="When it shows" summary={showInWords(draft.showIn)}>
+        <SeasonPicker value={draft.showIn} onChange={(showIn) => setDraft({ ...draft, showIn })} />
+      </Collapsible>
+
+      <Collapsible id="widget-tags" icon="price" title="Tags" summary={tagsSummary(draft.tags)}>
+        <TagsEditor tags={draft.tags} known={allTags(layout)} onChange={(tags) => setDraft({ ...draft, tags })} />
+      </Collapsible>
+
+      <Collapsible id="widget-copy" icon="copy" title="Copy & stack" summary={copySummary}>
+        <Text style={ui.label}>Make a copy</Text>
+        <View style={ui.chips}>
+          <Chip icon="hearth" onPress={() => saveWidget(null)}>
+            {hereName}
+          </Chip>
+          {hollowsOf(layout).map((hollowItem) => (
+            <Chip key={hollowItem.id} icon="burrow" onPress={() => saveWidget(hollowItem.id)}>
+              {hollowItem.name}
+            </Chip>
+          ))}
+        </View>
+        <Text style={ui.muted}>
+          Saves this one, then opens the copy so you can make it its own.
+          {widget.kind === "reminders" ? " The copy's list starts without phone alerts, so nothing rings twice." : ""}
+        </Text>
+        <Text style={ui.label}>Stack</Text>
+        <Text style={ui.muted}>
+          A stack keeps several widgets in one spot: swipe sideways on the Hearth to flip through them.
+          {original.stack ? ` This one is in a stack of ${stackMates(layout.items, original).length}.` : ""}
+        </Text>
+        {stackMates(layout.items, original).length < MAX_STACK ? (
+          <>
+            <Text style={ui.label}>Put another widget in the stack</Text>
+            <View style={ui.chips}>
+              {widgetKinds.map((kind) => (
+                <Chip key={kind.kind} icon={kind.icon} onPress={() => saveWidget(undefined, kind.kind)}>
+                  {kind.label}
+                </Chip>
+              ))}
+            </View>
+            <Text style={ui.muted}>Saves this one, then opens the new widget so you can set it up.</Text>
+          </>
+        ) : (
+          <Text style={ui.muted}>That's as many as a stack holds ({MAX_STACK}).</Text>
+        )}
+        {original.stack ? <Button title="Take it out of the stack" icon="close" variant="secondary" onPress={() => saveWidget(undefined, "out")} /> : null}
+      </Collapsible>
 
       <Button title="Save" icon="check" onPress={() => saveWidget()} loading={isSaving} style={{ marginTop: 8 }} />
       <Button title="Remove widget" icon="trash" variant="danger" onPress={confirmRemove} />

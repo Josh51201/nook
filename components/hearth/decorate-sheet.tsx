@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import {
+  ambienceLabel,
   ambiences,
   gradientPresets,
   patterns,
@@ -15,7 +16,8 @@ import { pickAndUploadPhoto, usePhotoUrls } from "../../lib/hearth-photos";
 import { colors, themed, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
 import { IconBadge } from "../icon";
-import { Banner, Button, Chip, SectionHeader } from "../ui";
+import { Collapsible } from "../collapsible";
+import { Banner, Button, Chip } from "../ui";
 import { Text } from "../text";
 import { ColorPicker } from "./color-picker";
 
@@ -52,6 +54,15 @@ export function DecorateSheet({
   const [uploading, setUploading] = useState(false);
   const kind: Kind = wallpaper?.kind ?? (inHollow ? "inherit" : "none");
   const photoUrls = usePhotoUrls(wallpaper?.kind === "photo" ? [wallpaper.path] : []);
+
+  // What's chosen, for the closed sections (CORE-074).
+  const wallpaperSummary = {
+    inherit: "Same as the Hearth",
+    none: "Plain",
+    pattern: "Pattern",
+    gradient: "Gradient",
+    photo: "My photo",
+  }[kind];
 
   function choose(next: Kind) {
     tap();
@@ -95,118 +106,119 @@ export function DecorateSheet({
       }
     >
       <ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
-        <SectionHeader title="Wallpaper" icon="paint" />
-        <View style={ui.chips}>
-          {inHollow ? (
-            <Chip icon="hearth" selected={kind === "inherit"} onPress={() => choose("inherit")}>
-              Same as the Hearth
+        <Collapsible id="decorate-wallpaper" icon="paint" title="Wallpaper" summary={wallpaperSummary} defaultOpen>
+          <View style={ui.chips}>
+            {inHollow ? (
+              <Chip icon="hearth" selected={kind === "inherit"} onPress={() => choose("inherit")}>
+                Same as the Hearth
+              </Chip>
+            ) : null}
+            <Chip icon="close" selected={kind === "none"} onPress={() => choose("none")}>
+              Plain
             </Chip>
+            <Chip icon="category" selected={kind === "pattern"} onPress={() => choose("pattern")}>
+              Pattern
+            </Chip>
+            <Chip icon="palette" selected={kind === "gradient"} onPress={() => choose("gradient")}>
+              Gradient
+            </Chip>
+            <Chip icon="camera" selected={kind === "photo"} onPress={() => choose("photo")}>
+              My photo
+            </Chip>
+          </View>
+
+          {wallpaper?.kind === "pattern" ? (
+            <>
+              <Text style={ui.label}>Pattern</Text>
+              <View style={ui.chips}>
+                {patterns.map((p) => (
+                  <Chip key={p.key} selected={wallpaper.pattern === p.key} onPress={() => onWallpaper({ ...wallpaper, pattern: p.key })}>
+                    {p.label}
+                  </Chip>
+                ))}
+              </View>
+              <Text style={ui.label}>Color</Text>
+              <ColorPicker value={wallpaper.color} onChange={(color) => onWallpaper({ ...wallpaper, color })} />
+            </>
           ) : null}
-          <Chip icon="close" selected={kind === "none"} onPress={() => choose("none")}>
-            Plain
-          </Chip>
-          <Chip icon="category" selected={kind === "pattern"} onPress={() => choose("pattern")}>
-            Pattern
-          </Chip>
-          <Chip icon="palette" selected={kind === "gradient"} onPress={() => choose("gradient")}>
-            Gradient
-          </Chip>
-          <Chip icon="camera" selected={kind === "photo"} onPress={() => choose("photo")}>
-            My photo
-          </Chip>
-        </View>
 
-        {wallpaper?.kind === "pattern" ? (
-          <>
-            <Text style={ui.label}>Pattern</Text>
-            <View style={ui.chips}>
-              {patterns.map((p) => (
-                <Chip key={p.key} selected={wallpaper.pattern === p.key} onPress={() => onWallpaper({ ...wallpaper, pattern: p.key })}>
-                  {p.label}
+          {wallpaper?.kind === "gradient" ? (
+            <>
+              <Text style={ui.label}>Colors</Text>
+              <View style={ui.chips}>
+                {gradientPresets.map((g) => (
+                  <Chip
+                    key={g.key}
+                    selected={wallpaper.from === g.from && wallpaper.to === g.to}
+                    onPress={() => onWallpaper({ ...wallpaper, from: g.from, to: g.to })}
+                  >
+                    {g.label}
+                  </Chip>
+                ))}
+              </View>
+              <Text style={ui.label}>Top color</Text>
+              <ColorPicker value={wallpaper.from} fallback={wallpaper.from} onChange={(from) => onWallpaper({ ...wallpaper, from })} />
+              <Text style={ui.label}>Bottom color</Text>
+              <ColorPicker value={wallpaper.to} fallback={wallpaper.to} onChange={(to) => onWallpaper({ ...wallpaper, to })} />
+              <Text style={ui.label}>Direction</Text>
+              <View style={ui.chips}>
+                <Chip selected={wallpaper.direction === "down"} onPress={() => onWallpaper({ ...wallpaper, direction: "down" })}>
+                  Top to bottom
                 </Chip>
-              ))}
-            </View>
-            <Text style={ui.label}>Color</Text>
-            <ColorPicker value={wallpaper.color} onChange={(color) => onWallpaper({ ...wallpaper, color })} />
-          </>
-        ) : null}
+                <Chip selected={wallpaper.direction === "diagonal"} onPress={() => onWallpaper({ ...wallpaper, direction: "diagonal" })}>
+                  Corner to corner
+                </Chip>
+              </View>
+            </>
+          ) : null}
 
-        {wallpaper?.kind === "gradient" ? (
-          <>
-            <Text style={ui.label}>Colors</Text>
-            <View style={ui.chips}>
-              {gradientPresets.map((g) => (
-                <Chip
-                  key={g.key}
-                  selected={wallpaper.from === g.from && wallpaper.to === g.to}
-                  onPress={() => onWallpaper({ ...wallpaper, from: g.from, to: g.to })}
-                >
-                  {g.label}
-                </Chip>
-              ))}
-            </View>
-            <Text style={ui.label}>Top color</Text>
-            <ColorPicker value={wallpaper.from} fallback={wallpaper.from} onChange={(from) => onWallpaper({ ...wallpaper, from })} />
-            <Text style={ui.label}>Bottom color</Text>
-            <ColorPicker value={wallpaper.to} fallback={wallpaper.to} onChange={(to) => onWallpaper({ ...wallpaper, to })} />
-            <Text style={ui.label}>Direction</Text>
-            <View style={ui.chips}>
-              <Chip selected={wallpaper.direction === "down"} onPress={() => onWallpaper({ ...wallpaper, direction: "down" })}>
-                Top to bottom
+          {wallpaper?.kind === "photo" ? (
+            <>
+              <View style={styles.preview}>
+                {photoUrls.get(wallpaper.path) ? (
+                  <Image source={{ uri: photoUrls.get(wallpaper.path) }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                ) : null}
+              </View>
+              <Text style={ui.label}>How strong the photo is</Text>
+              <View style={ui.chips}>
+                {photoDims.map((d) => (
+                  <Chip key={d.dim} selected={wallpaper.dim === d.dim} onPress={() => onWallpaper({ ...wallpaper, dim: d.dim })}>
+                    {d.label}
+                  </Chip>
+                ))}
+              </View>
+              <Text style={ui.muted}>A softer photo keeps your text easy to read.</Text>
+              <Button title="Choose a different photo" icon="camera" variant="secondary" onPress={choosePhoto} loading={uploading} />
+            </>
+          ) : null}
+          {uploading && wallpaper?.kind !== "photo" ? <Text style={ui.muted}>Adding your photo…</Text> : null}
+        </Collapsible>
+        <Collapsible id="decorate-ambience" icon="sparkles" title="Ambience" summary={ambienceLabel(ambience)}>
+          <View style={ui.chips}>
+            {ambiences.map((a) => (
+              <Chip key={a.key} icon={a.icon} selected={ambience === a.key} onPress={() => (tap(), onAmbience(a.key))}>
+                {a.label}
               </Chip>
-              <Chip selected={wallpaper.direction === "diagonal"} onPress={() => onWallpaper({ ...wallpaper, direction: "diagonal" })}>
-                Corner to corner
-              </Chip>
-            </View>
-          </>
-        ) : null}
-
-        {wallpaper?.kind === "photo" ? (
-          <>
-            <View style={styles.preview}>
-              {photoUrls.get(wallpaper.path) ? (
-                <Image source={{ uri: photoUrls.get(wallpaper.path) }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              ) : null}
-            </View>
-            <Text style={ui.label}>How strong the photo is</Text>
-            <View style={ui.chips}>
-              {photoDims.map((d) => (
-                <Chip key={d.dim} selected={wallpaper.dim === d.dim} onPress={() => onWallpaper({ ...wallpaper, dim: d.dim })}>
-                  {d.label}
-                </Chip>
-              ))}
-            </View>
-            <Text style={ui.muted}>A softer photo keeps your text easy to read.</Text>
-            <Button title="Choose a different photo" icon="camera" variant="secondary" onPress={choosePhoto} loading={uploading} />
-          </>
-        ) : null}
-        {uploading && wallpaper?.kind !== "photo" ? <Text style={ui.muted}>Adding your photo…</Text> : null}
-
-        <SectionHeader title="Ambience" icon="sparkles" />
-        <View style={ui.chips}>
-          {ambiences.map((a) => (
-            <Chip key={a.key} icon={a.icon} selected={ambience === a.key} onPress={() => (tap(), onAmbience(a.key))}>
-              {a.label}
-            </Chip>
-          ))}
-        </View>
-        <Text style={ui.muted}>
-          The air over your whole Hearth, paused while you're editing. “Follow the season” picks snow, petals,
-          sunbeam dust or leaves, and fireflies at night. “Match the weather” brings rain or snow when it's
-          raining or snowing outside, and follows the season otherwise. Off if your phone's Reduce Motion is on.
-        </Text>
-        {ambience === "weather" ? (
-          <Banner
-            icon="umbrella"
-            tone="sky"
-            title={weatherPlace ? `Matching the weather in ${weatherPlace}` : "Pick a town first"}
-            body={
-              weatherPlace
-                ? "From your Weather widget (or a Window showing live weather)."
-                : "Add a Weather widget, or a Window set to live weather, and choose a town in its settings."
-            }
-          />
-        ) : null}
+            ))}
+          </View>
+          <Text style={ui.muted}>
+            The air over your whole Hearth, paused while you're editing. “Follow the season” picks snow, petals,
+            sunbeam dust or leaves, and fireflies at night. “Match the weather” brings rain or snow when it's
+            raining or snowing outside, and follows the season otherwise. Off if your phone's Reduce Motion is on.
+          </Text>
+          {ambience === "weather" ? (
+            <Banner
+              icon="umbrella"
+              tone="sky"
+              title={weatherPlace ? `Matching the weather in ${weatherPlace}` : "Pick a town first"}
+              body={
+                weatherPlace
+                  ? "From your Weather widget (or a Window showing live weather)."
+                  : "Add a Weather widget, or a Window set to live weather, and choose a town in its settings."
+              }
+            />
+          ) : null}
+        </Collapsible>
 
         <Button title="Done" icon="check" onPress={onClose} style={{ marginTop: 6 }} />
       </ScrollView>

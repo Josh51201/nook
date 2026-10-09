@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-09 (rev 55)_
+_Last updated: 2026-10-09 (rev 56)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -25,6 +25,7 @@ _Last updated: 2026-10-09 (rev 55)_
 - **CORE-071** Friendlier emailed-code sign-in: the phone can offer the code from the email, pasted codes with spaces work, a spam-folder hint, a "Send a new code" button (after a 60-second wait), "Wrong email? Go back", and plain-words errors. _(Built 2026-10-09.)_
 - **CORE-072** A brand-new Hearth starts with one Greeting widget across the top (saying "Welcome to your Hearth") and nothing else; it can be edited, moved or removed like any widget. Existing Hearths are untouched. _(Josh 2026-10-09: "maybe with just the Greeting widget at the top". An exception to CORE-015's "nothing on the Hearth until you add it".)_
 - **CORE-073** Blank screens point to a first step with a button where there's an obvious one, and small icon buttons have bigger tap areas and spoken labels without changing how anything looks. _(Built 2026-10-09.)_
+- **CORE-074** Long menus are organized into sections that open and close, each showing a few words on what's chosen while closed. _(Built 2026-10-09 in Settings, Decorate, the widget editor and the tile options sheet; which sections start open, and remembering them while the app is open, are Claude's calls, proposed.)_
 
 ### Still to do from the Hearth rounds
 Everything else in CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md) — grep it by ID. Josh said yes to every idea in these rounds; details are Claude's proposals until he confirms. Some is paid under Nook Plus (Q-028).

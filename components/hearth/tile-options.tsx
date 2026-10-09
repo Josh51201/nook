@@ -18,10 +18,13 @@ import {
   type Scope,
   type TrinketItem,
 } from "../../lib/hearth";
+import { lookSummary, sizeSummary, tagsSummary } from "../../lib/summaries";
 import { trinketInfo, trinkets } from "../../lib/trinkets";
+import { showInWords } from "../../lib/widget-extras";
 import { findNook } from "../../lib/nooks";
 import { colors, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
+import { Collapsible } from "../collapsible";
 import { IconBadge } from "../icon";
 import { Button, Chip } from "../ui";
 import { ColorPicker } from "./color-picker";
@@ -102,6 +105,20 @@ export function ItemOptions({
 
   const nook = shown?.kind === "nook" ? findNook(shown.nookId) : undefined;
 
+  // What's chosen, for the closed sections (CORE-074).
+  const looksSummary = !shown
+    ? ""
+    : shown.kind === "nook"
+      ? lookSummary({ look: shown.look ?? "soft", corners: shown.corners, lift: shown.lift, defaultLift: "raised", border: shown.border })
+      : shown.kind === "hollow"
+        ? `${hollowLookInfo(shown.look).label} · ${hollowDecors.find((d) => d.decor === (shown.decor ?? "none"))?.label ?? "Plain"}`
+        : shown.kind === "label"
+          ? `${{ title: "Title", heading: "Heading", caption: "Caption" }[shown.size]} · ${shown.align[0].toUpperCase()}${shown.align.slice(1)}`
+          : shown.flip
+            ? "Flipped"
+            : "As drawn";
+  const placeSummary = shown ? sizeSummary(sizePresets[shown.kind], shown.w, shown.h, shown.locked) : "";
+
   return (
     <BottomSheet
       visible={Boolean(item)}
@@ -177,224 +194,230 @@ export function ItemOptions({
                   </Chip>
                 ))}
               </View>
-              <Text style={ui.label}>Facing</Text>
-              <View style={ui.chips}>
-                <Chip selected={!shown.flip} onPress={() => onChange({ flip: false } as Partial<TrinketItem>)}>
-                  As drawn
-                </Chip>
-                <Chip selected={Boolean(shown.flip)} onPress={() => onChange({ flip: true } as Partial<TrinketItem>)}>
-                  Flipped
-                </Chip>
-              </View>
             </>
           ) : null}
 
-          {shown.kind === "hollow" ? (
-            <>
-              <Text style={ui.label}>Looks like</Text>
-              <View style={ui.chips}>
-                {hollowLooks.map((info) => (
-                  <Chip
-                    key={info.look}
-                    icon={info.icon}
-                    selected={shown.look === info.look}
-                    onPress={() => onChange({ look: info.look } as Partial<HollowItem>)}
-                  >
-                    {info.label}
+          <Collapsible id="tile-looks" icon="palette" title="How it looks" summary={looksSummary} defaultOpen>
+            {shown.kind === "trinket" ? (
+              <>
+                <Text style={ui.label}>Facing</Text>
+                <View style={ui.chips}>
+                  <Chip selected={!shown.flip} onPress={() => onChange({ flip: false } as Partial<TrinketItem>)}>
+                    As drawn
                   </Chip>
-                ))}
-              </View>
-              <Text style={ui.label}>Decorations</Text>
-              <View style={ui.chips}>
-                {hollowDecors.map((info) => (
-                  <Chip
-                    key={info.decor}
-                    icon={info.icon}
-                    selected={(shown.decor ?? "none") === info.decor}
-                    onPress={() => onChange({ decor: info.decor } as Partial<HollowItem>)}
-                  >
-                    {info.label}
+                  <Chip selected={Boolean(shown.flip)} onPress={() => onChange({ flip: true } as Partial<TrinketItem>)}>
+                    Flipped
                   </Chip>
-                ))}
-              </View>
-            </>
-          ) : null}
-
-          {shown.kind === "nook" && nook ? (
-            <>
-              <Text style={ui.label}>Style</Text>
-              <View style={ui.chips}>
-                {(
-                  [
-                    ["soft", "Soft"],
-                    ["bold", "Bold"],
-                    ["outline", "Outline"],
-                  ] as const
-                ).map(([look, labelText]) => (
-                  <Chip
-                    key={look}
-                    selected={(shown.look ?? "soft") === look}
-                    onPress={() => onChange({ look } as Partial<NookItem>)}
-                  >
-                    {labelText}
-                  </Chip>
-                ))}
-              </View>
-              <Text style={ui.label}>Icon</Text>
-              <IconPicker
-                value={shown.icon}
-                fallback={nook.icon}
-                onChange={(icon) => onChange({ icon } as Partial<NookItem>)}
-              />
-            </>
-          ) : null}
-
-          {shown.kind === "label" ? (
-            <>
-              <Text style={ui.label}>Style</Text>
-              <View style={ui.chips}>
-                {(["title", "heading", "caption"] as const).map((size) => (
-                  <Chip key={size} selected={shown.size === size} onPress={() => onChange({ size } as Partial<LabelItem>)}>
-                    {size === "title" ? "Title" : size === "heading" ? "Heading" : "Caption"}
-                  </Chip>
-                ))}
-              </View>
-              {onDivider ? (
-                <View style={[ui.row, { justifyContent: "space-between" }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={ui.cardTitle}>Fold-away divider</Text>
-                    <Text style={ui.muted}>Tap it on your Hearth to fold away everything under it, down to the next divider.</Text>
-                  </View>
-                  <Switch value={Boolean(shown.divider)} onValueChange={onDivider} trackColor={{ true: colors.bark }} />
                 </View>
-              ) : null}
-              <Text style={ui.label}>Line up</Text>
-              <View style={ui.chips}>
-                {(["left", "center", "right"] as const).map((align) => (
-                  <Chip key={align} selected={shown.align === align} onPress={() => onChange({ align } as Partial<LabelItem>)}>
-                    {align[0].toUpperCase() + align.slice(1)}
-                  </Chip>
-                ))}
-              </View>
-            </>
-          ) : null}
-
-          <Text style={ui.label}>Tags</Text>
-          <TagsEditor tags={shown.tags} known={knownTags} onChange={(tags) => onChange({ tags })} />
-
-          <Text style={ui.label}>When it shows</Text>
-          <SeasonPicker value={shown.showIn} onChange={(showIn) => onChange({ showIn })} />
-
-          <Text style={ui.label}>Size</Text>
-          <View style={ui.chips}>
-            {sizePresets[shown.kind].map((preset) => (
-              <Chip
-                key={preset.label}
-                selected={shown.w === preset.w && shown.h === preset.h}
-                onPress={() => {
-                  tap();
-                  onResize(preset.w, preset.h);
-                }}
-              >
-                {preset.label}
-              </Chip>
-            ))}
-          </View>
-          <Text style={ui.muted}>Or drag the corner handle on the Hearth for any size.</Text>
-
-          <Text style={ui.label}>{shown.kind === "trinket" ? "Main color" : "Color"}</Text>
-          <ColorPicker
-            value={shown.kind === "label" ? shown.color : itemColor(shown)}
-            onChange={(color) => onChange({ color })}
-            deep={shown.kind === "label"}
-            fallback={shown.kind === "label" ? "" : itemColor(shown)}
-          />
-
-          {shown.kind === "nook" || shown.kind === "hollow" ? (
-            <>
-              {shown.kind === "nook" ? (
-                <>
-                  <Text style={ui.label}>Shape</Text>
-                  <View style={ui.chips}>
-                    {tileShapes.map((t) => (
-                      <Chip key={t.key} icon={t.icon} selected={(shown.shape ?? "arch") === t.key} onPress={() => onChange({ shape: t.key })}>
-                        {t.label}
-                      </Chip>
-                    ))}
-                  </View>
-                  <Text style={ui.label}>Corners</Text>
-                  <View style={ui.chips}>
-                    {cornerChoices.map((c) => (
-                      <Chip key={c.key} selected={(shown.corners ?? "soft") === c.key} onPress={() => onChange({ corners: c.key })}>
-                        {c.label}
-                      </Chip>
-                    ))}
-                  </View>
-                </>
-              ) : null}
-              <Text style={ui.label}>Shadow</Text>
-              <View style={ui.chips}>
-                {liftChoices.map((c) => (
-                  <Chip
-                    key={c.key}
-                    selected={(shown.lift ?? (shown.kind === "nook" ? "raised" : "soft")) === c.key}
-                    onPress={() => onChange({ lift: c.key })}
-                  >
-                    {c.label}
-                  </Chip>
-                ))}
-              </View>
-              {shown.kind === "nook" ? (
-                <>
-                  <Text style={ui.label}>Border</Text>
-                  <View style={ui.chips}>
-                    <Chip selected={!shown.border} onPress={() => onChange({ border: false })}>
-                      None
+              </>
+            ) : null}
+            {shown.kind === "hollow" ? (
+              <>
+                <Text style={ui.label}>Looks like</Text>
+                <View style={ui.chips}>
+                  {hollowLooks.map((info) => (
+                    <Chip
+                      key={info.look}
+                      icon={info.icon}
+                      selected={shown.look === info.look}
+                      onPress={() => onChange({ look: info.look } as Partial<HollowItem>)}
+                    >
+                      {info.label}
                     </Chip>
-                    <Chip selected={Boolean(shown.border)} onPress={() => onChange({ border: true })}>
-                      Outlined
+                  ))}
+                </View>
+                <Text style={ui.label}>Decorations</Text>
+                <View style={ui.chips}>
+                  {hollowDecors.map((info) => (
+                    <Chip
+                      key={info.decor}
+                      icon={info.icon}
+                      selected={(shown.decor ?? "none") === info.decor}
+                      onPress={() => onChange({ decor: info.decor } as Partial<HollowItem>)}
+                    >
+                      {info.label}
                     </Chip>
-                  </View>
-                </>
-              ) : null}
-            </>
-          ) : null}
+                  ))}
+                </View>
+              </>
+            ) : null}
 
-          <View style={[ui.row, { justifyContent: "space-between" }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={ui.cardTitle}>Lock in place</Text>
-              <Text style={ui.muted}>Can't be dragged, resized or removed until you unlock it.</Text>
-            </View>
-            <Switch
-              value={Boolean(shown.locked)}
-              onValueChange={(locked) => onChange({ locked: locked || undefined })}
-              trackColor={{ true: colors.bark }}
+            {shown.kind === "nook" && nook ? (
+              <>
+                <Text style={ui.label}>Style</Text>
+                <View style={ui.chips}>
+                  {(
+                    [
+                      ["soft", "Soft"],
+                      ["bold", "Bold"],
+                      ["outline", "Outline"],
+                    ] as const
+                  ).map(([look, labelText]) => (
+                    <Chip
+                      key={look}
+                      selected={(shown.look ?? "soft") === look}
+                      onPress={() => onChange({ look } as Partial<NookItem>)}
+                    >
+                      {labelText}
+                    </Chip>
+                  ))}
+                </View>
+                <Text style={ui.label}>Icon</Text>
+                <IconPicker
+                  value={shown.icon}
+                  fallback={nook.icon}
+                  onChange={(icon) => onChange({ icon } as Partial<NookItem>)}
+                />
+              </>
+            ) : null}
+
+            {shown.kind === "label" ? (
+              <>
+                <Text style={ui.label}>Style</Text>
+                <View style={ui.chips}>
+                  {(["title", "heading", "caption"] as const).map((size) => (
+                    <Chip key={size} selected={shown.size === size} onPress={() => onChange({ size } as Partial<LabelItem>)}>
+                      {size === "title" ? "Title" : size === "heading" ? "Heading" : "Caption"}
+                    </Chip>
+                  ))}
+                </View>
+                {onDivider ? (
+                  <View style={[ui.row, { justifyContent: "space-between" }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={ui.cardTitle}>Fold-away divider</Text>
+                      <Text style={ui.muted}>Tap it on your Hearth to fold away everything under it, down to the next divider.</Text>
+                    </View>
+                    <Switch value={Boolean(shown.divider)} onValueChange={onDivider} trackColor={{ true: colors.bark }} />
+                  </View>
+                ) : null}
+                <Text style={ui.label}>Line up</Text>
+                <View style={ui.chips}>
+                  {(["left", "center", "right"] as const).map((align) => (
+                    <Chip key={align} selected={shown.align === align} onPress={() => onChange({ align } as Partial<LabelItem>)}>
+                      {align[0].toUpperCase() + align.slice(1)}
+                    </Chip>
+                  ))}
+                </View>
+              </>
+            ) : null}
+            <Text style={ui.label}>{shown.kind === "trinket" ? "Main color" : "Color"}</Text>
+            <ColorPicker
+              value={shown.kind === "label" ? shown.color : itemColor(shown)}
+              onChange={(color) => onChange({ color })}
+              deep={shown.kind === "label"}
+              fallback={shown.kind === "label" ? "" : itemColor(shown)}
             />
-          </View>
 
-          {moveTargets.length && onMoveTo && shown.kind !== "hollow" ? (
-            <>
-              <Text style={ui.label}>Move to</Text>
-              <View style={ui.chips}>
-                {moveTargets.map((target) => (
-                  <Chip
-                    key={target.scope ?? "hearth"}
-                    icon={target.scope ? "burrow" : "hearth"}
-                    onPress={() => {
-                      tap("success");
-                      onMoveTo(target.scope);
-                    }}
-                  >
-                    {target.label}
-                  </Chip>
-                ))}
+            {shown.kind === "nook" || shown.kind === "hollow" ? (
+              <>
+                {shown.kind === "nook" ? (
+                  <>
+                    <Text style={ui.label}>Shape</Text>
+                    <View style={ui.chips}>
+                      {tileShapes.map((t) => (
+                        <Chip key={t.key} icon={t.icon} selected={(shown.shape ?? "arch") === t.key} onPress={() => onChange({ shape: t.key })}>
+                          {t.label}
+                        </Chip>
+                      ))}
+                    </View>
+                    <Text style={ui.label}>Corners</Text>
+                    <View style={ui.chips}>
+                      {cornerChoices.map((c) => (
+                        <Chip key={c.key} selected={(shown.corners ?? "soft") === c.key} onPress={() => onChange({ corners: c.key })}>
+                          {c.label}
+                        </Chip>
+                      ))}
+                    </View>
+                  </>
+                ) : null}
+                <Text style={ui.label}>Shadow</Text>
+                <View style={ui.chips}>
+                  {liftChoices.map((c) => (
+                    <Chip
+                      key={c.key}
+                      selected={(shown.lift ?? (shown.kind === "nook" ? "raised" : "soft")) === c.key}
+                      onPress={() => onChange({ lift: c.key })}
+                    >
+                      {c.label}
+                    </Chip>
+                  ))}
+                </View>
+                {shown.kind === "nook" ? (
+                  <>
+                    <Text style={ui.label}>Border</Text>
+                    <View style={ui.chips}>
+                      <Chip selected={!shown.border} onPress={() => onChange({ border: false })}>
+                        None
+                      </Chip>
+                      <Chip selected={Boolean(shown.border)} onPress={() => onChange({ border: true })}>
+                        Outlined
+                      </Chip>
+                    </View>
+                  </>
+                ) : null}
+              </>
+            ) : null}
+          </Collapsible>
+
+          <Collapsible id="tile-size" icon="resize" title="Size & place" summary={placeSummary}>
+            <Text style={ui.label}>Size</Text>
+            <View style={ui.chips}>
+              {sizePresets[shown.kind].map((preset) => (
+                <Chip
+                  key={preset.label}
+                  selected={shown.w === preset.w && shown.h === preset.h}
+                  onPress={() => {
+                    tap();
+                    onResize(preset.w, preset.h);
+                  }}
+                >
+                  {preset.label}
+                </Chip>
+              ))}
+            </View>
+            <Text style={ui.muted}>Or drag the corner handle on the Hearth for any size.</Text>
+            <View style={[ui.row, { justifyContent: "space-between" }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={ui.cardTitle}>Lock in place</Text>
+                <Text style={ui.muted}>Can't be dragged, resized or removed until you unlock it.</Text>
               </View>
-            </>
-          ) : null}
+              <Switch
+                value={Boolean(shown.locked)}
+                onValueChange={(locked) => onChange({ locked: locked || undefined })}
+                trackColor={{ true: colors.bark }}
+              />
+            </View>
+            {moveTargets.length && onMoveTo && shown.kind !== "hollow" ? (
+              <>
+                <Text style={ui.label}>Move to</Text>
+                <View style={ui.chips}>
+                  {moveTargets.map((target) => (
+                    <Chip
+                      key={target.scope ?? "hearth"}
+                      icon={target.scope ? "burrow" : "hearth"}
+                      onPress={() => {
+                        tap("success");
+                        onMoveTo(target.scope);
+                      }}
+                    >
+                      {target.label}
+                    </Chip>
+                  ))}
+                </View>
+              </>
+            ) : null}
+          </Collapsible>
+
+          <Collapsible id="tile-when" icon="calendar" title="When it shows" summary={showInWords(shown.showIn)}>
+            <SeasonPicker value={shown.showIn} onChange={(showIn) => onChange({ showIn })} />
+          </Collapsible>
+
+          <Collapsible id="tile-tags" icon="price" title="Tags" summary={tagsSummary(shown.tags)}>
+            <TagsEditor tags={shown.tags} known={knownTags} onChange={(tags) => onChange({ tags })} />
+          </Collapsible>
 
           {copyTargets.length && onCopyTo && shown.kind !== "hollow" ? (
-            <>
-              <Text style={ui.label}>Make a copy</Text>
+            <Collapsible id="tile-copy" icon="copy" title="Make a copy" summary="Put another one somewhere else">
               <View style={ui.chips}>
                 {copyTargets.map((target) => (
                   <Chip
@@ -412,7 +435,7 @@ export function ItemOptions({
               {shown.kind === "nook" ? (
                 <Text style={ui.muted}>Every copy opens the same {nook?.title ?? "Nook"} — style each one your own way.</Text>
               ) : null}
-            </>
+            </Collapsible>
           ) : null}
 
           <View style={[ui.row, { marginTop: 8 }]}>
