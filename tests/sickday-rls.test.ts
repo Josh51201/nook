@@ -55,7 +55,7 @@ describe.runIf(canRun)("Sick Day: the Home and its helpers see it, nobody else; 
     await clients.sarah.rpc("accept_home_invite", { invite_id: invite });
     const { data: home } = await clients.josh.rpc("my_home");
     homeId = home;
-    const { data: kid } = await clients.josh.rpc("create_managed_profile", { profile_name: "Mia Test", burrow_ids: [burrow] });
+    const { data: kid } = await clients.josh.rpc("create_home_kid", { profile_name: "Mia Test", burrow_ids: [burrow] });
     miaId = kid;
 
     // Read back in the same statement that adds it (the Pet Care bug).

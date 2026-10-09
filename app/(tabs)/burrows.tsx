@@ -113,7 +113,10 @@ export default function Burrows() {
     if (data?.kind === "burrow") {
       router.push(`/burrow/${data.id}`);
     } else {
-      Alert.alert("It's yours now!", "Your Wishbook moved onto your account. Welcome to Nook.");
+      Alert.alert(
+        "It's yours now!",
+        "Your Wishbook, profile and everything else your family kept for you moved onto your account, and you keep your place in their Home. Welcome to Nook."
+      );
       router.push("/gift-nook/wishbook");
     }
   }

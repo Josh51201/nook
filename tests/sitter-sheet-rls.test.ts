@@ -76,16 +76,16 @@ describe.runIf(canRun)("Sitter Sheet: the Home writes it, a link shows only what
     const { data: home } = await clients.josh.rpc("my_home");
     homeId = home as string;
 
-    // Two of sarah's kids (so managed by someone in the Home), one picked.
-    const { data: kid } = await clients.sarah.rpc("create_managed_profile", { profile_name: "Lily Smith", burrow_ids: [burrow] });
+    // Two of sarah's kids, living in the Home (HOME-007), one picked.
+    const { data: kid } = await clients.sarah.rpc("create_home_kid", { profile_name: "Lily Smith", burrow_ids: [burrow] });
     kidId = kid as string;
-    const { data: other } = await clients.sarah.rpc("create_managed_profile", { profile_name: "Max Smith", burrow_ids: [burrow] });
+    const { data: other } = await clients.sarah.rpc("create_home_kid", { profile_name: "Max Smith", burrow_ids: [burrow] });
     otherKidId = other as string;
     await clients.sarah.from("dietary_needs").insert({ profile_id: kidId, allergies: ["peanuts"], diets: ["vegetarian"] });
     await clients.sarah.from("dietary_needs").insert({ profile_id: otherKidId, allergies: ["shellfish"], diets: [] });
 
     const { data: strangerBurrow } = await clients.stranger.rpc("create_burrow", { burrow_name: `Elsewhere ${runId}` });
-    const { data: strangerKid } = await clients.stranger.rpc("create_managed_profile", {
+    const { data: strangerKid } = await clients.stranger.rpc("create_home_kid", {
       profile_name: "Theo",
       burrow_ids: [strangerBurrow],
     });
@@ -242,12 +242,12 @@ describe.runIf(canRun)("Sitter Sheet: the Home writes it, a link shows only what
 
   it("a kid who leaves the Home drops off the link, and the link can still be switched off", async () => {
     const link = await makeLink({ kid_ids: [kidId] });
-    await admin.from("profile_managers").delete().eq("profile_id", kidId);
+    await clients.sarah.rpc("set_kid_home", { target_kid: kidId, lives_here: false });
     expect((await view(link.token)).kids).toEqual([]);
     const { error } = await clients.josh.from("sitter_links").update({ revoked_at: new Date().toISOString() }).eq("id", link.id);
     expect(error).toBeNull();
     expect(await view(link.token)).toBeNull();
-    await admin.from("profile_managers").insert({ profile_id: kidId, manager_id: ids.sarah });
+    await clients.sarah.rpc("set_kid_home", { target_kid: kidId, lives_here: true });
   });
 
   it("the Home sees how often a link was opened, but can't fake the count", async () => {

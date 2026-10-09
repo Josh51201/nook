@@ -138,7 +138,7 @@ export default function ManageProfile() {
     const message =
       `${savedName}, your Nook Wishbook is ready for you! 🎁\n\n` +
       `Sign up for Nook with your own email, open Burrows → "Got a code?", and enter:\n\n${code}\n\n` +
-      `Everything on your list comes with you. (Works for 7 days.)`;
+      `Everything that's yours comes with you, and you keep your place in the Home. (Works for 7 days.)`;
     Alert.alert(
       `Hand-off code: ${code}`,
       `${savedName} enters this on their own account. Works for 7 days.`,
@@ -276,8 +276,9 @@ export default function ManageProfile() {
       <Text style={ui.sectionTitle}>Hand it over</Text>
       <Text style={ui.muted}>
         When {savedName} gets their own phone, send them a code. Once they enter
-        it, the list is theirs — and like everyone else, they won't see what's
-        been tucked. You'll stop managing it.
+        it, everything is theirs: their Wishbook, profile, allergies and sick
+        days, and their place in your Home. Like everyone else, they won't see
+        what's been tucked, and you'll stop managing them.
       </Text>
       <Button
         title={`Send ${savedName} a hand-off code`}

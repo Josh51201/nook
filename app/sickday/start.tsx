@@ -151,8 +151,11 @@ export default function StartSpell() {
             <EmptyState icon="kid" title="Nobody here yet" />
           )}
           <Text style={ui.muted}>
-            Your Home and the kids you look after. A kid shows here once they have a profile: in the Gift Nook, tap “Make a Wishbook for a kid”.
+            Your Home and the kids who live in it. Kids are added on your Home page (Burrows → Your Home), or here.
           </Text>
+          <Chip icon="kid" onPress={() => router.push("/gift-nook/managed-form?from=home")}>
+            Add a kid
+          </Chip>
         </>
       ) : (
         <Text style={ui.cardTitle}>{person?.name ?? "Someone"}</Text>

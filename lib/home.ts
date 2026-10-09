@@ -10,9 +10,23 @@ import { supabase } from "./supabase";
 // Nooks keep their things against the Home's id (see my_home() in
 // supabase/migrations/20261008170000_homes.sql).
 
-// HOME-006: a Home holds at most this many people. Also enforced in the
-// database (enforce_home_size) — change it in both places or not at all.
+// HOME-006: a Home holds at most this many people, kids included (HOME-007).
+// Also enforced in the database (enforce_home_size, enforce_home_kids_size)
+// — change it in both places or not at all.
 export const MAX_HOME_MEMBERS = 6;
+
+// A kid you look after (HOME-009), and whether they live in your Home, in
+// another one, or nowhere yet.
+export type MyKid = {
+  id: string;
+  display_name: string | null;
+  avatar_icon: string | null;
+  avatar_color: string | null;
+  home_id: string | null;
+  lives_with_me: boolean;
+};
+
+export type HomeKid = { kid_id: string; profiles: Profile | null };
 
 export type HomeMember = { profile_id: string; profiles: Profile | null };
 
@@ -21,6 +35,9 @@ export type HomeInvite = { id: string; home_id: string; invited: string; invited
 export type HomeData = {
   homeId: string;
   members: HomeMember[];
+  // Kids who live here (HOME-007), and the kids you look after anywhere.
+  kids: HomeKid[];
+  myKids: MyKid[];
   // Invites you've sent, and invites waiting for you.
   sent: HomeInvite[];
   incoming: HomeInvite[];
@@ -35,10 +52,12 @@ export async function loadHome(userId: string): Promise<HomeData> {
   const { data: homeId, error } = await supabase.rpc("my_home");
   if (error) throw error;
 
-  const [membersResult, invitesResult, matesResult] = await Promise.all([
+  const [membersResult, invitesResult, matesResult, kidsResult, myKidsResult] = await Promise.all([
     supabase.from("home_members").select(`profile_id, profiles(${PROFILE_FIELDS})`).eq("home_id", homeId),
     supabase.from("home_invites").select("id, home_id, invited, invited_by"),
     supabase.from("burrow_members").select(`profiles(${PROFILE_FIELDS})`),
+    supabase.from("home_kids").select(`kid_id, profiles!kid_id(${PROFILE_FIELDS})`).eq("home_id", homeId).order("added_at"),
+    supabase.rpc("my_kids"),
   ]);
 
   const people = new Map<string, Profile>();
@@ -63,7 +82,16 @@ export async function loadHome(userId: string): Promise<HomeData> {
       inviterHomes.set(row.home_id, [...(inviterHomes.get(row.home_id) ?? []), row.profiles.display_name?.trim() || "Someone"]);
     }
   }
-  return { homeId, members, sent, incoming, people, inviterHomes };
+  return {
+    homeId,
+    members,
+    kids: (kidsResult.data ?? []) as unknown as HomeKid[],
+    myKids: (myKidsResult.data ?? []) as MyKid[],
+    sent,
+    incoming,
+    people,
+    inviterHomes,
+  };
 }
 
 // Your Home for a screen, fresh each time it comes into view.
