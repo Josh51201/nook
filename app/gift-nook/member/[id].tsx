@@ -79,6 +79,9 @@ export default function MemberWishbook() {
   const [gifts, setGifts] = useState<FamilyGift[]>([]);
   const [gatheringTitle, setGatheringTitle] = useState<string | null>(null);
   const [hiddenByPicks, setHiddenByPicks] = useState(0);
+  // GIFT-039: you said you're not getting them a gift for this Gathering.
+  // Only you ever see it.
+  const [skipped, setSkipped] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,6 +152,14 @@ export default function MemberWishbook() {
             setHiddenByPicks(all.length - shown.length);
           }
           setGatheringTitle(gatheringResult?.data?.title ?? null);
+          if (gatheringId) {
+            const { data: skip } = await supabase
+              .from("gathering_skips")
+              .select("profile_id")
+              .eq("gathering_id", gatheringId)
+              .eq("profile_id", profileId);
+            setSkipped(Boolean(skip?.length));
+          }
           setIsLoading(false);
         },
         setError,
@@ -313,11 +324,18 @@ export default function MemberWishbook() {
           <View style={[ui.row, { gap: 6 }]}>
             <Icon name="check" size={18} bounce={mine.status} />
             <Text
-              style={{ color: colors.bark, fontWeight: "700", fontSize: 15 }}
+              style={{ color: colors.bark, fontWeight: "700", fontSize: 15, flex: 1 }}
             >
               You tucked this · {tuckStatusLabel[mine.status]}
             </Text>
           </View>
+          {/* GIFT-040: which Gathering it's for, so a gift for someone's
+              birthday isn't mistaken for their Christmas one. */}
+          <Text style={ui.muted}>
+            {mine.gathering_id
+              ? `For ${mine.gatherings?.title ?? "another Gathering"}`
+              : "Not for a particular Gathering"}
+          </Text>
           {mine.note ? (
             <Text style={styles.note}>Your note: “{mine.note}”</Text>
           ) : null}
@@ -332,6 +350,25 @@ export default function MemberWishbook() {
                 Mark bought
               </Chip>
             )}
+            {gatheringId && mine.gathering_id !== gatheringId ? (
+              <Chip
+                icon="calendar"
+                onPress={() =>
+                  !isBusy &&
+                  run(
+                    mine.id,
+                    () =>
+                      supabase.rpc("set_tuck_gathering", {
+                        claim_id: mine.id,
+                        target_gathering: gatheringId,
+                      }),
+                    "success",
+                  )
+                }
+              >
+                {`Count it for ${gatheringTitle ?? "this Gathering"}`}
+              </Chip>
+            ) : null}
             <Chip
               icon="edit"
               onPress={() => router.push(`/gift-nook/tuck/${mine.id}`)}
@@ -450,6 +487,29 @@ export default function MemberWishbook() {
               : undefined
           }
         />
+      ) : null}
+      {gatheringId && gatheringTitle && !gifts.some((g) => g.claims.some((c) => c.claimed_by === userId && isActiveTuck(c) && c.gathering_id === gatheringId)) ? (
+        <Tap
+          onPress={() =>
+            run(
+              "skip",
+              () =>
+                skipped
+                  ? supabase.from("gathering_skips").delete().eq("gathering_id", gatheringId).eq("profile_id", profileId)
+                  : supabase.from("gathering_skips").insert({ gathering_id: gatheringId, giver_id: userId, profile_id: profileId }),
+              "light",
+            )
+          }
+          style={[ui.row, { gap: 8, alignSelf: "flex-start" }]}
+          accessibilityRole="button"
+        >
+          <Icon name={skipped ? "undo" : "minus"} size={15} color={colors.bark} />
+          <Text style={ui.link}>
+            {skipped
+              ? `You're not getting ${name} a gift for ${gatheringTitle} — undo`
+              : `Not getting ${name} a gift for ${gatheringTitle}`}
+          </Text>
+        </Tap>
       ) : null}
 
       <View style={ui.row}>

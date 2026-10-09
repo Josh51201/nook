@@ -42,10 +42,13 @@ export type Tuck = {
   claimed_at: string;
   acknowledged_at: string | null;
   profiles: { display_name: string | null } | null; // the giver (GIFT-024)
+  // Which Gathering it's for (GIFT-040), if any — and its name, if you can see it.
+  gathering_id?: string | null;
+  gatherings?: { title: string } | null;
 };
 
 export const TUCK_SELECT =
-  "id, claimed_by, released_at, status, note, claimed_at, acknowledged_at, profiles(display_name)";
+  "id, claimed_by, released_at, status, note, claimed_at, acknowledged_at, gathering_id, profiles(display_name), gatherings(title)";
 
 // Still counts against the gift: not released and not already given.
 export function isActiveTuck(tuck: Pick<Tuck, "released_at" | "status">) {

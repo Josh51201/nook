@@ -74,7 +74,10 @@ All of CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](arc
 ## 2. Built Nooks (requirements archived)
 Full requirements for these live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_NOOKS_BUILT.md). **Grep it by ID before changing one of these Nooks**; edit requirements there.
 - **Sitter Sheet Nook** (SIT-001..014): one page for sitters, shared by a link that runs out. Page hosted on Netlify for now (Q-031).
-- **Gift Nook** (GIFT-001..037): wish lists ("Wishbooks") per person across Burrows, Gatherings, claims ("Tucks"), kids' managed profiles. Idea Stash (GIFT-036) built 2026-10-09.
+- **Gift Nook** (GIFT-001..040): wish lists ("Wishbooks") per person across Burrows, Gatherings, claims ("Tucks"), kids' managed profiles. Idea Stash (GIFT-036) built 2026-10-09.
+  - **GIFT-038** On a Gathering with lots of people (like Christmas), see who you've tucked a gift for *for that Gathering*, and filter to the people you still need one for (Josh). _(Built, proposed details: a "Your shopping" card with a progress bar and Still need / Got one / Not getting / Everyone filters, starting on Still need; each person says what you're giving, or that a gift you tucked is for another Gathering. Only you see it.)_
+  - **GIFT-039** Say "I'm not getting them a gift" for one Gathering, so they stop showing in Still need (Josh). _(Built, proposed details: private to you, never seen by them or anyone else, no notice; on the Gathering's list and on their Wishbook when opened from it; a gift tucked for them later counts anyway.)_
+  - **GIFT-040** _(Proposed.)_ Each of your tucks says which Gathering it's for, and one tap counts it for a different Gathering you're both invited to (a gift tucked before Christmas was planned).
 - **Potluck Nook** (POT-001..009): who brings what, RSVPs, allergy warnings. Since GATH-004 a Potluck is part of a Gathering and uses its guests, hosts and RSVPs.
 - **Letterbox Nook** (LET-001..011): holiday cards, addresses, labels, thank-yous.
 - **Pet Care Nook** (PET-001..007): feeding, vet/meds, helpers.
