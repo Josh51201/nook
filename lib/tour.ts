@@ -76,7 +76,7 @@ export const firstTour: TourStep[] = [
     screen: "burrows",
     target: "burrows-start",
     title: "Start a Burrow",
-    body: "Give it a name, like “The Collinses”. You'll be its admin, and you can invite people by sending them a Knock.",
+    body: "Give it a name, like “The Hazelwoods” or “Grandma's Crew”. You'll be its admin, and you can invite people by sending them a Knock.",
   },
   {
     icon: "door",

@@ -221,7 +221,7 @@ export default function Burrows() {
           style={ui.input}
           value={newBurrowName}
           onChangeText={setNewBurrowName}
-          placeholder="e.g. The Collinses"
+          placeholder="e.g. The Hazelwoods or Grandma's Crew"
           placeholderTextColor={colors.muted}
           returnKeyType="done"
           onSubmitEditing={createBurrow}
