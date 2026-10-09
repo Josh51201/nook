@@ -16,7 +16,7 @@ import { dishWarnings, tagLabel, type Person } from "../../lib/potluck";
 import { formatMinutes, madeWords, scaleFactor, scaleIngredient, youWords } from "../../lib/recipes";
 import { loadFamilyNeeds, loadRecipe, saveCopy, type FamilyRecipe } from "../../lib/recipes-data";
 import { colors, ui } from "../../lib/theme";
-import { tiktokVideoId } from "../../lib/tiktok";
+import { isTikTok, useTikTokVideo } from "../../lib/tiktok";
 
 const multipliers = [0.5, 1, 2, 3];
 
@@ -58,13 +58,16 @@ export default function RecipeScreen() {
     }, [load])
   );
 
+  // A TikTok recipe's video (REC-014); a short link is looked up first.
+  const video = useTikTokVideo(recipe?.source_url);
+
   if (isLoading) return <LoadingScreen cards={3} />;
   if (!recipe) {
     return <EmptyState icon="recipe" title="This recipe isn't here" body={error ?? "It may have been deleted, or kept just for its owner."} />;
   }
 
   const mine = recipe.owner_id === userId;
-  const videoId = recipe.source_url ? tiktokVideoId(recipe.source_url) : null;
+  const videoId = video?.videoId ?? null;
   const factor = recipe.servings ? scaleFactor(recipe.servings, servings ?? recipe.servings) : times;
   const warnings = dishWarnings(recipe.tags, people).map(youWords);
   const time = [
@@ -97,7 +100,7 @@ export default function RecipeScreen() {
       />
 
       {videoId ? (
-        <TikTokPlayer videoId={videoId} url={recipe.source_url!} />
+        <TikTokPlayer videoId={videoId} url={video!.url} />
       ) : recipe.image_url ? (
         <View style={{ borderRadius: 22, overflow: "hidden", backgroundColor: findNook("recipes")!.color }}>
           <Image source={{ uri: recipe.image_url }} style={{ width: "100%", aspectRatio: 16 / 10 }} contentFit="cover" transition={200} />
@@ -191,7 +194,7 @@ export default function RecipeScreen() {
         </>
       ) : null}
 
-      {recipe.source_url && !videoId ? (
+      {recipe.source_url && !isTikTok(recipe.source_url) ? (
         <Tap onPress={() => Linking.openURL(recipe.source_url!).catch(() => {})} style={[ui.row, { gap: 6, alignSelf: "flex-start" }]}>
           <Icon name="link" size={15} />
           <Text style={ui.link} numberOfLines={1}>

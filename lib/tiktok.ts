@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 // TikTok recipes (REC-013/014). TikTok's public oEmbed lookup gives a
 // video's caption, creator and thumbnail with no account or key. Its
 // thumbnail links stop working after about a day, so Nook never saves one:
@@ -11,8 +13,21 @@ export type TikTokInfo = {
   thumbnailUrl: string | null;
 };
 
+// TikTok's own site, and the short domain its Share → Copy link now gives
+// (www.tt.site/t/…), which redirects to the video on tiktok.com.
+const TIKTOK_HOSTS = ["tiktok.com", "tt.site"];
+
 export function isTikTok(url: string | null | undefined) {
   if (!url) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return TIKTOK_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+  } catch {
+    return false;
+  }
+}
+
+function onTikTokItself(url: string) {
   try {
     const host = new URL(url).hostname.toLowerCase();
     return host === "tiktok.com" || host.endsWith(".tiktok.com");
@@ -58,9 +73,13 @@ export function parseCaption(caption: string) {
       .slice(0, 40);
   }
 
-  const firstLine = lead.split(/\n|[.!?](?:\s|$)|[|•]/)[0] ?? "";
+  let firstLine = lead.split(/\n|[.!?](?:\s|$)|[|•]/)[0] ?? "";
+  // A long first sentence is usually chatter, not a name: keep up to the
+  // first comma, then whole words up to 60 letters.
+  if (firstLine.length > 50 && firstLine.includes(",")) firstLine = firstLine.split(",")[0];
+  if (firstLine.length > 60) firstLine = firstLine.slice(0, 61).replace(/\s+\S*$/, "");
   // Emoji off the ends of the name.
-  const title = firstLine.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N})]+$/gu, "").trim().slice(0, 80) || null;
+  const title = firstLine.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N})]+$/gu, "").trim() || null;
   return { title, ingredients, notes: clean.slice(0, 2000) || null };
 }
 
@@ -88,7 +107,8 @@ async function oEmbed(url: string): Promise<OEmbed | null> {
 async function lookUp(link: string): Promise<TikTokInfo | null> {
   // TikTok's lookup takes the link as shared, short links (vm.tiktok.com/…,
   // tiktok.com/t/…) included, and says which video it is.
-  let data = await oEmbed(link.split("?")[0]);
+  // (tt.site links it doesn't take, so those are followed first.)
+  let data = onTikTokItself(link) ? await oEmbed(link.split("?")[0]) : null;
   let resolved = link;
   if (!data) {
     // Some share links only work once followed to the video itself.
@@ -124,4 +144,24 @@ export function fetchTikTok(link: string): Promise<TikTokInfo | null> {
   });
   cache.set(link, pending);
   return pending;
+}
+
+// The video behind a saved TikTok link (REC-014). Links saved before the
+// short tt.site kind was recognized have no video id in them, so those are
+// looked up.
+export function useTikTokVideo(sourceUrl: string | null | undefined) {
+  const direct = sourceUrl && isTikTok(sourceUrl) ? tiktokVideoId(sourceUrl) : null;
+  const [found, setFound] = useState<{ videoId: string; url: string } | null>(null);
+
+  useEffect(() => {
+    if (!sourceUrl || !isTikTok(sourceUrl) || direct) return;
+    let live = true;
+    fetchTikTok(sourceUrl).then((info) => live && info && setFound({ videoId: info.videoId, url: info.url }));
+    return () => {
+      live = false;
+    };
+  }, [sourceUrl, direct]);
+
+  if (direct && sourceUrl) return { videoId: direct, url: sourceUrl };
+  return found;
 }

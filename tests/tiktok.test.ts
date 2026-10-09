@@ -7,6 +7,8 @@ describe("TikTok links (REC-013)", () => {
     expect(isTikTok("https://www.tiktok.com/@cook/video/7301234567890123456")).toBe(true);
     expect(isTikTok("https://vm.tiktok.com/ZMabc123/")).toBe(true);
     expect(isTikTok("https://www.tiktok.com/t/ZTabc123/")).toBe(true);
+    expect(isTikTok("https://www.tt.site/t/ZPL6BQUWQ/")).toBe(true);
+    expect(isTikTok("https://notttsite.com/t/x")).toBe(false);
     expect(isTikTok("https://www.allrecipes.com/recipe/1")).toBe(false);
     expect(isTikTok("https://nottiktok.com/video/1")).toBe(false);
     expect(isTikTok(null)).toBe(false);
@@ -35,6 +37,12 @@ describe("reading a TikTok caption (REC-013)", () => {
     expect(result.title).toBe("The best cookies you'll ever make");
     expect(result.ingredients).toEqual([]);
     expect(result.notes).toBe("The best cookies you'll ever make!!");
+  });
+
+  it("keeps a long chatty first sentence short", () => {
+    const caption =
+      "Perfect for slow weekends, feeding a crowd, or when you just want a good comfort breakfast without the fuss. SAVE this one! #breakfastideas";
+    expect(parseCaption(caption).title).toBe("Perfect for slow weekends");
   });
 
   it("copes with a caption that's only hashtags", () => {

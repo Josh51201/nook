@@ -16,7 +16,7 @@ import { findTimers, formatClock, scaleIngredient } from "../../lib/recipes";
 import { loadRecipe, markMade, type FamilyRecipe } from "../../lib/recipes-data";
 import { canRemind, configureReminders } from "../../lib/reminders";
 import { colors, ui } from "../../lib/theme";
-import { tiktokVideoId } from "../../lib/tiktok";
+import { useTikTokVideo } from "../../lib/tiktok";
 
 type Timer = { id: string; label: string; step: number; endsAt: number; notificationId?: string; rang: boolean };
 
@@ -69,6 +69,8 @@ export default function CookMode() {
     if (silent.length) Alert.alert("Time's up", silent.map((t) => `Step ${t.step + 1}: ${t.label}`).join("\n"));
   }, [now, timers]);
 
+  const video = useTikTokVideo(recipe?.source_url);
+
   if (isLoading || !recipe) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -80,7 +82,7 @@ export default function CookMode() {
 
   const current = recipe.steps.findIndex((_, i) => !done.has(i));
   // A TikTok recipe keeps its video at the top to follow along (REC-014).
-  const videoId = recipe.source_url ? tiktokVideoId(recipe.source_url) : null;
+  const videoId = video?.videoId ?? null;
 
   function toggle(set: Set<number>, update: (s: Set<number>) => void, i: number) {
     tap();
@@ -150,7 +152,7 @@ export default function CookMode() {
                 setShowVideo(!showVideo);
               }}
             />
-            {showVideo ? <TikTokPlayer videoId={videoId} url={recipe.source_url!} maxHeight={460} /> : null}
+            {showVideo ? <TikTokPlayer videoId={videoId} url={video!.url} maxHeight={460} /> : null}
           </>
         ) : null}
         {recipe.ingredients.length ? (
