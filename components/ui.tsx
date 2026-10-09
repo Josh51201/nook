@@ -230,7 +230,11 @@ export function HeaderIcon({
       <Icon name={icon} size={22} />
       {badge > 0 ? (
         <Animated.View entering={ZoomIn.springify().damping(12)} style={headerBadge}>
-          <Text style={{ color: colors.white, fontSize: 11, fontWeight: "700" }}>{badge > 9 ? "9+" : badge}</Text>
+          {/* A set line height: the chosen font's own spacing is taller than the
+              badge, and the number's top was getting cut off. */}
+          <Text style={{ color: colors.white, fontSize: 11, lineHeight: 14, fontWeight: "700", textAlign: "center", includeFontPadding: false }}>
+            {badge > 9 ? "9+" : badge}
+          </Text>
         </Animated.View>
       ) : null}
     </Tap>
@@ -239,11 +243,11 @@ export function HeaderIcon({
 
 const headerBadge = themed(() => ({
   position: "absolute" as const,
-  top: 0,
-  right: 0,
-  minWidth: 18,
-  height: 18,
-  borderRadius: 9,
+  top: 1,
+  right: 1,
+  minWidth: 20,
+  height: 20,
+  borderRadius: 10,
   paddingHorizontal: 4,
   backgroundColor: colors.heart,
   alignItems: "center" as const,
