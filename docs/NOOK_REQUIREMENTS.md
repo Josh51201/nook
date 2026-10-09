@@ -75,7 +75,7 @@ All of CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](arc
 Full requirements for these live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_NOOKS_BUILT.md). **Grep it by ID before changing one of these Nooks**; edit requirements there.
 - **Sitter Sheet Nook** (SIT-001..014): one page for sitters, shared by a link that runs out. Page hosted on Netlify for now (Q-031).
 - **Gift Nook** (GIFT-001..037): wish lists ("Wishbooks") per person across Burrows, Gatherings, claims ("Tucks"), kids' managed profiles. Idea Stash (GIFT-036) built 2026-10-09.
-- **Potluck Nook** (POT-001..009): who brings what, RSVPs, allergy warnings.
+- **Potluck Nook** (POT-001..009): who brings what, RSVPs, allergy warnings. Since GATH-004 a Potluck is part of a Gathering and uses its guests, hosts and RSVPs.
 - **Letterbox Nook** (LET-001..011): holiday cards, addresses, labels, thank-yous.
 - **Pet Care Nook** (PET-001..007): feeding, vet/meds, helpers.
 - **Rhythms Nook** (RHY-001..008): yearly home chores.
@@ -152,6 +152,18 @@ Josh picked it from the backlog on 2026-10-09 ("lets do the sick day nook next")
 - **SICK-014** _(Proposed.)_ A Home that was only yours brings its sick spells and cabinet along when you join another (HOME-003, HOME-005); leaving a shared one takes your own sick spells and the medicines saved just for you. Kids' spells stay.
 - _Built 2026-10-09:_ SICK-001..014 in `app/sickday`, with the database rules in the `sick_day` migration (the dose-ready inbox notice needs pg_cron). The privacy tests skip until a service key is in `.env.test.local`.
 
+## 2l. Gathering Nook
+Josh asked 2026-10-09 for an easier place to see and plan Gatherings ("right now the only way to see and create gatherings is within the pot luck and its kinda hidden if its just a game night or something and not food"), and picked each choice below. Anything marked _(Proposed)_ is Claude's detail for him to confirm.
+- **GATH-001** One place that lists every Gathering you're invited to, with a way to plan one. _(Josh picked "its own Nook".)_ _(Proposed: the "Gathering Nook", grouped This week / Coming up / Recently, each showing what you answered and whether it has gift lists or a Potluck; a Hearth tile; each Burrow's page links to its Gatherings.)_
+- **GATH-002** A Gathering can be any get-together, not just a gift one, like a game night. _(Proposed kinds: Christmas, Birthday, A meal, Game night, Party, Anniversary, Baby shower, Other; a day with an optional time, a place and notes.)_
+- **GATH-003** Invite several Burrows, or just specific people, picked from your Burrows with a Burrow filter "to keep it organized" (Josh). _(Proposed: a whole Burrow includes anyone who joins it later; you can only invite your own Burrows and people you share one with; a kid's grown-ups see a Gathering the kid is invited to.)_
+- **GATH-004** When planning, choose what it has: gift lists (the Gift Nook) and/or a Potluck, and the Gathering takes you to them (Josh). A Potluck's guests are its Gathering's guests (Josh picked "Same as the Gathering"); this changes POT-002. _(Proposed: every Potluck now belongs to a Gathering, so planning one from the Potluck Nook plans a Gathering with food; each existing Potluck on its own got a Gathering of its own.)_
+- **GATH-005** Only the hosts (whoever planned it, plus co-hosts they add) change or delete it; guests see it and answer. _(Josh picked "Its hosts".)_ _(Proposed: an admin of an invited Burrow can step in; automatic Birthday Gatherings have no hosts, so anyone invited can change them, as before.)_
+- **GATH-006** Every Gathering has RSVPs: Going, Maybe, Can't make it, shared with its Potluck. _(Josh picked "Yes, on every Gathering".)_ _(Proposed: extra guests count toward "coming"; you answer for kids you look after.)_
+- **GATH-007** _(Proposed.)_ GIFT-007 is unchanged: inviting someone from another Burrow never shows them anyone's Wishbook or tucks. The Gift Nook shows only the Wishbooks of guests you share a Burrow with. Guests see each other's names and pictures on the guest list (photos only for people they share a Burrow with).
+- **GATH-008** _(Proposed.)_ Inbox notices when you're invited, when the day, time or place changes (not if you said no), a week and a day before, and (for hosts) when someone answers. Each can be switched off in the Nook's settings; automatic birthday ones stay quiet. The Gift Nook's two Gathering switches moved here.
+- _Built 2026-10-09:_ GATH-001..008 in `app/gatherings`, with the database rules in the `gatherings` migration. The privacy tests (including GIFT-007 for guests from other Burrows) skip until a service key is in `.env.test.local`.
+
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
 - **MON-002** A subscription belongs to a **Home** and covers everyone in it, up to the Home's cap of 6 (HOME-006). It never covers a Burrow, so joining someone's Burrow unlocks nothing paid. The paid customization follows the Home too, not the person. _(Josh: "I like the per home idea but yes needs capped at 6".)_
@@ -167,7 +179,7 @@ Josh picked it from the backlog on 2026-10-09 ("lets do the sick day nook next")
 
 ## 3. Open Questions
 - **Q-003** For events about one person (a birthday, a baby shower), does the event show only that person's list, while group events like Christmas show everyone's? Who is the "honoree" of an anniversary (both people)?
-  - _Built for now (proposed):_ honorees are optional when creating a Gathering. If any are picked, the Gathering links to their Wishbooks; if none, to everyone in the Burrow. Anniversaries can pick both people.
+  - _Built for now (proposed):_ honorees are optional when creating a Gathering. If any are picked, the Gathering links to their Wishbooks; if none, to everyone invited whose Wishbook you can see (GATH-007). Anniversaries can pick both people.
 - **Q-019** What else should the Gift Nook's settings include?
   - _Built so far:_ "Hide gifts that are already taken" *(proposed)*, plus the four notification switches (GIFT-029). Saved to the account, so they follow you to a new phone.
 - **Q-020** Deleting an account: Apple's App Store requires apps with sign-up to offer in-app account deletion. When someone deletes their account, what happens to Burrows they started, gifts they've tucked for others, and their Wishbook? (Needed before an App Store release, not before.)
@@ -222,6 +234,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | A person's wish list | Wishbook | proposed |
 | Claiming a gift | Tuck (it's "tucked away") | proposed |
 | An event | Gathering | proposed |
+| The Nook listing every Gathering (GATH-001) | Gathering Nook | proposed |
 | Gift categories, and recipe categories (REC-006) | Shelves | proposed |
 | The Nook shop | The Market | proposed |
 | The bottom tab listing every Nook (CORE-067) | Nooks | proposed |

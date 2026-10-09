@@ -107,7 +107,8 @@ export default function GiftNookHome() {
               .is("read_at", null),
             supabase
               .from("gatherings")
-              .select("id, title, burrow_id, gathering_honorees(profile_id)")
+              .select("id, title, burrow_id, gathering_honorees(profile_id), gathering_burrows(burrow_id), gathering_guests(profile_id)")
+              .eq("gifts", true)
               .lt("ends_at", new Date().toISOString())
               .gt("ends_at", thirtyDaysAgo),
             supabase
@@ -116,6 +117,7 @@ export default function GiftNookHome() {
             supabase
               .from("gatherings")
               .select("id, title, kind, ends_at, burrows(name)")
+              .eq("gifts", true)
               .gt("ends_at", new Date().toISOString())
               .order("ends_at")
               .limit(3),
@@ -162,12 +164,15 @@ export default function GiftNookHome() {
                 (gathering.gathering_honorees ?? []) as { profile_id: string }[]
               ).map((h) => h.profile_id),
             );
+            // Invited: in an invited Burrow, or picked one by one (GATH-003).
+            const invitedBurrows = ((gathering.gathering_burrows ?? []) as { burrow_id: string }[]).map((b) => b.burrow_id);
+            const invitedAlone = new Set(((gathering.gathering_guests ?? []) as { profile_id: string }[]).map((g) => g.profile_id));
             const people = [
               { id: userId, who: "you", inBurrow: true },
               ...kidList.map((kid) => ({
                 id: kid.id,
                 who: kid.name,
-                inBurrow: kid.burrowIds.has(gathering.burrow_id),
+                inBurrow: invitedAlone.has(kid.id) || invitedBurrows.some((b) => kid.burrowIds.has(b)),
               })),
             ];
             for (const person of people) {
@@ -319,6 +324,14 @@ export default function GiftNookHome() {
           })}
         </>
       ) : null}
+      <NavCard
+        icon="celebration"
+        iconColor="#9a5b1c"
+        iconBackground="#f3e3c8"
+        title="Plan a Gathering"
+        subtitle="A birthday, Christmas, a shower — with gift lists"
+        onPress={() => router.push({ pathname: "/gatherings/form", params: { gifts: "1" } })}
+      />
 
       <SectionHeader title="Your Burrows" icon="burrow" />
       {burrows.length === 0 ? (

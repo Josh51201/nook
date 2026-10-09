@@ -3,6 +3,13 @@ import { describe, expect, it } from "vitest";
 import { noticeIcon, noticeRoute, unreadByNook } from "../lib/inbox";
 
 describe("noticeRoute", () => {
+  it("sends Gathering notices to the Gathering (GATH-008)", () => {
+    for (const kind of ["gathering_invite", "gathering_changed", "gathering_rsvp", "gathering_soon"]) {
+      expect(noticeRoute({ nook: "gatherings", kind, data: { gathering_id: "g1" } })).toBe("/gatherings/g1");
+    }
+    expect(noticeRoute({ nook: "gatherings", kind: "gathering_invite", data: {} })).toBe("/gatherings");
+  });
+
   it("sends each Gift Nook notice to the right place", () => {
     expect(noticeRoute({ nook: "gift-nook", kind: "gathering_soon", data: { gathering_id: "g1" } })).toBe(
       "/gift-nook/gathering/g1"

@@ -7,7 +7,8 @@ import { Avatar } from "../../components/avatar";
 import { Icon } from "../../components/icon";
 import { Appear, LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
-import { Banner, Button, Chip, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
+import { RsvpCard } from "../../components/rsvp";
+import { Banner, Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, guarded, tap } from "../../lib/feedback";
 import { countdown } from "../../lib/gift-nook";
@@ -20,19 +21,16 @@ import {
   allergens,
   type RsvpStatus,
 } from "../../lib/potluck";
-import { formatWhen, loadPotluck, type Dish, type PotluckData } from "../../lib/potluck-data";
+import { setRsvp } from "../../lib/gatherings-data";
+import { loadPotluck, potluckWhen, type Dish, type PotluckData } from "../../lib/potluck-data";
 import { supabase } from "../../lib/supabase";
 import { colors, themed, ui } from "../../lib/theme";
 
-const statuses: { key: RsvpStatus; label: string }[] = [
-  { key: "going", label: "Going" },
-  { key: "maybe", label: "Maybe" },
-  { key: "no", label: "Can't make it" },
-];
-
 // One Potluck (POT-002..008): when and where, who's coming (RSVPs with a
 // headcount), what's needed and who's bringing what, and a warning on any
-// dish that clashes with the allergy or diet of someone coming.
+// dish that clashes with the allergy or diet of someone coming. The guest
+// list, hosts and RSVPs are its Gathering's (GATH-004): answering here
+// answers for the Gathering too.
 export default function PotluckScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -77,20 +75,12 @@ export default function PotluckScreen() {
   const { potluck, slots, dishes, rsvps, people, myKids, isHost, coming, hosts } = data;
   const nameOf = (profileId: string) => (profileId === userId ? "You" : people.get(profileId)?.name ?? "Someone");
   const { going, maybe } = headcount(rsvps);
-  const myRsvp = rsvps.find((r) => r.profile_id === userId);
   const looseDishes = dishes.filter((dish) => !dish.slot_id || !slots.some((slot) => slot.id === dish.slot_id));
   const withNeeds = coming.filter((person) => person.allergies.length || person.diets.length);
 
-  async function setRsvp(profileId: string, status: RsvpStatus, extraGuests?: number) {
+  async function answer(profileId: string, status: RsvpStatus, extraGuests: number) {
     tap();
-    const current = rsvps.find((r) => r.profile_id === profileId);
-    const { error: rsvpError } = await supabase.from("potluck_rsvps").upsert({
-      potluck_id: id,
-      profile_id: profileId,
-      status,
-      extra_guests: extraGuests ?? current?.extra_guests ?? 0,
-      updated_at: new Date().toISOString(),
-    });
+    const { error: rsvpError } = await setRsvp(potluck.gathering_id, profileId, status, extraGuests);
     if (rsvpError) Alert.alert("Couldn't save that", friendlyError(rsvpError));
     load();
   }
@@ -119,29 +109,6 @@ export default function PotluckScreen() {
     return recipeId && data!.openRecipes.has(recipeId) ? () => router.push(`/recipes/${recipeId}`) : undefined;
   }
 
-  function addCoHost() {
-    const choices = data!.members.filter(
-      (m) => !hosts.includes(m.profile_id) && !m.profiles?.is_managed
-    );
-    if (!choices.length) {
-      Alert.alert("Everyone's already hosting", "Everyone in the Burrow who can sign in is already a host.");
-      return;
-    }
-    Alert.alert("Add a co-host", "Co-hosts can change the Potluck and its spots.", [
-      ...choices.slice(0, 8).map((m) => ({
-        text: nameOf(m.profile_id),
-        onPress: async () => {
-          const { error: hostError } = await supabase
-            .from("potluck_hosts")
-            .insert({ potluck_id: id, profile_id: m.profile_id });
-          if (hostError) Alert.alert("Couldn't add them", friendlyError(hostError));
-          load();
-        },
-      })),
-      { text: "Cancel", style: "cancel" as const },
-    ]);
-  }
-
   return (
     <NookScroll onRefresh={load}>
       <Stack.Screen
@@ -164,59 +131,24 @@ export default function PotluckScreen() {
       <Appear>
         <View style={[ui.card, { gap: 10 }]}>
           <Text style={styles.title}>{potluck.title}</Text>
-          <Detail icon="clock" text={`${formatWhen(potluck.starts_at)} · ${countdown(potluck.starts_at)}`} />
+          <Detail icon="clock" text={`${potluckWhen(potluck)} · ${countdown(potluck.starts_at)}`} />
           {potluck.place ? <Detail icon="place" text={potluck.place} /> : null}
-          {potluck.burrows?.name ? <Detail icon="burrow" text={potluck.burrows.name} /> : null}
           {potluck.notes ? <Text style={[ui.muted, { color: colors.text }]}>{potluck.notes}</Text> : null}
           <Text style={ui.muted}>Hosted by {hosts.map(nameOf).join(", ") || "nobody yet"}</Text>
         </View>
       </Appear>
-      {potluck.gathering_id && potluck.gatherings ? (
-        <NavCard
-          icon="gift"
-          title={`Part of ${potluck.gatherings.title}`}
-          subtitle="See the Gathering in the Gift Nook"
-          onPress={() => router.push(`/gift-nook/gathering/${potluck.gathering_id}`)}
-        />
-      ) : null}
+      <NavCard
+        icon="celebration"
+        iconColor="#9a5b1c"
+        iconBackground="#f3e3c8"
+        title={potluck.gatherings ? `Part of ${potluck.gatherings.title}` : "The Gathering"}
+        subtitle="Who's invited, and everything else about it"
+        onPress={() => router.push(`/gatherings/${potluck.gathering_id}`)}
+      />
 
       {/* RSVPs (POT-006) */}
       <SectionHeader title="Are you coming?" icon="group" />
-      <View style={[ui.card, { gap: 12 }]}>
-        <RsvpRow
-          name="You"
-          status={myRsvp?.status}
-          onPick={(status) => setRsvp(userId, status)}
-        />
-        {myRsvp && myRsvp.status !== "no" ? (
-          <View style={[ui.row, { justifyContent: "space-between" }]}>
-            <Text style={ui.muted}>Bringing extra guests</Text>
-            <View style={[ui.row, { gap: 14 }]}>
-              <Stepper
-                icon="minus"
-                label="One fewer guest"
-                disabled={myRsvp.extra_guests <= 0}
-                onPress={() => setRsvp(userId, myRsvp.status, myRsvp.extra_guests - 1)}
-              />
-              <Text style={[ui.cardTitle, { minWidth: 20, textAlign: "center" }]}>{myRsvp.extra_guests}</Text>
-              <Stepper
-                icon="add"
-                label="One more guest"
-                disabled={myRsvp.extra_guests >= 20}
-                onPress={() => setRsvp(userId, myRsvp.status, myRsvp.extra_guests + 1)}
-              />
-            </View>
-          </View>
-        ) : null}
-        {myKids.map((kidId) => (
-          <RsvpRow
-            key={kidId}
-            name={nameOf(kidId)}
-            status={rsvps.find((r) => r.profile_id === kidId)?.status}
-            onPick={(status) => setRsvp(kidId, status)}
-          />
-        ))}
-      </View>
+      <RsvpCard userId={userId} myKids={myKids} rsvps={rsvps} nameOf={nameOf} onPick={answer} />
       <Text style={ui.muted}>
         {going || maybe
           ? `${going} coming${maybe ? `, ${maybe} maybe` : ""} — counting everyone's guests.`
@@ -318,7 +250,13 @@ export default function PotluckScreen() {
       {isHost ? (
         <>
           <SectionHeader title="Hosting" icon="person" />
-          <Button title="Add a co-host" icon="invite" variant="secondary" onPress={addCoHost} />
+          <Button
+            title="Change the Gathering"
+            icon="edit"
+            variant="secondary"
+            onPress={() => router.push({ pathname: "/gatherings/form", params: { gatheringId: potluck.gathering_id } })}
+          />
+          <Text style={ui.muted}>Who's invited, the day and place, and co-hosts are set on the Gathering.</Text>
           <Text style={ui.muted}>Tap a dish to take it off the list if someone can't bring it any more.</Text>
         </>
       ) : null}
@@ -332,54 +270,6 @@ function Detail({ icon, text }: { icon: "clock" | "place" | "burrow"; text: stri
       <Icon name={icon} size={16} color={colors.muted} />
       <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>{text}</Text>
     </View>
-  );
-}
-
-function RsvpRow({
-  name,
-  status,
-  onPick,
-}: {
-  name: string;
-  status: RsvpStatus | undefined;
-  onPick: (status: RsvpStatus) => void;
-}) {
-  return (
-    <View style={{ gap: 8 }}>
-      <Text style={ui.cardTitle}>{name}</Text>
-      <View style={ui.chips}>
-        {statuses.map((option) => (
-          <Chip key={option.key} selected={status === option.key} onPress={() => onPick(option.key)}>
-            {option.label}
-          </Chip>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function Stepper({
-  icon,
-  label,
-  disabled,
-  onPress,
-}: {
-  icon: "add" | "minus";
-  label: string;
-  disabled: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Tap
-      onPress={onPress}
-      disabled={disabled}
-      hitSlop={8}
-      pressedScale={0.85}
-      style={styles.stepper}
-      accessibilityLabel={label}
-    >
-      <Icon name={icon} size={16} />
-    </Tap>
   );
 }
 

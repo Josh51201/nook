@@ -106,8 +106,8 @@ export default function DishForm() {
     if (!error && !data!.rsvps.some((r) => r.profile_id === userId)) {
       // Bringing something means you're coming (proposed) — change it any time.
       await supabase
-        .from("potluck_rsvps")
-        .insert({ potluck_id: params.potluckId, profile_id: userId, status: "going" });
+        .from("gathering_rsvps")
+        .insert({ gathering_id: data!.potluck.gathering_id, profile_id: userId, status: "going" });
     }
     setSaving(false);
     if (error) return Alert.alert("Couldn't save your dish", friendlyError(error));

@@ -129,7 +129,7 @@ Josh wants the Hearth to be truly one of a kind for anyone who puts in the time,
 
 ## 2b. Potluck Nook
 - **POT-001** A Potluck Nook for who's bringing what to a get-together, so nobody doubles up and nothing's missing. _(Built 2026-10-07 — in the Market, on each Burrow's page, and on each Gift Nook Gathering ("Plan a Potluck for this"). Proposed details: a spot can't take more dishes than the host asked for; signing up to bring something RSVPs you as Going; Potlucks are deleted 90 days after the day, like Gatherings; allergies also editable in Potluck settings.)_
-- **POT-002** Every Potluck belongs to a Burrow, and that Burrow's members are who's invited. A Potluck can be tied to a Gathering (e.g. "Christmas at Grandma's" has both gift lists and a potluck) or stand on its own (a friends' or church potluck — make a Burrow for that group).
+- **POT-002** _(Changed 2026-10-09 by GATH-004: a Potluck now belongs to a Gathering and its guests are the Gathering's, which can be several Burrows or picked people.)_ Every Potluck belongs to a Burrow, and that Burrow's members are who's invited. A Potluck can be tied to a Gathering (e.g. "Christmas at Grandma's" has both gift lists and a potluck) or stand on its own (a friends' or church potluck — make a Burrow for that group).
 - **POT-003** The host can list what's needed ("2 sides, 1 dessert, drinks"), and people claim those slots; anyone can also just add a dish they're bringing.
 - **POT-004** Dishes can be tagged with what's in them and which diets they suit.
 - **POT-005** When a dish clashes with the allergy or diet of someone coming, the Potluck warns about it and names the person ("Contains peanuts — Mia has a peanut allergy").

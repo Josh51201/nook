@@ -10,6 +10,7 @@ import { Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../co
 import { HeaderWithHelp } from "../../components/help-button";
 import { useAuth } from "../../lib/auth-context";
 import { guarded } from "../../lib/feedback";
+import { whenWords } from "../../lib/gatherings";
 import { countdown } from "../../lib/gift-nook";
 import { headcount, type Rsvp } from "../../lib/potluck";
 import { formatWhen } from "../../lib/potluck-data";
@@ -22,16 +23,17 @@ type Row = {
   title: string;
   starts_at: string;
   place: string | null;
-  burrow_id: string;
-  burrows: { name: string } | null;
+  gatherings: { title: string; starts_at: string | null; ends_at: string; gathering_rsvps: Rsvp[] } | null;
+  // The Gathering's answers (GATH-006), which are the Potluck's.
   potluck_rsvps: Rsvp[];
   potluck_dishes: { brought_by: string; name: string }[];
 };
 
 const rsvpWords = { going: "You're going", maybe: "You're a maybe", no: "You can't make it" };
 
-// Potluck home (POT-001/002): every Potluck in your Burrows, soonest first.
-// Opened from a Burrow's page it shows just that Burrow's (?burrowId=).
+// Potluck home (POT-001/002): every Potluck you're invited to, soonest
+// first. Opened from a Burrow's page it shows just the ones that Burrow is
+// invited to (?burrowId=).
 export default function PotluckHome() {
   const router = useRouter();
   const { session } = useAuth();
@@ -47,16 +49,19 @@ export default function PotluckHome() {
     () =>
       guarded(
         async () => {
+          const invited = burrowId ? ", gathering_burrows!inner(burrow_id)" : "";
           let query = supabase
             .from("potlucks")
             .select(
-              "id, title, starts_at, place, burrow_id, burrows(name), potluck_rsvps(profile_id, status, extra_guests), potluck_dishes(brought_by, name)"
+              `id, title, starts_at, place, gatherings${burrowId ? "!inner" : ""}(title, starts_at, ends_at, gathering_rsvps(profile_id, status, extra_guests)${invited}), potluck_dishes(brought_by, name)`
             )
             .order("starts_at");
-          if (burrowId) query = query.eq("burrow_id", burrowId);
+          if (burrowId) query = query.eq("gatherings.gathering_burrows.burrow_id", burrowId);
           const { data, error: loadError } = await query;
           if (loadError) setError(loadError.message);
-          setRows((data ?? []) as unknown as Row[]);
+          setRows(
+            ((data ?? []) as unknown as Row[]).map((row) => ({ ...row, potluck_rsvps: row.gatherings?.gathering_rsvps ?? [] }))
+          );
           if (burrowId) {
             const { data: burrow } = await supabase.from("burrows").select("name").eq("id", burrowId).maybeSingle();
             setBurrowName(burrow?.name ?? null);
@@ -101,9 +106,8 @@ export default function PotluckHome() {
         iconBackground="#dfe8d6"
         title={row.title}
         subtitle={[
-          `${formatWhen(row.starts_at)} · ${countdown(row.starts_at)}`,
+          `${row.gatherings ? whenWords(row.gatherings) : formatWhen(row.starts_at)} · ${countdown(row.starts_at)}`,
           row.place,
-          burrowId ? null : row.burrows?.name,
         ]
           .filter(Boolean)
           .join(" · ")}
@@ -157,7 +161,7 @@ export default function PotluckHome() {
         <EmptyState
           icon="potluck"
           title="No Potlucks planned"
-          body="Plan one for a Gathering like Christmas, or on its own — then everyone signs up to bring something."
+          body="Plan one for any get-together — Christmas, Sunday dinner, a cookout — and everyone invited signs up to bring something."
         />
       ) : (
         upcoming.map(card)

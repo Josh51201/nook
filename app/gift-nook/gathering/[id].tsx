@@ -8,7 +8,9 @@ import { useCallback, useState } from "react";
 import { Alert, View } from "react-native";
 import { Text } from "../../../components/text";
 
-import { guarded } from "../../../lib/feedback";
+import { friendlyError, guarded } from "../../../lib/feedback";
+import type { Guest } from "../../../lib/gatherings";
+import { addPotluck } from "../../../lib/gatherings-data";
 import { Avatar } from "../../../components/avatar";
 import { IconBadge } from "../../../components/icon";
 import { Appear, LoadingScreen } from "../../../components/motion";
@@ -33,9 +35,12 @@ import {
 import { supabase } from "../../../lib/supabase";
 import { colors, ui } from "../../../lib/theme";
 
-// One Gathering. Whose Wishbooks it points to is provisional pending Q-003:
-// its honorees if it has any, otherwise everyone in the Burrow. Each person's
-// list is filtered to the gifts they picked for this Gathering (GIFT-017).
+// One Gathering's gift lists. Whose Wishbooks it points to is provisional
+// pending Q-003: its honorees if it has any, otherwise everyone invited
+// whose Wishbook you can see (people you share a Burrow with — GIFT-007's
+// rules don't change for Gatherings that invite other Burrows). Each
+// person's list is filtered to the gifts they picked for this Gathering
+// (GIFT-017). Who's coming, and changing it, live in the Gathering Nook.
 export default function GatheringScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -57,7 +62,7 @@ export default function GatheringScreen() {
         async () => {
           const { data: row, error: gatheringError } = await supabase
             .from("gatherings")
-            .select("id, burrow_id, title, kind, ends_at, created_by")
+            .select("id, burrow_id, title, kind, ends_at, starts_at, created_by")
             .eq("id", id)
             .single();
           if (gatheringError || !row) {
@@ -69,22 +74,15 @@ export default function GatheringScreen() {
           }
           setGathering(row as Gathering);
 
-          // GIFT-028: only Burrow admins or whoever made it can delete it.
-          const [myRole, managed] = await Promise.all([
-            supabase
-              .from("burrow_members")
-              .select("role")
-              .eq("burrow_id", row.burrow_id)
-              .eq("profile_id", userId!)
-              .maybeSingle(),
+          // GATH-005: hosts change or delete it.
+          const [canHost, managed] = await Promise.all([
+            supabase.rpc("can_host_gathering", { target_gathering: id }),
             supabase
               .from("profile_managers")
               .select("profile_id")
               .eq("manager_id", userId!),
           ]);
-          setCanDelete(
-            myRole.data?.role === "admin" || row.created_by === userId,
-          );
+          setCanDelete(Boolean(canHost.data));
           setManagedIds(new Set((managed.data ?? []).map((m) => m.profile_id)));
 
           // POT-002: a Potluck can be planned for this Gathering.
@@ -92,7 +90,7 @@ export default function GatheringScreen() {
             .from("potlucks")
             .select("id, title")
             .eq("gathering_id", id)
-            .order("starts_at");
+            .order("created_at");
           setPotlucks(potluckRows ?? []);
 
           const { data: honorees } = await supabase
@@ -108,14 +106,18 @@ export default function GatheringScreen() {
             setPeople(honoreeProfiles);
           } else {
             setHasHonorees(false);
-            const { data: members } = await supabase
-              .from("burrow_members")
-              .select(`profiles(${PROFILE_FIELDS})`)
-              .eq("burrow_id", row.burrow_id);
+            const { data: guests } = await supabase.rpc("gathering_guest_list", { target_gathering: id });
             setPeople(
-              (members ?? [])
-                .map((m) => m.profiles as unknown as Profile | null)
-                .filter((p): p is Profile => Boolean(p)),
+              ((guests ?? []) as Guest[])
+                .filter((g) => g.can_see_wishbook)
+                .map((g) => ({
+                  id: g.profile_id,
+                  display_name: g.display_name,
+                  is_managed: g.is_managed,
+                  avatar_icon: g.avatar_icon,
+                  avatar_color: g.avatar_color,
+                  avatar_path: g.avatar_path,
+                })),
             );
           }
           setIsLoading(false);
@@ -222,15 +224,15 @@ export default function GatheringScreen() {
           <Text style={ui.muted}>
             {kind.label} · {formatDate(gathering.ends_at)}
           </Text>
-          {!archived ? (
+          {!archived && canDelete ? (
             <Button
-              title="Edit"
+              title="Change"
               icon="edit"
               variant="secondary"
               style={{ marginTop: 6, paddingVertical: 9 }}
               onPress={() =>
                 router.push({
-                  pathname: "/gift-nook/gathering-form",
+                  pathname: "/gatherings/form",
                   params: { gatheringId: id },
                 })
               }
@@ -251,16 +253,31 @@ export default function GatheringScreen() {
           onPress={() => router.push(`/potluck/${potluck.id}`)}
         />
       ))}
-      {potlucks.length === 0 && !archived ? (
+      {potlucks.length === 0 && !archived && canDelete ? (
         <NavCard
           icon="potluck"
           iconColor="#4f6b45"
           iconBackground="#dfe8d6"
           title="Plan a Potluck for this"
           subtitle="Sort out who's bringing what"
-          onPress={() => router.push({ pathname: "/potluck/form", params: { gatheringId: id } })}
+          onPress={async () => {
+            try {
+              const potluckId = await addPotluck(id);
+              router.push({ pathname: "/potluck/form", params: { potluckId } });
+            } catch (potluckError) {
+              Alert.alert("Couldn't add a Potluck", friendlyError(potluckError as { message?: string }));
+            }
+          }}
         />
       ) : null}
+      <NavCard
+        icon="celebration"
+        iconColor="#9a5b1c"
+        iconBackground="#f3e3c8"
+        title="Who's coming"
+        subtitle="Answer, and see everyone invited, in the Gathering Nook"
+        onPress={() => router.push(`/gatherings/${id}`)}
+      />
 
       <SectionHeader
         title={hasHonorees ? "Celebrating" : "Everyone's Wishbooks"}

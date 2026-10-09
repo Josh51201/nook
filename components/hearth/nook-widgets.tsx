@@ -3,6 +3,8 @@ import { View } from "react-native";
 import Animated, { FadeInRight } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
+import { rsvpLabel, whenWords as gatheringWhen } from "../../lib/gatherings";
+import { useUpcomingGatherings } from "../../lib/gatherings-data";
 import { countdown, gatheringKindInfo } from "../../lib/gift-nook";
 import { headcount, slotRoom, type Rsvp, type Slot } from "../../lib/potluck";
 import { formatWhen } from "../../lib/potluck-data";
@@ -187,6 +189,32 @@ function GiftNookWidget({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// --- Gathering Nook --------------------------------------------------------------------
+
+// GATH-001: what's next, when, and whether you've answered; then what's after.
+function GatheringsWidget({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const upcoming = useUpcomingGatherings(Boolean(userId), refreshKey);
+
+  if (!upcoming) return null;
+  if (!upcoming.length) return <Facts facts={[{ kind: "note", text: "Nothing planned yet" }]} {...props} />;
+
+  const [next, ...rest] = upcoming;
+  const mine = next.gathering_rsvps.find((r) => r.profile_id === userId)?.status;
+  const facts: Fact[] = [
+    { kind: "headline", text: next.title, trailing: countdown(next.ends_at) },
+    { kind: "detail", icon: mine ? "check" : "invite", text: mine ? rsvpLabel(mine) : "Are you coming?", strong: !mine },
+    { kind: "detail", icon: "calendar", text: gatheringWhen(next) },
+    ...(next.place ? [{ kind: "detail" as const, icon: "place" as const, text: next.place }] : []),
+    ...rest.map((g) => {
+      const kind = gatheringKindInfo(g.kind);
+      return { kind: "detail" as const, icon: kind.icon, iconColor: kind.color, text: g.title, trailing: countdown(g.ends_at) };
+    }),
+  ];
+  return <Facts facts={facts} {...props} />;
+}
+
 // --- Potluck Nook ----------------------------------------------------------------------
 
 type NextPotluck = {
@@ -196,7 +224,7 @@ type NextPotluck = {
   place: string | null;
   potluck_slots: Slot[];
   potluck_dishes: { slot_id: string | null; brought_by: string; name: string }[];
-  potluck_rsvps: Rsvp[];
+  gatherings: { gathering_rsvps: Rsvp[] } | null;
 };
 
 // The next Potluck: when, what you're bringing, and what's still needed.
@@ -211,7 +239,7 @@ function PotluckWidget({ refreshKey, ...props }: NookWidgetProps) {
     supabase
       .from("potlucks")
       .select(
-        "id, title, starts_at, place, potluck_slots(id, label, wanted), potluck_dishes(slot_id, brought_by, name), potluck_rsvps(profile_id, status, extra_guests)"
+        "id, title, starts_at, place, potluck_slots(id, label, wanted), potluck_dishes(slot_id, brought_by, name), gatherings(gathering_rsvps(profile_id, status, extra_guests))"
       )
       .gte("starts_at", today.toISOString())
       .order("starts_at")
@@ -225,7 +253,7 @@ function PotluckWidget({ refreshKey, ...props }: NookWidgetProps) {
 
   const mine = next.potluck_dishes.filter((dish) => dish.brought_by === userId).map((dish) => dish.name);
   const open = next.potluck_slots.reduce((sum, slot) => sum + slotRoom(slot, next.potluck_dishes).open, 0);
-  const { going } = headcount(next.potluck_rsvps);
+  const { going } = headcount(next.gatherings?.gathering_rsvps ?? []);
   const bringing = mine.length ? `You're bringing ${mine.join(", ")}` : open ? `${open} spot${open === 1 ? "" : "s"} still open` : "Not signed up yet";
 
   const facts: Fact[] = [
@@ -423,6 +451,7 @@ function SickDayWidget({ refreshKey, ...props }: NookWidgetProps) {
 }
 
 export const nookWidgets: Record<string, NookWidget> = {
+  gatherings: { label: "Coming up", Component: GatheringsWidget },
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
   potluck: { label: "Next Potluck", Component: PotluckWidget },
   letterbox: { label: "Cards & birthdays", Component: LetterboxWidget },

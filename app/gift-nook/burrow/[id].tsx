@@ -60,10 +60,12 @@ export default function BurrowScreen() {
                   `profile_id, role, profiles(${PROFILE_FIELDS})`,
                 )
                 .eq("burrow_id", id),
+              // Gift Gatherings this Burrow is invited to (GATH-003/004).
               supabase
                 .from("gatherings")
-                .select("id, burrow_id, title, kind, ends_at")
-                .eq("burrow_id", id)
+                .select("id, burrow_id, title, kind, ends_at, gathering_burrows!inner(burrow_id)")
+                .eq("gathering_burrows.burrow_id", id)
+                .eq("gifts", true)
                 .order("ends_at"),
             ]);
           const firstError =
@@ -71,7 +73,7 @@ export default function BurrowScreen() {
           if (firstError) setError(firstError.message);
           setName(burrowResult.data?.name ?? "");
           setMembers((membersResult.data ?? []) as unknown as BurrowMember[]);
-          setGatherings((gatheringsResult.data ?? []) as Gathering[]);
+          setGatherings((gatheringsResult.data ?? []) as unknown as Gathering[]);
           setIsLoading(false);
         },
         setError,
@@ -124,8 +126,8 @@ export default function BurrowScreen() {
         variant="secondary"
         onPress={() =>
           router.push({
-            pathname: "/gift-nook/gathering-form",
-            params: { burrowId: id },
+            pathname: "/gatherings/form",
+            params: { burrowId: id, gifts: "1" },
           })
         }
       />

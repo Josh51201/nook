@@ -87,8 +87,12 @@ const screens: Record<string, HelpTopic> = {
     body: "A private place to jot down gift ideas for anyone, any time. Nobody else can see it.",
   },
   "gift-nook/gathering": {
-    title: "A Gathering",
-    body: "An event like a birthday or Christmas. See whose Wishbooks are part of it and tuck gifts for the people you're buying for.",
+    title: "A Gathering's gift lists",
+    body: "See whose Wishbooks are part of it and tuck gifts for the people you're buying for. Who's coming is in the Gathering Nook.",
+  },
+  "gatherings/form": {
+    title: "Plan a Gathering",
+    body: "Pick who's invited — whole Burrows, or people one by one — and whether it has gift lists or a Potluck. You're a host, and you can add co-hosts.",
   },
   "gift-nook/member": {
     title: "Someone's Wishbook",
@@ -123,6 +127,11 @@ export function helpFor(pathname: string): HelpTopic {
 export type HelpAnswer = { question: string; answer: string };
 
 export const helpAnswers: HelpAnswer[] = [
+  {
+    question: "Where do I plan a birthday or a game night?",
+    answer:
+      "In the Gathering Nook. Tap Plan a Gathering, pick who's invited (whole Burrows, or just a few people) and switch on gift lists or a Potluck if it needs them. Everyone invited can say if they're coming.",
+  },
   {
     question: "How do I join my family?",
     answer:

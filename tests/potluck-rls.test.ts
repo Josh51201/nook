@@ -2,16 +2,23 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // Potluck Nook (POT-002..008) and dietary needs (PROF-004), enforced in
-// Postgres. Same setup as gift-nook-rls.test.ts (needs .env plus
-// SUPABASE_SERVICE_ROLE_KEY in .env.test.local); skipped without them.
+// Postgres. A Potluck is the food part of a Gathering (GATH-004): its guests,
+// hosts and RSVPs are the Gathering's. Same setup as gift-nook-rls.test.ts
+// (needs .env plus SUPABASE_SERVICE_ROLE_KEY in .env.test.local); skipped
+// without them.
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const canRun = Boolean(SUPABASE_URL && ANON_KEY && SERVICE_ROLE_KEY);
+const endOfDayIn = (days: number) => {
+  const d = new Date(Date.now() + days * 864e5);
+  d.setHours(23, 59, 59, 0);
+  return d.toISOString();
+};
 
-describe.runIf(canRun)("Potluck: only the Burrow sees it, only hosts change it", () => {
+describe.runIf(canRun)("Potluck: only the Gathering's guests see it, only its hosts change it", () => {
   let admin: SupabaseClient;
   const runId = Date.now();
   // host, guest and admin share a Burrow (admin is its creator). outsider
@@ -23,10 +30,26 @@ describe.runIf(canRun)("Potluck: only the Burrow sees it, only hosts change it",
 
   let burrowId: string;
   let otherBurrowId: string;
-  let otherGatheringId: string;
+  let gatheringId: string;
   let potluckId: string;
   let slotId: string;
   let kidId: string;
+
+  const plan = (who: Person, burrows: string[], guests: string[] = [], cohosts: string[] = []) =>
+    clients[who].rpc("plan_gathering", {
+      gathering_title: "Christmas dinner",
+      gathering_kind: "dinner",
+      gathering_ends_at: endOfDayIn(7),
+      gathering_starts_at: new Date(Date.now() + 7 * 864e5).toISOString(),
+      gathering_place: "",
+      gathering_notes: "",
+      with_gifts: false,
+      with_food: true,
+      burrow_ids: burrows,
+      guest_ids: guests,
+      honoree_ids: [],
+      cohost_ids: cohosts,
+    });
 
   beforeAll(async () => {
     admin = createClient(SUPABASE_URL!, SERVICE_ROLE_KEY!, {
@@ -57,12 +80,6 @@ describe.runIf(canRun)("Potluck: only the Burrow sees it, only hosts change it",
     otherBurrowId = other;
     const { data: otherCode } = await clients.outsider.rpc("create_knock", { target_burrow: otherBurrowId });
     await clients.cousin.rpc("answer_knock", { knock_code: otherCode });
-    const { data: gathering } = await clients.outsider
-      .from("gatherings")
-      .insert({ burrow_id: otherBurrowId, title: "Their party", ends_at: new Date(Date.now() + 864e5).toISOString() })
-      .select("id")
-      .single();
-    otherGatheringId = gathering!.id;
 
     // The guest manages a kid in the Burrow.
     const { data: kid } = await clients.guest.rpc("create_managed_profile", {
@@ -71,18 +88,11 @@ describe.runIf(canRun)("Potluck: only the Burrow sees it, only hosts change it",
     });
     kidId = kid;
 
-    const { data: potluck, error } = await clients.host
-      .from("potlucks")
-      .insert({
-        burrow_id: burrowId,
-        title: "Christmas dinner",
-        starts_at: new Date(Date.now() + 7 * 864e5).toISOString(),
-        created_by: ids.host,
-      })
-      .select("id")
-      .single();
-    if (error || !potluck) throw error;
-    potluckId = potluck.id;
+    const { data: gathering, error } = await plan("host", [burrowId]);
+    if (error) throw error;
+    gatheringId = gathering;
+    const { data: potluck } = await admin.from("potlucks").select("id, title").eq("gathering_id", gatheringId).single();
+    potluckId = potluck!.id;
 
     const { data: slot, error: slotError } = await clients.host
       .from("potluck_slots")
@@ -98,67 +108,85 @@ describe.runIf(canRun)("Potluck: only the Burrow sees it, only hosts change it",
     if (kidId) await admin.from("profiles").delete().eq("id", kidId);
   });
 
-  it("the creator becomes its host automatically", async () => {
-    const { data } = await clients.guest.from("potluck_hosts").select("profile_id").eq("potluck_id", potluckId);
+  it("takes its name and time from the Gathering, whose planner hosts it", async () => {
+    const { data: potluck } = await clients.guest.from("potlucks").select("title").eq("id", potluckId).single();
+    expect(potluck?.title).toBe("Christmas dinner");
+    const { data } = await clients.guest.from("gathering_hosts").select("profile_id").eq("gathering_id", gatheringId);
     expect(data?.map((h) => h.profile_id)).toEqual([ids.host]);
   });
 
-  it("someone outside the Burrow sees nothing at all", async () => {
-    for (const table of ["potlucks", "potluck_slots", "potluck_dishes", "potluck_rsvps", "potluck_hosts"]) {
-      const column = table === "potlucks" ? "id" : "potluck_id";
-      const { data, count } = await clients.outsider
-        .from(table)
-        .select("*", { count: "exact" })
-        .eq(column, potluckId);
-      expect(data).toEqual([]);
-      expect(count).toBe(0);
+  it("someone not invited sees nothing at all", async () => {
+    const checks: [string, string, string][] = [
+      ["potlucks", "id", potluckId],
+      ["potluck_slots", "potluck_id", potluckId],
+      ["potluck_dishes", "potluck_id", potluckId],
+      ["gatherings", "id", gatheringId],
+      ["gathering_rsvps", "gathering_id", gatheringId],
+      ["gathering_hosts", "gathering_id", gatheringId],
+      ["gathering_burrows", "gathering_id", gatheringId],
+    ];
+    for (const [table, column, value] of checks) {
+      const { data, count } = await clients.outsider.from(table).select("*", { count: "exact" }).eq(column, value);
+      expect(data, table).toEqual([]);
+      expect(count, table).toBe(0);
     }
+    const { data: list } = await clients.outsider.rpc("gathering_guest_list", { target_gathering: gatheringId });
+    expect(list).toEqual([]);
   });
 
-  it("an outsider can't sign up to bring something, or RSVP", async () => {
+  it("someone not invited can't sign up to bring something, or RSVP", async () => {
     const dish = await clients.outsider
       .from("potluck_dishes")
       .insert({ potluck_id: potluckId, name: "Sneaky pie", brought_by: ids.outsider });
     expect(dish.error).not.toBeNull();
     const rsvp = await clients.outsider
-      .from("potluck_rsvps")
-      .insert({ potluck_id: potluckId, profile_id: ids.outsider, status: "going" });
+      .from("gathering_rsvps")
+      .insert({ gathering_id: gatheringId, profile_id: ids.outsider, status: "going" });
     expect(rsvp.error).not.toBeNull();
   });
 
-  it("guests can't change the Potluck or its slots; hosts and admins can", async () => {
-    await clients.guest.from("potlucks").update({ title: "Hijacked" }).eq("id", potluckId);
+  it("guests can't change the Gathering or its spots; hosts and Burrow admins can", async () => {
+    await clients.guest.from("gatherings").update({ title: "Hijacked" }).eq("id", gatheringId);
     await clients.guest.from("potluck_slots").update({ wanted: 9 }).eq("id", slotId);
     const guestSlot = await clients.guest.from("potluck_slots").insert({ potluck_id: potluckId, label: "Mine" });
     expect(guestSlot.error).not.toBeNull();
-
-    const { data: unchanged } = await admin.from("potlucks").select("title").eq("id", potluckId).single();
+    const { data: unchanged } = await admin.from("gatherings").select("title").eq("id", gatheringId).single();
     expect(unchanged?.title).toBe("Christmas dinner");
     const { data: slot } = await admin.from("potluck_slots").select("wanted").eq("id", slotId).single();
     expect(slot?.wanted).toBe(1);
 
-    await clients.admin.from("potlucks").update({ place: "Grandma's" }).eq("id", potluckId);
+    // The Burrow's admin steps in; the Potluck follows the Gathering.
+    await clients.admin.from("gatherings").update({ place: "Grandma's" }).eq("id", gatheringId);
     const { data: edited } = await admin.from("potlucks").select("place").eq("id", potluckId).single();
     expect(edited?.place).toBe("Grandma's");
   });
 
-  it("a co-host can edit once added; kids and outsiders can't be co-hosts", async () => {
-    const outsiderHost = await clients.host
-      .from("potluck_hosts")
-      .insert({ potluck_id: potluckId, profile_id: ids.outsider });
-    expect(outsiderHost.error).not.toBeNull();
-    const kidHost = await clients.host.from("potluck_hosts").insert({ potluck_id: potluckId, profile_id: kidId });
-    expect(kidHost.error).not.toBeNull();
+  it("a co-host can change it once added; kids and outsiders can't co-host", async () => {
+    const args = (cohosts: string[]) => ({
+      target_gathering: gatheringId,
+      gathering_title: "Christmas dinner",
+      gathering_kind: "dinner",
+      gathering_ends_at: endOfDayIn(7),
+      gathering_starts_at: null,
+      gathering_place: "Grandma's",
+      gathering_notes: "",
+      with_gifts: false,
+      burrow_ids: [burrowId],
+      guest_ids: [],
+      honoree_ids: [],
+      cohost_ids: cohosts,
+    });
+    expect((await clients.host.rpc("update_gathering", args([ids.host, ids.outsider]))).error).not.toBeNull();
+    expect((await clients.host.rpc("update_gathering", args([ids.host, kidId]))).error).not.toBeNull();
 
-    const { error } = await clients.host.from("potluck_hosts").insert({ potluck_id: potluckId, profile_id: ids.guest });
-    expect(error).toBeNull();
-    await clients.guest.from("potlucks").update({ notes: "Bring chairs" }).eq("id", potluckId);
+    expect((await clients.host.rpc("update_gathering", args([ids.host, ids.guest]))).error).toBeNull();
+    await clients.guest.from("gatherings").update({ notes: "Bring chairs" }).eq("id", gatheringId);
     const { data } = await admin.from("potlucks").select("notes").eq("id", potluckId).single();
     expect(data?.notes).toBe("Bring chairs");
-    await clients.host.from("potluck_hosts").delete().eq("potluck_id", potluckId).eq("profile_id", ids.guest);
+    expect((await clients.host.rpc("update_gathering", args([ids.host]))).error).toBeNull();
   });
 
-  it("you can only bring dishes as yourself, and a full slot takes no more", async () => {
+  it("you can only bring dishes as yourself, and a full spot takes no more", async () => {
     const asSomeoneElse = await clients.guest
       .from("potluck_dishes")
       .insert({ potluck_id: potluckId, name: "Pie", brought_by: ids.host });
@@ -176,7 +204,7 @@ describe.runIf(canRun)("Potluck: only the Burrow sees it, only hosts change it",
       .insert({ potluck_id: potluckId, slot_id: slotId, name: "Cake", brought_by: ids.admin });
     expect(second.error).not.toBeNull();
 
-    // Without a slot, anyone can still add a dish.
+    // Without a spot, anyone invited can still add a dish.
     const free = await clients.admin
       .from("potluck_dishes")
       .insert({ potluck_id: potluckId, name: "Cake", brought_by: ids.admin });
@@ -194,28 +222,25 @@ describe.runIf(canRun)("Potluck: only the Burrow sees it, only hosts change it",
 
   it("RSVPs: for yourself or a kid you manage, never for anyone else", async () => {
     const self = await clients.guest
-      .from("potluck_rsvps")
-      .insert({ potluck_id: potluckId, profile_id: ids.guest, status: "going", extra_guests: 2 });
+      .from("gathering_rsvps")
+      .insert({ gathering_id: gatheringId, profile_id: ids.guest, status: "going", extra_guests: 2 });
     expect(self.error).toBeNull();
     const kid = await clients.guest
-      .from("potluck_rsvps")
-      .insert({ potluck_id: potluckId, profile_id: kidId, status: "going" });
+      .from("gathering_rsvps")
+      .insert({ gathering_id: gatheringId, profile_id: kidId, status: "going" });
     expect(kid.error).toBeNull();
     const forHost = await clients.guest
-      .from("potluck_rsvps")
-      .insert({ potluck_id: potluckId, profile_id: ids.host, status: "no" });
+      .from("gathering_rsvps")
+      .insert({ gathering_id: gatheringId, profile_id: ids.host, status: "no" });
     expect(forHost.error).not.toBeNull();
   });
 
-  it("a Potluck can't be tied to another Burrow's Gathering", async () => {
-    const { error } = await clients.host.from("potlucks").insert({
-      burrow_id: burrowId,
-      gathering_id: otherGatheringId,
-      title: "Crossed wires",
-      starts_at: new Date(Date.now() + 864e5).toISOString(),
-      created_by: ids.host,
-    });
-    expect(error).not.toBeNull();
+  it("only a Gathering's hosts can add a Potluck to it", async () => {
+    const { data: theirs } = await plan("outsider", [otherBurrowId]);
+    const crossed = await clients.host.from("potlucks").insert({ gathering_id: theirs, title: "x", starts_at: new Date().toISOString(), created_by: ids.host });
+    expect(crossed.error).not.toBeNull();
+    const asGuest = await clients.cousin.rpc("add_potluck", { target_gathering: theirs });
+    expect(asGuest.error).not.toBeNull();
   });
 
   it("allergies reach your Burrow family and a kid's managers — nobody else", async () => {
@@ -241,7 +266,7 @@ describe.runIf(canRun)("Potluck: only the Burrow sees it, only hosts change it",
     expect(stranger).toEqual([]);
   });
 
-  it("only hosts (or admins) can delete it", async () => {
+  it("only hosts (or Burrow admins) can delete the Potluck; the Gathering stays", async () => {
     await clients.guest.from("potlucks").delete().eq("id", potluckId);
     const { data: kept } = await admin.from("potlucks").select("id").eq("id", potluckId);
     expect(kept).toHaveLength(1);
@@ -249,5 +274,7 @@ describe.runIf(canRun)("Potluck: only the Burrow sees it, only hosts change it",
     expect(error).toBeNull();
     const { data: gone } = await admin.from("potlucks").select("id").eq("id", potluckId);
     expect(gone).toEqual([]);
+    const { data: gathering } = await admin.from("gatherings").select("id").eq("id", gatheringId);
+    expect(gathering).toHaveLength(1);
   });
 });

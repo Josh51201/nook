@@ -265,7 +265,7 @@ function CountdownPage({
           icon={target.icon}
           title="Open the Gathering"
           subtitle="See who's coming and their Wishbooks"
-          onPress={() => router.push(`/gift-nook/gathering/${target.gatheringId}`)}
+          onPress={() => router.push(`/gatherings/${target.gatheringId}`)}
         />
       ) : null}
     </>
@@ -285,9 +285,9 @@ function ComingUpPage({ widget, refreshKey, ...card }: CardProps & { widget: Wid
   useEffect(() => {
     let query = supabase
       .from("gatherings")
-      .select("id, title, kind, ends_at, burrows(name)")
+      .select(`id, title, kind, ends_at, burrows(name)${burrowId ? ", gathering_burrows!inner(burrow_id)" : ""}`)
       .gt("ends_at", new Date().toISOString());
-    if (burrowId) query = query.eq("burrow_id", burrowId);
+    if (burrowId) query = query.eq("gathering_burrows.burrow_id", burrowId);
     if (kinds.length) query = query.in("kind", kinds);
     query
       .order("ends_at")
@@ -310,7 +310,7 @@ function ComingUpPage({ widget, refreshKey, ...card }: CardProps & { widget: Wid
 
   const [next] = rows;
   const nextKind = gatheringKindInfo(next.kind);
-  const open = (row: GatheringRow) => router.push(`/gift-nook/gathering/${row.id}`);
+  const open = (row: GatheringRow) => router.push(`/gatherings/${row.id}`);
 
   // Grouped by month, so a long year reads like a calendar.
   const months: { label: string; rows: GatheringRow[] }[] = [];

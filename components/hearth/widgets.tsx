@@ -588,13 +588,16 @@ function Gatherings({ widget, palette, refreshKey, height, shape, icon }: BodyPr
   const [rows, setRows] = useState<GatheringRow[] | null>(null);
 
   useEffect(() => {
-    let query = supabase.from("gatherings").select("id, title, kind, ends_at").gt("ends_at", new Date().toISOString());
-    if (burrowId) query = query.eq("burrow_id", burrowId);
+    let query = supabase
+      .from("gatherings")
+      .select(`id, title, kind, ends_at${burrowId ? ", gathering_burrows!inner(burrow_id)" : ""}`)
+      .gt("ends_at", new Date().toISOString());
+    if (burrowId) query = query.eq("gathering_burrows.burrow_id", burrowId);
     if (kinds.length) query = query.in("kind", kinds);
     query
       .order("ends_at")
       .limit(Math.max(count, 6))
-      .then(({ data }) => setRows(data ?? []));
+      .then(({ data }) => setRows((data ?? []) as unknown as GatheringRow[]));
   }, [burrowId, kinds.join(","), count, refreshKey]);
 
   if (!rows) return null;

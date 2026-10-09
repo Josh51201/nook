@@ -40,22 +40,7 @@ export default function GiftNookSettings() {
 
       <SectionHeader title="Notifications" icon="bell" />
       <Text style={ui.muted}>Pick what shows up in your Gift Nook inbox.</Text>
-      <SettingRow
-        index={1}
-        icon="calendar"
-        title="Gatherings coming up"
-        description="A week before, and the day before."
-        value={settings.notifyGatheringSoon}
-        onChange={(notifyGatheringSoon) => change({ notifyGatheringSoon })}
-      />
-      <SettingRow
-        index={1}
-        icon="celebration"
-        title="A new Gathering"
-        description="When someone plans one in your Burrow. Automatic birthday ones stay quiet."
-        value={settings.notifyGatheringNew}
-        onChange={(notifyGatheringNew) => change({ notifyGatheringNew })}
-      />
+      <Text style={ui.muted}>Notices about Gatherings themselves (invites, reminders) are in the Gathering Nook's settings.</Text>
       <SettingRow
         index={2}
         icon="gift"

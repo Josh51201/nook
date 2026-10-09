@@ -14,7 +14,7 @@ describe("helpFor", () => {
 
   it("says something specific about the Gift Nook's own pages", () => {
     expect(helpFor("/gift-nook/wishbook").title).toBe("My Wishbook");
-    expect(helpFor("/gift-nook/gathering/abc").title).toBe("A Gathering");
+    expect(helpFor("/gift-nook/gathering/abc").title).toBe("A Gathering's gift lists");
   });
 
   it("falls back to the Nook's own description for its other screens", () => {

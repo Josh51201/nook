@@ -48,6 +48,23 @@ export function shortNookName(nook: NookDefinition) {
 
 export const nookCatalog: NookDefinition[] = [
   {
+    id: "gatherings",
+    title: "Gathering Nook",
+    icon: "celebration",
+    iconColor: "#9a5b1c",
+    tagline: "Every get-together",
+    description:
+      "Every get-together you're invited to in one place — a birthday, Christmas, a game night. Invite whole Burrows or just a few people, and everyone can say if they're coming. Add gift lists or a Potluck when it needs them.",
+    route: "/gatherings",
+    available: true,
+    color: "#f3e3c8",
+    aisle: "together",
+    burrow: {
+      route: (burrowId) => `/gatherings?burrowId=${burrowId}`,
+      blurb: "Get-togethers this Burrow is invited to",
+    },
+  },
+  {
     id: "gift-nook",
     title: "Gift Nook",
     icon: "gift",

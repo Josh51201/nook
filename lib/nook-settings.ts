@@ -93,11 +93,19 @@ export function useNookSettings<T extends Saved>(nook: string, defaults: T) {
 // — rename them in both places or not at all.
 export const giftNookSettingDefaults = {
   hideTakenGifts: false,
-  notifyGatheringSoon: true, // GIFT-029
-  notifyGatheringNew: true, // someone plans a Gathering in your Burrow
   notifyNewGifts: true,
   notifyTuckChanged: true,
   notifyMemberJoined: true,
+};
+
+// Gathering Nook settings (GATH-008). The notify* keys are also read by the
+// database (public.gathering_notice) — rename them in both places or not at
+// all.
+export const gatheringSettingDefaults = {
+  notifyInvites: true, // someone invites you (or a Burrow you're in)
+  notifyChanged: true, // the day, time or place of one you're going to changes
+  notifySoon: true, // a week before, and the day before
+  notifyRsvps: true, // for hosts: someone answers
 };
 
 // Pet Care settings. The notify* keys are also read by the database

@@ -118,12 +118,24 @@ describe.runIf(canRun)("Recipe Box: shared with Burrow family only", () => {
   });
 
   it("a Potluck dish can point only at the bringer's own recipe", async () => {
-    const { data: potluck, error } = await clients.mom
-      .from("potlucks")
-      .insert({ burrow_id: burrowId, title: "Supper", starts_at: new Date(Date.now() + 7 * 86400000).toISOString(), created_by: ids.mom })
-      .select("id")
-      .single();
+    // A Potluck is part of a Gathering (GATH-004).
+    const { data: gatheringId, error } = await clients.mom.rpc("plan_gathering", {
+      gathering_title: "Supper",
+      gathering_kind: "dinner",
+      gathering_ends_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+      gathering_starts_at: null,
+      gathering_place: "",
+      gathering_notes: "",
+      with_gifts: false,
+      with_food: true,
+      burrow_ids: [burrowId],
+      guest_ids: [],
+      honoree_ids: [],
+      cohost_ids: [],
+    });
     if (error) throw error;
+    const { data: potluck } = await clients.mom.from("potlucks").select("id").eq("gathering_id", gatheringId).single();
+    if (!potluck) throw new Error("No Potluck");
     const own = await clients.mom
       .from("potluck_dishes")
       .insert({ potluck_id: potluck.id, brought_by: ids.mom, name: "Chili", recipe_id: sharedId });

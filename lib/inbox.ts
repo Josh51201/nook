@@ -37,7 +37,15 @@ type KindInfo = { icon: IconName; route: (data: Notice["data"]) => string | null
 
 const potluckRoute = (data: Notice["data"]) => (data.potluck_id ? `/potluck/${data.potluck_id}` : "/potluck");
 
+const gatheringRoute = (data: Notice["data"]) => (data.gathering_id ? `/gatherings/${data.gathering_id}` : "/gatherings");
+
 const kinds: Record<string, Record<string, KindInfo>> = {
+  gatherings: {
+    gathering_invite: { icon: "invite", route: gatheringRoute },
+    gathering_changed: { icon: "edit", route: gatheringRoute },
+    gathering_rsvp: { icon: "check", route: gatheringRoute },
+    gathering_soon: { icon: "calendar", route: gatheringRoute },
+  },
   "gift-nook": {
     gathering_soon: {
       icon: "calendar",

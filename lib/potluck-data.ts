@@ -1,23 +1,23 @@
-import { displayName, PROFILE_FIELDS, type Profile } from "./gift-nook";
+import { whenWords, type Guest } from "./gatherings";
+import { displayName, type Profile } from "./gift-nook";
 import { isComing, type Person, type Rsvp, type Slot } from "./potluck";
 import { supabase } from "./supabase";
 
-// Loads one Potluck with everything its screens need: spots, dishes,
-// RSVPs, the Burrow's people and their allergies/diets (PROF-004), and
-// what the viewer can do. Row level security decides what comes back — a
-// Potluck outside your Burrows simply isn't found.
+// Loads one Potluck with everything its screens need: spots, dishes, and
+// from its Gathering (GATH-004) the guest list, hosts and RSVPs, with the
+// allergies/diets of the guests (PROF-004) you can see. Row level security
+// decides what comes back — a Potluck for a Gathering you're not invited to
+// simply isn't found.
 
 export type PotluckRow = {
   id: string;
-  burrow_id: string;
-  gathering_id: string | null;
+  gathering_id: string;
   title: string;
   starts_at: string;
   place: string | null;
   notes: string | null;
   created_by: string | null;
-  burrows: { name: string } | null;
-  gatherings: { title: string } | null;
+  gatherings: { title: string; starts_at: string | null; ends_at: string } | null;
 };
 
 export type Dish = {
@@ -31,18 +31,15 @@ export type Dish = {
   recipe_id: string | null;
 };
 
-export type Member = { profile_id: string; role: "admin" | "member"; profiles: Profile | null };
-
 export type PotluckData = {
   potluck: PotluckRow;
   hosts: string[];
   slots: Slot[];
   dishes: Dish[];
   rsvps: Rsvp[];
-  members: Member[];
-  // Everyone in the Burrow, with their allergies and diets.
+  // Everyone invited, with their allergies and diets.
   people: Map<string, Person & { profile: Profile | null }>;
-  // Kids the viewer manages who are in this Burrow (they RSVP for them).
+  // Kids the viewer manages who are invited (they RSVP for them).
   myKids: string[];
   isHost: boolean;
   // Recipes behind dishes that the viewer is allowed to open (REC-009).
@@ -54,42 +51,48 @@ export type PotluckData = {
 export async function loadPotluck(id: string, userId: string): Promise<PotluckData | null> {
   const { data: potluck, error } = await supabase
     .from("potlucks")
-    .select("id, burrow_id, gathering_id, title, starts_at, place, notes, created_by, burrows(name), gatherings(title)")
+    .select("id, gathering_id, title, starts_at, place, notes, created_by, gatherings(title, starts_at, ends_at)")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
   if (!potluck) return null;
 
-  const [hostsResult, slotsResult, dishesResult, rsvpsResult, membersResult, kidsResult] = await Promise.all([
-    supabase.from("potluck_hosts").select("profile_id").eq("potluck_id", id),
+  const [guestsResult, slotsResult, dishesResult, kidsResult, hostResult] = await Promise.all([
+    supabase.rpc("gathering_guest_list", { target_gathering: potluck.gathering_id }),
     supabase.from("potluck_slots").select("id, label, wanted").eq("potluck_id", id).order("position"),
     supabase
       .from("potluck_dishes")
       .select("id, slot_id, brought_by, name, tags, note, recipe_id")
       .eq("potluck_id", id)
       .order("created_at"),
-    supabase.from("potluck_rsvps").select("profile_id, status, extra_guests").eq("potluck_id", id),
-    supabase.from("burrow_members").select(`profile_id, role, profiles(${PROFILE_FIELDS})`).eq("burrow_id", potluck.burrow_id),
     supabase.from("profile_managers").select("profile_id").eq("manager_id", userId),
+    supabase.rpc("can_host_gathering", { target_gathering: potluck.gathering_id }),
   ]);
-  const firstError =
-    hostsResult.error ?? slotsResult.error ?? dishesResult.error ?? rsvpsResult.error ?? membersResult.error;
+  const firstError = guestsResult.error ?? slotsResult.error ?? dishesResult.error;
   if (firstError) throw firstError;
 
-  const members = (membersResult.data ?? []) as unknown as Member[];
-  const memberIds = members.map((m) => m.profile_id);
-  const { data: needsRows } = memberIds.length
-    ? await supabase.from("dietary_needs").select("profile_id, allergies, diets").in("profile_id", memberIds)
+  const guests = (guestsResult.data ?? []) as Guest[];
+  const guestIds = guests.map((g) => g.profile_id);
+  const { data: needsRows } = guestIds.length
+    ? await supabase.from("dietary_needs").select("profile_id, allergies, diets").in("profile_id", guestIds)
     : { data: [] };
   const needs = new Map((needsRows ?? []).map((row) => [row.profile_id as string, row]));
 
   const people = new Map<string, Person & { profile: Profile | null }>();
-  for (const member of members) {
-    const row = needs.get(member.profile_id);
-    people.set(member.profile_id, {
-      id: member.profile_id,
-      name: displayName(member.profiles),
-      profile: member.profiles,
+  for (const guest of guests) {
+    const row = needs.get(guest.profile_id);
+    const profile: Profile = {
+      id: guest.profile_id,
+      display_name: guest.display_name,
+      is_managed: guest.is_managed,
+      avatar_icon: guest.avatar_icon,
+      avatar_color: guest.avatar_color,
+      avatar_path: guest.avatar_path,
+    };
+    people.set(guest.profile_id, {
+      id: guest.profile_id,
+      name: displayName(profile),
+      profile,
       allergies: (row?.allergies as string[] | undefined) ?? [],
       diets: (row?.diets as string[] | undefined) ?? [],
     });
@@ -103,27 +106,31 @@ export async function loadPotluck(id: string, userId: string): Promise<PotluckDa
     ? await supabase.from("recipes").select("id").in("id", recipeIds)
     : { data: [] };
 
-  const hosts = (hostsResult.data ?? []).map((h) => h.profile_id as string);
-  const rsvps = (rsvpsResult.data ?? []) as Rsvp[];
+  const rsvps: Rsvp[] = guests
+    .filter((g) => g.status)
+    .map((g) => ({ profile_id: g.profile_id, status: g.status!, extra_guests: g.extra_guests }));
   const managed = new Set((kidsResult.data ?? []).map((k) => k.profile_id as string));
-  const isAdmin = members.some((m) => m.profile_id === userId && m.role === "admin");
 
   return {
     potluck: potluck as unknown as PotluckRow,
-    hosts,
+    hosts: guests.filter((g) => g.is_host).map((g) => g.profile_id),
     slots: (slotsResult.data ?? []) as Slot[],
     dishes,
     openRecipes: new Set((recipeRows ?? []).map((r) => r.id as string)),
     rsvps,
-    members,
     people,
-    myKids: memberIds.filter((pid) => managed.has(pid)),
-    isHost: hosts.includes(userId) || isAdmin,
+    myKids: guestIds.filter((pid) => managed.has(pid)),
+    isHost: Boolean(hostResult.data),
     coming: rsvps
       .filter((rsvp) => isComing(rsvp.status))
       .map((rsvp) => people.get(rsvp.profile_id))
       .filter((person): person is Person & { profile: Profile | null } => Boolean(person)),
   };
+}
+
+// When a Potluck is: its Gathering's day, and time if one was set.
+export function potluckWhen(potluck: Pick<PotluckRow, "starts_at" | "gatherings">) {
+  return potluck.gatherings ? whenWords(potluck.gatherings) : formatWhen(potluck.starts_at);
 }
 
 // "Sat, Dec 20 · 5:00 PM"

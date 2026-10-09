@@ -102,10 +102,17 @@ export type BurrowMember = {
 
 export type Gathering = {
   id: string;
-  burrow_id: string;
+  // The first Burrow invited (GATH-003); who's invited is the guest list.
+  burrow_id: string | null;
   title: string;
   kind: GatheringKind;
+  // The end of the chosen day. starts_at is the time, if one was set.
   ends_at: string;
+  starts_at?: string | null;
+  place?: string | null;
+  notes?: string | null;
+  // Shown in the Gift Nook, with Wishbooks (GATH-004).
+  gifts?: boolean;
   created_by?: string | null;
 };
 
@@ -137,15 +144,28 @@ export const shelfFields: Record<string, ShelfField[]> = {
 // owner can always flip it.
 export const repeatableByDefault = new Set(["clothes", "money_gift_card"]);
 
-// GIFT-010/014.
-export type GatheringKind = "christmas" | "birthday" | "anniversary" | "baby_shower" | "other";
+// GIFT-010/014, and the get-togethers that aren't about gifts (GATH-002).
+// `gifts` and `food`: whether a new one of this kind starts with gift lists
+// or a Potluck switched on (proposed).
+export type GatheringKind =
+  | "christmas"
+  | "birthday"
+  | "anniversary"
+  | "baby_shower"
+  | "dinner"
+  | "game_night"
+  | "party"
+  | "other";
 
-export const gatheringKinds: { key: GatheringKind; label: string; icon: IconName; color: string }[] = [
-  { key: "christmas", label: "Christmas", icon: "christmas", color: "#b8323e" },
-  { key: "birthday", label: "Birthday", icon: "birthday", color: "#c2415a" },
-  { key: "anniversary", label: "Anniversary", icon: "anniversary", color: "#b4507a" },
-  { key: "baby_shower", label: "Baby shower", icon: "baby_shower", color: "#4f7fb0" },
-  { key: "other", label: "Other", icon: "celebration", color: "#8a5a3b" },
+export const gatheringKinds: { key: GatheringKind; label: string; icon: IconName; color: string; gifts: boolean; food: boolean }[] = [
+  { key: "christmas", label: "Christmas", icon: "christmas", color: "#b8323e", gifts: true, food: false },
+  { key: "birthday", label: "Birthday", icon: "birthday", color: "#c2415a", gifts: true, food: false },
+  { key: "dinner", label: "A meal", icon: "potluck", color: "#4f6b45", gifts: false, food: true },
+  { key: "game_night", label: "Game night", icon: "gamepad", color: "#3f6a96", gifts: false, food: false },
+  { key: "party", label: "Party", icon: "sparkles", color: "#6a4f96", gifts: false, food: false },
+  { key: "anniversary", label: "Anniversary", icon: "anniversary", color: "#b4507a", gifts: true, food: false },
+  { key: "baby_shower", label: "Baby shower", icon: "baby_shower", color: "#4f7fb0", gifts: true, food: false },
+  { key: "other", label: "Other", icon: "celebration", color: "#8a5a3b", gifts: false, food: false },
 ];
 
 export function gatheringKindInfo(kind: string) {
