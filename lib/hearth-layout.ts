@@ -57,8 +57,18 @@ export type LabelItem = ItemBase & {
   // little decoration behind or around it.
   font?: LabelFont;
   bold?: boolean;
+  // Older text's CAPITALS switch; `letters` replaces it (see labelLook).
   caps?: boolean;
+  // "underline" here is older text's underline decoration; underlining is
+  // now its own choice so it works with any decoration (see labelLook).
   decor?: LabelDecor;
+  // Lettering (CORE-082): italics, how the letters are written, the room
+  // between them, an underline and an effect, all on top of any decoration.
+  italic?: boolean;
+  letters?: LabelLetters;
+  spacing?: LabelSpacing;
+  underline?: LabelUnderline;
+  effect?: LabelEffect;
   // Where it sits up and down in its space (CORE-078). Unset: slim text in
   // the middle, taller text at the bottom (see labelVAlign).
   valign?: LabelVAlign;
@@ -75,9 +85,78 @@ export type LabelVAlign = "top" | "middle" | "bottom";
 
 export type LabelDecor = "none" | "underline" | "pill" | "stitched" | "ribbon" | "sign" | "flourish";
 
+export type LabelLetters = "typed" | "upper" | "lower" | "title";
+export type LabelSpacing = "snug" | "normal" | "airy" | "wide";
+export type LabelUnderline = "none" | "line" | "bar" | "wavy";
+export type LabelEffect = "none" | "shadow" | "glow" | "letterpress" | "retro";
+
+export const labelLetters: { key: LabelLetters; label: string }[] = [
+  { key: "typed", label: "As typed" },
+  { key: "upper", label: "CAPITALS" },
+  { key: "lower", label: "lowercase" },
+  { key: "title", label: "Title Case" },
+];
+export const labelSpacings: { key: LabelSpacing; label: string }[] = [
+  { key: "snug", label: "Snug" },
+  { key: "normal", label: "Normal" },
+  { key: "airy", label: "Airy" },
+  { key: "wide", label: "Wide" },
+];
+export const labelUnderlines: { key: LabelUnderline; label: string }[] = [
+  { key: "none", label: "None" },
+  { key: "line", label: "Line" },
+  { key: "bar", label: "Soft bar" },
+  { key: "wavy", label: "Wavy" },
+];
+export const labelEffects: { key: LabelEffect; label: string }[] = [
+  { key: "none", label: "None" },
+  { key: "shadow", label: "Shadow" },
+  { key: "glow", label: "Glow" },
+  { key: "letterpress", label: "Letterpress" },
+  { key: "retro", label: "Retro" },
+];
+
+// Text's look with older settings read the new way (CORE-082): the old
+// underline decoration is a soft-bar underline with no decoration, and the
+// old CAPITALS switch is "CAPITALS" letters. A divider has no decoration or
+// underline.
+export type LabelLook = {
+  decor: LabelDecor;
+  underline: LabelUnderline;
+  letters: LabelLetters;
+  spacing: LabelSpacing;
+  effect: LabelEffect;
+  italic: boolean;
+};
+export function labelLook(item: Pick<LabelItem, "decor" | "underline" | "caps" | "letters" | "spacing" | "effect" | "italic" | "divider">): LabelLook {
+  const oldUnderline = item.decor === "underline";
+  return {
+    decor: item.divider || oldUnderline ? "none" : item.decor ?? "none",
+    underline: item.divider ? "none" : item.underline ?? (oldUnderline ? "bar" : "none"),
+    letters: item.letters ?? (item.caps ? "upper" : "typed"),
+    spacing: item.spacing ?? "normal",
+    effect: item.effect ?? "none",
+    italic: Boolean(item.italic),
+  };
+}
+// The fields to save alongside a lettering or decoration change, so older
+// text moves to the new settings without changing how it looks.
+export function labelLookUpgrade(item: Pick<LabelItem, "decor" | "underline" | "caps" | "letters">): Partial<LabelItem> {
+  const changes: Partial<LabelItem> = {};
+  if (item.decor === "underline") {
+    changes.decor = "none";
+    if (!item.underline) changes.underline = "bar";
+  }
+  if (item.caps !== undefined) {
+    changes.caps = undefined;
+    if (!item.letters) changes.letters = item.caps ? "upper" : "typed";
+  }
+  return changes;
+}
+
+// Decorations you can pick ("underline" is now its own choice, CORE-082).
 export const labelDecors: { key: LabelDecor; label: string; icon: IconName }[] = [
   { key: "none", label: "Plain", icon: "close" },
-  { key: "underline", label: "Underline", icon: "minus" },
   { key: "pill", label: "Soft pill", icon: "category" },
   { key: "stitched", label: "Stitched", icon: "clothes" },
   { key: "ribbon", label: "Ribbon", icon: "gift" },

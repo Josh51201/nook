@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deepOf, hexToHsl, hslToHex, isHex, pickerColor, pickerHues, pickerTiers, shade } from "../lib/colors";
+import { deepOf, hexToHsl, hslToHex, isHex, pickerColor, pickerGreys, pickerHues, pickerTiers, shade } from "../lib/colors";
 import {
   activeAmbience,
   autoAmbience,
@@ -49,6 +49,22 @@ describe("colors (CORE-042)", () => {
         expect(hexToHsl(deepOf(soft)).l).toBeLessThan(0.4);
       }
     }
+  });
+
+  it("Light, Soft and Rich give different deep colors for text and Bold looks (CORE-083)", () => {
+    for (const hue of pickerHues) {
+      const [light, soft, rich] = [0, 1, 2].map((tier) => deepOf(pickerColor(hue, tier)));
+      expect(new Set([light, soft, rich]).size).toBe(3);
+      // Rich is darker and more vivid than Light.
+      expect(hexToHsl(rich).l).toBeLessThan(hexToHsl(light).l);
+      expect(hexToHsl(rich).s).toBeGreaterThan(hexToHsl(light).s);
+    }
+  });
+
+  it("greys get lighter and darker deep partners too", () => {
+    const deeps = pickerGreys.map(deepOf);
+    expect(new Set(deeps).size).toBe(pickerGreys.length);
+    for (const deep of deeps) expect(hexToHsl(deep).l).toBeLessThan(0.43);
   });
 
   it("keeps the hand-picked deep colors for the classic seven, and works one out for any other", () => {

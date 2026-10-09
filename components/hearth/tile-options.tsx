@@ -9,7 +9,13 @@ import { tap } from "../../lib/feedback";
 import {
   hollowDecors,
   labelDecors,
+  labelEffects,
   labelIsBold,
+  labelLetters,
+  labelLook,
+  labelLookUpgrade,
+  labelSpacings,
+  labelUnderlines,
   hollowLookInfo,
   hollowLooks,
   itemColor,
@@ -23,7 +29,7 @@ import {
   type TrinketItem,
 } from "../../lib/hearth";
 import { labelFonts } from "../../lib/fonts";
-import { lookSummary, sizeSummary, tagsSummary } from "../../lib/summaries";
+import { letteringInWords, lookSummary, sizeSummary, tagsSummary } from "../../lib/summaries";
 import { trinketInfo, trinkets } from "../../lib/trinkets";
 import { showInWords } from "../../lib/widget-extras";
 import { findNook } from "../../lib/nooks";
@@ -143,13 +149,20 @@ export function ItemOptions({
         : shown.kind === "label"
           ? [
               { title: "Title", heading: "Heading", caption: "Caption" }[shown.size],
-              labelFonts.find((f) => f.key === (shown.font ?? "app"))?.label,
-              shown.divider ? "Divider" : labelDecors.find((d) => d.key === (shown.decor ?? "none"))?.label,
+              shown.divider ? "Divider" : labelDecors.find((d) => d.key === labelLook(shown).decor)?.label,
             ].join(" · ")
           : shown.flip
             ? "Flipped"
             : "As drawn";
   const placeSummary = shown ? sizeSummary(sizePresets[shown.kind], shown.w, shown.h, shown.locked) : "";
+  const letteringSummary = shown?.kind === "label" ? letteringInWords(shown) : "";
+
+  // A lettering or decoration change, saved with older text's settings moved
+  // to the new ones (CORE-082) so nothing else about it changes.
+  function changeLook(changes: Partial<LabelItem>) {
+    if (shown?.kind !== "label") return;
+    onChange({ ...labelLookUpgrade(shown), ...changes } as Partial<LabelItem>);
+  }
 
   return (
     <BottomSheet
@@ -344,22 +357,6 @@ export function ItemOptions({
                     </Chip>
                   ))}
                 </View>
-                <Text style={ui.label}>Font</Text>
-                <View style={ui.chips}>
-                  {labelFonts.map((f) => (
-                    <Chip key={f.key} selected={(shown.font ?? "app") === f.key} onPress={() => onChange({ font: f.key } as Partial<LabelItem>)}>
-                      {f.label}
-                    </Chip>
-                  ))}
-                </View>
-                <View style={ui.chips}>
-                  <Chip icon="text" selected={labelIsBold(shown)} onPress={() => onChange({ bold: !labelIsBold(shown) } as Partial<LabelItem>)}>
-                    Bold
-                  </Chip>
-                  <Chip icon="text" selected={Boolean(shown.caps)} onPress={() => onChange({ caps: !shown.caps } as Partial<LabelItem>)}>
-                    CAPITALS
-                  </Chip>
-                </View>
                 {shown.divider ? null : (
                   <>
                     <Text style={ui.label}>Decoration</Text>
@@ -368,15 +365,15 @@ export function ItemOptions({
                         <Chip
                           key={d.key}
                           icon={d.icon}
-                          selected={(shown.decor ?? "none") === d.key}
-                          onPress={() => onChange({ decor: d.key } as Partial<LabelItem>)}
+                          selected={labelLook(shown).decor === d.key}
+                          onPress={() => changeLook({ decor: d.key })}
                         >
                           {d.label}
                         </Chip>
                       ))}
                     </View>
                     <Text style={ui.muted}>The color below tints the pill, patch, ribbon or sign.</Text>
-                    {(shown.decor ?? "none") !== "none" ? (
+                    {labelLook(shown).decor !== "none" ? (
                       <>
                         <Text style={ui.label}>Stretch across</Text>
                         <Slider
@@ -390,7 +387,7 @@ export function ItemOptions({
                           startLabel="Just the words"
                           endLabel="Edge to edge"
                         />
-                        {decorStretchesTall(shown.decor) ? (
+                        {decorStretchesTall(labelLook(shown).decor) ? (
                           <>
                             <Text style={ui.label}>Stretch up and down</Text>
                             <Slider
@@ -470,6 +467,63 @@ export function ItemOptions({
               </>
             ) : null}
           </Collapsible>
+
+          {shown.kind === "label" ? (
+            <Collapsible id="label-lettering" icon="text" title="Lettering" summary={letteringSummary}>
+              <Text style={ui.label}>Font</Text>
+              <View style={ui.chips}>
+                {labelFonts.map((f) => (
+                  <Chip key={f.key} selected={(shown.font ?? "app") === f.key} onPress={() => onChange({ font: f.key } as Partial<LabelItem>)}>
+                    {f.label}
+                  </Chip>
+                ))}
+              </View>
+              <View style={ui.chips}>
+                <Chip icon="text" selected={labelIsBold(shown)} onPress={() => onChange({ bold: !labelIsBold(shown) } as Partial<LabelItem>)}>
+                  Bold
+                </Chip>
+                <Chip icon="text" selected={labelLook(shown).italic} onPress={() => changeLook({ italic: !labelLook(shown).italic })}>
+                  Italic
+                </Chip>
+              </View>
+              <Text style={ui.label}>Letters</Text>
+              <View style={ui.chips}>
+                {labelLetters.map((l) => (
+                  <Chip key={l.key} selected={labelLook(shown).letters === l.key} onPress={() => changeLook({ letters: l.key })}>
+                    {l.label}
+                  </Chip>
+                ))}
+              </View>
+              <Text style={ui.label}>Letter spacing</Text>
+              <View style={ui.chips}>
+                {labelSpacings.map((l) => (
+                  <Chip key={l.key} selected={labelLook(shown).spacing === l.key} onPress={() => changeLook({ spacing: l.key })}>
+                    {l.label}
+                  </Chip>
+                ))}
+              </View>
+              {shown.divider ? null : (
+                <>
+                  <Text style={ui.label}>Underline</Text>
+                  <View style={ui.chips}>
+                    {labelUnderlines.map((l) => (
+                      <Chip key={l.key} selected={labelLook(shown).underline === l.key} onPress={() => changeLook({ underline: l.key })}>
+                        {l.label}
+                      </Chip>
+                    ))}
+                  </View>
+                </>
+              )}
+              <Text style={ui.label}>Effect</Text>
+              <View style={ui.chips}>
+                {labelEffects.map((l) => (
+                  <Chip key={l.key} selected={labelLook(shown).effect === l.key} onPress={() => changeLook({ effect: l.key })}>
+                    {l.label}
+                  </Chip>
+                ))}
+              </View>
+            </Collapsible>
+          ) : null}
 
           <Collapsible id="tile-size" icon="resize" title="Size & place" summary={placeSummary}>
             <Text style={ui.label}>Size</Text>

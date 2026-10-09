@@ -7,8 +7,9 @@
 // width and the height, wrapping onto more lines when there's room. Only if
 // even the smallest size can't fit does it fall back to "…".
 
+import { luminance } from "./colors";
 import type { LabelFont } from "./fonts";
-import type { LabelDecor, LabelItem, LabelVAlign } from "./hearth-layout";
+import type { LabelDecor, LabelItem, LabelLook, LabelUnderline, LabelVAlign } from "./hearth-layout";
 
 export type TextMeasure = { words: number[]; space: number };
 
@@ -37,8 +38,6 @@ export function decorInset(decor: LabelDecor | undefined, fontSize: number, snug
   const padY = Math.max(2, fontSize * 0.14);
   const k = snug ? 0.6 : 1;
   switch (decor ?? "none") {
-    case "underline":
-      return { ...none, outerY: Math.max(2, fontSize * 0.1) + Math.max(2, fontSize * 0.08) };
     case "pill":
       return { ...none, padX: Math.max(8 * k, fontSize * 0.55 * k), padY };
     case "stitched":
@@ -69,7 +68,41 @@ export type FitRules = {
   decor?: LabelDecor;
   // Width kept free beside the text (a divider's line and arrow).
   reserve?: number;
+  // Lettering that takes room (CORE-082): an underline below the words, and
+  // italics leaning past the end of the line.
+  underline?: LabelUnderline;
+  italic?: boolean;
 };
+
+// The room an underline takes under the words, at a font size (CORE-082):
+// the gap below the letters and the line's own height.
+export function underlineRoom(style: LabelUnderline | undefined, fontSize: number): { gap: number; height: number; stroke: number } {
+  switch (style ?? "none") {
+    case "line": {
+      const stroke = Math.max(1.5, fontSize * 0.06);
+      return { gap: fontSize * 0.06, height: stroke, stroke };
+    }
+    case "bar": {
+      const stroke = Math.max(2, fontSize * 0.1);
+      return { gap: Math.max(2, fontSize * 0.08), height: stroke, stroke };
+    }
+    case "wavy": {
+      const stroke = Math.max(1.5, fontSize * 0.07);
+      return { gap: fontSize * 0.08, height: fontSize * 0.14 + stroke, stroke };
+    }
+    default:
+      return { gap: 0, height: 0, stroke: 0 };
+  }
+}
+
+// Room between the letters, as a share of the font size (CORE-082), so one
+// measurement works at every size. CAPITALS get a little extra; big titles
+// sit a touch tighter.
+const spacingSteps = { snug: -0.03, normal: 0, airy: 0.08, wide: 0.18 } as const;
+export function letterSpacingEm(look: Pick<LabelLook, "letters" | "spacing">, size: LabelItem["size"]): number {
+  const base = look.letters === "upper" ? 0.08 : size === "title" ? -0.012 : 0;
+  return base + spacingSteps[look.spacing];
+}
 
 // How many lines the words wrap onto at this size, or Infinity if a single
 // word is wider than the line.
@@ -110,8 +143,10 @@ function fitWith(m: TextMeasure, box: { width: number; height: number }, rules: 
     // The last try is the smallest size exactly.
     const size = Math.max(rules.min, step);
     const inset = decorInset(rules.decor, size, snug);
-    const lineWidth = (box.width - SIDE_PAD * 2 - inset.padX * 2 - inset.outerX - (rules.reserve ?? 0)) * SLACK;
-    const height = box.height - inset.padY * 2 - inset.outerY;
+    const lean = rules.italic ? size * 0.12 : 0;
+    const lineWidth = (box.width - SIDE_PAD * 2 - inset.padX * 2 - inset.outerX - (rules.reserve ?? 0) - lean) * SLACK;
+    const under = underlineRoom(rules.underline, size);
+    const height = box.height - inset.padY * 2 - inset.outerY - under.gap - under.height;
     const room = Math.min(rules.maxLines, Math.floor(height / (size * rules.lineHeight) + 0.001));
     last = { fontSize: size, lines: Math.max(1, room), room: Math.max(1, room), fits: false, snug };
     if (room < 1 || lineWidth <= 0) continue;
@@ -167,9 +202,9 @@ export function fitLabel(
   m: TextMeasure,
   item: Pick<LabelItem, "size" | "decor" | "font" | "divider">,
   box: { width: number; height: number },
-  options: { fontScale?: number; reserve?: number } = {}
+  options: { fontScale?: number; reserve?: number; underline?: LabelUnderline; italic?: boolean } = {}
 ): Fit & { lineHeight: number } {
-  const rules = { ...labelRules(item, box, options.fontScale), reserve: options.reserve };
+  const rules = { ...labelRules(item, box, options.fontScale), reserve: options.reserve, underline: options.underline, italic: options.italic };
   const fill = fitText(m, box, rules);
   const share = labelFill[item.size].share;
   const fit = share === 1 || !fill.fits ? fill : fitText(m, box, { ...rules, max: Math.max(rules.min, fill.fontSize * share) });
@@ -178,9 +213,9 @@ export function fitLabel(
 
 // A rough measure from the letters alone, used for the first moment before
 // the real one comes back from the phone (and in tests).
-export function estimateMeasure(text: string, font: LabelFont | undefined, caps?: boolean, bold?: boolean): TextMeasure {
+export function estimateMeasure(text: string, font: LabelFont | undefined, caps?: boolean, bold?: boolean, spacingEm?: number): TextMeasure {
   const perChar = font === "handwritten" ? 0.42 : font === "storybook" ? 0.58 : 0.54;
-  const k = perChar * (caps ? 1.25 : 1) * (bold ? 1.05 : 1) + (caps ? 0.08 : 0);
+  const k = perChar * (caps ? 1.25 : 1) * (bold ? 1.05 : 1) + (spacingEm ?? (caps ? 0.08 : 0));
   return { words: splitWords(text).map((w) => w.length * k), space: 0.27 };
 }
 
@@ -218,4 +253,47 @@ export function decorMinHeight(item: Pick<LabelItem, "spanY" | "decor" | "divide
   const span = Math.min(1, Math.max(0, item.spanY ?? 0));
   // The 2 points it keeps from the edge it sits against.
   return span * Math.max(0, height - 2);
+}
+
+// The effect's shadow behind the letters (CORE-082), sized with the text.
+// Light text (on a wood sign, or a dark theme) gets dark shadows instead.
+// Android draws no shadow at all with a radius of 0, so "hard" ones use 1.
+export function effectShadow(
+  effect: LabelLook["effect"],
+  fontSize: number,
+  tint: string,
+  soft: string | undefined,
+  accent: string
+): { textShadowColor?: string; textShadowOffset?: { width: number; height: number }; textShadowRadius?: number } {
+  const light = luminance(tint) > 0.4;
+  switch (effect) {
+    case "shadow":
+      return {
+        textShadowColor: light ? "rgba(0, 0, 0, 0.55)" : "rgba(60, 35, 15, 0.32)",
+        textShadowOffset: { width: 0, height: Math.max(1, fontSize * 0.05) },
+        textShadowRadius: Math.max(2, fontSize * 0.12),
+      };
+    case "glow":
+      return {
+        textShadowColor: light ? accent : soft ?? "#fff3d1",
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: Math.max(4, fontSize * 0.35),
+      };
+    case "letterpress": {
+      const nudge = Math.max(1, fontSize * 0.03);
+      return light
+        ? { textShadowColor: "rgba(0, 0, 0, 0.45)", textShadowOffset: { width: 0, height: -nudge }, textShadowRadius: 1 }
+        : { textShadowColor: "rgba(255, 255, 255, 0.85)", textShadowOffset: { width: 0, height: nudge }, textShadowRadius: 1 };
+    }
+    case "retro": {
+      const nudge = Math.max(1.5, fontSize * 0.06);
+      return {
+        textShadowColor: light ? "rgba(0, 0, 0, 0.4)" : `${accent}99`,
+        textShadowOffset: { width: nudge, height: nudge },
+        textShadowRadius: 1,
+      };
+    }
+    default:
+      return {};
+  }
 }

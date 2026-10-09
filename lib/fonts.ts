@@ -35,7 +35,30 @@ const caveat: Record<number, string> = {
   700: "Caveat_700Bold",
 };
 
-export const fontFiles = [...Object.values(nunito), ...Object.values(fraunces), ...Object.values(caveat)];
+// Italics, for Hearth text (CORE-082). Handwriting has no italic file; it's
+// slanted instead (labelSlanted).
+const nunitoItalic: Record<number, string> = {
+  400: "Nunito_400Regular_Italic",
+  500: "Nunito_500Medium_Italic",
+  600: "Nunito_600SemiBold_Italic",
+  700: "Nunito_700Bold_Italic",
+  800: "Nunito_800ExtraBold_Italic",
+  900: "Nunito_900Black_Italic",
+};
+const frauncesItalic: Record<number, string> = {
+  600: "Fraunces_600SemiBold_Italic",
+  700: "Fraunces_700Bold_Italic",
+  800: "Fraunces_800ExtraBold_Italic",
+  900: "Fraunces_900Black_Italic",
+};
+
+export const fontFiles = [
+  ...Object.values(nunito),
+  ...Object.values(fraunces),
+  ...Object.values(caveat),
+  ...Object.values(nunitoItalic),
+  ...Object.values(frauncesItalic),
+];
 
 // Fonts a piece of Hearth text can wear (CORE-076). "app" follows the app's
 // own font choice.
@@ -49,8 +72,20 @@ export const labelFonts: { key: LabelFont; label: string }[] = [
   { key: "classic", label: "Classic" },
 ];
 
-// The font file for Hearth text, or null for the phone's own font.
-export function labelFamily(font: LabelFont | undefined, weight: number, appFont: FontKey): string | null {
+// The font file for Hearth text, or null for the phone's own font (which
+// does italics by itself with fontStyle).
+export function labelFamily(font: LabelFont | undefined, weight: number, appFont: FontKey, italic = false): string | null {
+  const family = uprightFamily(font, weight, appFont);
+  if (!italic || !family) return family;
+  return family.replace(/^(Nunito|Fraunces)_(\w+)$/, "$1_$2_Italic");
+}
+
+// Handwriting has no italic font, so italic handwriting is slanted.
+export function labelSlanted(font: LabelFont | undefined, appFont: FontKey, italic: boolean): boolean {
+  return italic && Boolean(uprightFamily(font, 400, appFont)?.startsWith("Caveat"));
+}
+
+function uprightFamily(font: LabelFont | undefined, weight: number, appFont: FontKey): string | null {
   const w = weightOf(weight);
   switch (font ?? "app") {
     case "app":

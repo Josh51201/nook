@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { decorInset, decorMinHeight, decorMinWidth, decorStretchesTall, estimateMeasure, fitLabel, fitText, labelRules, labelVAlign, wrapCount } from "../lib/label-fit";
-import type { LabelItem } from "../lib/hearth-layout";
+import { decorInset, decorMinHeight, decorMinWidth, decorStretchesTall, effectShadow, letterSpacingEm, underlineRoom, estimateMeasure, fitLabel, fitText, labelRules, labelVAlign, wrapCount } from "../lib/label-fit";
+import { labelLook, labelLookUpgrade, type LabelItem } from "../lib/hearth-layout";
+import { letteringInWords } from "../lib/summaries";
 
 // Sizes on a typical phone: a 4-column grid, cells about 80 wide with 12
 // between them, so one column is 80 wide, a slim row 34 tall, a full row 80.
@@ -173,5 +174,63 @@ describe("Stretching a decoration up and down (CORE-081)", () => {
   it("doesn't change the size of the words", () => {
     const box = { width: FULL_WIDTH, height: tall };
     expect(fit("Holidays", { decor: "sign" }, box).fontSize).toBe(fit("Holidays", { decor: "sign", spanY: 1 }, box).fontSize);
+  });
+});
+
+describe("Lettering (CORE-082)", () => {
+  const box = { width: FULL_WIDTH, height: ROW };
+
+  it("reads older text the new way without changing how it looks", () => {
+    const old = labelLook({ decor: "underline", caps: true });
+    expect(old).toMatchObject({ decor: "none", underline: "bar", letters: "upper", spacing: "normal", effect: "none", italic: false });
+    expect(labelLook({ decor: "ribbon", underline: "wavy" })).toMatchObject({ decor: "ribbon", underline: "wavy" });
+    // A divider has no decoration or underline.
+    expect(labelLook({ decor: "pill", underline: "line", divider: true })).toMatchObject({ decor: "none", underline: "none" });
+  });
+
+  it("moves older settings over when you change the lettering", () => {
+    expect(labelLookUpgrade({ decor: "underline", caps: true })).toEqual({ decor: "none", underline: "bar", caps: undefined, letters: "upper" });
+    expect(labelLookUpgrade({ decor: "ribbon" })).toEqual({});
+  });
+
+  it("an underline works with any decoration, and its room is counted", () => {
+    for (const decor of ["pill", "stitched", "ribbon", "sign", "flourish"] as const) {
+      const plain = fitLabel(estimateMeasure("Hi", "app"), { size: "title", decor }, box);
+      const lined = fitLabel(estimateMeasure("Hi", "app"), { size: "title", decor }, box, { underline: "wavy" });
+      expect(lined.fits).toBe(true);
+      expect(lined.fontSize).toBeLessThan(plain.fontSize);
+      const inset = decorInset(decor, lined.fontSize, lined.snug);
+      const under = underlineRoom("wavy", lined.fontSize);
+      expect(lined.fontSize * 1.2 + inset.padY * 2 + inset.outerY + under.gap + under.height).toBeLessThanOrEqual(ROW);
+    }
+  });
+
+  it("wider letter spacing takes more room", () => {
+    const look = { letters: "typed" as const };
+    expect(letterSpacingEm({ ...look, spacing: "wide" }, "heading")).toBeGreaterThan(letterSpacingEm({ ...look, spacing: "normal" }, "heading"));
+    expect(letterSpacingEm({ ...look, spacing: "snug" }, "heading")).toBeLessThan(0);
+    expect(letterSpacingEm({ letters: "upper", spacing: "normal" }, "heading")).toBeGreaterThan(0);
+  });
+
+  it("each effect draws a shadow that grows with the text, and light text gets dark ones", () => {
+    for (const effect of ["shadow", "glow", "letterpress", "retro"] as const) {
+      const small = effectShadow(effect, 14, "#3a2a20", undefined, "#8a5a3b");
+      const big = effectShadow(effect, 40, "#3a2a20", undefined, "#8a5a3b");
+      expect(small.textShadowColor).toBeTruthy();
+      // Android needs a radius above 0 to draw any shadow.
+      expect(small.textShadowRadius).toBeGreaterThan(0);
+      expect(Math.abs(big.textShadowOffset!.height) + big.textShadowRadius!).toBeGreaterThanOrEqual(
+        Math.abs(small.textShadowOffset!.height) + small.textShadowRadius!
+      );
+    }
+    expect(effectShadow("letterpress", 20, "#fff7ec", undefined, "#8a5a3b").textShadowColor).toContain("0, 0, 0");
+    expect(effectShadow("none", 20, "#3a2a20", undefined, "#8a5a3b")).toEqual({});
+  });
+
+  it("sums up the lettering in a few words", () => {
+    expect(letteringInWords({ id: "t", kind: "label", x: 0, y: 0, w: 4, h: 1, text: "Hi", size: "caption", align: "left" })).toBe("Same as the app");
+    expect(
+      letteringInWords({ id: "t", kind: "label", x: 0, y: 0, w: 4, h: 1, text: "Hi", size: "title", align: "left", font: "rounded", italic: true, letters: "title", spacing: "wide", underline: "wavy", effect: "glow" })
+    ).toBe("Rounded · Bold · Italic · Title Case · Wide spacing · Wavy underline · Glow");
   });
 });

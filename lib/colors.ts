@@ -59,11 +59,15 @@ export function pickerColor(hue: number, tier: number) {
 }
 
 // The deep partner of any soft color: same hue, dark enough to read white
-// text on, rich enough to still feel like the color.
+// text on, rich enough to still feel like the color. The picker's strengths
+// carry through (CORE-083): a Light tint's partner is dustier and a touch
+// lighter, a Rich one's more vivid and darker, and Soft's stays as it was.
 export function deepOf(soft: string): string {
-  const { h, s } = hexToHsl(soft);
-  if (s < 0.08) return "#5a524c";
-  return hslToHex(h, clamp(s + 0.08, 0.4, 0.75), 0.34);
+  const { h, s, l } = hexToHsl(soft);
+  // Light (-1) … Soft (0) … Rich (+1), from how light the tint is.
+  const strength = clamp((0.85 - l) / 0.08, -1, 1);
+  if (s < 0.08) return hslToHex(h, s, clamp(0.34 - 0.08 * strength, 0.24, 0.42));
+  return hslToHex(h, clamp(s + 0.08 + 0.2 * strength, 0.3, 0.85), 0.34 - 0.06 * strength);
 }
 
 // Lighter or darker by a fraction of the lightness range (-1..1), keeping hue.
