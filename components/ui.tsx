@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, View, type StyleProp, type ViewStyle } from "react-native";
-import { Text } from "./text";
+import { FixedTextSize, Text } from "./text";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { colors, themed, ui } from "../lib/theme";
@@ -158,13 +158,26 @@ export function SectionHeader({ title, icon, right }: { title: string; icon?: Ic
   );
 }
 
-export function EmptyState({ icon, title, body }: { icon: IconName; title: string; body?: string }) {
+// A blank page says what goes here and, when there's an obvious first step,
+// gives one big button for it (CORE-073).
+export function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: IconName;
+  title: string;
+  body?: string;
+  action?: { title: string; icon?: IconName; onPress: () => void };
+}) {
   return (
     <Appear>
       <View style={{ alignItems: "center", gap: 8, paddingVertical: 28, paddingHorizontal: 12 }}>
         <IconBadge name={icon} size={64} />
         <Text style={[ui.cardTitle, { fontSize: 17, textAlign: "center" }]}>{title}</Text>
         {body ? <Text style={[ui.muted, { textAlign: "center" }]}>{body}</Text> : null}
+        {action ? <Button title={action.title} icon={action.icon} onPress={action.onPress} style={{ marginTop: 8, alignSelf: "stretch" }} /> : null}
       </View>
     </Appear>
   );
@@ -230,9 +243,11 @@ export function HeaderIcon({
       <Icon name={icon} size={20} />
       {badge > 0 ? (
         <Animated.View entering={ZoomIn.springify().damping(12)} style={headerBadge}>
-          <Text style={{ color: colors.white, fontSize: 9.5, lineHeight: 12, fontWeight: "700", textAlign: "center", includeFontPadding: false }}>
-            {badge > 9 ? "9+" : badge}
-          </Text>
+          <FixedTextSize>
+            <Text style={{ color: colors.white, fontSize: 9.5, lineHeight: 12, fontWeight: "700", textAlign: "center", includeFontPadding: false }}>
+              {badge > 9 ? "9+" : badge}
+            </Text>
+          </FixedTextSize>
         </Animated.View>
       ) : null}
     </Tap>

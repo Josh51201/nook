@@ -2,7 +2,7 @@
 
 _Built Hearth requirements: `docs/archive/NOOK_HEARTH_BUILT.md`; built Nooks: `docs/archive/NOOK_NOOKS_BUILT.md`; more fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. Don't read those unless you need them._
 
-_Last updated: 2026-10-09 (rev 54)_
+_Last updated: 2026-10-09 (rev 55)_
 
 ## 1. Platform / Shell
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -17,8 +17,14 @@ _Last updated: 2026-10-09 (rev 54)_
 - **CORE-016** Whatever you're typing in is never hidden behind the phone's keyboard, and every keyboard has a way to close it.
 - **CORE-021** Nook ships as its own app with its own icon (not inside Expo Go). _(Prepared: icon set drawn (a cozy fireplace in an arch, proposed), app.json and eas.json set up, build guide in docs/BUILDING_THE_APP.md. Needs Josh's Expo and Apple Developer accounts to build — see Q-025.)_
 - **CORE-037** Every Nook is named "___ Nook" (Gift Nook, Potluck Nook, …). Each get-together inside the Potluck Nook is still "a Potluck".
-- **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*.
+- **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*. _(Exception, CORE-072: a brand-new Hearth starts with one Greeting widget.)_
 - **CORE-067** Every Nook is reachable from one menu, even ones not added to the Hearth, so someone invited to a Gathering (or who joined just for the Gift Nook) knows where to tap. _(Built as a "Nooks" tab in the bottom bar: Nooks with something new sit at the top, a dot on the tab shows news, one tap opens any Nook, and a Nook can be put on the Hearth from there; the tour points at it. Placement and layout are Claude's call, proposed.)_
+- **CORE-068** Text size setting (Settings → Text size): Normal (follows the phone), Large, Extra large. Applies everywhere except the Hearth's own tiles, widgets and Hollows, which keep their size so layouts never break. _(Built 2026-10-09. Large/Extra large mean "at least this big", so it never stacks on the phone's own big text.)_
+- **CORE-069** A "?" in the header of every screen: a couple of plain sentences about that screen, with buttons to the Help page and to replay the tour. _(Built 2026-10-09: on the Hearth, the tabs and every Nook's screens; form screens that use the header for Save don't have it.)_
+- **CORE-070** A Help page (Settings → Help, or from the "?"): tap-to-open answers to common questions, plus replay the tour. _(Built 2026-10-09; the answers are Claude's wording, proposed.)_
+- **CORE-071** Friendlier emailed-code sign-in: the phone can offer the code from the email, pasted codes with spaces work, a spam-folder hint, a "Send a new code" button (after a 60-second wait), "Wrong email? Go back", and plain-words errors. _(Built 2026-10-09.)_
+- **CORE-072** A brand-new Hearth starts with one Greeting widget across the top (saying "Welcome to your Hearth") and nothing else; it can be edited, moved or removed like any widget. Existing Hearths are untouched. _(Josh 2026-10-09: "maybe with just the Greeting widget at the top". An exception to CORE-015's "nothing on the Hearth until you add it".)_
+- **CORE-073** Blank screens point to a first step with a button where there's an obvious one, and small icon buttons have bigger tap areas and spoken labels without changing how anything looks. _(Built 2026-10-09.)_
 
 ### Still to do from the Hearth rounds
 Everything else in CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md) — grep it by ID. Josh said yes to every idea in these rounds; details are Claude's proposals until he confirms. Some is paid under Nook Plus (Q-028).
@@ -133,6 +139,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | Gift categories, and recipe categories (REC-006) | Shelves | proposed |
 | The Nook shop | The Market | proposed |
 | The bottom tab listing every Nook (CORE-067) | Nooks | proposed |
+| The page of common questions (CORE-070) | Help | proposed |
 | A house/stump on the Hearth you enter to reach its own organized screen | Hollow | approved |
 
 ## 6. Nook Backlog

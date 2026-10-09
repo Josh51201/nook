@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { Text } from "../../components/text";
 
 import { Avatar } from "../../components/avatar";
+import { HelpButton } from "../../components/help-button";
 import { IconBadge, type IconName } from "../../components/icon";
 import { Appear, LoadingScreen, Tap } from "../../components/motion";
 import { NookHero } from "../../components/nook-hero";
@@ -214,6 +215,7 @@ export default function GiftNookHome() {
                 label="Gift Nook settings"
                 onPress={() => router.push("/gift-nook/settings")}
               />
+              <HelpButton />
             </View>
           ),
         }}
@@ -321,6 +323,7 @@ export default function GiftNookHome() {
           icon="burrow"
           title="No Burrows yet"
           body="Burrows are your family groups. Start one, or join one with a Knock code, in the Burrows tab."
+          action={{ title: "Go to Burrows", icon: "burrow", onPress: () => router.navigate("/burrows") }}
         />
       ) : (
         burrows.map((burrow, i) => (

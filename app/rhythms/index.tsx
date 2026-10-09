@@ -8,6 +8,7 @@ import { NookHero } from "../../components/nook-hero";
 import { NookScroll } from "../../components/nook-scroll";
 import { Text } from "../../components/text";
 import { Button, Chip, EmptyState, HeaderIcon, SectionHeader } from "../../components/ui";
+import { HeaderWithHelp } from "../../components/help-button";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
 import { findNook } from "../../lib/nooks";
@@ -118,7 +119,9 @@ export default function RhythmsHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderIcon icon="settings" label="Rhythms Nook settings" onPress={() => router.push("/rhythms/settings")} />
+            <HeaderWithHelp>
+              <HeaderIcon icon="settings" label="Rhythms Nook settings" onPress={() => router.push("/rhythms/settings")} />
+            </HeaderWithHelp>
           ),
         }}
       />

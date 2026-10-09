@@ -4,10 +4,11 @@ import { StyleSheet, View } from "react-native";
 import { Text } from "../../components/text";
 import Animated, { useAnimatedStyle, withSpring } from "react-native-reanimated";
 
+import { HelpButton } from "../../components/help-button";
 import { Icon, type IconName } from "../../components/icon";
 import { Tap } from "../../components/motion";
 import { themedScreenLayout } from "../../components/themed-screen";
-import { TourProvider, TourTarget } from "../../components/tour";
+import { TourTarget } from "../../components/tour";
 import { useAuth } from "../../lib/auth-context";
 import { tap } from "../../lib/feedback";
 import { findNook } from "../../lib/nooks";
@@ -15,9 +16,9 @@ import { colors, headerFont, themed, useTheme } from "../../lib/theme";
 import { useUnreadByNook } from "../../lib/use-unread";
 
 // CORE-025: the bar along the bottom of the app — the Hearth, every Nook
-// (CORE-067), Burrows (families, shared by every Nook) and Settings. Nooks, Hollows and other
-// screens open on top of it. The first-time tour (CORE-026) lives here too,
-// so it can point at these tabs.
+// (CORE-067), Burrows (families, shared by every Nook) and Settings. Nooks,
+// Hollows and other screens open on top of it. The first-time tour
+// (CORE-026) is in the root layout, so it can point at these tabs.
 
 const tabIcons: Record<string, IconName> = { hearth: "hearth", nooks: "nooks", burrows: "burrow", settings: "settings" };
 
@@ -27,6 +28,7 @@ const headerOptions = themed(() => ({
   headerShadowVisible: false,
   headerTitleStyle: { fontWeight: "700" as const, color: colors.text, ...headerFont(700) },
   headerTintColor: colors.bark,
+  headerRight: () => <HelpButton />,
 }));
 
 export default function TabsLayout() {
@@ -35,24 +37,22 @@ export default function TabsLayout() {
   if (!isLoading && !session) return <Redirect href="/sign-in" />;
 
   return (
-    <TourProvider>
-      <Tabs
-        screenLayout={themedScreenLayout}
-        tabBar={(props) => <NookTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-          // No fade between tabs: a fade interrupted by a quick second tap can
-          // stick at invisible and leave a blank page.
-          animation: "none",
-          sceneStyle: { backgroundColor: colors.background },
-        }}
-      >
-        <Tabs.Screen name="hearth" options={{ title: "Hearth" }} />
-        <Tabs.Screen name="nooks" options={{ ...headerOptions, title: "Nooks" }} />
-        <Tabs.Screen name="burrows" options={{ ...headerOptions, title: "Burrows" }} />
-        <Tabs.Screen name="settings" options={{ ...headerOptions, title: "Settings" }} />
-      </Tabs>
-    </TourProvider>
+    <Tabs
+      screenLayout={themedScreenLayout}
+      tabBar={(props) => <NookTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        // No fade between tabs: a fade interrupted by a quick second tap can
+        // stick at invisible and leave a blank page.
+        animation: "none",
+        sceneStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Tabs.Screen name="hearth" options={{ title: "Hearth" }} />
+      <Tabs.Screen name="nooks" options={{ ...headerOptions, title: "Nooks" }} />
+      <Tabs.Screen name="burrows" options={{ ...headerOptions, title: "Burrows" }} />
+      <Tabs.Screen name="settings" options={{ ...headerOptions, title: "Settings" }} />
+    </Tabs>
   );
 }
 

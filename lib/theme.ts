@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
-import { Appearance, Platform, StyleSheet } from "react-native";
+import { Appearance, PixelRatio, Platform, StyleSheet } from "react-native";
 
 import { familyFor, type FontKey } from "./fonts";
+import { textScaleFor, type TextSizeKey } from "./text-size";
 
 // The whole app wears your Hearth's theme (CORE-032): Hearth (cream and
 // bark), Ember, Sage, or Dusk (dark). With "Go dark with my phone" on, it
@@ -193,6 +194,22 @@ export function markFontsReady() {
 
 export function currentFont(): FontKey {
   return fontsReady ? font : "classic";
+}
+
+// --- The live text size (CORE-068) -------------------------------------------
+// What <Text> multiplies the sizes it's given by. 1 for "Normal", so nothing
+// changes until someone picks a bigger size.
+let textScale = 1;
+
+export function applyTextSize(key: TextSizeKey) {
+  const next = textScaleFor(key, PixelRatio.getFontScale());
+  if (next === textScale) return;
+  textScale = next;
+  bump();
+}
+
+export function currentTextScale() {
+  return textScale;
 }
 
 export function fontsAreReady() {

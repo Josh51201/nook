@@ -83,7 +83,9 @@ export function useNookSettings<T extends Saved>(nook: string, defaults: T) {
     if (key && userId) load(key, userId, nook);
   }, [key, userId, nook]);
 
-  return { settings, update, reload, isLoading: !saved && !error, error };
+  // Loaded, and nothing has ever been saved: someone brand new.
+  const isNew = !!saved && Object.keys(saved).length === 0;
+  return { settings, update, reload, isLoading: !saved && !error, isNew, error };
 }
 
 // Gift Nook settings and their defaults. Provisional list pending Q-019.

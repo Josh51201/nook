@@ -8,6 +8,7 @@ import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import { DevSignIn } from "../../components/dev-sign-in";
 import { IconBadge } from "../../components/icon";
 import { Button } from "../../components/ui";
+import { looksLikeEmail } from "../../lib/sign-in";
 import { supabase } from "../../lib/supabase";
 import { colors, themed } from "../../lib/theme";
 
@@ -21,6 +22,10 @@ export default function SignIn() {
     const trimmed = email.trim();
     if (!trimmed) {
       setError("Enter your email first.");
+      return;
+    }
+    if (!looksLikeEmail(trimmed)) {
+      setError("That doesn't look like an email address — it should look like name@example.com.");
       return;
     }
 

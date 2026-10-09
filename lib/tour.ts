@@ -113,13 +113,13 @@ export const firstTour: TourStep[] = [
     icon: "settings",
     target: "tab-settings",
     title: "Settings",
-    body: "Your profile (add your birthday and your Burrows get a Birthday Gathering for you), your Hearth's name and theme — and this tour again, whenever you want it.",
+    body: "Your profile (add your birthday and your Burrows get a Birthday Gathering for you), your Hearth's name and theme, bigger text if you'd like it, and Help — plus this tour again, whenever you want it.",
   },
   // A warm send-off, in the middle of whatever screen you're on.
   {
     icon: "heart",
     title: "Make yourself at home",
-    body: "That's the whole tour! Wander in, open a Nook, and shape your Hearth to your heart's content — pick a theme, move things around, tuck Nooks into Hollows. This little nook is all yours.",
+    body: "That's the whole tour! Wander in, open a Nook, and shape your Hearth to your heart's content — pick a theme, move things around, tuck Nooks into Hollows. This little nook is all yours. And if you ever get stuck, tap the ? at the top of any screen.",
   },
 ];
 

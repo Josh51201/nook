@@ -9,6 +9,7 @@ import { NookHero } from "../../components/nook-hero";
 import { NookScroll } from "../../components/nook-scroll";
 import { RecipeThumb } from "../../components/recipe-thumb";
 import { Button, Chip, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
+import { HeaderWithHelp } from "../../components/help-button";
 import { useAuth } from "../../lib/auth-context";
 import { tap } from "../../lib/feedback";
 import { findNook } from "../../lib/nooks";
@@ -54,7 +55,9 @@ export default function RecipeBoxHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderIcon icon="settings" label="Recipe Box settings" onPress={() => router.push("/recipes/settings")} />
+            <HeaderWithHelp>
+              <HeaderIcon icon="settings" label="Recipe Box settings" onPress={() => router.push("/recipes/settings")} />
+            </HeaderWithHelp>
           ),
         }}
       />

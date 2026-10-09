@@ -126,6 +126,7 @@ export default function MyTucks() {
           icon="tucks"
           title="Nothing tucked away yet"
           body="Open someone's Wishbook and tap “Tuck it away” on a gift you'll get. It'll land here as your shopping list."
+          action={{ title: "Find a Wishbook", icon: "wishbook", onPress: () => router.navigate("/gift-nook") }}
         />
       ) : (
         <>

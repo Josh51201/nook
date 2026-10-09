@@ -2,7 +2,8 @@ import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
-import { Text } from "../text";
+import { FixedTextSize, Text } from "../text";
+import { HelpButton } from "../help-button";
 import { Gesture, GestureDetector, ScrollView } from "react-native-gesture-handler";
 import Animated, {
   FadeIn,
@@ -125,7 +126,17 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 // drag items anywhere, resize them from the corner, and add things. On the
 // Hearth you can also add Hollows, drop tiles onto them to put them inside,
 // and tap one to open its door and step in.
-export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string }) {
+// The Hearth and its Hollows are laid out on a fixed grid, so their text
+// ignores the text size setting (CORE-068); the rest of the app follows it.
+export function HearthScreen(props: { scope: Scope; reveal?: string }) {
+  return (
+    <FixedTextSize>
+      <HearthScreenBody {...props} />
+    </FixedTextSize>
+  );
+}
+
+function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) {
   const router = useRouter();
   // Your own pages, plus the page shared with your Home (CORE-054).
   const { layout, save, isLoading, error, reload, personal, home, showsHome, onHome } = useHearthView(scope);
@@ -1299,6 +1310,8 @@ export function HearthScreen({ scope, reveal }: { scope: Scope; reveal?: string 
                   <Icon name="settings" size={24} color={theme.accent} />
                 </Tap>
               ) : null}
+              {/* Out of the way while arranging, when the header is busiest. */}
+              {editing ? null : <HelpButton color={theme.accent} />}
             </View>
           </View>
         </View>

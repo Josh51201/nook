@@ -5,7 +5,7 @@ import type { ShowIn } from "./widget-extras";
 import { wallpaperPath, type Ambience, type Corners, type Lift, type TileShape, type Wallpaper } from "./decor";
 import { findNook } from "./nooks";
 import { trinketInfo, type TrinketKey } from "./trinkets";
-import { newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
+import { defaultWidget, newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook } from "./widgets";
 
 // Pure Hearth layout logic (no React/Supabase, so it's unit-testable).
 //
@@ -105,6 +105,8 @@ export type HearthLayout = {
   followPhone: boolean;
   // The app's typeface (CORE-035).
   font: FontKey;
+  // How big text is across the app, except on the Hearth's own tiles (CORE-068).
+  textSize: TextSizeKey;
   // Behind everything (CORE-041), and the weather in the air (CORE-047).
   wallpaper: Wallpaper;
   ambience: Ambience;
@@ -121,6 +123,7 @@ export type HearthLayout = {
 
 export type { FontKey } from "./fonts";
 import type { FontKey } from "./fonts";
+import type { TextSizeKey } from "./text-size";
 
 // Soft tile colors that all work with dark text, each with a deep partner
 // for "bold" widgets and outlines.
@@ -235,6 +238,7 @@ export const defaultHearthLayout: HearthLayout = {
   theme: "hearth",
   followPhone: true,
   font: "classic",
+  textSize: "normal",
   wallpaper: { kind: "none" },
   ambience: "off",
   customThemes: [],
@@ -244,6 +248,25 @@ export const defaultHearthLayout: HearthLayout = {
   otherPages: {},
   items: [],
 };
+
+// What a brand-new Hearth starts with (CORE-072): just a warm hello across
+// the top, so the first screen isn't a blank page. Everything else is added
+// by the person (CORE-015), and the hello can be moved, changed or removed
+// like any widget.
+export function starterItems(): HearthItem[] {
+  const widget = defaultWidget("greeting");
+  const size = widgetKindInfo("greeting").size;
+  return [
+    {
+      id: "starter-greeting",
+      kind: "widget",
+      widget: widget.kind === "greeting" ? { ...widget, settings: { ...widget.settings, message: "Welcome to your Hearth" } } : widget,
+      x: 0,
+      y: 0,
+      ...size,
+    },
+  ];
+}
 
 // --- Sizes ------------------------------------------------------------------
 
@@ -602,6 +625,7 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
     theme: saved.theme ?? defaultHearthLayout.theme,
     followPhone: saved.followPhone ?? defaultHearthLayout.followPhone,
     font: saved.font ?? defaultHearthLayout.font,
+    textSize: saved.textSize ?? defaultHearthLayout.textSize,
     wallpaper: saved.wallpaper ?? defaultHearthLayout.wallpaper,
     ambience: saved.ambience ?? defaultHearthLayout.ambience,
     customThemes: saved.customThemes ?? defaultHearthLayout.customThemes,

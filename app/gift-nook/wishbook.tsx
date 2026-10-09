@@ -90,7 +90,7 @@ export default function MyWishbook() {
         <EmptyState
           icon="wishbook"
           title="Your Wishbook is empty"
-          body="Add things you'd love — your family sees them in every Burrow you share. You'll never see who tucked what away; that stays a surprise."
+          body="Tap “Add a gift” above to start. Your family sees what you add in every Burrow you share — and you'll never see who tucked what away; that stays a surprise."
         />
       ) : (
         <>

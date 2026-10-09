@@ -8,6 +8,8 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ThemeGate, themedScreenLayout } from "../components/themed-screen";
+import { HelpButton } from "../components/help-button";
+import { TourProvider } from "../components/tour";
 import { AuthProvider } from "../lib/auth-context";
 import { configureReminders } from "../lib/reminders";
 import { fontFiles } from "../lib/fonts";
@@ -34,7 +36,10 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <AuthProvider>
             <ThemeGate>
-              <RootStack />
+              {/* Up here so the tour can be replayed from any screen (Help). */}
+              <TourProvider>
+                <RootStack />
+              </TourProvider>
             </ThemeGate>
           </AuthProvider>
         </SafeAreaProvider>
@@ -46,7 +51,13 @@ export default function RootLayout() {
 function RootStack() {
   // Re-render (and so re-style every header) when the theme changes.
   useTheme();
-  const headerOptions = { ...stackScreenOptions, headerShown: true, headerBackTitle: "Hearth" };
+  const headerOptions = {
+    ...stackScreenOptions,
+    headerShown: true,
+    headerBackTitle: "Hearth",
+    // The "?" on every screen with a header (CORE-069).
+    headerRight: () => <HelpButton />,
+  };
 
   return (
     <Stack
@@ -76,6 +87,7 @@ function RootStack() {
       <Stack.Screen name="theme-seasons" options={{ ...headerOptions, title: "Seasonal themes", headerBackTitle: "Settings" }} />
       <Stack.Screen name="inbox" options={{ ...headerOptions, title: "Inbox" }} />
       <Stack.Screen name="market" options={{ ...headerOptions, title: "The Market" }} />
+      <Stack.Screen name="help" options={{ ...headerOptions, title: "Help", headerRight: undefined, headerBackTitle: "Back" }} />
       <Stack.Screen name="widget/[id]" options={{ ...headerOptions, title: "Widget", headerBackTitle: "Back" }} />
       <Stack.Screen name="widget/view/[id]" options={{ ...headerOptions, title: "Widget" }} />
     </Stack>

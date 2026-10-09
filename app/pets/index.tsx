@@ -9,6 +9,7 @@ import { NookScroll } from "../../components/nook-scroll";
 import { PetAvatar } from "../../components/pet-avatar";
 import { Text } from "../../components/text";
 import { Button, EmptyState, HeaderIcon, SectionHeader } from "../../components/ui";
+import { HeaderWithHelp } from "../../components/help-button";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
 import { findNook } from "../../lib/nooks";
@@ -157,7 +158,9 @@ export default function PetsHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderIcon icon="settings" label="Pet Care Nook settings" onPress={() => router.push("/pets/settings")} />
+            <HeaderWithHelp>
+              <HeaderIcon icon="settings" label="Pet Care Nook settings" onPress={() => router.push("/pets/settings")} />
+            </HeaderWithHelp>
           ),
         }}
       />

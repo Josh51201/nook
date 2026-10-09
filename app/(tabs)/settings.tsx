@@ -17,6 +17,7 @@ import {
   type HearthThemeKey,
 } from "../../lib/hearth";
 import { fontChoices, familyFor } from "../../lib/fonts";
+import { textSizeChoices } from "../../lib/text-size";
 import { formatDate } from "../../lib/gift-nook";
 import { hasRealName, useMyProfile } from "../../lib/profile";
 import { supabase } from "../../lib/supabase";
@@ -195,6 +196,33 @@ export default function HearthSettings() {
             subtitle={layout.seasonal.enabled ? "On — your Hearth dresses for the time of year" : "A different theme for winter, spring, summer and autumn"}
             onPress={() => router.push("/theme-seasons")}
           />
+          <Text style={ui.label}>Text size</Text>
+          {textSizeChoices.map((choice) => {
+            const selected = (layout.textSize ?? "normal") === choice.key;
+            return (
+              <Tap
+                key={choice.key}
+                onPress={() => saveHearthChanges({ textSize: choice.key })}
+                style={[
+                  ui.card,
+                  { gap: 2, borderWidth: selected ? 2 : undefined, borderColor: selected ? colors.bark : undefined },
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`${choice.label} text. ${choice.description}`}
+              >
+                {/* Drawn at the size it describes, whatever's chosen now. */}
+                <PlainText style={{ fontSize: 16 * choice.factor, fontWeight: "700", color: colors.text }}>
+                  {choice.label}
+                </PlainText>
+                <PlainText style={{ fontSize: 13 * choice.factor, color: colors.muted }}>{choice.description}</PlainText>
+              </Tap>
+            );
+          })}
+          <Text style={ui.muted}>
+            Makes words bigger everywhere except the tiles on your Hearth, which keep their size so your layout stays
+            just as you arranged it.
+          </Text>
           <Text style={ui.label}>Font</Text>
           {fontChoices.map((choice) => {
             const selected = layout.font === choice.key;
@@ -260,6 +288,13 @@ export default function HearthSettings() {
             .then(() => router.navigate("/hearth"))
             .catch((replayError: Error) => Alert.alert("Couldn't start the tour", replayError.message))
         }
+      />
+
+      <NavCard
+        icon="help"
+        title="Help"
+        subtitle="Answers to common questions"
+        onPress={() => router.push("/help")}
       />
 
       <Text style={ui.sectionTitle}>Account</Text>

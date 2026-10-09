@@ -1,12 +1,14 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 import { Text, TextInput } from "../../components/text";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 
 import { IconBadge } from "../../components/icon";
+import { Tap } from "../../components/motion";
 import { Button } from "../../components/ui";
+import { RESEND_SECONDS, cleanCode, friendlyCodeError } from "../../lib/sign-in";
 import { supabase } from "../../lib/supabase";
 import { colors, themed } from "../../lib/theme";
 
@@ -16,6 +18,32 @@ export default function Verify() {
   const [code, setCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [waitLeft, setWaitLeft] = useState(RESEND_SECONDS);
+  const [isResending, setIsResending] = useState(false);
+
+  // Count down until a new code can be asked for.
+  useEffect(() => {
+    if (waitLeft <= 0) return;
+    const timer = setTimeout(() => setWaitLeft((left) => left - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [waitLeft]);
+
+  async function resend() {
+    if (!email) return;
+    setIsResending(true);
+    setError(null);
+    setNotice(null);
+    const { error: sendError } = await supabase.auth.signInWithOtp({ email });
+    setIsResending(false);
+    if (sendError) {
+      setError(friendlyCodeError(sendError.message));
+      return;
+    }
+    setCode("");
+    setWaitLeft(RESEND_SECONDS);
+    setNotice("A new code is on its way. Use the newest email.");
+  }
 
   async function verifyCode() {
     if (!email) {
@@ -25,6 +53,7 @@ export default function Verify() {
 
     setIsVerifying(true);
     setError(null);
+    setNotice(null);
 
     const { error: verifyError } = await supabase.auth.verifyOtp({
       email,
@@ -35,7 +64,7 @@ export default function Verify() {
     setIsVerifying(false);
 
     if (verifyError) {
-      setError(verifyError.message);
+      setError(friendlyCodeError(verifyError.message));
       return;
     }
 
@@ -51,21 +80,37 @@ export default function Verify() {
         <IconBadge name="wave" size={76} />
       </Animated.View>
       <Animated.Text entering={FadeInDown.delay(80).springify()} style={styles.title}>Check your email</Animated.Text>
-      <Text style={styles.subtitle}>Enter the code we sent to {email}.</Text>
+      <Text style={styles.subtitle}>
+        Type the code we emailed to {email}. It can take a minute to arrive — check your spam or junk folder too.
+      </Text>
 
       <TextInput
         style={styles.input}
         placeholder="123456"
         value={code}
-        onChangeText={setCode}
+        onChangeText={(text) => setCode(cleanCode(text))}
         keyboardType="number-pad"
+        // Lets the phone offer the code from the email above the keyboard.
+        textContentType="oneTimeCode"
+        autoComplete="one-time-code"
         autoFocus
         editable={!isVerifying}
       />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
-      <Button title="Verify" onPress={verifyCode} loading={isVerifying} style={{ marginTop: 8 }} />
+      <Button title="Verify" onPress={verifyCode} loading={isVerifying} disabled={code.length < 6} style={{ marginTop: 8 }} />
+      <Button
+        title={waitLeft > 0 ? `Send a new code in ${waitLeft}s` : "Send a new code"}
+        variant="secondary"
+        onPress={resend}
+        loading={isResending}
+        disabled={waitLeft > 0 || isVerifying}
+      />
+      <Tap onPress={() => router.back()} hitSlop={10} accessibilityRole="button" style={{ alignSelf: "center", padding: 8 }}>
+        <Text style={styles.link}>Wrong email? Go back</Text>
+      </Tap>
     </KeyboardAvoidingView>
   );
 }
@@ -86,6 +131,8 @@ const styles = themed(() =>
       textAlign: "center",
       letterSpacing: 4,
     },
-    error: { color: "#c0392b", textAlign: "center" },
+    error: { color: "#c0392b", textAlign: "center", lineHeight: 21 },
+    notice: { color: colors.bark, textAlign: "center", lineHeight: 21 },
+    link: { color: colors.bark, fontSize: 15, fontWeight: "600" },
   })
 );

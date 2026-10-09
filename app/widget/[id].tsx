@@ -1228,11 +1228,11 @@ function Stepper({
     <View style={[ui.row, { justifyContent: "space-between" }]}>
       <Text style={ui.cardTitle}>{label}</Text>
       <View style={[ui.row, { gap: 14 }]}>
-        <Tap onPress={() => value > min && onChange(value - 1)} disabled={value <= min} style={stepperButton} hitSlop={6}>
+        <Tap onPress={() => value > min && onChange(value - 1)} disabled={value <= min} style={stepperButton} hitSlop={6} accessibilityRole="button" accessibilityLabel={`Less ${label}`}>
           <Text style={stepperText}>−</Text>
         </Tap>
         <Text style={[ui.cardTitle, { minWidth: 20, textAlign: "center" }]}>{value}</Text>
-        <Tap onPress={() => value < max && onChange(value + 1)} disabled={value >= max} style={stepperButton} hitSlop={6}>
+        <Tap onPress={() => value < max && onChange(value + 1)} disabled={value >= max} style={stepperButton} hitSlop={6} accessibilityRole="button" accessibilityLabel={`More ${label}`}>
           <Icon name="add" size={16} />
         </Tap>
       </View>

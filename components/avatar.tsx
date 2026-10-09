@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { Text } from "./text";
+import { FixedTextSize, Text } from "./text";
 
 import { avatarColors, initialsOf } from "../lib/profile";
 import { Icon, type IconName } from "./icon";
@@ -35,7 +35,9 @@ export function Avatar({
       {icon ? (
         <Icon name={icon as IconName} size={size * 0.5} color="#ffffff" />
       ) : (
-        <Text style={{ color: "#ffffff", fontSize: size * 0.4, fontWeight: "800" }}>{initialsOf(name)}</Text>
+        <FixedTextSize>
+          <Text style={{ color: "#ffffff", fontSize: size * 0.4, fontWeight: "800" }}>{initialsOf(name)}</Text>
+        </FixedTextSize>
       )}
     </View>
   );

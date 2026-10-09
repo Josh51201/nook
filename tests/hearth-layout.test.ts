@@ -18,6 +18,7 @@ import {
   removeNook,
   resizeItem,
   rowsUsed,
+  starterItems,
   type HearthItem,
   type HearthLayout,
 } from "../lib/hearth-layout";
@@ -330,5 +331,28 @@ describe("widgetShape (widgets laid out for their size)", () => {
     expect(widgetShape(two, four)).toBe("tall");
     expect(widgetShape(four, three)).toBe("large");
     expect(widgetShape(four, four)).toBe("large");
+  });
+});
+
+describe("starterItems", () => {
+  it("is just a Greeting widget across the top, and nothing else", () => {
+    const items = starterItems();
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ kind: "widget", x: 0, y: 0, w: 4, h: 1 });
+    expect(items[0].kind === "widget" && items[0].widget.kind).toBe("greeting");
+    // No Nook tiles are added for anyone (CORE-015).
+    expect(items.some((item) => item.kind === "nook")).toBe(false);
+  });
+
+  it("fits on a Hearth page, and new things still find a free spot below it", () => {
+    const layout: HearthLayout = { ...defaultHearthLayout, items: starterItems() };
+    const next = addItem(layout, { id: "n1", kind: "nook", nookId: "gift-nook", w: 2, h: 2 });
+    const added = next.find((item) => item.id === "n1")!;
+    expect(overlaps(added, next[0])).toBe(false);
+  });
+
+  it("leaves the default layout empty, so an existing empty Hearth stays empty", () => {
+    expect(defaultHearthLayout.items).toEqual([]);
+    expect(migrateLayout({ items: [] }).items).toEqual([]);
   });
 });

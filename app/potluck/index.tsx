@@ -7,6 +7,7 @@ import { LoadingScreen } from "../../components/motion";
 import { NookHero } from "../../components/nook-hero";
 import { NookScroll } from "../../components/nook-scroll";
 import { Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
+import { HeaderWithHelp } from "../../components/help-button";
 import { useAuth } from "../../lib/auth-context";
 import { guarded } from "../../lib/feedback";
 import { countdown } from "../../lib/gift-nook";
@@ -121,7 +122,9 @@ export default function PotluckHome() {
         options={{
           title: burrowName ? `${burrowName} Potlucks` : "Potluck Nook",
           headerRight: () => (
-            <HeaderIcon icon="settings" label="Potluck Nook settings" onPress={() => router.push("/potluck/settings")} />
+            <HeaderWithHelp>
+              <HeaderIcon icon="settings" label="Potluck Nook settings" onPress={() => router.push("/potluck/settings")} />
+            </HeaderWithHelp>
           ),
         }}
       />

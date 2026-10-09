@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, View } from "react-native";
-import { Text } from "../../components/text";
+import { FixedTextSize, Text } from "../../components/text";
 
 import { Icon } from "../../components/icon";
 import { Tap } from "../../components/motion";
@@ -180,7 +180,9 @@ function NewsBubble({ count }: { count: number }) {
         backgroundColor: colors.bark,
       }}
     >
-      <Text style={{ color: colors.background, fontSize: 13, fontWeight: "800" }}>{count > 99 ? "99+" : count}</Text>
+      <FixedTextSize>
+        <Text style={{ color: colors.background, fontSize: 13, fontWeight: "800" }}>{count > 99 ? "99+" : count}</Text>
+      </FixedTextSize>
     </View>
   );
 }

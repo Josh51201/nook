@@ -8,6 +8,7 @@ import { NookHero } from "../../components/nook-hero";
 import { NookScroll } from "../../components/nook-scroll";
 import { Text } from "../../components/text";
 import { Banner, Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
+import { HeaderWithHelp } from "../../components/help-button";
 import { useAuth } from "../../lib/auth-context";
 import { friendlyError, tap } from "../../lib/feedback";
 import { findNook } from "../../lib/nooks";
@@ -114,7 +115,11 @@ export default function SitterHome() {
     <NookScroll onRefresh={reload}>
       <Stack.Screen
         options={{
-          headerRight: () => <HeaderIcon icon="settings" label="Sitter Sheet settings" onPress={() => router.push("/sitter/settings")} />,
+          headerRight: () => (
+            <HeaderWithHelp>
+              <HeaderIcon icon="settings" label="Sitter Sheet settings" onPress={() => router.push("/sitter/settings")} />
+            </HeaderWithHelp>
+          ),
         }}
       />
       <NookHero

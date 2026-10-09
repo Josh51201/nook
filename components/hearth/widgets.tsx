@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useContext, useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, Line } from "react-native-svg";
-import { Text } from "../text";
+import { FixedTextSize, Text } from "../text";
 import Animated, { FadeIn, FadeInRight, LinearTransition, ZoomIn } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
@@ -86,7 +86,17 @@ export function widgetPalette(look: WidgetConfig["look"], color: string | undefi
   };
 }
 
-export function WidgetView({
+// A widget's text stays at its designed size whatever the text size setting
+// (CORE-068): it's laid out on the Hearth's grid, here and in its previews.
+export function WidgetView(props: React.ComponentProps<typeof WidgetBody>) {
+  return (
+    <FixedTextSize>
+      <WidgetBody {...props} />
+    </FixedTextSize>
+  );
+}
+
+function WidgetBody({
   widget,
   color,
   icon,

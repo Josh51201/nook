@@ -223,6 +223,7 @@ function Stepper({ icon, label, onPress }: { icon: "minus" | "add"; label: strin
       }}
       accessibilityLabel={label}
       accessibilityRole="button"
+      hitSlop={8}
       style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.barkSoft, alignItems: "center", justifyContent: "center" }}
     >
       <Icon name={icon} size={16} />

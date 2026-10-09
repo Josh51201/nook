@@ -3,6 +3,7 @@ import { Text } from "./text";
 
 import { colors, stackScreenOptions, ui } from "../lib/theme";
 import { Icon, type IconName } from "./icon";
+import { HelpButton } from "./help-button";
 import { Tap } from "./motion";
 
 // Shared screen options for every Nook's stack (CORE-014). The first screen
@@ -56,5 +57,7 @@ export function nookStackOptions({ navigation }: { navigation: Navigation }) {
   return {
     ...stackScreenOptions,
     headerLeft: place ? () => <BackTo {...place} /> : undefined,
+    // Screens with their own header buttons add the "?" to them (HeaderWithHelp).
+    headerRight: () => <HelpButton />,
   };
 }

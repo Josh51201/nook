@@ -7,6 +7,7 @@ import { NookHero } from "../../components/nook-hero";
 import { NookScroll } from "../../components/nook-scroll";
 import { Text, TextInput } from "../../components/text";
 import { Banner, Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
+import { HeaderWithHelp } from "../../components/help-button";
 import { useAuth } from "../../lib/auth-context";
 import { cardSeason, nextBirthday, seasonStatus } from "../../lib/letterbox";
 import {
@@ -115,12 +116,9 @@ export default function LetterboxHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderIcon
-              icon="settings"
-              label="Letterbox Nook settings"
-              
-              onPress={() => router.push("/letterbox/settings")}
-            />
+            <HeaderWithHelp>
+              <HeaderIcon icon="settings" label="Letterbox Nook settings" onPress={() => router.push("/letterbox/settings")} />
+            </HeaderWithHelp>
           ),
         }}
       />
