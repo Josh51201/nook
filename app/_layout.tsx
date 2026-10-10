@@ -92,6 +92,7 @@ function RootStack() {
       <Stack.Screen name="hollow/[id]" options={{ animation: "fade", animationDuration: 250 }} />
       <Stack.Screen name="onboarding" options={{ gestureEnabled: false, animation: "fade" }} />
       <Stack.Screen name="profile" options={{ ...headerOptions, title: "Your profile", headerBackTitle: "Settings" }} />
+      <Stack.Screen name="delete-account" options={{ ...headerOptions, title: "Delete account", headerBackTitle: "Settings" }} />
       <Stack.Screen name="home" options={{ ...headerOptions, title: "Your Home", headerBackTitle: "Burrows" }} />
       <Stack.Screen name="theme-editor" options={{ ...headerOptions, title: "Theme", headerBackTitle: "Settings" }} />
       <Stack.Screen name="theme-seasons" options={{ ...headerOptions, title: "Seasonal themes", headerBackTitle: "Settings" }} />

@@ -360,6 +360,13 @@ export default function HearthSettings() {
         onPress={confirmSignOut}
       />
 
+      <Button
+        title="Delete account"
+        icon="trash"
+        variant="danger"
+        onPress={() => router.push("/delete-account")}
+      />
+
       <Text style={[ui.muted, { textAlign: "center", marginTop: 24 }]}>
         Nook v{Constants.expoConfig?.version ?? "?"}
       </Text>

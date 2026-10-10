@@ -49,6 +49,7 @@ All of CORE-041..066 is built and archived in [archive/NOOK_HEARTH_BUILT.md](arc
 ## 1a. Accounts & Login
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.
 - **AUTH-002** While developing in Expo Go, there is an extra email + password "Developer sign-in" so test accounts (made in the Supabase dashboard) can be used without waiting for an emailed code. It never ships: it does not exist in a real release build.
+- **AUTH-003** You can delete your account from Settings, and it's gone right away. Burrows you started keep going if other grown-ups are in them (another takes over running it; a Burrow with no one else is deleted), gifts you'd tucked become available again with no notice to the list owner (GIFT-007), your Wishbook and Hearth go with you, and kids only you look after go too (kids another grown-up in their Home can look after stay). _(Josh 2026-10-10: took the recommended answer to each question; Apple requires this before App Store release. Built: Settings -> Delete account shows what will go, then needs you to type DELETE; the database does it all in one step. The database part is written but not yet run: apply migration 20261010140000 and run the RLS test.)_
 
 ## 1b. Profile
 - **PROF-001** Each person has a customizable profile: their name, a picture (a chosen icon or their initials on a chosen color), an optional birthday, and a short "about me". Family in their Burrows can see it; nobody else. They can edit it any time (Settings → Your profile). _(Built — fine print in docs/archive/NOOK_REQUIREMENTS_FULL.md.)_
@@ -188,7 +189,6 @@ Josh asked 2026-10-09 for an easier place to see and plan Gatherings ("right now
   - _Built for now (proposed):_ honorees are optional when creating a Gathering. If any are picked, the Gathering links to their Wishbooks; if none, to everyone invited whose Wishbook you can see (GATH-007). Anniversaries can pick both people.
 - **Q-019** What else should the Gift Nook's settings include?
   - _Built so far:_ "Hide gifts that are already taken" *(proposed)*, plus the four notification switches (GIFT-029). Saved to the account, so they follow you to a new phone.
-- **Q-020** Deleting an account: Apple's App Store requires apps with sign-up to offer in-app account deletion. When someone deletes their account, what happens to Burrows they started, gifts they've tucked for others, and their Wishbook? (Needed before an App Store release, not before.)
 
 
 - **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
