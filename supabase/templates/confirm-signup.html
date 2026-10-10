@@ -1,31 +1,75 @@
 <!--
   Supabase email template: Confirm signup
-  Paste the body below into Authentication -> Email Templates -> Confirm signup
-  (after custom SMTP is set up, see docs/NOOK_REQUIREMENTS.md AUTH-001 / Q-015).
-  Kept here only for reference/version history — Supabase doesn't read this file.
+  Paste everything below into Authentication -> Email Templates -> Confirm signup
+  (see docs/NOOK_REQUIREMENTS.md AUTH-001 / Q-015). Kept here only for reference/version history; Supabase doesn't
+  read this file when it's running in the cloud.
+  Matches the app's Hearth theme (cream and bark), with the Dusk colors for
+  phones in dark mode. No images or emoji, so nothing can fail to load, and
+  it's one fluid column that fits any phone width.
 -->
-<div style="background-color:#f6ede2;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" style="max-width:420px;margin:0 auto;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #ecdfd0;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .page { background-color: #2a2330 !important; }
+      .card { background-color: #342b39 !important; border-color: #463b4b !important; }
+      .badge { background-color: #f0b98d !important; color: #2a2330 !important; }
+      .title { color: #f4ece6 !important; }
+      .muted { color: #b9adb4 !important; }
+      .codebox { background-color: #40353f !important; }
+      .code { color: #f0b98d !important; }
+    }
+    @media only screen and (max-width: 480px) {
+      .pad { padding-left: 20px !important; padding-right: 20px !important; }
+      .code { font-size: 28px !important; letter-spacing: 5px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;">
+  <!-- Preview line shown next to the subject in the inbox -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    Your code to finish joining Nook.
+  </div>
+  <table role="presentation" class="page" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fbf7f2;">
     <tr>
-      <td style="padding:32px 32px 8px 32px;text-align:center;">
-        <div style="font-size:32px;line-height:1;">🏡</div>
-        <h1 style="margin:12px 0 4px 0;font-size:20px;color:#3a2c1f;">Welcome to Nook</h1>
-        <p style="margin:0;font-size:14px;color:#8a7a68;">Enter this code to finish signing up</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:16px 32px;text-align:center;">
-        <div style="display:inline-block;background-color:#f6ede2;border-radius:12px;padding:16px 28px;">
-          <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#8a5a3b;">{{ .Token }}</span>
-        </div>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:8px 32px 32px 32px;text-align:center;">
-        <p style="margin:0;font-size:13px;color:#a89a89;">
-          This code expires shortly. If you didn't try to sign up for Nook, you can ignore this email.
-        </p>
+      <td align="center" style="padding:28px 12px;">
+        <table role="presentation" class="card" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background-color:#ffffff;border:1px solid #ece4dc;border-radius:20px;">
+          <tr>
+            <td class="pad" align="center" style="padding:36px 32px 8px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td class="badge" align="center" width="64" height="64" style="width:64px;height:64px;background-color:#8a5a3b;color:#ffffff;border-radius:32px;font-size:32px;font-weight:800;line-height:64px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">N</td>
+                </tr>
+              </table>
+              <h1 class="title" style="margin:20px 0 8px 0;font-size:24px;line-height:30px;font-weight:800;letter-spacing:-0.3px;color:#2a2420;">Welcome to Nook</h1>
+              <p class="muted" style="margin:0;font-size:16px;line-height:24px;color:#726862;">Here's your code to finish signing up.</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="pad" align="center" style="padding:20px 32px;">
+              <table role="presentation" class="codebox" cellpadding="0" cellspacing="0" style="background-color:#f1e4d8;border-radius:14px;">
+                <tr>
+                  <td align="center" style="padding:16px 24px;">
+                    <span class="code" style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:32px;line-height:36px;font-weight:700;letter-spacing:6px;color:#8a5a3b;">{{ .Token }}</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="pad" align="center" style="padding:0 32px 36px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p class="muted" style="margin:0 0 8px 0;font-size:14px;line-height:21px;color:#726862;">Type this code into the Nook app. It works once and runs out soon.</p>
+              <p class="muted" style="margin:0;font-size:14px;line-height:21px;color:#726862;">Didn't try to sign up for Nook? You can safely ignore this email.</p>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
   </table>
-</div>
+</body>
+</html>
