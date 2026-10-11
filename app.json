@@ -69,6 +69,12 @@
         "projectId": "43bfa6a4-4972-434c-bc75-998bbfaabef8"
       }
     },
-    "owner": "josh51201s-team"
+    "owner": "josh51201s-team",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/43bfa6a4-4972-434c-bc75-998bbfaabef8"
+    }
   }
 }
