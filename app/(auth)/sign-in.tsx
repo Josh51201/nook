@@ -1,12 +1,13 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { StyleSheet } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import { Text, TextInput } from "../../components/text";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 
 import { DevSignIn } from "../../components/dev-sign-in";
 import { IconBadge } from "../../components/icon";
+import { ReviewSignIn } from "../../components/review-sign-in";
 import { Button } from "../../components/ui";
 import { looksLikeEmail } from "../../lib/sign-in";
 import { supabase } from "../../lib/supabase";
@@ -17,6 +18,9 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // AUTH-004: five taps on the title open the hidden App Review sign-in.
+  const [titleTaps, setTitleTaps] = useState(0);
+  const reviewOpen = titleTaps >= 5;
 
   async function sendCode() {
     const trimmed = email.trim();
@@ -52,7 +56,9 @@ export default function SignIn() {
       <Animated.View entering={ZoomIn.springify().damping(14)} style={{ alignSelf: "center", marginBottom: 8 }}>
         <IconBadge name="hearth" size={76} />
       </Animated.View>
-      <Animated.Text entering={FadeInDown.delay(80).springify()} style={styles.title}>Welcome to Nook</Animated.Text>
+      <Pressable onPress={() => setTitleTaps((n) => n + 1)} accessible={false}>
+        <Animated.Text entering={FadeInDown.delay(80).springify()} style={styles.title}>Welcome to Nook</Animated.Text>
+      </Pressable>
       <Text style={styles.subtitle}>Enter your email and we'll send you a one-time code.</Text>
 
       <TextInput
@@ -69,6 +75,8 @@ export default function SignIn() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Button title="Send code" onPress={sendCode} loading={isSending} style={{ marginTop: 8 }} />
+
+      <ReviewSignIn open={reviewOpen} />
 
       <DevSignIn />
     </KeyboardAvoidingView>
