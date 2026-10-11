@@ -16,7 +16,7 @@ Nothing here changes how Nook works. You only do this once (and again whenever w
 | An Android phone | — | Optional. Android builds are free and need no Google account to install on your own phone |
 
 Your icon is already set up (a cozy fireplace in an arch). The one thing to decide: the **app ID** in
-[app.json](../app.json) is `com.josh51201.nook`. It's the app's permanent name inside Apple and Google. **It can
+[app.json](../app.json) is `app.mynookapp.nook`. It's the app's permanent name inside Apple and Google. **It can
 be changed any time before your first build, but not after the app is published.** If you buy a domain for sign-in
 emails, many people use it backwards as the app ID (e.g. `com.yourdomain.nook`). Tell me and I'll change it.
 

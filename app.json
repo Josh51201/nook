@@ -45,13 +45,13 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.josh51201.nook",
+      "bundleIdentifier": "app.mynookapp.nook",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.josh51201.nook",
+      "package": "app.mynookapp.nook",
       "adaptiveIcon": {
         "backgroundColor": "#7a4a2e",
         "foregroundImage": "./assets/android-icon-foreground.png",
