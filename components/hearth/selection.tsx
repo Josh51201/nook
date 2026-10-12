@@ -46,7 +46,7 @@ export function SelectionBar({
     { key: "delete", label: "Remove", icon: "trash" },
   ];
   return (
-    <BottomDock visible background={background} bottom={bottom}>
+    <BottomDock visible bottom={bottom}>
       <View style={[styles.bar, { backgroundColor: background, borderColor: `${text}22` }]}>
         <View style={styles.top}>
           <Text style={{ color: text, fontWeight: "800", flex: 1 }} numberOfLines={1}>

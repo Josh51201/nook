@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, Alert, StyleSheet, useWindowDimensions, View } from "react-native";
 import { FixedTextSize, Text } from "../text";
 import { useShowHelp } from "../help-button";
@@ -452,31 +452,31 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const reduceMotion = useReducedMotion();
 
   const sheetOpen = startersOpen || moreOpen || adding || decorating || pagesOpen || finding || scenesOpen || sharing || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
-  // While editing (CORE-094) the tab bar is out of the way for the whole
-  // session, so the Edit bar sits at the very bottom and nothing resizes when
-  // a sheet opens or closes. Outside Edit, a sheet hides it and it returns
-  // once the sheet has slid away. The Edit bar also waits for the sheet.
-  const [tabBarHidden, setTabBarHidden] = useState(false);
+  // While editing (CORE-094) the tab bar is gone for the whole session, from
+  // the very first frame, so the Edit bar sits at the bottom with nothing
+  // left behind. Outside Edit, a sheet hides it and it returns once the sheet
+  // has slid away. The Edit bar also waits for the sheet.
+  const [tabLinger, setTabLinger] = useState(false);
   const [barsHidden, setBarsHidden] = useState(false);
   useEffect(() => {
-    if (editing || sheetOpen) setTabBarHidden(true);
-    else {
-      const timer = setTimeout(() => setTabBarHidden(false), 330);
-      return () => clearTimeout(timer);
+    if (sheetOpen) {
+      setTabLinger(true);
+      setBarsHidden(true);
+      return;
     }
-  }, [editing, sheetOpen]);
-  useEffect(() => {
-    if (sheetOpen) setBarsHidden(true);
-    else {
-      const timer = setTimeout(() => setBarsHidden(false), 300);
-      return () => clearTimeout(timer);
-    }
+    const tabTimer = setTimeout(() => setTabLinger(false), 330);
+    const barTimer = setTimeout(() => setBarsHidden(false), 300);
+    return () => {
+      clearTimeout(tabTimer);
+      clearTimeout(barTimer);
+    };
   }, [sheetOpen]);
-  useEffect(() => {
+  const tabBarHidden = editing || sheetOpen || tabLinger;
+  useLayoutEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: tabBarHidden ? { display: "none" } : undefined });
   }, [scope, tabBarHidden, navigation]);
   // With no tab bar under it, the screen's own bottom edge is the bottom.
-  const bottomInset = scope || editing ? insets.bottom : 0;
+    const bottomInset = scope || editing ? insets.bottom : 0;
 
   // Each time this screen comes back into view: refresh widgets, close any
   // Hollow door we walked through, and (on the Hearth) make sure upcoming

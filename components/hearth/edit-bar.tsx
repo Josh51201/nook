@@ -1,7 +1,6 @@
 import { useEffect, type ReactNode } from "react";
-import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { deepColor, tilePalette } from "../../lib/hearth-layout";
 import type { Look } from "../../lib/hearth-looks";
@@ -15,26 +14,19 @@ import { Text } from "../text";
 // stays where it is, with Undo and Redo (CORE-095) and the tools used most;
 // the rest wait under More.
 
-const FADE_ROWS = 28;
-
-// The strip along the bottom that a bar sits on (CORE-094): it's painted like
-// the page (the Hearth's color), fading in above the bar, so widgets melt away
-// behind it instead of showing around and under it, the same as the top bar.
-// It stays put and just fades in or out, so it never rebuilds (and flickers)
-// as sheets and drags come and go.
+// Where a bar sits along the bottom (CORE-094): just the bar floating over the
+// Hearth, with no strip behind it. It stays put and just fades in or out, so
+// it never rebuilds (and flickers) as sheets and drags come and go.
 export function BottomDock({
   visible,
-  background,
   bottom,
   children,
 }: {
   visible: boolean;
-  background: string;
   // The gap under the bar (the screen's safe area, plus a little).
   bottom: number;
   children: ReactNode;
 }) {
-  const { width } = useWindowDimensions();
   const shown = useSharedValue(0);
   useEffect(() => {
     shown.value = withTiming(visible ? 1 : 0, { duration: 180 });
@@ -42,18 +34,6 @@ export function BottomDock({
   const style = useAnimatedStyle(() => ({ opacity: shown.value }));
   return (
     <Animated.View style={[styles.dock, { paddingBottom: bottom }, style]} pointerEvents={visible ? "box-none" : "none"}>
-      <View style={[StyleSheet.absoluteFill, { top: -FADE_ROWS }]} pointerEvents="none">
-        <Svg width={width} height={FADE_ROWS}>
-          <Defs>
-            <LinearGradient id="dock-fade" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={background} stopOpacity={0} />
-              <Stop offset="1" stopColor={background} stopOpacity={1} />
-            </LinearGradient>
-          </Defs>
-          <Rect x={0} y={0} width={width} height={FADE_ROWS} fill="url(#dock-fade)" />
-        </Svg>
-        <View style={{ flex: 1, backgroundColor: background }} />
-      </View>
       <View style={styles.dockBar}>{children}</View>
     </Animated.View>
   );
@@ -106,7 +86,7 @@ export function EditBar({
     { key: "more", label: "More", icon: "more", onPress: onMore },
   ];
   return (
-    <BottomDock visible={visible} background={background} bottom={bottom}>
+    <BottomDock visible={visible} bottom={bottom}>
       <View
         style={[styles.bar, { backgroundColor: background, borderColor: `${text}22` }]}
         onLayout={(e) => onLayout?.(e.nativeEvent.layout.height)}
@@ -157,7 +137,7 @@ export function PaintBar({
 }) {
   const swatchColor = look.color ?? tilePalette[0];
   return (
-    <BottomDock visible={visible} background={background} bottom={bottom}>
+    <BottomDock visible={visible} bottom={bottom}>
       <View style={[styles.bar, styles.paint, { backgroundColor: background, borderColor: `${text}22` }]}>
         {look.kind === "text" ? (
           <View style={[styles.swatch, { borderColor: `${text}22`, backgroundColor: `${accent}12` }]}>
