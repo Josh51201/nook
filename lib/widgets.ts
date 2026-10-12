@@ -3,6 +3,9 @@ import type { GatheringKind } from "./gift-nook";
 import type { BedStyle, CritterKind } from "./hearth-pet";
 import type { QuoteSource } from "./widget-extras";
 import type { WeekSource } from "./this-week";
+import { newTimer, type KitchenTimer } from "./kitchen-timer";
+import type { GratitudeLine } from "./gratitude";
+import type { WhoseTurn } from "./whose-turn";
 import type { Condition, Place, Unit, WindowFrame } from "./weather";
 
 // Hearth widgets (CORE-018): standalone, fully customizable cards on the
@@ -10,7 +13,7 @@ import type { Condition, Place, Unit, WindowFrame } from "./weather";
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "gathering" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "sitter" | "recipe" | "subscriptions" | "sickday" | "littlelog" | "notes" | "menu" | "groceries" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion" | "fridge" | "week" | "birthdays" | "getaway" | "wishes";
+export type WidgetKind = "countdown" | "gatherings" | "gathering" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "sitter" | "recipe" | "subscriptions" | "sickday" | "littlelog" | "notes" | "menu" | "groceries" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion" | "fridge" | "week" | "birthdays" | "getaway" | "wishes" | "timer" | "sky" | "gratitude" | "turn";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -143,6 +146,15 @@ export type WidgetSettings = {
   getaway: { getawayId: string | null; showPacking: boolean };
   // New in Wishbooks (CORE-107): what family added in the last `days`.
   wishes: { days: number; count: number };
+  // Kitchen timer (CORE-109): up to MAX_TIMERS named timers.
+  timer: { timers: KitchenTimer[] };
+  // Sky (CORE-112): sunrise and sunset for a town you picked by name (never
+  // the phone's location); the moon and season need no town.
+  sky: { place: Place | null };
+  // Gratitude jar (CORE-113): a line a day, newest first.
+  gratitude: { lines: GratitudeLine[] };
+  // Whose turn? (CORE-111).
+  turn: WhoseTurn;
 };
 
 export type WidgetConfig = {
@@ -198,6 +210,10 @@ export const widgetKinds: {
   { kind: "birthdays", label: "Birthdays coming up", description: "The next birthdays in your Burrows, with a way to start planning gifts.", icon: "birthday", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "getaway", label: "Getaway", description: "Your next trip at a glance: how long until you go, and what's left to pack.", icon: "plane", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "wishes", label: "New in Wishbooks", description: "What family have added to their Wishbooks lately, so you see it before you shop.", icon: "gift", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "timer", label: "Kitchen timer", description: "Named timers you start right on your Hearth. Your phone rings when one's done.", icon: "timer", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "sky", label: "Sky", description: "Sunrise and sunset, the moon tonight and the season, drawn like a little sky.", icon: "moon", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "gratitude", label: "Gratitude jar", description: "Write one good thing a day. Now and then the jar hands an old one back.", icon: "heart", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "turn", label: "Whose turn?", description: "Who's doing the dishes or picking the movie: take turns in order, or spin. Best on your Home page.", icon: "group", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 1, h: 1 } },
 ];
 
@@ -205,9 +221,9 @@ export const widgetKinds: {
 // Every kind belongs to exactly one category (a test checks this).
 export const widgetCategories: { id: string; label: string; blurb: string; icon: IconName; kinds: WidgetKind[] }[] = [
   { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["week", "birthdays", "wishes", "getaway", "gatherings", "gathering", "tucks", "inbox", "cards", "pets", "rhythms", "sitter", "recipe", "subscriptions", "sickday", "littlelog", "notes", "menu", "groceries"] },
-  { id: "lists", label: "Lists & routines", blurb: "Things to remember, tick off and jump to", icon: "todo", kinds: ["reminders", "note", "streak", "launch"] },
-  { id: "time", label: "Time & weather", blurb: "Dates, the clock and the sky", icon: "clock", kinds: ["countdown", "clock", "weather", "window"] },
-  { id: "cozy", label: "Cozy touches", blurb: "Pictures, words and a warm hello", icon: "sparkles", kinds: ["fridge", "companion", "frame", "quote", "greeting"] },
+  { id: "lists", label: "Lists & routines", blurb: "Things to remember, tick off and jump to", icon: "todo", kinds: ["reminders", "note", "streak", "launch", "turn", "timer"] },
+  { id: "time", label: "Time & weather", blurb: "Dates, the clock and the sky", icon: "clock", kinds: ["countdown", "clock", "weather", "window", "sky"] },
+  { id: "cozy", label: "Cozy touches", blurb: "Pictures, words and a warm hello", icon: "sparkles", kinds: ["fridge", "companion", "frame", "quote", "greeting", "gratitude"] },
 ];
 
 // Every widget can be any size, down to a single icon (CORE-030). Its
@@ -312,6 +328,14 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
       return { ...base, kind, showTitle: false, settings: { getawayId: null, showPacking: true } };
     case "wishes":
       return { ...base, kind, settings: { days: 14, count: 3 } };
+    case "timer":
+      return { ...base, kind, settings: { timers: [newTimer("Timer", 10 * 60)] } };
+    case "sky":
+      return { ...base, kind, showTitle: false, settings: { place: null } };
+    case "gratitude":
+      return { ...base, kind, settings: { lines: [] } };
+    case "turn":
+      return { ...base, kind, settings: { task: "Dishes", names: [], mode: "rotate", current: 0, history: [] } };
   }
 }
 

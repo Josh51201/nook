@@ -107,7 +107,8 @@ import { planBirthdays } from "../../lib/plan-birthdays";
 import { hasRealName, useMyProfile } from "../../lib/profile";
 import { supabase } from "../../lib/supabase";
 import { localDay } from "../../lib/pets";
-import { cancelReminders, syncReminders } from "../../lib/reminders";
+import { syncReminders } from "../../lib/reminders";
+import { cancelWidgetAlerts, syncTimerAlerts, withAlertIds } from "../../lib/timer-alerts";
 import { touchesGuarded } from "../../lib/touch-guard";
 import { ambienceForWeather, weatherPlaceOf } from "../../lib/weather";
 import { useWeather } from "../../lib/weather-data";
@@ -1152,6 +1153,21 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       const synced = await syncReminders(widget.title, widget.settings.items, item.widget.settings.items);
       widget = { ...widget, settings: { ...widget.settings, items: synced } };
     }
+    // Kitchen timers (CORE-109): the change shows straight away, and the
+    // phone's alerts catch up (they ring on this phone).
+    if (widget.kind === "timer" && item.widget.kind === "timer") {
+      const shown = widget;
+      persistHere((inner) => updateItem(inner, item.id, { widget: shown } as Partial<HearthItem>));
+      const synced = await syncTimerAlerts(widget.settings.timers, item.widget.settings.timers);
+      persistHere((inner) =>
+        inner.items.map((i) =>
+          i.id === item.id && i.kind === "widget" && i.widget.kind === "timer"
+            ? { ...i, widget: { ...i.widget, settings: { timers: withAlertIds(i.widget.settings.timers, synced) } } }
+            : i
+        )
+      );
+      return;
+    }
     persistHere((inner) => updateItem(inner, item.id, { widget } as Partial<HearthItem>));
   }
 
@@ -1283,9 +1299,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     const before = layout.items;
     if (item.kind === "hollow") persist(removeHollow(layout, item.id));
     else persistHere((inner) => removeItem(inner, item.id));
-    if (item.kind === "widget" && item.widget.kind === "reminders") {
-      const reminders = item.widget.settings.items;
-      pendingCancel.current = () => cancelReminders(reminders);
+    if (item.kind === "widget") {
+      const removed = item.widget;
+      pendingCancel.current = () => cancelWidgetAlerts([removed]);
     }
     showToast(
       `Removed “${itemLabel(item)}”`,
@@ -1309,7 +1325,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   function remove(item: HearthItem) {
     if (item.locked) return Alert.alert("It's locked", "Unlock it first to remove it.");
     if (item.kind === "hollow") return persist(removeHollow(layout, item.id));
-    if (item.kind === "widget" && item.widget.kind === "reminders") cancelReminders(item.widget.settings.items);
+    if (item.kind === "widget") cancelWidgetAlerts([item.widget]);
     persistHere((inner) => removeItem(inner, item.id));
   }
 
@@ -1406,8 +1422,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
             tap("success");
             const before = layout.items;
             persist(removeMany(layout, pickedIds));
-            const reminders = chosen.flatMap((i) => (i.kind === "widget" && i.widget.kind === "reminders" ? i.widget.settings.items : []));
-            if (reminders.length) pendingCancel.current = () => cancelReminders(reminders);
+            const widgets = chosen.flatMap((i) => (i.kind === "widget" ? [i.widget] : []));
+            if (widgets.length) pendingCancel.current = () => cancelWidgetAlerts(widgets);
             stopSelecting();
             showToast(
               `Removed ${chosen.length}`,

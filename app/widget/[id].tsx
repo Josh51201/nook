@@ -49,7 +49,8 @@ import {
   type Scope,
   type WidgetItem,
 } from "../../lib/hearth";
-import { cancelReminders, syncReminders } from "../../lib/reminders";
+import { syncReminders } from "../../lib/reminders";
+import { cancelWidgetAlerts, syncTimerAlerts } from "../../lib/timer-alerts";
 import { shelvesIn } from "../../lib/recipes";
 import type { LittleLog } from "../../lib/little-log";
 import { noteTitle, sortNotes, type Note } from "../../lib/notes";
@@ -58,6 +59,10 @@ import { rangeWords } from "../../lib/getaways";
 import { localDay } from "../../lib/pets";
 import { supabase } from "../../lib/supabase";
 import { weekLengths, weekSources } from "../../lib/this-week";
+import { clampSeconds, MAX_TIMERS, newTimer, timerPresets, type KitchenTimer } from "../../lib/kitchen-timer";
+import { currentName, MAX_TURN_NAMES, taskIdeas, withNames } from "../../lib/whose-turn";
+import { loadHome } from "../../lib/home";
+import { hasRealName } from "../../lib/profile";
 import { wishWindows } from "../../lib/new-wishes";
 import { colors, themed, ui, useTheme } from "../../lib/theme";
 import {
@@ -145,6 +150,9 @@ export default function WidgetEditor() {
         const synced = await syncReminders(next.title, next.settings.items, original.widget.settings.items);
         next = { ...next, settings: { ...next.settings, items: synced } };
       }
+      if (next.kind === "timer" && original.widget.kind === "timer") {
+        next = { ...next, settings: { timers: await syncTimerAlerts(next.settings.timers, original.widget.settings.timers) } };
+      }
       let items = inScope(layout, home, (inner) =>
         updateItem(inner, draft.id, {
           widget: next,
@@ -224,7 +232,7 @@ export default function WidgetEditor() {
         text: "Remove",
         style: "destructive",
         onPress: () => {
-          if (original?.widget.kind === "reminders") cancelReminders(original.widget.settings.items);
+          if (original) cancelWidgetAlerts([original.widget]);
           const pending = save({ items: inScope(layout, home, (inner) => removeItem(inner, id)) });
           allowLeave();
           router.back();
@@ -1137,6 +1145,42 @@ function KindSettings({
           </Text>
         </>
       );
+    case "timer":
+      return <TimerSettings widget={widget} setSettings={setSettings} />;
+    case "turn":
+      return <TurnSettings widget={widget} setSettings={setSettings} />;
+    case "sky":
+      return (
+        <>
+          <Text style={ui.label}>Town, for sunrise and sunset</Text>
+          <PlacePicker value={widget.settings.place} onChange={(place) => setSettings({ place })} />
+          <Text style={ui.muted}>
+            The moon and the season show without a town. Times are worked out on your phone and shown in your phone's time.
+          </Text>
+        </>
+      );
+    case "gratitude":
+      return (
+        <>
+          <Text style={ui.muted}>
+            {widget.settings.lines.length
+              ? `${widget.settings.lines.length} ${widget.settings.lines.length === 1 ? "line" : "lines"} in the jar. Tap the jar on your Hearth to write today's or read them all.`
+              : "Tap the jar on your Hearth to write today's line. Now and then it hands an old one back."}
+          </Text>
+          {widget.settings.lines.length ? (
+            <Button
+              title="Empty the jar"
+              variant="danger"
+              onPress={() =>
+                Alert.alert("Empty the jar?", "Every line in it goes, for good, once you save.", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Empty it", style: "destructive", onPress: () => setSettings({ lines: [] }) },
+                ])
+              }
+            />
+          ) : null}
+        </>
+      );
     case "inbox":
       return <Stepper label="Notices to list" value={widget.settings.count} min={0} max={5} onChange={(count) => setSettings({ count })} />;
     case "greeting":
@@ -1155,6 +1199,199 @@ function KindSettings({
         </>
       );
   }
+}
+
+// Kitchen timer (CORE-109): name each timer and how long it runs.
+function TimerSettings({
+  widget,
+  setSettings,
+}: {
+  widget: WidgetOf<"timer">;
+  setSettings: (changes: Partial<WidgetOf<"timer">["settings"]>) => void;
+}) {
+  const { timers } = widget.settings;
+  const change = (id: string, changes: Partial<KitchenTimer>) => setSettings({ timers: timers.map((t) => (t.id === id ? { ...t, ...changes } : t)) });
+  const add = (name: string, minutes: number) => timers.length < MAX_TIMERS && setSettings({ timers: [...timers, newTimer(name, minutes * 60)] });
+  return (
+    <>
+      {timers.map((timer, i) => {
+        const minutes = Math.max(1, Math.round(timer.seconds / 60));
+        return (
+          <View key={timer.id} style={[ui.card, { gap: 10 }]}>
+            <View style={[ui.row, { gap: 10 }]}>
+              <TextInput
+                style={[ui.input, { flex: 1 }]}
+                value={timer.name}
+                onChangeText={(name) => change(timer.id, { name: name.slice(0, 30) })}
+                placeholder={`Timer ${i + 1}`}
+                placeholderTextColor={colors.muted}
+                accessibilityLabel="Timer name"
+              />
+              {timers.length > 1 ? (
+                <Tap
+                  onPress={() => setSettings({ timers: timers.filter((t) => t.id !== timer.id) })}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${timer.name || "this timer"}`}
+                >
+                  <Icon name="trash" size={18} color={colors.muted} />
+                </Tap>
+              ) : null}
+            </View>
+            <Stepper
+              label="Minutes"
+              value={minutes}
+              min={1}
+              max={240}
+              onChange={(m) => change(timer.id, { seconds: clampSeconds(m * 60), endsAt: null, left: null })}
+            />
+            <View style={ui.chips}>
+              {[1, 5, 10, 15, 30, 60].map((m) => (
+                <Chip key={m} selected={minutes === m} onPress={() => change(timer.id, { seconds: m * 60, endsAt: null, left: null })}>
+                  {m === 60 ? "1 hr" : `${m} min`}
+                </Chip>
+              ))}
+            </View>
+          </View>
+        );
+      })}
+      {timers.length < MAX_TIMERS ? (
+        <>
+          <Text style={ui.label}>Add a timer</Text>
+          <View style={ui.chips}>
+            <Chip icon="add" onPress={() => add("", 10)}>
+              New timer
+            </Chip>
+            {timerPresets.map((preset) => (
+              <Chip key={preset.name} onPress={() => add(preset.name, preset.minutes)}>
+                {`${preset.name} · ${preset.minutes} min`}
+              </Chip>
+            ))}
+          </View>
+        </>
+      ) : (
+        <Text style={ui.muted}>That's as many as one widget holds ({MAX_TIMERS}).</Text>
+      )}
+      <Text style={ui.muted}>
+        Start, pause and set them back right on your Hearth. Your phone rings when one's done, even with Nook closed. On a shared page, it
+        rings on the phone that started it.
+      </Text>
+    </>
+  );
+}
+
+// Whose turn? (CORE-111): the job, the people, and how it picks.
+function TurnSettings({
+  widget,
+  setSettings,
+}: {
+  widget: WidgetOf<"turn">;
+  setSettings: (changes: Partial<WidgetOf<"turn">["settings"]>) => void;
+}) {
+  const turn = widget.settings;
+  const { session } = useAuth();
+  const [people, setPeople] = useState<string[]>([]);
+  const [draft, setDraft] = useState("");
+  useEffect(() => {
+    if (!session?.user.id) return;
+    loadHome(session.user.id)
+      .then((home) => {
+        const names = [
+          ...home.members.map((m) => m.profiles?.display_name),
+          ...home.kids.map((k) => k.profiles?.display_name),
+        ].filter((n): n is string => Boolean(n && hasRealName(n)));
+        setPeople([...new Set(names.map((n) => n.trim().split(/\s+/)[0]))]);
+      })
+      .catch(() => {});
+  }, [session?.user.id]);
+
+  const setNames = (names: string[]) => setSettings(withNames(turn, names));
+  const toggle = (name: string) => setNames(turn.names.includes(name) ? turn.names.filter((n) => n !== name) : [...turn.names, name]);
+  const addDraft = () => {
+    const name = draft.trim().slice(0, 20);
+    if (name && !turn.names.includes(name)) setNames([...turn.names, name]);
+    setDraft("");
+  };
+  const now = currentName(turn);
+
+  return (
+    <>
+      <Text style={ui.label}>Whose turn to…</Text>
+      <TextInput
+        style={ui.input}
+        value={turn.task}
+        onChangeText={(task) => setSettings({ task: task.slice(0, 40) })}
+        placeholder="e.g. Dishes"
+        placeholderTextColor={colors.muted}
+      />
+      <View style={ui.chips}>
+        {taskIdeas.map((idea) => (
+          <Chip key={idea} selected={turn.task === idea} onPress={() => setSettings({ task: idea })}>
+            {idea}
+          </Chip>
+        ))}
+      </View>
+      <Text style={ui.label}>How it picks</Text>
+      <View style={ui.chips}>
+        <Chip icon="undo" selected={turn.mode === "rotate"} onPress={() => setSettings({ mode: "rotate" })}>
+          Take turns in order
+        </Chip>
+        <Chip icon="sparkles" selected={turn.mode === "spin"} onPress={() => setSettings({ mode: "spin" })}>
+          Spin
+        </Chip>
+      </View>
+      <Text style={ui.label}>Who's in</Text>
+      {people.length ? (
+        <View style={ui.chips}>
+          {people.map((name) => (
+            <Chip key={name} icon="person" selected={turn.names.includes(name)} onPress={() => toggle(name)}>
+              {name}
+            </Chip>
+          ))}
+        </View>
+      ) : null}
+      <View style={[ui.row, { gap: 10 }]}>
+        <TextInput
+          style={[ui.input, { flex: 1 }]}
+          value={draft}
+          onChangeText={setDraft}
+          onSubmitEditing={addDraft}
+          placeholder="Add a name"
+          placeholderTextColor={colors.muted}
+          returnKeyType="done"
+        />
+        <Button title="Add" variant="secondary" onPress={addDraft} disabled={!draft.trim() || turn.names.length >= MAX_TURN_NAMES} />
+      </View>
+      {turn.names.length ? (
+        <>
+          {turn.mode === "rotate" ? (
+            <>
+              <Text style={ui.label}>In this order (tap whose turn it is now)</Text>
+              <View style={ui.chips}>
+                {turn.names.map((name, i) => (
+                  <Chip key={name} selected={name === now} onPress={() => setSettings({ current: i })}>
+                    {`${i + 1}. ${name}`}
+                  </Chip>
+                ))}
+              </View>
+            </>
+          ) : null}
+          <Text style={ui.label}>Take someone out</Text>
+          <View style={ui.chips}>
+            {turn.names.map((name) => (
+              <Chip key={name} icon="close" onPress={() => setNames(turn.names.filter((n) => n !== name))}>
+                {name}
+              </Chip>
+            ))}
+          </View>
+        </>
+      ) : null}
+      <Text style={ui.muted}>
+        Take turns: tap Done on your Hearth and it's the next person's turn. Spin: it picks someone, never the same person twice in a row. On
+        your Home page, everyone sees the same turn.
+      </Text>
+    </>
+  );
 }
 
 // This week (CORE-105): how far ahead, and which Nooks.

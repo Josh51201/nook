@@ -2,7 +2,7 @@
 
 _Only what's open, or a rule for the whole app, lives here. Built requirements are archived — grep them by ID, don't read whole files: shell, Hearth and app-wide `CORE-` in `docs/archive/NOOK_HEARTH_BUILT.md`; every built Nook plus `PROF-` and `HOME-` in `docs/archive/NOOK_NOOKS_BUILT.md`; older fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. To change a built requirement, edit it in its archive file._
 
-_Last updated: 2026-10-12 (rev 70)_
+_Last updated: 2026-10-12 (rev 71)_
 
 ## 1. Rules for the whole app
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -20,11 +20,7 @@ _Last updated: 2026-10-12 (rev 70)_
 Everything else in CORE-006..116 that isn't listed here is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md): the Hearth, Hollows, widgets, Trinkets, Cubbies, the Fridge door, Edit mode, the Nooks tab and Market, Help, text size, accessibility and Settings → Notifications. Josh said yes to these; details marked proposed are Claude's until he confirms. Some is paid under Nook Plus (Q-028).
 
 **Hearth to-do (not built yet).** Claude suggested these on 2026-10-12, and Josh said "Add all of those on the next to do". Everything past the one-line idea is Claude's design and stays proposed until Josh tries it.
-- **CORE-109** **Kitchen timer** widget: one or more named timers ("Cookies – 12 min") that ring on the phone.
 - **CORE-110** **Sticker chart** widget: a kid earns a sticker per task and gets a reward at a goal (e.g. 10); it can be tied to a kid in your Home.
-- **CORE-111** **Whose turn?** widget: a spinner or rotation for who does the dishes, picks the movie, and so on; made for the shared Home page.
-- **CORE-112** **Sky** widget: sunrise and sunset, the moon phase and the season, drawn cozy to match the Window widget.
-- **CORE-113** **Gratitude jar** widget: one line a day, and now and then it shows an old one back to you (could share its design with the Quote Jar backlog idea).
 - **CORE-117** A look per page: each Hearth page can have its own wallpaper and theme (e.g. a festive "Holidays" page).
 - **CORE-118** Seasonal Trinkets: Trinkets that swap themselves for the season (a pumpkin in October, a stocking in December).
 - **CORE-119** Kid's Hearth: a simple, locked Hearth for a kid in your Home, with big buttons and nothing they can delete by accident.
@@ -163,7 +159,7 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 0. **Hearth to-do** (CORE-105..121, section 1), built one at a time and committed after each. Phases *(proposed)*:
    - ~~**Phase 1, make what's there smarter:** badges (CORE-115), smart stacks (CORE-114), peek into a Hollow (CORE-116).~~ Built 2026-10-12, archived; Josh tries them.
    - ~~**Phase 2, widgets from Nooks you already have:** This week (CORE-105), Birthdays coming up (CORE-106), Getaway (CORE-108), New in Wishbooks (CORE-107).~~ Built 2026-10-12, archived; Josh tries them.
-   - **Phase 3, new stand-alone widgets:** Sky (CORE-112), Kitchen timer (CORE-109), Gratitude jar (CORE-113), Whose turn? (CORE-111).
+   - ~~**Phase 3, new stand-alone widgets:** Sky (CORE-112), Kitchen timer (CORE-109), Gratitude jar (CORE-113), Whose turn? (CORE-111).~~ Built 2026-10-12, archived; Josh tries them.
    - **Phase 4, looks:** a look per page (CORE-117), Seasonal Trinkets (CORE-118), Bedtime look (CORE-120).
    - **Phase 5, kids:** Sticker chart (CORE-110) and Kid's Hearth (CORE-119), after Q-035.
    - **Phase 6, after the real app build:** home-screen widgets (CORE-121), see item 3.

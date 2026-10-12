@@ -31,6 +31,7 @@ import {
   type WidgetItem,
 } from "../../../lib/hearth";
 import { syncReminders } from "../../../lib/reminders";
+import { syncTimerAlerts, withAlertIds } from "../../../lib/timer-alerts";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../lib/auth-context";
 import { birthdayWhen } from "../../../lib/birthdays";
@@ -38,6 +39,8 @@ import { planBirthdayGifts, useNewWishes, useUpcomingBirthdays, useWeekEntries, 
 import { shortDate } from "../../../lib/menu-board";
 import { groupNewWishes, wishTitles } from "../../../lib/new-wishes";
 import { buildWeek, weekCount, weekSources } from "../../../lib/this-week";
+import { gratitudeStreak, memoryFor, MAX_GRATITUDE_LENGTH, promptFor, todaysLine, writeLine, type GratitudeLine } from "../../../lib/gratitude";
+import { localDay } from "../../../lib/pets";
 import { colors, shadow, ui, useTheme } from "../../../lib/theme";
 import {
   daysUntil,
@@ -92,6 +95,21 @@ export default function WidgetPage() {
     const items = inScope(latest, where.scope, (inner) => updateItem(inner, id, { widget: next } as Partial<WidgetItem>));
     layoutRef.current = { ...latest, items } as HearthLayout;
     save({ items }).catch((error: Error) => Alert.alert("Couldn't save", error.message));
+    // Kitchen timers (CORE-109): the phone's alerts catch up after.
+    const before = where.item.kind === "widget" && where.item.widget.kind === "timer" ? where.item.widget.settings.timers : null;
+    if (next.kind === "timer" && before) {
+      syncTimerAlerts(next.settings.timers, before)
+        .then((synced) => {
+          const now = layoutRef.current;
+          const here = locate(now, id);
+          if (here?.item.kind !== "widget" || here.item.widget.kind !== "timer") return;
+          const withIds = { ...here.item.widget, settings: { timers: withAlertIds(here.item.widget.settings.timers, synced) } };
+          const updated = inScope(now, here.scope, (inner) => updateItem(inner, id, { widget: withIds } as Partial<WidgetItem>));
+          layoutRef.current = { ...now, items: updated } as HearthLayout;
+          return save({ items: updated });
+        })
+        .catch(() => {});
+    }
   }
 
   let body: ReactNode;
@@ -116,6 +134,9 @@ export default function WidgetPage() {
       break;
     case "wishes":
       body = <WishesPage widget={widget} {...card} refreshKey={refreshKey} />;
+      break;
+    case "gratitude":
+      body = <GratitudePage widget={widget} {...card} saveWidget={saveWidget} />;
       break;
     default:
       body = <BigWidget item={item} themeText={theme.text} refreshKey={refreshKey} onChange={saveWidget} />;
@@ -456,6 +477,96 @@ function WishesPage({ widget, refreshKey, ...card }: CardProps & { widget: Widge
           onPress={() => router.push(`/gift-nook/member/${person.profileId}`)}
         />
       ))}
+    </>
+  );
+}
+
+// --- Gratitude jar (CORE-113) -------------------------------------------------------
+// Write today's line, see what the jar hands back, and read every line.
+
+function GratitudePage({ widget, saveWidget, ...card }: CardProps & { widget: WidgetOf<"gratitude">; saveWidget: (widget: WidgetOf<"gratitude">) => void }) {
+  const { palette } = card;
+  const today = localDay();
+  const lines = widget.settings.lines;
+  const mine = todaysLine(lines, today);
+  const [draft, setDraft] = useState(mine?.text ?? "");
+  const [editing, setEditing] = useState(!mine);
+  const memory = memoryFor(lines, today);
+  const streak = gratitudeStreak(lines, today);
+
+  function keep() {
+    if (!draft.trim()) return;
+    tap("success");
+    saveWidget({ ...widget, settings: { lines: writeLine(lines, today, draft) } });
+    setEditing(false);
+  }
+  function takeOut(day: string) {
+    Alert.alert("Take this line out of the jar?", undefined, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Take it out", style: "destructive", onPress: () => saveWidget({ ...widget, settings: { lines: lines.filter((l) => l.day !== day) } }) },
+    ]);
+  }
+
+  // Older lines by month, newest first.
+  const months: { label: string; lines: GratitudeLine[] }[] = [];
+  for (const line of lines.filter((l) => l.day !== today)) {
+    const [y, m] = line.day.split("-").map(Number);
+    const label = new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const last = months[months.length - 1];
+    if (last?.label === label) last.lines.push(line);
+    else months.push({ label, lines: [line] });
+  }
+
+  return (
+    <>
+      <ColorCard {...card}>
+        <Text style={[styles.eyebrow, { color: palette.muted }]}>TODAY</Text>
+        {editing ? (
+          <>
+            <Text style={[styles.headline, { color: palette.text }]}>{promptFor(today)}</Text>
+            <TextInput
+              style={[ui.input, { minHeight: 70, textAlignVertical: "top", backgroundColor: "rgba(255,255,255,0.8)" }]}
+              value={draft}
+              onChangeText={(text) => setDraft(text.slice(0, MAX_GRATITUDE_LENGTH))}
+              placeholder="One good thing…"
+              placeholderTextColor={colors.muted}
+              multiline
+              maxLength={MAX_GRATITUDE_LENGTH}
+              accessibilityLabel="Today's line"
+            />
+            <Button title={mine ? "Save it" : "Put it in the jar"} icon="heart" onPress={keep} disabled={!draft.trim()} />
+          </>
+        ) : (
+          <Tap onPress={() => setEditing(true)} accessibilityRole="button" accessibilityHint="Change today's line">
+            <Text style={{ fontSize: 26, fontFamily: "Caveat_600SemiBold", color: palette.text, lineHeight: 32 }}>{mine?.text}</Text>
+            <Text style={[styles.note, { color: palette.muted, marginTop: 6 }]}>
+              {streak > 1 ? `${streak} days in a row · tap to change` : "Tap to change"}
+            </Text>
+          </Tap>
+        )}
+      </ColorCard>
+
+      {memory ? (
+        <Appear index={1} style={[ui.card, { gap: 4 }]}>
+          <Text style={[styles.eyebrow, { color: colors.muted }]}>
+            {memory.why === "year" ? "A YEAR AGO TODAY" : memory.why === "month" ? "A MONTH AGO" : `FROM ${shortDate(memory.line.day).toUpperCase()}`}
+          </Text>
+          <Text style={{ fontSize: 22, fontFamily: "Caveat_600SemiBold", color: colors.text, lineHeight: 28 }}>{memory.line.text}</Text>
+        </Appear>
+      ) : null}
+
+      {months.map((month) => (
+        <View key={month.label} style={{ gap: 8 }}>
+          <SectionHeader title={month.label} icon="heart" />
+          {month.lines.map((line) => (
+            <Tap key={line.day} onLongPress={() => takeOut(line.day)} accessibilityHint="Hold to take it out of the jar" style={[ui.card, { gap: 2 }]}>
+              <Text style={[ui.muted, { fontSize: 12, fontWeight: "700" }]}>{shortDate(line.day)}</Text>
+              <Text style={{ fontSize: 20, fontFamily: "Caveat_600SemiBold", color: colors.text, lineHeight: 25 }}>{line.text}</Text>
+            </Tap>
+          ))}
+        </View>
+      ))}
+      {lines.length > 1 ? <Text style={[ui.muted, { textAlign: "center" }]}>Hold a line to take it out of the jar.</Text> : null}
     </>
   );
 }

@@ -2,9 +2,9 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useContext, useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import Svg, { Circle, Line } from "react-native-svg";
+import Svg, { Circle, Line, Path } from "react-native-svg";
 import { FixedTextSize, Text } from "../text";
-import Animated, { FadeIn, FadeInRight, LinearTransition, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInRight, LinearTransition, useReducedMotion, ZoomIn } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
 import { cornerRadius, type Corners } from "../../lib/decor";
@@ -30,6 +30,10 @@ import { birthdayWhen } from "../../lib/birthdays";
 import { useGetawayGlance, useNewWishes, useUpcomingBirthdays, useWeekEntries, type BirthdayGlance } from "../../lib/glance-data";
 import { groupNewWishes, wishTitles } from "../../lib/new-wishes";
 import { buildWeek, tripDayWords, weekCount, type WeekEntry } from "../../lib/this-week";
+import { formatTimer, resetTimer, timeLeft, timerState, toggleTimer, type KitchenTimer } from "../../lib/kitchen-timer";
+import { daylightWords, moonLitPath, moonPhase, seasonInfo, seasonOf, sunProgress, sunTimes } from "../../lib/sky";
+import { gratitudeStreak, memoryFor, promptFor, todaysLine } from "../../lib/gratitude";
+import { currentName, nextName, passTurn, spinTurn, turnWhen } from "../../lib/whose-turn";
 import { useSubscriptionsSummary } from "../../lib/subscriptions-data";
 import { menuBoardSettingDefaults, sickdaySettingDefaults, useNookSettings } from "../../lib/nook-settings";
 import { formatTemp as sickTemp, isFever, untilWords } from "../../lib/sickday";
@@ -39,7 +43,7 @@ import { agoWords, changeWords, formatEntry, formatNumber, inRange, logStats, sc
 import { useLittleLogSummary } from "../../lib/little-log-data";
 import { checklistCounts, noteBlocks, notePreview, noteTitle, sortNotes } from "../../lib/notes";
 import { useNotesSummary } from "../../lib/notes-data";
-import { addDays, dayWords, mealTimes, nextMeal, slot, slotWords } from "../../lib/menu-board";
+import { addDays, dayWords, mealTimes, nextMeal, shortDate as dayShort, slot, slotWords } from "../../lib/menu-board";
 import { useMenuSummary } from "../../lib/menu-board-data";
 import { itemDetail, listCounts, listParts } from "../../lib/groceries";
 import { useGroceriesSummary } from "../../lib/groceries-data";
@@ -315,6 +319,14 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <GetawayWidget {...props} widget={widget} />;
     case "wishes":
       return <WishesWidget {...props} widget={widget} />;
+    case "timer":
+      return <TimerWidget {...props} widget={widget} />;
+    case "sky":
+      return <SkyWidget {...props} widget={widget} />;
+    case "gratitude":
+      return <GratitudeWidget {...props} widget={widget} />;
+    case "turn":
+      return <TurnWidget {...props} widget={widget} />;
   }
 }
 
@@ -2073,6 +2085,395 @@ function WishesWidget({ widget, palette, refreshKey, height, shape, icon }: Body
         </View>
       ))}
       {people.length > rows.length ? <Muted palette={palette}>+{people.length - rows.length} more</Muted> : null}
+    </View>
+  );
+}
+
+// --- Kitchen timer (CORE-109) -----------------------------------------------------
+// Play, pause and set back right on the Hearth; the phone rings when one's
+// done (lib/timer-alerts.ts, scheduled where the change is saved).
+
+function TimerWidget({ widget, palette, shape, height, icon, onChange }: BodyProps<"timer">) {
+  const timers = widget.settings.timers;
+  const ticking = timers.some((t) => timerState(t) === "running");
+  const now = useNow(ticking ? 1000 : 60_000);
+  const onBold = palette.text === "#ffffff";
+
+  function change(id: string, next: (t: KitchenTimer) => KitchenTimer) {
+    guardTouches();
+    tap();
+    onChange?.({ ...widget, settings: { timers: timers.map((t) => (t.id === id ? next(t) : t)) } });
+  }
+
+  if (!timers.length) return <Empty icon="timer" palette={palette} text="Add a timer in the editor" />;
+  // The one to show when there's only room for one: rung, then running, then the first.
+  const lead =
+    timers.find((t) => timerState(t, now) === "done") ?? timers.find((t) => timerState(t, now) === "running") ?? timers[0];
+  const shownTime = (t: KitchenTimer) => (timerState(t, now) === "done" ? "Done!" : formatTimer(timeLeft(t, now)));
+
+  // Plain functions, not components, so the buttons aren't rebuilt every tick.
+  const playButton = (timer: KitchenTimer, size = 34) => {
+    const state = timerState(timer, now);
+    return (
+      <Tap
+        onPressIn={() => guardTouches()}
+        onPress={onChange ? () => change(timer.id, (t) => toggleTimer(t, Date.now())) : undefined}
+        disabled={!onChange}
+        hitSlop={6}
+        pressedScale={0.9}
+        accessibilityRole="button"
+        accessibilityLabel={state === "running" ? `Pause ${timer.name}` : state === "done" ? `Set ${timer.name} back` : `Start ${timer.name}`}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: state === "running" ? palette.panel : onBold ? "#ffffff" : palette.deep,
+        }}
+      >
+        <Icon
+          name={state === "running" ? "pause" : state === "done" ? "undo" : "play"}
+          size={size * 0.45}
+          color={state === "running" ? palette.accent : onBold ? palette.deep : "#ffffff"}
+        />
+      </Tap>
+    );
+  };
+  const resetButton = (timer: KitchenTimer) =>
+    timerState(timer, now) === "paused" ? (
+      <Tap
+        onPressIn={() => guardTouches()}
+        onPress={onChange ? () => change(timer.id, resetTimer) : undefined}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`Set ${timer.name} back to the start`}
+      >
+        <Icon name="undo" size={16} color={palette.muted} />
+      </Tap>
+    ) : null;
+
+  if (shape === "icon") {
+    const state = timerState(lead, now);
+    return state === "idle" ? <IconFace icon={icon} palette={palette} /> : <IconFace icon={icon} palette={palette} value={shownTime(lead)} caption={lead.name} />;
+  }
+  if (shape === "strip") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 10 }]}>
+        {playButton(lead)}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.body, { color: palette.text, fontWeight: "800", fontVariant: ["tabular-nums"] }]} numberOfLines={1}>
+            {shownTime(lead)}
+          </Text>
+          <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+            {timers.length > 1 ? `${lead.name} · ${timers.length - 1} more` : lead.name}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (timers.length === 1) {
+    const state = timerState(lead, now);
+    return (
+      <View style={[styles.centerFill, { gap: 6 }]}>
+        <Text style={[styles.small, { color: palette.muted, fontWeight: "700" }]} numberOfLines={1}>
+          {lead.name}
+        </Text>
+        <Animated.Text
+          key={state === "done" ? "done" : "time"}
+          entering={state === "done" ? ZoomIn.springify().damping(9) : undefined}
+          style={{ fontSize: isBig(shape) ? 40 : 30, fontWeight: "800", color: state === "done" ? palette.accent : palette.text, letterSpacing: -1, fontVariant: ["tabular-nums"] }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {shownTime(lead)}
+        </Animated.Text>
+        <View style={[styles.row, { gap: 14 }]}>
+          {playButton(lead, isBig(shape) ? 44 : 36)}
+          {resetButton(lead)}
+        </View>
+      </View>
+    );
+  }
+
+  const fit = rowsThatFit(height, 42, 4);
+  return (
+    <View style={{ flex: 1, gap: 6, justifyContent: "center" }}>
+      {timers.slice(0, fit).map((timer) => {
+        const done = timerState(timer, now) === "done";
+        return (
+          <View key={timer.id} style={[styles.row, { gap: 8 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.tiny, { color: palette.muted, fontWeight: "700" }]} numberOfLines={1}>
+                {timer.name}
+              </Text>
+              <Text style={{ fontSize: 18, fontWeight: "800", color: done ? palette.accent : palette.text, fontVariant: ["tabular-nums"] }} numberOfLines={1}>
+                {shownTime(timer)}
+              </Text>
+            </View>
+            {resetButton(timer)}
+            {playButton(timer, 30)}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// --- Sky (CORE-112) ---------------------------------------------------------------
+// The sun's path from sunrise to sunset with the sun on it by day, the
+// moon by night, and the season. Worked out on the phone (lib/sky.ts).
+
+function MoonDisc({ phase, size, palette }: { phase: number; size: number; palette: Palette }) {
+  const r = size / 2 - 1;
+  return (
+    <Svg width={size} height={size}>
+      <Circle cx={size / 2} cy={size / 2} r={r} fill={palette.panel} stroke={palette.accent} strokeOpacity={0.35} strokeWidth={1} />
+      <Path d={moonLitPath(phase, size / 2, size / 2, r)} fill="#fff4cf" />
+    </Svg>
+  );
+}
+
+function SkyWidget({ widget, palette, shape, width, height, icon }: BodyProps<"sky">) {
+  const nowMs = useNow(60_000);
+  const now = new Date(nowMs);
+  const place = widget.settings.place;
+  const moon = moonPhase(now);
+  const season = seasonOf(now, place?.lat ?? null);
+  const sun = place ? sunTimes(now, place.lat, place.lon) : null;
+  const progress = sun ? sunProgress(now, sun) : null;
+  const time = (date: Date) => date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const nextSunWord =
+    sun?.kind === "normal" ? (now < sun.sunrise ? `Sunrise ${time(sun.sunrise)}` : now < sun.sunset ? `Sunset ${time(sun.sunset)}` : `Sunrise tomorrow`) : null;
+
+  if (shape === "icon") {
+    return progress !== null ? <IconFace icon="sun" palette={palette} /> : <View style={styles.centerFill}><MoonDisc phase={moon.phase} size={34} palette={palette} /></View>;
+  }
+  if (shape === "strip") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 10 }]}>
+        {progress !== null ? <IconBadge name="sun" size={34} color={palette.accent} background={palette.panel} /> : <MoonDisc phase={moon.phase} size={32} palette={palette} />}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.body, { color: palette.text, fontWeight: "700" }]} numberOfLines={1}>
+            {nextSunWord ?? moon.name}
+          </Text>
+          <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+            {nextSunWord ? `${moon.name} · ${seasonInfo[season].label}` : seasonInfo[season].label}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // The arc: a gentle hill from sunrise (left) to sunset (right).
+  const pad = 12;
+  const arcW = width - 28 - pad * 2;
+  const arcH = Math.min(isBig(shape) ? 70 : 44, (height - 70) * 0.6);
+  const base = arcH + 10;
+  const along = (t: number) => ({ x: pad + t * arcW, y: base - Math.sin(Math.PI * t) * arcH });
+  const pathD = `M ${pad} ${base} Q ${pad + arcW / 2} ${base - arcH * 2} ${pad + arcW} ${base}`;
+  const at = progress !== null ? along(progress) : null;
+  const moonSize = isBig(shape) ? 30 : 24;
+
+  return (
+    <View style={{ flex: 1, gap: 4 }}>
+      {sun && arcH > 16 ? (
+        <View style={{ height: base + 6 }}>
+          <Svg width={width - 28} height={base + 6}>
+            <Line x1={0} y1={base} x2={width - 28} y2={base} stroke={palette.muted} strokeOpacity={0.35} strokeWidth={1} />
+            <Path d={pathD} fill="none" stroke={palette.accent} strokeOpacity={at ? 0.6 : 0.3} strokeWidth={1.5} strokeDasharray={at ? undefined : "3 4"} />
+            {at ? <Circle cx={at.x} cy={at.y} r={8} fill="#f6b73c" stroke="#ffffff" strokeWidth={2} /> : null}
+          </Svg>
+          {!at ? (
+            <View style={{ position: "absolute", left: (width - 28) / 2 - moonSize / 2, top: base - arcH - moonSize / 2 + 4 }}>
+              <MoonDisc phase={moon.phase} size={moonSize} palette={palette} />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+      {sun?.kind === "normal" ? (
+        <View style={[styles.row, { justifyContent: "space-between" }]}>
+          <Text style={[styles.tiny, { color: palette.muted, fontWeight: "700" }]}>↑ {time(sun.sunrise)}</Text>
+          <Text style={[styles.tiny, { color: palette.muted, fontWeight: "700" }]}>{time(sun.sunset)} ↓</Text>
+        </View>
+      ) : sun ? (
+        <Muted palette={palette}>{daylightWords(sun)}</Muted>
+      ) : (
+        <View style={[styles.centerFill, { flex: 0, paddingVertical: 4 }]}>
+          <MoonDisc phase={moon.phase} size={isBig(shape) ? 52 : 40} palette={palette} />
+        </View>
+      )}
+      <View style={{ flex: 1, justifyContent: "flex-end", gap: 2 }}>
+        <View style={styles.row}>
+          {sun ? <MoonDisc phase={moon.phase} size={14} palette={palette} /> : null}
+          <Text style={[styles.small, { color: palette.text, fontWeight: "700", flex: 1 }]} numberOfLines={1}>
+            {moon.name}
+          </Text>
+        </View>
+        <View style={styles.row}>
+          <Icon name={seasonInfo[season].icon} size={13} color={palette.accent} />
+          <Text style={[styles.small, { color: palette.muted, flex: 1 }]} numberOfLines={1}>
+            {isBig(shape) && sun?.kind === "normal" ? `${seasonInfo[season].label} · ${daylightWords(sun)}` : seasonInfo[season].label}
+          </Text>
+        </View>
+        {!place && isBig(shape) ? <Text style={[styles.tiny, { color: palette.muted }]}>Pick a town in the editor for sunrise and sunset</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+// --- Gratitude jar (CORE-113) -----------------------------------------------------
+// Today's line (or today's question), and now and then an old one handed
+// back. Tap it to write; the page is in app/widget/view.
+
+function GratitudeWidget({ widget, palette, shape, height, icon }: BodyProps<"gratitude">) {
+  useNow(60_000 * 10);
+  const today = localDay();
+  const lines = widget.settings.lines;
+  const mine = todaysLine(lines, today);
+  const memory = memoryFor(lines, today);
+  const streak = gratitudeStreak(lines, today);
+  const memoryLabel = memory ? (memory.why === "year" ? "A year ago today" : memory.why === "month" ? "A month ago" : `From ${dayShort(memory.line.day)}`) : "";
+
+  if (shape === "icon") {
+    return streak ? <IconFace icon={icon} palette={palette} value={String(streak)} caption={streak === 1 ? "day" : "days"} /> : <IconFace icon={icon} palette={palette} />;
+  }
+  if (shape === "strip") {
+    return (
+      <Strip
+        icon={icon}
+        palette={palette}
+        text={mine ? mine.text : promptFor(today)}
+        sub={mine ? (memory ? `${memoryLabel}: ${memory.line.text}` : "Today") : "Tap to write"}
+      />
+    );
+  }
+  const roomForMemory = memory && height >= 150;
+  return (
+    <View style={{ flex: 1, gap: 8 }}>
+      <View style={{ flex: 1, justifyContent: "center" }}>
+        {mine ? (
+          <Text style={{ fontSize: isBig(shape) ? 19 : 16, fontFamily: "Caveat_600SemiBold", color: palette.text, lineHeight: isBig(shape) ? 24 : 20 }} numberOfLines={isBig(shape) ? 4 : 3}>
+            {mine.text}
+          </Text>
+        ) : (
+          <>
+            <Text style={[styles.body, { color: palette.text, fontWeight: "700" }]} numberOfLines={2}>
+              {promptFor(today)}
+            </Text>
+            <Text style={[styles.tiny, { color: palette.muted, marginTop: 2 }]}>Tap to write</Text>
+          </>
+        )}
+      </View>
+      {roomForMemory && memory ? (
+        <Panel palette={palette} style={{ padding: 8, gap: 1 }}>
+          <Text style={[styles.tiny, { color: palette.muted, fontWeight: "800" }]} numberOfLines={1}>
+            {memoryLabel.toUpperCase()}
+          </Text>
+          <Text style={[styles.small, { color: palette.text }]} numberOfLines={2}>
+            {memory.line.text}
+          </Text>
+        </Panel>
+      ) : streak > 1 ? (
+        <Muted palette={palette}>{`${streak} days in a row`}</Muted>
+      ) : null}
+    </View>
+  );
+}
+
+// --- Whose turn? (CORE-111) -------------------------------------------------------
+// Taking turns in order ("Done" passes it on), or a spinner that picks.
+
+function TurnWidget({ widget, palette, shape, icon, onChange }: BodyProps<"turn">) {
+  const turn = widget.settings;
+  const reduceMotion = useReducedMotion();
+  const [spinning, setSpinning] = useState<string | null>(null);
+  const onBold = palette.text === "#ffffff";
+  const name = currentName(turn);
+  const next = nextName(turn);
+  const picked = turn.mode === "spin" ? (turn.history.length ? name : null) : name;
+
+  function done() {
+    guardTouches();
+    tap("success");
+    onChange?.({ ...widget, settings: passTurn(turn) });
+  }
+  function spin() {
+    guardTouches();
+    if (spinning || turn.names.length < 1) return;
+    const result = spinTurn(turn, Math.random());
+    if (reduceMotion || turn.names.length < 2) {
+      tap("success");
+      onChange?.({ ...widget, settings: result });
+      return;
+    }
+    // Names flick past, slowing down, then land.
+    let step = 0;
+    const steps = 12;
+    const tick = () => {
+      step += 1;
+      if (step >= steps) {
+        setSpinning(null);
+        tap("success");
+        onChange?.({ ...widget, settings: result });
+        return;
+      }
+      setSpinning(turn.names[(turn.current + step) % turn.names.length]);
+      tap();
+      setTimeout(tick, 40 + step * step * 2.5);
+    };
+    tick();
+  }
+
+  if (!turn.names.length) return <Empty icon="group" palette={palette} text="Add names in the editor" />;
+  const shownName = spinning ?? picked;
+  const headline = shownName ? (turn.mode === "spin" ? `${shownName}!` : `${shownName}'s turn`) : "Spin to pick";
+
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} value={shownName ?? "?"} />;
+  const action = (
+    <Tap
+      onPressIn={() => guardTouches()}
+      onPress={onChange ? (turn.mode === "spin" ? spin : done) : undefined}
+      disabled={!onChange || Boolean(spinning)}
+      pressedScale={0.94}
+      accessibilityRole="button"
+      accessibilityLabel={turn.mode === "spin" ? "Spin" : `${name} is done, pass it on`}
+      style={[styles.pill, { alignSelf: shape === "strip" ? "center" : "flex-start", paddingHorizontal: 14, paddingVertical: 7, backgroundColor: onBold ? "#ffffff" : palette.deep }]}
+    >
+      <Text style={{ color: onBold ? palette.deep : "#ffffff", fontWeight: "800", fontSize: 13 }}>{turn.mode === "spin" ? (spinning ? "…" : "Spin") : "Done"}</Text>
+    </Tap>
+  );
+  if (shape === "strip") {
+    return (
+      <View style={[styles.row, { flex: 1, gap: 10 }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.body, { color: palette.text, fontWeight: "800" }]} numberOfLines={1}>
+            {headline}
+          </Text>
+          <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+            {turn.task}
+            {turn.mode === "rotate" && next ? ` · next ${next}` : ""}
+          </Text>
+        </View>
+        {action}
+      </View>
+    );
+  }
+  const last = turn.history[0];
+  return (
+    <View style={{ flex: 1, gap: 4 }}>
+      <Text style={[styles.small, { color: palette.muted, fontWeight: "700" }]} numberOfLines={1}>
+        {turn.task}
+      </Text>
+      <View style={{ flex: 1, justifyContent: "center" }}>
+        <Text style={{ fontSize: isBig(shape) ? 28 : 22, fontWeight: "800", color: palette.text, letterSpacing: -0.5 }} numberOfLines={2} adjustsFontSizeToFit>
+          {headline}
+        </Text>
+        {turn.mode === "rotate" && next ? <Muted palette={palette}>{`Then ${next}`}</Muted> : null}
+        {turn.mode === "rotate" && last && isBig(shape) ? <Muted palette={palette}>{`${last.name} did it ${turnWhen(last.at).toLowerCase()}`}</Muted> : null}
+      </View>
+      {action}
     </View>
   );
 }
