@@ -82,7 +82,7 @@ export default function SickDayHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderWithHelp>
+            <HeaderWithHelp nook="sickday">
               <HeaderIcon icon="settings" label="Sick Day Nook settings" onPress={() => router.push("/sickday/settings")} />
             </HeaderWithHelp>
           ),

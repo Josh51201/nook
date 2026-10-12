@@ -116,7 +116,7 @@ export default function LetterboxHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderWithHelp>
+            <HeaderWithHelp nook="letterbox">
               <HeaderIcon icon="settings" label="Letterbox Nook settings" onPress={() => router.push("/letterbox/settings")} />
             </HeaderWithHelp>
           ),

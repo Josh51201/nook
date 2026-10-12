@@ -11,6 +11,7 @@ import { TourTarget, useTourScrollArea } from "../../components/tour";
 import { Button, NavCard, SectionHeader } from "../../components/ui";
 import { tap } from "../../lib/feedback";
 import { addNook, nookCount, useHearthLayout } from "../../lib/hearth";
+import { askToPeek } from "../../lib/inbox";
 import { fullMessage, overflowing } from "../../lib/hearth-limits";
 import { nookCatalog, nookMatches, type NookDefinition } from "../../lib/nooks";
 import { colors, ui } from "../../lib/theme";
@@ -22,8 +23,9 @@ import { useUnreadByNook } from "../../lib/use-unread";
 // short as more Nooks arrive (CORE-088).
 // Someone who joined a family just for the Gift Nook, or was invited to a
 // Gathering before adding anything, finds it here: Nooks with something new
-// for you sit at the top. Arranging the Hearth stays on the Hearth and in
-// the Market.
+// for you sit at the top, and opening one from there pops its bell's bubble
+// open so you see what was waiting (CORE-099). Arranging the Hearth stays
+// on the Hearth and in the Market.
 export default function Nooks() {
   const router = useRouter();
   const { layout, save } = useHearthLayout();
@@ -79,7 +81,11 @@ export default function Nooks() {
       </TourTarget>
     );
   };
-  const card = (nook: NookDefinition, index: number, options: { subtitle?: string; right?: React.ReactNode } = {}) =>
+  const card = (
+    nook: NookDefinition,
+    index: number,
+    options: { subtitle?: string; right?: React.ReactNode; onPress?: () => void } = {}
+  ) =>
     tourFirst(
       nook.id,
       <NavCard
@@ -91,7 +97,7 @@ export default function Nooks() {
         title={nook.title}
         subtitle={options.subtitle ?? nook.tagline}
         right={options.right}
-        onPress={() => open(nook)}
+        onPress={options.onPress ?? (() => open(nook))}
       />
     );
   const grid = (nooks: NookDefinition[], onAdd?: (nook: NookDefinition) => void) => (
@@ -136,6 +142,10 @@ export default function Nooks() {
                 card(nook, i, {
                   subtitle: waiting[nook.id].latest,
                   right: <NewsBubble count={waiting[nook.id].count} />,
+                  onPress: () => {
+                    askToPeek(nook.id);
+                    open(nook);
+                  },
                 })
               )}
             </>

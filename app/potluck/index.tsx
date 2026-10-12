@@ -126,7 +126,7 @@ export default function PotluckHome() {
         options={{
           title: burrowName ? `${burrowName} Potlucks` : "Potluck Nook",
           headerRight: () => (
-            <HeaderWithHelp>
+            <HeaderWithHelp nook="potluck">
               <HeaderIcon icon="settings" label="Potluck Nook settings" onPress={() => router.push("/potluck/settings")} />
             </HeaderWithHelp>
           ),

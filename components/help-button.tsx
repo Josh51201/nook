@@ -6,6 +6,7 @@ import { helpFor } from "../lib/help";
 import { tap } from "../lib/feedback";
 import { Icon } from "./icon";
 import { Tap } from "./motion";
+import { NookInboxBell } from "./nook-inbox";
 import { useTour } from "./tour";
 
 // The "?" in a screen's header (CORE-069): a plain-words note about the
@@ -58,10 +59,12 @@ export function useShowHelp() {
   };
 }
 
-// A screen's own header buttons (settings, inbox…) with the "?" beside them.
-export function HeaderWithHelp({ children }: { children?: ReactNode }) {
+// A screen's own header buttons (settings…) with the "?" beside them. Give
+// a Nook's home screen `nook` and its inbox bell goes first (CORE-099).
+export function HeaderWithHelp({ nook, children }: { nook?: string; children?: ReactNode }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+      {nook ? <NookInboxBell nook={nook} /> : null}
       {children}
       <HelpButton />
     </View>

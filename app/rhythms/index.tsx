@@ -119,7 +119,7 @@ export default function RhythmsHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderWithHelp>
+            <HeaderWithHelp nook="rhythms">
               <HeaderIcon icon="settings" label="Rhythms Nook settings" onPress={() => router.push("/rhythms/settings")} />
             </HeaderWithHelp>
           ),

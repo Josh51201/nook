@@ -118,7 +118,7 @@ export default function SubscriptionsHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderWithHelp>
+            <HeaderWithHelp nook="subscriptions">
               <HeaderIcon icon="settings" label="Subscriptions Nook settings" onPress={() => router.push("/subscriptions/settings")} />
             </HeaderWithHelp>
           ),

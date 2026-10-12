@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { noticeIcon, noticeRoute, unreadByNook } from "../lib/inbox";
+import { askToPeek, noticeIcon, noticeRoute, placeNoticeBubble, takePeek, unreadByNook } from "../lib/inbox";
 
 describe("noticeRoute", () => {
   it("sends Gathering notices to the Gathering (GATH-008)", () => {
@@ -64,5 +64,35 @@ describe("unreadByNook", () => {
 
   it("is empty when nothing is waiting", () => {
     expect(unreadByNook([])).toEqual({});
+  });
+});
+
+describe("peeking from Waiting for you (CORE-099)", () => {
+  it("pops the bubble once, only for the Nook that was opened", () => {
+    askToPeek("potluck", 1000);
+    expect(takePeek("pets", 1100)).toBe(false);
+    expect(takePeek("potluck", 1200)).toBe(true);
+    expect(takePeek("potluck", 1300)).toBe(false);
+  });
+
+  it("forgets a stale ask", () => {
+    askToPeek("pets", 0);
+    expect(takePeek("pets", 60_000)).toBe(false);
+  });
+});
+
+describe("placeNoticeBubble", () => {
+  it("stays on screen and points its arrow at the bell", () => {
+    const bell = { x: 300, y: 50, width: 32, height: 32 };
+    const place = placeNoticeBubble(bell, 390);
+    expect(place.left).toBeGreaterThanOrEqual(12);
+    expect(place.left + place.width).toBeLessThanOrEqual(378);
+    expect(place.top).toBeGreaterThan(bell.y + bell.height);
+    expect(place.left + place.arrowX).toBe(316);
+  });
+
+  it("keeps the arrow off the rounded corners", () => {
+    const place = placeNoticeBubble({ x: 370, y: 50, width: 32, height: 32 }, 390);
+    expect(place.arrowX).toBeLessThanOrEqual(place.width - 22);
   });
 });

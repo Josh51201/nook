@@ -8,6 +8,7 @@ import { HelpButton } from "../../components/help-button";
 import { IconBadge, type IconName } from "../../components/icon";
 import { Appear, LoadingScreen, Tap } from "../../components/motion";
 import { NookHero } from "../../components/nook-hero";
+import { NookInboxBell } from "../../components/nook-inbox";
 import { NookScroll } from "../../components/nook-scroll";
 import {
   Banner,
@@ -65,7 +66,6 @@ export default function GiftNookHome() {
   const [kids, setKids] = useState<Kid[]>([]);
   const [prompts, setPrompts] = useState<ReceivedPrompt[]>([]);
   const [openTucks, setOpenTucks] = useState(0);
-  const [unread, setUnread] = useState(0);
   const [upcoming, setUpcoming] = useState<Upcoming[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +82,6 @@ export default function GiftNookHome() {
             burrowsResult,
             kidsResult,
             tucksResult,
-            unreadResult,
             endedResult,
             receiptsResult,
             upcomingResult,
@@ -100,11 +99,6 @@ export default function GiftNookHome() {
               .eq("claimed_by", userId)
               .is("released_at", null)
               .neq("status", "given"),
-            supabase
-              .from("notifications")
-              .select("id", { count: "exact", head: true })
-              .eq("nook", "gift-nook")
-              .is("read_at", null),
             supabase
               .from("gatherings")
               .select("id, title, burrow_id, gathering_honorees(profile_id), gathering_burrows(burrow_id), gathering_guests(profile_id)")
@@ -126,7 +120,6 @@ export default function GiftNookHome() {
           if (burrowsResult.error) setError(burrowsResult.error.message);
           setBurrows(burrowsResult.data ?? []);
           setOpenTucks(tucksResult.count ?? 0);
-          setUnread(unreadResult.count ?? 0);
           setUpcoming((upcomingResult.data ?? []) as unknown as Upcoming[]);
 
           const kidList: Kid[] = (kidsResult.data ?? []).map((row) => {
@@ -212,12 +205,7 @@ export default function GiftNookHome() {
         options={{
           headerRight: () => (
             <View style={[ui.row, { gap: 6, alignItems: "center" }]}>
-              <HeaderIcon
-                icon="bell"
-                label={unread ? `Inbox, ${unread} unread` : "Inbox"}
-                badge={unread}
-                onPress={() => router.push({ pathname: "/inbox", params: { nook: "gift-nook" } })}
-              />
+              <NookInboxBell nook="gift-nook" />
               <HeaderIcon
                 icon="settings"
                 label="Gift Nook settings"

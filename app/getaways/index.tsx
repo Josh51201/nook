@@ -92,7 +92,7 @@ export default function GetawaysHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderWithHelp>
+            <HeaderWithHelp nook="getaways">
               <HeaderIcon icon="settings" label="Getaway Nook settings" onPress={() => router.push("/getaways/settings")} />
             </HeaderWithHelp>
           ),

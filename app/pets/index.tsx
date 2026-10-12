@@ -158,7 +158,7 @@ export default function PetsHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderWithHelp>
+            <HeaderWithHelp nook="pets">
               <HeaderIcon icon="settings" label="Pet Care Nook settings" onPress={() => router.push("/pets/settings")} />
             </HeaderWithHelp>
           ),

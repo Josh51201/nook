@@ -150,3 +150,36 @@ export function unreadByNook(rows: Pick<Notice, "nook" | "title">[]): Record<str
   }
   return waiting;
 }
+
+// CORE-099 (proposed): opening a Nook from "Waiting for you" pops its bell's
+// bubble open on arrival. The Nooks tab leaves a note here before it opens
+// the Nook; the Nook's bell takes it (once) when it finds unread notices.
+let peekFor: { nook: string; at: number } | null = null;
+
+export function askToPeek(nook: string, now = Date.now()) {
+  peekFor = { nook, at: now };
+}
+
+// True once for the Nook that was asked for, if it's still fresh (a note
+// left behind by a Nook that never opened shouldn't pop up minutes later).
+export function takePeek(nook: string, now = Date.now()): boolean {
+  if (!peekFor || peekFor.nook !== nook) return false;
+  const fresh = now - peekFor.at < 10_000;
+  peekFor = null;
+  return fresh;
+}
+
+// Where the bell's bubble goes: tucked under the bell, kept on screen, with
+// its arrow pointing at the bell's middle (but never off the bubble's
+// rounded corners).
+export function placeNoticeBubble(
+  bell: { x: number; y: number; width: number; height: number },
+  screenWidth: number,
+  margin = 12
+) {
+  const width = Math.min(screenWidth - margin * 2, 360);
+  const middle = bell.x + bell.width / 2;
+  const left = Math.max(margin, Math.min(middle - width / 2, screenWidth - margin - width));
+  const arrowX = Math.max(22, Math.min(middle - left, width - 22));
+  return { top: bell.y + bell.height + 8, left, width, arrowX };
+}

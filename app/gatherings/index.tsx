@@ -115,7 +115,7 @@ export default function GatheringsHome() {
         options={{
           title: burrowName ? `${burrowName}'s Gatherings` : "Gathering Nook",
           headerRight: () => (
-            <HeaderWithHelp>
+            <HeaderWithHelp nook="gatherings">
               <HeaderIcon icon="settings" label="Gathering Nook settings" onPress={() => router.push("/gatherings/settings")} />
             </HeaderWithHelp>
           ),

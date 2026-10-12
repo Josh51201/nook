@@ -116,7 +116,7 @@ export default function SitterHome() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderWithHelp>
+            <HeaderWithHelp nook="sitter">
               <HeaderIcon icon="settings" label="Sitter Sheet settings" onPress={() => router.push("/sitter/settings")} />
             </HeaderWithHelp>
           ),
