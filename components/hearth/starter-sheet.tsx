@@ -51,7 +51,7 @@ export function StarterSheet({
             <View style={{ flex: 1, gap: 4 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Icon name={starter.icon} size={16} color={accent} />
-                <Text style={{ fontWeight: "800", fontSize: 16, flexShrink: 1 }}>{starter.name}</Text>
+                <Text style={[ui.cardTitle, { fontWeight: "800", flexShrink: 1 }]}>{starter.name}</Text>
               </View>
               <Text style={ui.muted}>{starter.description}</Text>
             </View>

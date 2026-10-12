@@ -67,15 +67,13 @@ export type DragScroll = {
 // past on the way somewhere else never deletes anything.
 const TRASH_SLOP = 6;
 const TRASH_ARM_MS = 450;
-// A corner handle needs a moment's hold before it resizes, so a scroll that
-// happens to start on one scrolls instead of grabbing the tile.
-const RESIZE_HOLD_MS = 120;
 // A drop the Hearth didn't take after all (too full, or it couldn't save)
 // goes back where it was after this long.
 const DROP_TIMEOUT_MS = 700;
-// How long a change of size takes to play (CORE-093), and how long the drop
-// outline takes to glide to its next cell.
-const GROW_MS = 260;
+// How long a change of size takes to play when it isn't being dragged
+// (Undo, the size slider; CORE-093), and how long the drop outline takes to
+// glide to its next cell. Dragging a corner follows the finger instantly.
+const GROW_MS = 180;
 const GLIDE_MS = 110;
 // Holding a dragged item still this long over a spot with no room shows the
 // things there sliding down to make room; letting go then makes it (CORE-092).
@@ -327,6 +325,7 @@ export function HearthGrid({
           editing={editing}
           seed={index}
           active={activeId === item.id}
+          resizing={activeId === item.id && sizing}
           badge={activeId === item.id && plan?.kind === "blocked" ? (pushing ? "push" : "noRoom") : null}
           carry={carry}
           carried={carriedIds.includes(item.id)}
@@ -519,6 +518,7 @@ function GridItem({
   editing,
   seed,
   active,
+  resizing,
   badge,
   carry,
   carried,
@@ -554,6 +554,8 @@ function GridItem({
   editing: boolean;
   seed: number;
   active: boolean;
+  // Its corner is being dragged: it keeps up with the finger, no easing.
+  resizing: boolean;
   // Being dragged over a spot with no room (CORE-091): it fades a little and
   // says so; held there, it's making room (CORE-092).
   badge: "noRoom" | "push" | null;
@@ -598,10 +600,11 @@ function GridItem({
   // Changing size plays smoothly (CORE-093): the frame (and its shadow) grows
   // or shrinks to the new size while what's inside, already laid out for it,
   // is revealed or tucked away. While that plays, the inside is drawn at the
-  // larger of the two sizes so there's never a gap, then settles. Boxes and
+  // larger of the two sizes so there's never a gap, then settles. Dragging a
+  // corner skips it so the size keeps up with the finger, and Boxes and
   // Trinkets just change, since they draw past their edges.
   const reduceMotion = useReducedMotion();
-  const grows = !reduceMotion && item.kind !== "cubby" && item.kind !== "trinket";
+  const grows = !reduceMotion && !resizing && item.kind !== "cubby" && item.kind !== "trinket";
   const boxW = size.w * stride - GRID_GAP;
   const boxH = size.h * stride - GRID_GAP;
   const shown = useRef({ w: boxW, h: boxH });
@@ -952,7 +955,7 @@ function GridItem({
   const resizeGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activateAfterLongPress(RESIZE_HOLD_MS)
+        .minDistance(1)
         .onStart(() => {
           targetW.value = w;
           targetH.value = h;
@@ -1116,7 +1119,9 @@ function GridItem({
           <Animated.View
             entering={FadeIn.duration(200)}
             style={[edgeSpots ? [styles.edgeHandle, edgeSpots.handle] : styles.handle, { borderColor: accent }]}
-            hitSlop={14}
+            // A little room around it for a thumb, but not so much that a
+            // scroll starting near a corner resizes the tile instead.
+            hitSlop={8}
             accessibilityLabel="Drag to resize"
           >
             <Icon name="resize" size={12} color={accent} />

@@ -174,7 +174,7 @@ export function EditMoreSheet({
               <Icon name={tool.icon} size={18} color={accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: "700", fontSize: 16 }}>{tool.label}</Text>
+              <Text style={[ui.cardTitle, { fontWeight: "700" }]}>{tool.label}</Text>
               <Text style={ui.muted}>{tool.hint}</Text>
             </View>
           </Tap>

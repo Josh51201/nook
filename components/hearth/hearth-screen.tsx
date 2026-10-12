@@ -1651,8 +1651,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   );
 
   // Edit's toolbar (CORE-094), whenever nothing else is using the bottom.
-  const editBarShown = editing && !selecting && !painting && !dragging && !movingItem && !zoom;
-  const paintBarShown = editing && !!painting && !dragging && !movingItem && !zoom;
+  // Both step aside while a sheet is open, so they never cover its bottom.
+  const editBarShown = editing && !selecting && !painting && !dragging && !movingItem && !sheetOpen && !hollowOptions;
+  const paintBarShown = editing && !!painting && !dragging && !movingItem && !sheetOpen && !hollowOptions;
   const moreTools: MoreTool[] = [];
   if (!isEmpty) {
     moreTools.push({
@@ -2145,7 +2146,6 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           }}
         />
       ) : null}
-      <EditMoreSheet visible={moreOpen} onClose={() => setMoreOpen(false)} tools={moreTools} accent={theme.accent} />
 
       {selecting && editing ? (
         <SelectionBar
@@ -2364,6 +2364,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         homeName={home.name}
         onShowHome={showHomePage}
       />
+
+      <EditMoreSheet visible={moreOpen} onClose={() => setMoreOpen(false)} tools={moreTools} accent={theme.accent} />
 
       <StarterSheet
         visible={startersOpen}
