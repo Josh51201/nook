@@ -114,6 +114,8 @@ import { Skeleton, Tap } from "../motion";
 import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from "../tour";
 import { AddSheet } from "./add-sheet";
 import { EditBar, EditMoreSheet, type MoreTool } from "./edit-bar";
+import { StarterSheet } from "./starter-sheet";
+import { isFreshPage, starterInfo, startFrom, type StarterId } from "../../lib/hearth-starters";
 import { GRID_GAP, HearthGrid } from "./hearth-grid";
 import { PetStageContext } from "./pet-art";
 import { isPetBed, PetRoamers, strideFor } from "./pet-roamer";
@@ -199,6 +201,19 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   function hideTip(hidden: boolean) {
     setTipHidden(hidden);
     AsyncStorage.setItem(EDIT_TIP_KEY, hidden ? "1" : "0").catch(() => {});
+  }
+  // Starter layouts (CORE-096): the picker, and whether the offer on a brand
+  // new Hearth has been turned down.
+  const [startersOpen, setStartersOpen] = useState(false);
+  const [starterOfferHidden, setStarterOfferHidden] = useState(true);
+  useEffect(() => {
+    AsyncStorage.getItem(STARTER_OFFER_KEY)
+      .then((value) => setStarterOfferHidden(value === "1"))
+      .catch(() => setStarterOfferHidden(false));
+  }, []);
+  function hideStarterOffer() {
+    setStarterOfferHidden(true);
+    AsyncStorage.setItem(STARTER_OFFER_KEY, "1").catch(() => {});
   }
   const [gridWidth, setGridWidth] = useState(0);
   const { height: windowHeight } = useWindowDimensions();
@@ -433,7 +448,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const gridRef = useRef<View>(null);
   const reduceMotion = useReducedMotion();
 
-  const sheetOpen = moreOpen || adding || decorating || pagesOpen || finding || scenesOpen || sharing || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
+  const sheetOpen = startersOpen || moreOpen || adding || decorating || pagesOpen || finding || scenesOpen || sharing || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -499,6 +514,37 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   // Apply an edit to whatever this screen is showing (Hearth or a Hollow).
   function persistHere(edit: (inner: HearthLayout) => HearthItem[]) {
     return persist(inScope(layout, scope, edit));
+  }
+
+  // Begin from a starter layout (CORE-096), with a way back.
+  function useStarter(id: StarterId) {
+    const starter = starterInfo(id);
+    const result = startFrom(layout, id);
+    if (!result) {
+      return Alert.alert("No room for another page", "You have the most pages there can be. Remove one first, then try again.");
+    }
+    if (tooFull(result.changes)) return;
+    const before = layout;
+    setStartersOpen(false);
+    hideStarterOffer();
+    tap("success");
+    save(result.changes).catch((saveError: Error) => Alert.alert("Couldn't set that up", saveError.message));
+    settleToast();
+    showToast(
+      result.newPage ? `Added a “${starter.name}” page` : `Here's your ${starter.name} Hearth — make it yours`,
+      {
+        label: "Undo",
+        run: () => {
+          if (toastTimer.current) clearTimeout(toastTimer.current);
+          toastTimer.current = null;
+          tap();
+          save(before, { undoable: false }).catch(() => {});
+          setToast(null);
+        },
+      },
+      6000,
+      starter.icon
+    );
   }
 
   // Step back through what was changed while editing, or forward again (CORE-095).
@@ -1594,6 +1640,13 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     moreTools.push({ key: "scenes", label: "Scenes", hint: "Save this look and switch between looks.", icon: "sparkles", onPress: () => setScenesOpen(true) });
   }
   if (!scope) {
+    moreTools.push({
+      key: "starters",
+      label: "Start from a layout",
+      hint: "Family & gifts, Home & chores, Just me, or Christmas.",
+      icon: "sparkles",
+      onPress: () => setStartersOpen(true),
+    });
     moreTools.push({ key: "share", label: "Share your look", hint: "Send your theme or whole Hearth to someone.", icon: "share", onPress: () => setSharing(true) });
   }
   if (tipHidden) {
@@ -1848,6 +1901,15 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                       </Tap>
                     </TourTarget>
                   )}
+                  {scope || onHome ? null : (
+                    <Tap
+                      style={[styles.outlineButton, { borderColor: theme.accent, alignSelf: "stretch" }]}
+                      onPress={() => setStartersOpen(true)}
+                    >
+                      <Icon name="sparkles" size={18} color={theme.accent} />
+                      <Text style={{ color: theme.accent, fontWeight: "600" }}>Start from a layout</Text>
+                    </Tap>
+                  )}
                 </Animated.View>
               ) : (
                 <PetStageContext.Provider value={petStage}>
@@ -1900,6 +1962,25 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                 </PetStageContext.Provider>
               )}
             </View>
+
+            {!scope && !editing && !isLoading && !isEmpty && !starterOfferHidden && isFreshPage(layout) ? (
+              <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)} style={[styles.offer, { borderColor: `${theme.accent}55` }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Icon name="sparkles" size={20} color={theme.accent} />
+                  <Text style={{ color: theme.text, fontWeight: "800", fontSize: 16, flex: 1 }}>Start with a ready-made Hearth?</Text>
+                  <Tap onPress={hideStarterOffer} hitSlop={12} pressedScale={0.85} accessibilityRole="button" accessibilityLabel="No thanks">
+                    <Icon name="close" size={16} color={theme.muted} />
+                  </Tap>
+                </View>
+                <Text style={{ color: theme.muted }}>
+                  Family & gifts, Home & chores, Just me, or Christmas. Everything in it can be moved or changed after.
+                </Text>
+                <Tap style={[styles.addButton, { backgroundColor: theme.accent }]} onPress={() => setStartersOpen(true)}>
+                  <Icon name="sparkles" size={18} color={theme.background} />
+                  <Text style={[styles.addButtonText, { color: theme.background }]}>Choose a layout</Text>
+                </Tap>
+              </Animated.View>
+            ) : null}
 
             {!isEmpty && !isLoading ? (
               <View style={[styles.footerRow, { marginTop: 8 }]}>
@@ -2214,6 +2295,14 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         onShowHome={showHomePage}
       />
 
+      <StarterSheet
+        visible={startersOpen}
+        onClose={() => setStartersOpen(false)}
+        onPick={useStarter}
+        fresh={isFreshPage(layout)}
+        accent={theme.accent}
+      />
+
       <AddSheet
         visible={adding}
         onClose={() => setAdding(false)}
@@ -2234,6 +2323,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
 
 // Whether the one-line tip at the top of Edit has been put away (CORE-094).
 const EDIT_TIP_KEY = "nook.hearth.editTipHidden";
+// Whether "Start with a ready-made Hearth?" has been turned down (CORE-096).
+const STARTER_OFFER_KEY = "nook.hearth.starterOfferHidden";
 
 // A small button in the Edit hint.
 function Pill({
@@ -2369,6 +2460,7 @@ const styles = StyleSheet.create({
   hint: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 16 },
   decorateButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
   skeletons: { flexDirection: "row", flexWrap: "wrap", gap: GRID_GAP },
+  offer: { gap: 10, padding: 16, borderWidth: 1.5, borderStyle: "dashed", borderRadius: 20 },
   emptyCard: { alignItems: "center", gap: 10, padding: 24, borderWidth: 1, borderStyle: "dashed", borderRadius: 24 },
   emptyTitle: { fontSize: 19, fontWeight: "800" },
   footerRow: { flexDirection: "row", gap: 12 },
