@@ -31,6 +31,9 @@ import { sickdaySettingDefaults, useNookSettings } from "../../lib/nook-settings
 import { formatTemp as sickTemp, isFever, untilWords } from "../../lib/sickday";
 import { useNow, useSickSummary } from "../../lib/sickday-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
+import { agoWords, changeWords, formatEntry, formatNumber, inRange, logStats, scaleWord, yesNoDays, yesStreak } from "../../lib/little-log";
+import { useLittleLogSummary } from "../../lib/little-log-data";
+import { Sparkline } from "../log-chart";
 import { guardTouches } from "../../lib/touch-guard";
 import { conditionIcon, conditionLabel, dayName, formatTemp, windowSky } from "../../lib/weather";
 import { useWeather } from "../../lib/weather-data";
@@ -265,6 +268,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <Subscriptions {...props} widget={widget} />;
     case "sickday":
       return <SickDay {...props} widget={widget} />;
+    case "littlelog":
+      return <LittleLogWidget {...props} widget={widget} />;
     case "frame":
       return null; // drawn whole by PhotoFrame, above
     case "clock":
@@ -1581,6 +1586,95 @@ function SickDay({ widget, palette, refreshKey, height, shape, icon }: BodyProps
         )
       )}
       {sick.every((s) => !s.timers.length) && lines.length <= shown.length ? <Muted palette={palette}>No medicine given yet</Muted> : null}
+    </View>
+  );
+}
+
+// --- A log (LOG-007) --------------------------------------------------------------
+
+function LittleLogWidget({ widget, palette, refreshKey, width, height, shape, icon }: BodyProps<"littlelog">) {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const data = useLittleLogSummary(userId, refreshKey);
+  if (!data) return null;
+
+  // The picked log, or whichever of yours was logged most recently.
+  const newest = (id: string) => data.entries.get(id)?.[0]?.logged_at ?? "";
+  const log =
+    data.logs.find((l) => l.id === widget.settings.logId) ??
+    (widget.settings.logId ? undefined : [...data.logs].filter((l) => l.owner_id === userId).sort((a, b) => newest(b.id).localeCompare(newest(a.id)))[0]);
+  if (!log) {
+    if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+    return <Empty icon="chart" palette={palette} text={widget.settings.logId ? "This log isn't here any more" : "Start a log in Little Log"} />;
+  }
+
+  const entries = data.entries.get(log.id) ?? [];
+  const latest = entries[0];
+  const shown = inRange(entries, widget.settings.range);
+  const stats = logStats(shown);
+  const rangeWord = widget.settings.range === "week" ? "this week" : widget.settings.range === "month" ? "this month" : "in 3 months";
+  const short = !latest
+    ? "—"
+    : log.kind === "pair"
+      ? `${formatNumber(latest.value!)}/${formatNumber(latest.value2!)}`
+      : log.kind === "scale"
+        ? scaleWord(latest.value!)
+        : log.kind === "number"
+          ? formatNumber(latest.value!)
+          : log.kind === "yesno"
+            ? `${yesStreak(yesNoDays(entries, 60))}`
+            : "";
+  const sub = !latest
+    ? "Nothing logged yet"
+    : log.kind === "yesno"
+      ? `day streak · ${agoWords(latest.logged_at)}`
+      : [agoWords(latest.logged_at), log.kind === "number" && stats.change !== null ? `${changeWords(stats.change)} ${rangeWord}` : null].filter(Boolean).join(" · ");
+
+  if (shape === "icon") {
+    return <IconFace icon={icon} palette={palette} value={log.kind === "text" ? undefined : short} caption={log.kind === "yesno" ? "days" : log.unit ?? undefined} />;
+  }
+  if (shape === "strip") {
+    return <Strip icon={icon} palette={palette} text={latest ? `${log.name} · ${formatEntry(log, latest)}` : log.name} sub={sub} />;
+  }
+
+  // The card has 14 of padding each side.
+  const chartW = Math.max(0, width - 28);
+  const chartH = Math.max(24, Math.min(90, height - (isBig(shape) ? 120 : 100)));
+  return (
+    <View style={{ flex: 1, gap: 4 }}>
+      <Muted palette={palette}>{log.name}</Muted>
+      {log.kind === "text" ? (
+        <Text style={[styles.body, { color: palette.text }]} numberOfLines={Math.max(2, Math.floor((height - 60) / 20))}>
+          {latest?.note ?? "Nothing written yet"}
+        </Text>
+      ) : (
+        <Text style={{ fontSize: isBig(shape) ? 34 : 28, fontWeight: "800", color: palette.text, letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
+          {short}
+          {log.unit && (log.kind === "number" || log.kind === "pair") ? <Text style={{ fontSize: 14, fontWeight: "600", color: palette.muted }}> {log.unit}</Text> : null}
+        </Text>
+      )}
+      <Muted palette={palette}>{sub}</Muted>
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        {log.kind === "yesno" ? (
+          <View style={{ flexDirection: "row", gap: 4 }}>
+            {yesNoDays(entries, 7).map((d) => (
+              <View
+                key={d.day}
+                style={{
+                  flex: 1,
+                  height: 12,
+                  borderRadius: 3,
+                  backgroundColor: d.state === "yes" ? palette.accent : d.state === "no" ? palette.panel : "transparent",
+                  borderWidth: d.state === null ? 1 : 0,
+                  borderColor: palette.faint,
+                }}
+              />
+            ))}
+          </View>
+        ) : log.kind !== "text" ? (
+          <Sparkline entries={shown} color={palette.accent} width={chartW} height={chartH} ring="transparent" />
+        ) : null}
+      </View>
     </View>
   );
 }

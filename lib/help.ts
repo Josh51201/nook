@@ -182,4 +182,9 @@ export const helpAnswers: HelpAnswer[] = [
     answer:
       "On your Hearth, tap Edit, then Share. \"Share mine\" makes a 6-letter code for your theme or your whole Hearth to text to family. \"Use a code\" is where you type one they sent you. A whole Hearth is added to your Scenes, so your own is kept and you can switch back.",
   },
+  {
+    question: "Can my family see what I log in Little Log?",
+    answer:
+      "Not unless you share it. Every log starts as just yours. To share one, open it, tap the pencil and pick “Everyone in my Home”: the people you live with can then see it and add to it (handy for a kid's height), but only you can change or remove the log itself.",
+  },
 ];

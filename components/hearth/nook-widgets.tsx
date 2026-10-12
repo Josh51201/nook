@@ -24,6 +24,8 @@ import { sickdaySettingDefaults, useNookSettings } from "../../lib/nook-settings
 import { formatTemp as sickTemp, spellDay, untilWords } from "../../lib/sickday";
 import { useNow, useSickSummary } from "../../lib/sickday-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
+import { agoWords, formatEntry } from "../../lib/little-log";
+import { useLittleLogSummary } from "../../lib/little-log-data";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
 import { Text } from "../text";
@@ -450,6 +452,33 @@ function SickDayWidget({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// Little Log (LOG-007): how many are logged today, then each log's latest.
+function LittleLogTile({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const data = useLittleLogSummary(session?.user.id, refreshKey);
+  if (!data) return null;
+  if (!data.logs.length) return <Facts facts={[{ kind: "note", text: "Start a log" }]} {...props} />;
+
+  const today = localDay();
+  const latest = (id: string) => data.entries.get(id)?.[0];
+  const done = data.logs.filter((log) => {
+    const entry = latest(log.id);
+    return entry && localDay(new Date(entry.logged_at)) === today;
+  }).length;
+  const facts: Fact[] = [{ kind: "headline", text: done ? `${done} of ${data.logs.length} logged today` : "Nothing logged today" }];
+  const recent = [...data.logs].sort((a, b) => (latest(b.id)?.logged_at ?? "").localeCompare(latest(a.id)?.logged_at ?? ""));
+  for (const log of recent) {
+    const entry = latest(log.id);
+    facts.push({
+      kind: "detail",
+      icon: "chart",
+      text: entry && log.kind !== "text" ? `${log.name} · ${formatEntry(log, entry)}` : log.name,
+      trailing: entry ? agoWords(entry.logged_at, today) : undefined,
+    });
+  }
+  return <Facts facts={facts} {...props} />;
+}
+
 export const nookWidgets: Record<string, NookWidget> = {
   gatherings: { label: "Coming up", Component: GatheringsWidget },
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
@@ -462,4 +491,5 @@ export const nookWidgets: Record<string, NookWidget> = {
   subscriptions: { label: "Renewing soon", Component: SubscriptionsWidget },
   getaways: { label: "Next Getaway", Component: GetawaysWidget },
   sickday: { label: "Next dose", Component: SickDayWidget },
+  "little-log": { label: "Latest", Component: LittleLogTile },
 };

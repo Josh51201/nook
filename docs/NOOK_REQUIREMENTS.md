@@ -181,6 +181,20 @@ Josh asked 2026-10-09 for an easier place to see and plan Gatherings ("right now
 - **GATH-010** A Gathering widget "needs to do something when the Gathering is over" (Josh). _(Built, proposed: you choose Take it off my Hearth (the default; it goes the day after, or if the Gathering is deleted), Switch to my next one, or Keep it up (shows how many came). Never automatic on the shared Home page.)_
 - _Built 2026-10-09:_ GATH-001..008 in `app/gatherings`, with the database rules in the `gatherings` migration. The privacy tests (including GIFT-007 for guests from other Burrows) skip until a service key is in `.env.test.local`.
 
+## 2m. Little Log Nook
+Josh picked it from the backlog on 2026-10-12 ("i would like the little log nook"), with notes as their own Nook (Q-034) and logs "just yours" unless shared with your Home. Anything marked _(Proposed)_ is Claude's detail for him to confirm.
+- **LOG-001** Log anything with a date, choosing what each entry holds. _(Proposed: a number (with a unit), two numbers like blood pressure 120/80, 1 to 5, yes or no, or just words; plus a name, icon and color. What it holds can't change once made.)_
+- **LOG-002** _(Proposed.)_ Starters so you don't begin from nothing: Weight, Blood pressure, Mood, Sleep, Water, Mileage, Height, Headache, Workout, Journal.
+- **LOG-003** _(Proposed.)_ Logging takes a couple of taps: a + on each log opens a sheet that fits its kind (big number pad, two boxes, 1–5 or Yes/No buttons, a text box), timed now unless changed, with an optional note.
+- **LOG-004** Charts over time. _(Proposed: a line in the log's color over a Week / Month / 3 months / Year / All, touch and slide to read any entry; a pair draws its second number dashed with a key; yes/no shows a day grid and a streak; plus average, lowest, highest and change.)_
+- **LOG-005** _(Proposed.)_ History, newest first, grouped by day; tap an entry to change or remove it.
+- **LOG-006** Logs are just yours by default; any log can be shared with your Home. _(Josh: agreed 2026-10-12.)_ _(Proposed: the people you live with can see a shared log and add to it; only its owner changes or removes the log, and an entry is changed by whoever wrote it or the owner. It follows the owner if they move Homes. Enforced in Postgres, with tests.)_
+- **LOG-007** _(Proposed.)_ A Hearth widget, "A log": one log's latest entry and its trend (or whichever you logged last); the Nook's tile shows what's been logged today.
+- **LOG-008** _(Proposed.)_ The Nooks tab and Market list it under Pets & health.
+- **LOG-009** A daily reminder to log. _(Proposed: per log, at a time you pick, on the owner's own phone.)_
+- **LOG-010** _(Proposed.)_ Help explains who can see a log.
+- _Built 2026-10-12:_ LOG-001..010 in `app/little-log`, with the database rules in the `little_log` migration. The privacy tests skip until a service key is in `.env.test.local`.
+
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
 - **MON-002** A subscription belongs to a **Home** and covers everyone in it, up to the Home's cap of 6 (HOME-006). It never covers a Burrow, so joining someone's Burrow unlocks nothing paid. The paid customization follows the Home too, not the person. _(Josh: "I like the per home idea but yes needs capped at 6".)_
@@ -267,7 +281,8 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **Heads-Up Board** — one-tap household status like "on my way", "dinner at 6?" or "need milk"; no location tracking. _(Josh picked it 2026-10-08.)_
 - **Sick Day** — now built as the Sick Day Nook: see section 2k (SICK-001..014).
 - **Subscriptions** — now built as the Subscriptions Nook: see section 2i (SUB-001..012).
-- **Little Log** — log anything with a date (blood pressure, mileage, a symptom, a mood); you pick the fields and it charts them over time. _(Josh picked it 2026-10-08.)_
+- **Little Log** — now built as the Little Log Nook: see section 2m (LOG-001..010).
+- **Notes** — plain notes "like the iOS Notes app", just being able to create notes. _(Josh asked 2026-10-12, alongside Little Log; its own Nook, next (Q-034).)_
 - **Trip** — now built as the Getaway Nook: see section 2j (TRIP-001..014).
 - **Idea Stash** — part of the Gift Nook (GIFT-036), not a separate Nook.
 

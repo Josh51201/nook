@@ -203,6 +203,19 @@ export const nookCatalog: NookDefinition[] = [
     aisle: "care",
   },
   {
+    id: "little-log",
+    title: "Little Log",
+    icon: "chart",
+    iconColor: "#4f7a8c",
+    tagline: "Anything, over time",
+    description:
+      "Keep track of anything with a date — your weight, blood pressure, mood, sleep, the car's mileage, a kid's height — and see it as a chart. Logging takes two taps, a daily reminder keeps you at it, and any log can be shared with your Home.",
+    route: "/little-log",
+    available: true,
+    color: "#d9e6eb",
+    aisle: "care",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

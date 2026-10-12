@@ -136,6 +136,13 @@ const icons = {
   bed: { ios: "bed.double.fill", android: "bed" },
   train: { ios: "tram.fill", android: "train" },
   sick: { ios: "cross.case.fill", android: "medical_services" },
+  chart: { ios: "chart.xyaxis.line", android: "show_chart" },
+  scale: { ios: "scalemass.fill", android: "monitor_weight" },
+  mood: { ios: "face.smiling", android: "mood" },
+  ruler: { ios: "ruler.fill", android: "straighten" },
+  note: { ios: "note.text", android: "sticky_note_2" },
+  folder: { ios: "folder.fill", android: "folder" },
+  pin: { ios: "pin.fill", android: "push_pin" },
 } satisfies Record<string, { ios: SymbolViewProps["name"] & string; android: AndroidName }>;
 
 type AndroidName = Exclude<Extract<SymbolViewProps["name"], object>["android"], undefined>;

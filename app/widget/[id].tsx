@@ -51,6 +51,7 @@ import {
 } from "../../lib/hearth";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { shelvesIn } from "../../lib/recipes";
+import type { LittleLog } from "../../lib/little-log";
 import { rangeWords } from "../../lib/getaways";
 import { localDay } from "../../lib/pets";
 import { supabase } from "../../lib/supabase";
@@ -1025,6 +1026,27 @@ function KindSettings({
       );
     case "recipe":
       return <RecipeShelfPicker shelf={widget.settings.shelf} onChange={(shelf) => setSettings({ shelf })} />;
+    case "littlelog":
+      return (
+        <>
+          <LittleLogPicker logId={widget.settings.logId} onChange={(logId) => setSettings({ logId })} />
+          <Text style={ui.label}>Trend over</Text>
+          <View style={ui.chips}>
+            {(
+              [
+                { key: "week", label: "A week" },
+                { key: "month", label: "A month" },
+                { key: "quarter", label: "3 months" },
+              ] as const
+            ).map((r) => (
+              <Chip key={r.key} selected={widget.settings.range === r.key} onPress={() => setSettings({ range: r.key })}>
+                {r.label}
+              </Chip>
+            ))}
+          </View>
+          <Text style={ui.muted}>The latest entry and how it's been going, from Little Log. Tap it on your Hearth to open the log.</Text>
+        </>
+      );
     case "sickday":
       return (
         <>
@@ -1528,6 +1550,39 @@ function SwitchRow({ label, value, onChange }: { label: string; value: boolean; 
 }
 
 // Recipe of the day (REC-011): all of your Recipe Box, or one of its Shelves.
+// Which log a Little Log widget shows (LOG-007): the one you logged most
+// recently, or one you pick (yours, or one shared with you).
+function LittleLogPicker({ logId, onChange }: { logId: string | null; onChange: (logId: string | null) => void }) {
+  const { session } = useAuth();
+  const [logs, setLogs] = useState<Pick<LittleLog, "id" | "name">[]>([]);
+
+  useEffect(() => {
+    if (!session) return;
+    supabase
+      .from("little_logs")
+      .select("id, name")
+      .order("created_at")
+      .then(({ data }) => setLogs((data ?? []) as Pick<LittleLog, "id" | "name">[]));
+  }, [session]);
+
+  return (
+    <>
+      <Text style={ui.label}>Show</Text>
+      <View style={ui.chips}>
+        <Chip selected={!logId} onPress={() => onChange(null)}>
+          Whichever I logged last
+        </Chip>
+        {logs.map((log) => (
+          <Chip key={log.id} icon="chart" selected={logId === log.id} onPress={() => onChange(log.id)}>
+            {log.name}
+          </Chip>
+        ))}
+      </View>
+      {!logs.length ? <Text style={ui.muted}>Start a log in the Little Log Nook first.</Text> : null}
+    </>
+  );
+}
+
 function RecipeShelfPicker({ shelf, onChange }: { shelf: string | null; onChange: (shelf: string | null) => void }) {
   const { session } = useAuth();
   const [shelves, setShelves] = useState<string[]>([]);

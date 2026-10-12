@@ -908,6 +908,10 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         return router.push("/subscriptions");
       case "sickday":
         return router.push("/sickday");
+      case "littlelog": {
+        const logId = item.widget.settings.logId;
+        return router.push(logId ? `/little-log/${logId}` : "/little-log");
+      }
       case "countdown":
         // A Getaway countdown opens that Getaway (TRIP-010).
         if (item.widget.settings.source === "getaway") {
