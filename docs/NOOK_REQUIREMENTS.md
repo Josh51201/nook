@@ -88,6 +88,8 @@ Full requirements live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_NOOKS_BUILT
 - **Q-031** Where should the Sitter Sheet's web page live? It's one small file. Options: a free static host (Netlify or Cloudflare Pages) now, then the domain bought for email (`mynookapp.app`) later, e.g. `sitter.<domain>`. Links made before a move stop working, but they only last one stay anyway.
 - **Q-032** Notices from the Nooks only reach your inbox (and a few alerts set on this phone, like the next sick-day dose). Josh wants them sent as phone notifications. That needs real push notifications: the app has to be built as its own app (Expo Go can't receive them), with Apple/Google push set up, and the database sending a push whenever it adds a notice. Should this be done now, or with the standalone app build (CORE-021, Q-028)? Once on, Settings → Notifications (CORE-090) would also get a "Push to this phone" master switch.
 
+- **Q-035** Who uses a Kid's Hearth (CORE-119)? Most kids don't have their own account until the hand-off code (HOME-010). Is it a mode a parent turns on before handing over their own phone, unlocked with a PIN? A Hearth for kids who have their own account? Or both?
+
 ## 6. Decision Log
 Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need the history of a decision). Add new entries there.
 
@@ -165,7 +167,13 @@ Earlier faint, very broad ideas (lower priority, may be dropped): Food tracker, 
 Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was curious, not yet picked), Hand-Me-Downs, Guest Book, Growth Marks, Kid Art, Gift Closet, Daily Question; Surprise Planner (plan a surprise with a hidden to-do list, hidden from the guest of honor), Keepsakes (letters sealed until a date, e.g. a kid's 18th birthday).
 
 ## 9. Up next
-0. **Hearth to-do** (CORE-105..120, section 1), built one or two at a time and committed after each. Proposed order: smart stacks and badges first (they make what's there more useful), then This week, Birthdays coming up and New in Wishbooks, then the rest. CORE-121 waits for the real app build (item 3).
+0. **Hearth to-do** (CORE-105..121, section 1), built one at a time and committed after each. Phases *(proposed)*:
+   - **Phase 1, make what's there smarter:** badges (CORE-115), then smart stacks (CORE-114) and peek into a Hollow (CORE-116), which reuse the badges' "something needs you" signal.
+   - **Phase 2, widgets from Nooks you already have:** This week (CORE-105), Birthdays coming up (CORE-106), Getaway (CORE-108), then New in Wishbooks (CORE-107) last, with its GIFT-007 privacy tests.
+   - **Phase 3, new stand-alone widgets:** Sky (CORE-112), Kitchen timer (CORE-109), Gratitude jar (CORE-113), Whose turn? (CORE-111).
+   - **Phase 4, looks:** a look per page (CORE-117), Seasonal Trinkets (CORE-118), Bedtime look (CORE-120).
+   - **Phase 5, kids:** Sticker chart (CORE-110) and Kid's Hearth (CORE-119), after Q-035.
+   - **Phase 6, after the real app build:** home-screen widgets (CORE-121), see item 3.
 1. **Josh tries the Menu Board and Grocery List Nooks** and confirms or changes their proposed details (MENU-, GROC- in the Nooks archive). Then he picks the next Nook from the backlog (section 8).
 2. **Waiting on Josh** — setup only he can do; Claude walks him through each:
    - Run the newer database migrations in Supabase if they haven't been yet: `delete_account` (AUTH-003), `little_log`, `notes`, `menu_and_groceries` (MENU, GROC), `nudges` then `nudge_notes` (CORE-101).
