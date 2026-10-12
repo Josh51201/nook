@@ -2,7 +2,7 @@ import { usePathname, useRouter } from "expo-router";
 import type { ReactNode } from "react";
 import { Alert, View } from "react-native";
 
-import { helpFor } from "../lib/help";
+import { helpFor, helpSectionFor } from "../lib/help";
 import { tap } from "../lib/feedback";
 import { Icon } from "./icon";
 import { Tap } from "./motion";
@@ -40,8 +40,10 @@ export function useShowHelp() {
   return function show() {
     tap();
     const topic = helpFor(pathname);
+    // "More help" opens Help on this Nook's own questions (CORE-102).
+    const section = helpSectionFor(pathname);
     Alert.alert(topic.title, topic.body, [
-      { text: "More help", onPress: () => router.push("/help") },
+      { text: "More help", onPress: () => router.push(section ? { pathname: "/help", params: { topic: section } } : "/help") },
       ...(tour
         ? [
             {
