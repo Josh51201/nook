@@ -1,5 +1,7 @@
-import { StyleSheet, View } from "react-native";
-import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
+import { useEffect, type ReactNode } from "react";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { deepColor, tilePalette } from "../../lib/hearth-layout";
 import type { Look } from "../../lib/hearth-looks";
@@ -13,9 +15,54 @@ import { Text } from "../text";
 // stays where it is, with Undo and Redo (CORE-095) and the tools used most;
 // the rest wait under More.
 
+const FADE_ROWS = 28;
+
+// The strip along the bottom that a bar sits on (CORE-094): it's painted like
+// the page (the Hearth's color), fading in above the bar, so widgets melt away
+// behind it instead of showing around and under it, the same as the top bar.
+// It stays put and just fades in or out, so it never rebuilds (and flickers)
+// as sheets and drags come and go.
+export function BottomDock({
+  visible,
+  background,
+  bottom,
+  children,
+}: {
+  visible: boolean;
+  background: string;
+  // The gap under the bar (the screen's safe area, plus a little).
+  bottom: number;
+  children: ReactNode;
+}) {
+  const { width } = useWindowDimensions();
+  const shown = useSharedValue(0);
+  useEffect(() => {
+    shown.value = withTiming(visible ? 1 : 0, { duration: 180 });
+  }, [visible, shown]);
+  const style = useAnimatedStyle(() => ({ opacity: shown.value }));
+  return (
+    <Animated.View style={[styles.dock, { paddingBottom: bottom }, style]} pointerEvents={visible ? "box-none" : "none"}>
+      <View style={[StyleSheet.absoluteFill, { top: -FADE_ROWS }]} pointerEvents="none">
+        <Svg width={width} height={FADE_ROWS}>
+          <Defs>
+            <LinearGradient id="dock-fade" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={background} stopOpacity={0} />
+              <Stop offset="1" stopColor={background} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          <Rect x={0} y={0} width={width} height={FADE_ROWS} fill="url(#dock-fade)" />
+        </Svg>
+        <View style={{ flex: 1, backgroundColor: background }} />
+      </View>
+      <View style={styles.dockBar}>{children}</View>
+    </Animated.View>
+  );
+}
+
 type BarAction = { key: string; label: string; icon: IconName; onPress: () => void; disabled?: boolean };
 
 export function EditBar({
+  visible,
   accent,
   background,
   text,
@@ -31,6 +78,7 @@ export function EditBar({
   onMore,
   onLayout,
 }: {
+  visible: boolean;
   accent: string;
   background: string;
   text: string;
@@ -58,14 +106,11 @@ export function EditBar({
     { key: "more", label: "More", icon: "more", onPress: onMore },
   ];
   return (
-    <Animated.View
-      entering={FadeInDown.duration(200)}
-      exiting={FadeOutDown.duration(150)}
-      style={[styles.wrap, { bottom }]}
-      pointerEvents="box-none"
-      onLayout={(e) => onLayout?.(e.nativeEvent.layout.height)}
-    >
-      <View style={[styles.bar, { backgroundColor: background, borderColor: `${text}22` }]}>
+    <BottomDock visible={visible} background={background} bottom={bottom}>
+      <View
+        style={[styles.bar, { backgroundColor: background, borderColor: `${text}22` }]}
+        onLayout={(e) => onLayout?.(e.nativeEvent.layout.height)}
+      >
         {actions.map((a, i) => (
           <View key={a.key} style={styles.slot}>
             {i === 2 ? <View style={[styles.divider, { backgroundColor: `${text}1f` }]} /> : null}
@@ -87,13 +132,14 @@ export function EditBar({
           </View>
         ))}
       </View>
-    </Animated.View>
+    </BottomDock>
   );
 }
 
 // Pasting a look (CORE-097): while it's showing, tapping things gives them
 // the copied look, one tap each, until Done.
 export function PaintBar({
+  visible,
   look,
   accent,
   background,
@@ -101,6 +147,7 @@ export function PaintBar({
   bottom,
   onDone,
 }: {
+  visible: boolean;
   look: Look;
   accent: string;
   background: string;
@@ -110,7 +157,7 @@ export function PaintBar({
 }) {
   const swatchColor = look.color ?? tilePalette[0];
   return (
-    <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOutDown.duration(150)} style={[styles.wrap, { bottom }]} pointerEvents="box-none">
+    <BottomDock visible={visible} background={background} bottom={bottom}>
       <View style={[styles.bar, styles.paint, { backgroundColor: background, borderColor: `${text}22` }]}>
         {look.kind === "text" ? (
           <View style={[styles.swatch, { borderColor: `${text}22`, backgroundColor: `${accent}12` }]}>
@@ -136,7 +183,7 @@ export function PaintBar({
           <Text style={{ color: accent, fontWeight: "800" }}>Done</Text>
         </Tap>
       </View>
-    </Animated.View>
+    </BottomDock>
   );
 }
 
@@ -185,7 +232,8 @@ export function EditMoreSheet({
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", left: 16, right: 16, zIndex: 40 },
+  dock: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 40 },
+  dockBar: { marginHorizontal: 16 },
   bar: {
     flexDirection: "row",
     borderRadius: 22,

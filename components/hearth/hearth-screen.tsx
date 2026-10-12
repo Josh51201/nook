@@ -1674,8 +1674,12 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
 
   // Edit's toolbar (CORE-094), whenever nothing else is using the bottom.
   // Both step aside while a sheet is open, so they never cover its bottom.
-  const editBarShown = editing && !selecting && !painting && !dragging && !movingItem && !barsHidden && !hollowOptions;
-  const paintBarShown = editing && !!painting && !dragging && !movingItem && !barsHidden && !hollowOptions;
+  // The bars stay in place and fade rather than being rebuilt each time.
+  const barsClear = !dragging && !movingItem && !barsHidden && !hollowOptions;
+  const editBarMounted = editing && !selecting && !painting;
+  const paintBarMounted = editing && !!painting;
+  const editBarShown = editBarMounted && barsClear;
+  const paintBarShown = paintBarMounted && barsClear;
   const moreTools: MoreTool[] = [];
   if (!isEmpty) {
     moreTools.push({
@@ -1865,7 +1869,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
             ref={scrollView}
             {...scrollProps}
             // Room to scroll the last row above the arrow bar while moving.
-            contentContainerStyle={[styles.container, movingId ? { paddingBottom: 240 } : editing ? { paddingBottom: 130 } : null]}
+            contentContainerStyle={[styles.container, movingId ? { paddingBottom: 240 } : editing ? { paddingBottom: 140 + insets.bottom } : null]}
             scrollEnabled={!dragging}
             keyboardShouldPersistTaps="handled"
           >
@@ -2137,8 +2141,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         </Animated.View>
       ) : null}
 
-      {editBarShown ? (
+      {editBarMounted ? (
         <EditBar
+          visible={editBarShown}
           accent={theme.accent}
           background={theme.background}
           text={theme.text}
@@ -2155,8 +2160,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           onLayout={setEditBarHeight}
         />
       ) : null}
-      {paintBarShown && painting ? (
+      {paintBarMounted && painting ? (
         <PaintBar
+          visible={paintBarShown}
           look={painting}
           accent={theme.accent}
           background={theme.background}

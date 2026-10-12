@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
 
 import { cleanTag, MAX_TAG_LENGTH } from "../../lib/hearth-tags";
 import { colors, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
 import { Icon, type IconName } from "../icon";
+import { BottomDock } from "./edit-bar";
 import { Tap } from "../motion";
 import { Text } from "../text";
 import { Chip } from "../ui";
@@ -46,7 +46,7 @@ export function SelectionBar({
     { key: "delete", label: "Remove", icon: "trash" },
   ];
   return (
-    <Animated.View entering={FadeIn.duration(160)} style={[styles.wrap, { bottom }]} pointerEvents="box-none">
+    <BottomDock visible background={background} bottom={bottom}>
       <View style={[styles.bar, { backgroundColor: background, borderColor: `${text}22` }]}>
         <View style={styles.top}>
           <Text style={{ color: text, fontWeight: "800", flex: 1 }} numberOfLines={1}>
@@ -73,7 +73,7 @@ export function SelectionBar({
           ))}
         </View>
       </View>
-    </Animated.View>
+    </BottomDock>
   );
 }
 
@@ -204,7 +204,6 @@ export function ColorManySheet({
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", left: 16, right: 16 },
   bar: {
     borderRadius: 22,
     borderWidth: 1,
