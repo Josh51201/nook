@@ -187,3 +187,16 @@ export const fridgeSettingDefaults = {
   notifyHome: true, // someone sticks up a note on your Home's fridge
   notifyBurrow: true, // … or on one of your Burrows' fridges
 };
+
+// Menu Board settings (MENU-001, MENU-007): which day the week starts on
+// (0 Sunday, 1 Monday) and which meals you plan.
+export const menuBoardSettingDefaults = {
+  weekStart: 0 as 0 | 1,
+  meals: ["breakfast", "lunch", "dinner"] as ("breakfast" | "lunch" | "dinner")[],
+};
+
+// Grocery List settings: the list things go on when added from a recipe,
+// the Menu Board or a Potluck (GROC-005, GROC-006), last picked.
+export const grocerySettingDefaults = {
+  lastList: null as string | null,
+};

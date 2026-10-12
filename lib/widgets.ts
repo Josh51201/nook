@@ -9,7 +9,7 @@ import type { Condition, Place, Unit, WindowFrame } from "./weather";
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "gathering" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "sitter" | "recipe" | "subscriptions" | "sickday" | "littlelog" | "notes" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion" | "fridge";
+export type WidgetKind = "countdown" | "gatherings" | "gathering" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "sitter" | "recipe" | "subscriptions" | "sickday" | "littlelog" | "notes" | "menu" | "groceries" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion" | "fridge";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -95,6 +95,10 @@ export type WidgetSettings = {
   // A note (NOTE-007): one you pick, or with null, your top pinned note
   // (or newest, with none pinned).
   notes: { noteId: string | null };
+  // On the menu (MENU-008): today's meals, or the rest of the week's dinners.
+  menu: { range: "today" | "week" };
+  // A grocery list (GROC-007): one you pick, or with null, your first.
+  groceries: { listId: string | null };
   frame: { photos: string[]; style: FrameStyle; seconds: number; caption: string };
   clock: { face: "digital" | "analog"; hour24: boolean; showDate: boolean };
   quote: { source: QuoteSource; mine: string[] };
@@ -169,6 +173,8 @@ export const widgetKinds: {
   { kind: "sickday", label: "Next dose", description: "Who's sick, their latest temperature, and when each medicine is OK again, from your Sick Day Nook.", icon: "sick", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "littlelog", label: "A log", description: "One log from Little Log: the latest entry and how it's been going, like your weight this month.", icon: "chart", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "notes", label: "A note", description: "One note from your Notes Nook on your Hearth, checklists and all. Tap it to open the note.", icon: "note", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "menu", label: "On the menu", description: "Today's meals from your Home's Menu Board, or the week's dinners. Tap it to open the board.", icon: "menuBoard", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "groceries", label: "A grocery list", description: "What's left to get on one of your grocery lists. Tap it to open the list.", icon: "cart", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "frame", label: "Photo frame", description: "Your own pictures in a frame, one after another.", icon: "camera", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "clock", label: "Clock", description: "The time and date, as a digital or an analog clock.", icon: "clock", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "quote", label: "Quote of the day", description: "A warm line a day, from ours or from your own list.", icon: "sparkles", size: { w: 4, h: 2 }, minSize: { w: 1, h: 1 } },
@@ -184,7 +190,7 @@ export const widgetKinds: {
 // How the "Add" sheet groups widgets so it isn't one long list (CORE-059).
 // Every kind belongs to exactly one category (a test checks this).
 export const widgetCategories: { id: string; label: string; blurb: string; icon: IconName; kinds: WidgetKind[] }[] = [
-  { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["gatherings", "gathering", "tucks", "inbox", "cards", "pets", "rhythms", "sitter", "recipe", "subscriptions", "sickday", "littlelog", "notes"] },
+  { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["gatherings", "gathering", "tucks", "inbox", "cards", "pets", "rhythms", "sitter", "recipe", "subscriptions", "sickday", "littlelog", "notes", "menu", "groceries"] },
   { id: "lists", label: "Lists & routines", blurb: "Things to remember, tick off and jump to", icon: "todo", kinds: ["reminders", "note", "streak", "launch"] },
   { id: "time", label: "Time & weather", blurb: "Dates, the clock and the sky", icon: "clock", kinds: ["countdown", "clock", "weather", "window"] },
   { id: "cozy", label: "Cozy touches", blurb: "Pictures, words and a warm hello", icon: "sparkles", kinds: ["fridge", "companion", "frame", "quote", "greeting"] },
@@ -253,6 +259,10 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
       return { ...base, kind, settings: { logId: null, range: "month" } };
     case "notes":
       return { ...base, kind, showTitle: false, settings: { noteId: null } };
+    case "menu":
+      return { ...base, kind, settings: { range: "today" } };
+    case "groceries":
+      return { ...base, kind, settings: { listId: null } };
     case "frame":
       return { ...base, kind, showTitle: false, settings: { photos: [], style: "wood", seconds: 12, caption: "" } };
     case "clock":

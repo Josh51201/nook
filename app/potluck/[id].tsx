@@ -22,6 +22,9 @@ import {
   type RsvpStatus,
 } from "../../lib/potluck";
 import { setRsvp } from "../../lib/gatherings-data";
+import { isPotluckWeek, isWaiting } from "../../lib/groceries";
+import { potluckShopping } from "../../lib/groceries-data";
+import { localDay } from "../../lib/pets";
 import { loadPotluck, potluckWhen, type Dish, type PotluckData } from "../../lib/potluck-data";
 import { supabase } from "../../lib/supabase";
 import { colors, themed, ui } from "../../lib/theme";
@@ -40,6 +43,8 @@ export default function PotluckScreen() {
   const [data, setData] = useState<PotluckData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // What you've put on grocery lists for this Potluck (GROC-006).
+  const [shopping, setShopping] = useState<Awaited<ReturnType<typeof potluckShopping>>>([]);
 
   const load = useCallback(
     () =>
@@ -58,7 +63,8 @@ export default function PotluckScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+      potluckShopping(id).then(setShopping).catch(() => {});
+    }, [load, id])
   );
 
   if (isLoading) return <LoadingScreen cards={4} />;
@@ -246,6 +252,23 @@ export default function PotluckScreen() {
         icon="potluck"
         onPress={() => router.push({ pathname: "/potluck/dish-form", params: { potluckId: id } })}
       />
+
+      {/* Shopping for your dish (GROC-006): it waits on your grocery list
+          until the week of, and that week this card asks if you're set. */}
+      {dishes.some((dish) => dish.brought_by === userId) && localDay(new Date(potluck.starts_at)) >= localDay() ? (
+        <NavCard
+          icon="cart"
+          iconColor="#4f7a3f"
+          iconBackground="#e2ecd8"
+          title={isPotluckWeek(localDay(new Date(potluck.starts_at))) ? "It's Potluck week. Got what you need?" : "Shopping for your dish"}
+          subtitle={
+            shopping.length
+              ? `${shopping.length} thing${shopping.length === 1 ? " is" : "s are"} on your grocery list${shopping.some((item) => isWaiting(item)) ? " (joining it the week of)" : ""}. Tap to add more.`
+              : "Pick what you need and put it on a grocery list. It joins the list the week of."
+          }
+          onPress={() => router.push({ pathname: "/groceries/add", params: { potluck: id } })}
+        />
+      ) : null}
 
       {isHost ? (
         <>

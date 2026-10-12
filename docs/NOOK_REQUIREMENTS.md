@@ -2,7 +2,7 @@
 
 _Only what's open, or a rule for the whole app, lives here. Built requirements are archived — grep them by ID, don't read whole files: shell, Hearth and app-wide `CORE-` in `docs/archive/NOOK_HEARTH_BUILT.md`; every built Nook plus `PROF-` and `HOME-` in `docs/archive/NOOK_NOOKS_BUILT.md`; older fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. To change a built requirement, edit it in its archive file._
 
-_Last updated: 2026-10-12 (rev 66)_
+_Last updated: 2026-10-12 (rev 67)_
 
 ## 1. Rules for the whole app
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -42,6 +42,8 @@ Full requirements live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_NOOKS_BUILT
 - **Gathering Nook** (GATH-001..010): every get-together, RSVPs, hosts, gift lists and Potlucks, a Hearth widget.
 - **Little Log Nook** (LOG-001..010): log anything with a date, with charts; yours unless shared with your Home.
 - **Notes Nook** (NOTE-001..010): notes like the phone's Notes app, with checklists; yours unless shared with your Home.
+- **Menu Board Nook** (MENU-001..010): the Home's weekly menu, breakfast, lunch and dinner, with Going out, On your own and recipes.
+- **Grocery List Nook** (GROC-001..009): several lists, each yours or shared with your Home; add from recipes, the Menu Board and Potlucks (the week of).
 - **GIFT-007 (never break):** the list owner can NEVER see claims on their own gifts — no UI, API, counts, notifications or hints. Enforced by row-level security, with tests.
 
 ## 4. Nook Plus (not built yet)
@@ -63,7 +65,7 @@ Full requirements live in [archive/NOOK_NOOKS_BUILT.md](archive/NOOK_NOOKS_BUILT
 - **Q-019** What else should the Gift Nook's settings include?
   - _Built so far:_ "Hide gifts that are already taken" *(proposed)*, plus the four notification switches (GIFT-029). Saved to the account, so they follow you to a new phone.
 - **Q-024** Should each Burrow be able to turn automatic Birthday Gatherings off (so far only deleting a single one, which lasts for that year)? And should the 30-day lead time be adjustable?
-- **Q-028** Still open: which individual Nooks and extras are free or Plus (MON-003 lists Claude's proposed sorting), the price and the trial length (MON-004). Decided so far: Burrows free, Home-based Nooks under Nook Plus, a single tier, subscription, no ads, one plan per Home, capped at 6, and the free/paid list is easy to change later (MON-005). The how-it-works details in MON-006..010 are Claude's proposals for Josh to confirm. The Subscriptions Nook (SUB-001) keeps things in a Home, so under MON-003 it would be Plus too (proposed); the Getaway Nook (TRIP-001) shares across Burrows, so it could stay free like the Gift Nook (proposed); the Sick Day Nook (SICK-001) keeps things in a Home, so it would be Plus (proposed). Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. (Account deletion, Q-020, and the app ID, Q-025, are decided.)
+- **Q-028** Still open: which individual Nooks and extras are free or Plus (MON-003 lists Claude's proposed sorting), the price and the trial length (MON-004). Decided so far: Burrows free, Home-based Nooks under Nook Plus, a single tier, subscription, no ads, one plan per Home, capped at 6, and the free/paid list is easy to change later (MON-005). The how-it-works details in MON-006..010 are Claude's proposals for Josh to confirm. The Subscriptions Nook (SUB-001) keeps things in a Home, so under MON-003 it would be Plus too (proposed); the Getaway Nook (TRIP-001) shares across Burrows, so it could stay free like the Gift Nook (proposed); the Sick Day Nook (SICK-001) keeps things in a Home, so it would be Plus (proposed). The Menu Board (MENU-001) keeps things in a Home, so it would be Plus; the Grocery List (GROC-001) is per person like Notes (proposed). Not needed until the standalone app build, but the free/paid line should be settled before anyone outside the family uses the app, since taking away something free later upsets people. (Account deletion, Q-020, and the app ID, Q-025, are decided.)
 - **Q-031** Where should the Sitter Sheet's web page live? It's one small file. Options: a free static host (Netlify or Cloudflare Pages) now, then the domain bought for email (`mynookapp.app`) later, e.g. `sitter.<domain>`. Links made before a move stop working, but they only last one stay anyway.
 - **Q-032** Notices from the Nooks only reach your inbox (and a few alerts set on this phone, like the next sick-day dose). Josh wants them sent as phone notifications. That needs real push notifications: the app has to be built as its own app (Expo Go can't receive them), with Apple/Google push set up, and the database sending a push whenever it adds a notice. Should this be done now, or with the standalone app build (CORE-021, Q-028)? Once on, Settings → Notifications (CORE-090) would also get a "Push to this phone" master switch.
 
@@ -82,6 +84,10 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The yearly-chores Nook | Rhythms Nook | approved |
 | The babysitter/house-sitter info Nook | Sitter Sheet Nook | proposed |
 | The recipes Nook | Recipe Box Nook | proposed |
+| The weekly meal-planning Nook (MENU-001) | Menu Board Nook | approved |
+| The Hearth widget with today's meals (MENU-008) | On the menu | proposed |
+| The grocery-lists Nook (GROC-001) | Grocery List Nook | approved |
+| Ticked-off items while shopping (GROC-004) | In the cart | proposed |
 | The recurring-charges Nook | Subscriptions Nook | proposed |
 | The Hearth widget with what renews next (SUB-006) | Renewing soon | proposed |
 | The trip-planning Nook (TRIP-001) | Getaway Nook | approved |
@@ -132,9 +138,9 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 
 ## 9. Up next
 Everything Josh has asked for so far is built.
-1. **Josh picks the next Nook** from the backlog (section 8).
+1. **Josh tries the Menu Board and Grocery List Nooks** and confirms or changes their proposed details (MENU-, GROC- in the Nooks archive). Then he picks the next Nook from the backlog (section 8).
 2. **Waiting on Josh** — setup only he can do; Claude walks him through each:
-   - Run the newer database migrations in Supabase if they haven't been yet: `delete_account` (AUTH-003), `little_log`, `notes`.
+   - Run the newer database migrations in Supabase if they haven't been yet: `delete_account` (AUTH-003), `little_log`, `notes`, `menu_and_groceries` (MENU, GROC).
    - Put a Supabase service key in `.env.test.local` so the privacy tests (GIFT-007 and each Nook's) stop skipping.
    - Make the Expo and Apple Developer accounts so the real app can be built (CORE-021, docs/BUILDING_THE_APP.md).
    - Make the App Review demo account in Supabase and add it to App Store Connect (AUTH-004).

@@ -239,3 +239,30 @@ Josh asked 2026-10-12 for notes that "act like the ios note app ... just being a
 - **NOTE-009** _(Proposed.)_ If two people change a shared note at once, nobody's words are lost silently: the app asks whose to keep.
 - **NOTE-010** _(Proposed.)_ The Nooks tab and Market list it under Around the house; Help explains who can see a note.
 - _Built 2026-10-12:_ NOTE-001..010 in `app/notes`, with the database rules in the `notes` migration. The privacy tests skip until a service key is in `.env.test.local`.
+
+## 2o. Menu Board Nook
+Josh asked 2026-10-12 for meal planning "kinda like the mats you can erase and write on and put on the fridge", shared by the house, and picked the name. Anything marked _(Proposed)_ is Claude's detail for him to confirm.
+- **MENU-001** A Menu Board Nook: the week's menu, each day with breakfast, lunch and dinner, like a wipe-off menu mat on the fridge. _(Josh.)_ _(Proposed: flip to next or last week; today stands out; the week starts on Sunday or Monday, a setting.)_
+- **MENU-002** The whole Home shares one menu: anyone who lives there can fill it in or change it. _(Josh: "the house all shares the weekly menu".)_ _(Proposed: nobody outside the Home sees it, enforced in Postgres with tests.)_
+- **MENU-003** A meal can be what you're having, "Going out" (and where), or "On your own". _(Josh.)_
+- **MENU-004** Pick a recipe from the Recipe Box for a meal. _(Josh.)_ _(Proposed: your recipes and your family's; tapping it opens the recipe; a meal can have a few dishes, like tacos and rice. Someone in the Home who can't see that recipe still sees its name.)_
+- **MENU-005** _(Proposed.)_ "Shop for this week": the ingredients of every recipe on the week's menu, to tick and put on a grocery list (GROC-005).
+- **MENU-006** _(Proposed.)_ "Copy last week" fills empty meals from last week; "Wipe the week" clears it, like wiping the mat.
+- **MENU-007** _(Proposed.)_ Each person can hide meals their Home doesn't plan (e.g. only dinner) in the Nook's settings.
+- **MENU-008** _(Proposed.)_ A Hearth widget, "On the menu": today's meals, tapping opens the Nook; the Nook's tile shows tonight's dinner.
+- **MENU-009** _(Proposed.)_ The menu belongs to the Home (HOME-005): a Home that was only yours brings its menu along when you join another, keeping theirs wherever you'd both planned the same meal; leaving a shared Home leaves the menu with it.
+- **MENU-010** _(Proposed.)_ The Market and Nooks tab list it under Kitchen; Help explains who sees it.
+- _Built 2026-10-12:_ MENU-001..010 in `app/menu-board`, with the database rules in the `menu_and_groceries` migration. The privacy tests skip until a service key is in `.env.test.local`.
+
+## 2p. Grocery List Nook
+Josh asked 2026-10-12 for "a grocery shopping list type of nook that connects all three" (Menu Board, Recipe Box, Potluck), picked the name, "several lists but can choose whether to share them", and for Potluck shopping, "Waits until the week of". Anything marked _(Proposed)_ is Claude's detail for him to confirm.
+- **GROC-001** A Grocery List Nook with several lists (one per store, say). _(Josh.)_ _(Proposed: the first time you open it, a "Groceries" list is made for you unless your Home already shares one.)_
+- **GROC-002** Each list is just yours or shared with your Home; you choose. _(Josh: "can choose whether to share them".)_ _(Proposed: new lists start shared; the people you live with can add, tick, change and remove items on a shared list; only its owner renames, shares, stops sharing or deletes it; it follows the owner if they move Homes. Enforced in Postgres, with tests.)_
+- **GROC-003** Add things at will. _(Josh.)_ _(Proposed: a name and an optional amount; suggestions from common groceries as you type; each item goes in an aisle (Produce, Meat & fish, Dairy & eggs, Bakery, Pantry, Frozen, Drinks, Snacks, Household, Personal care, Other) guessed from its name and changeable; adding something already on the list adds to it instead of a second line.)_
+- **GROC-004** _(Proposed.)_ Shopping: tap an item to put it "In the cart"; "Clear the cart" takes the ticked ones off; the list is grouped by aisle; a shared list updates live while two people shop.
+- **GROC-005** From a recipe, pick the ingredients you need and add them to a list: on the recipe's page in the Recipe Box, or from the Menu Board. _(Josh.)_ _(Proposed: amounts follow the servings you picked; each item says which recipe it's for.)_
+- **GROC-006** From a Potluck, add what you need for the dish you're bringing; it waits until the week of. _(Josh picked "Waits until the week of".)_ _(Proposed: the ingredients of the dish's recipe, or anything typed; it sits in a folded "Coming up" part of the list and joins it 7 days before; "Add it now" brings it early; a phone alert that morning on the phone that added it; the week of, the Potluck page asks if you've got what you need.)_
+- **GROC-007** _(Proposed.)_ A Hearth widget, "A grocery list": what's left to get; the Nook's tile shows how much is left on each list.
+- **GROC-008** _(Proposed.)_ The Market and Nooks tab list it under Kitchen; Help explains who sees a list.
+- **GROC-009** _(Proposed.)_ GIFT-007 is untouched: nothing about gifts or tucks ever reaches a grocery list.
+- _Built 2026-10-12:_ GROC-001..009 in `app/groceries`, with the database rules in the `menu_and_groceries` migration. The privacy tests skip until a service key is in `.env.test.local`.

@@ -183,6 +183,16 @@ export const helpAnswers: HelpAnswer[] = [
       "On your Hearth, tap Edit, then Share. \"Share mine\" makes a 6-letter code for your theme or your whole Hearth to text to family. \"Use a code\" is where you type one they sent you. A whole Hearth is added to your Scenes, so your own is kept and you can switch back.",
   },
   {
+    question: "Who can see the Menu Board?",
+    answer:
+      "Everyone in your Home sees the same menu and can change it, like the menu mat on a fridge. Nobody outside your Home sees it. Which meals show and which day your week starts are just your own settings.",
+  },
+  {
+    question: "Who can see my grocery lists?",
+    answer:
+      "A list is just yours unless you share it with your Home (new lists start shared; change it with the gear on the list). The people you live with can add to a shared list, tick things off and take things off. Only you can rename it, stop sharing it or delete it.",
+  },
+  {
     question: "Who can see my notes?",
     answer:
       "Just you, unless you share one. Open the note, tap Done if you're writing, and pick “Share with my Home” under it. The people you live with can then read it and change the words (handy for a packing list everyone ticks off). Only you can pin it, put it in a folder, stop sharing it or delete it.",

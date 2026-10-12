@@ -170,6 +170,14 @@ export default function RecipeScreen() {
       ) : (
         <Text style={ui.muted}>No ingredients written down.</Text>
       )}
+      {recipe.ingredients.length ? (
+        <Button
+          title="Add to a grocery list"
+          icon="cart"
+          variant="secondary"
+          onPress={() => router.push({ pathname: "/groceries/add", params: { recipe: recipe.id, factor: String(factor) } })}
+        />
+      ) : null}
 
       <SectionHeader title="Steps" icon="todo" />
       {recipe.steps.length ? (

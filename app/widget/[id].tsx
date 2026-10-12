@@ -53,6 +53,7 @@ import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { shelvesIn } from "../../lib/recipes";
 import type { LittleLog } from "../../lib/little-log";
 import { noteTitle, sortNotes, type Note } from "../../lib/notes";
+import { sortLists, type GroceryList } from "../../lib/groceries";
 import { rangeWords } from "../../lib/getaways";
 import { localDay } from "../../lib/pets";
 import { supabase } from "../../lib/supabase";
@@ -1027,6 +1028,22 @@ function KindSettings({
       );
     case "recipe":
       return <RecipeShelfPicker shelf={widget.settings.shelf} onChange={(shelf) => setSettings({ shelf })} />;
+    case "menu":
+      return (
+        <>
+          <Text style={ui.label}>Show</Text>
+          <View style={ui.chips}>
+            <Chip selected={widget.settings.range === "today"} onPress={() => setSettings({ range: "today" })}>
+              Today's meals
+            </Chip>
+            <Chip selected={widget.settings.range === "week"} onPress={() => setSettings({ range: "week" })}>
+              The week's dinners
+            </Chip>
+          </View>
+        </>
+      );
+    case "groceries":
+      return <GroceryListPicker listId={widget.settings.listId} onChange={(listId) => setSettings({ listId })} />;
     case "notes":
       return <NotePicker noteId={widget.settings.noteId} onChange={(noteId) => setSettings({ noteId })} />;
     case "littlelog":
@@ -1616,6 +1633,37 @@ function NotePicker({ noteId, onChange }: { noteId: string | null; onChange: (no
       <Text style={ui.muted}>
         {notes.length ? "The note's title and its first lines, checklists and all. Tap it on your Hearth to open it." : "Write a note in the Notes Nook first."}
       </Text>
+    </>
+  );
+}
+
+// Which list a grocery widget shows (GROC-007): your first, or one you pick.
+function GroceryListPicker({ listId, onChange }: { listId: string | null; onChange: (listId: string | null) => void }) {
+  const { session } = useAuth();
+  const [lists, setLists] = useState<GroceryList[]>([]);
+
+  useEffect(() => {
+    if (!session) return;
+    supabase
+      .from("grocery_lists")
+      .select("id, name, owner_id, shared, created_at")
+      .then(({ data }) => setLists(sortLists((data ?? []) as GroceryList[], session.user.id)));
+  }, [session]);
+
+  return (
+    <>
+      <Text style={ui.label}>Show</Text>
+      <View style={ui.chips}>
+        <Chip selected={!listId} onPress={() => onChange(null)}>
+          My first list
+        </Chip>
+        {lists.map((list) => (
+          <Chip key={list.id} icon="cart" selected={listId === list.id} onPress={() => onChange(list.id)}>
+            {list.name}
+          </Chip>
+        ))}
+      </View>
+      <Text style={ui.muted}>{lists.length ? "What's left to get on it. Tap it on your Hearth to open the list." : "Make a list in the Grocery List Nook first."}</Text>
     </>
   );
 }

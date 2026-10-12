@@ -143,6 +143,8 @@ const icons = {
   note: { ios: "note.text", android: "sticky_note_2" },
   folder: { ios: "folder.fill", android: "folder" },
   pin: { ios: "pin.fill", android: "push_pin" },
+  // Menu Board
+  menuBoard: { ios: "list.bullet.rectangle.portrait.fill", android: "restaurant_menu" },
 } satisfies Record<string, { ios: SymbolViewProps["name"] & string; android: AndroidName }>;
 
 type AndroidName = Exclude<Extract<SymbolViewProps["name"], object>["android"], undefined>;

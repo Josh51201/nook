@@ -28,6 +28,10 @@ import { agoWords, formatEntry } from "../../lib/little-log";
 import { useLittleLogSummary } from "../../lib/little-log-data";
 import { checklistCounts, noteTitle, sortNotes } from "../../lib/notes";
 import { useNotesSummary } from "../../lib/notes-data";
+import { mealHeadline, mealTimes, nextMeal, slot, slotWords } from "../../lib/menu-board";
+import { useMenuSummary } from "../../lib/menu-board-data";
+import { countWords, listCounts } from "../../lib/groceries";
+import { useGroceriesSummary } from "../../lib/groceries-data";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
 import { Text } from "../text";
@@ -504,6 +508,34 @@ function NotesTile({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// Menu Board (MENU-008): what's next today, then tomorrow's dinner.
+function MenuBoardTile({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const data = useMenuSummary(session?.user.id, refreshKey, 2);
+  if (!data) return null;
+  const today = localDay();
+  const next = nextMeal(mealTimes.map((m) => m.key), new Date().getHours()) ?? "dinner";
+  const now = slotWords(slot(data.meals, today, next));
+  const later = data.meals.find((m) => m.day !== today);
+  const tomorrow = later ? slotWords(slot(data.meals, later.day, "dinner")) : "";
+  const facts: Fact[] = [{ kind: "headline", text: mealHeadline(next, now) }];
+  if (tomorrow) facts.push({ kind: "detail", icon: "calendar", text: `Tomorrow: ${tomorrow}` });
+  return <Facts facts={facts} {...props} />;
+}
+
+// Grocery List (GROC-007): how much is left on each list.
+function GroceriesTile({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const data = useGroceriesSummary(session?.user.id, refreshKey);
+  if (!data) return null;
+  if (!data.lists.length) return <Facts facts={[{ kind: "note", text: "Start a grocery list" }]} {...props} />;
+  const facts: Fact[] = data.lists.map((list, i) => {
+    const words = countWords(listCounts(data.items.filter((item) => item.list_id === list.id)));
+    return i === 0 ? { kind: "headline" as const, text: list.name, trailing: words } : { kind: "detail" as const, icon: "cart" as const, text: list.name, trailing: words };
+  });
+  return <Facts facts={facts} {...props} />;
+}
+
 export const nookWidgets: Record<string, NookWidget> = {
   gatherings: { label: "Coming up", Component: GatheringsWidget },
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
@@ -518,4 +550,6 @@ export const nookWidgets: Record<string, NookWidget> = {
   sickday: { label: "Next dose", Component: SickDayWidget },
   "little-log": { label: "Latest", Component: LittleLogTile },
   notes: { label: "Notes", Component: NotesTile },
+  "menu-board": { label: "On the menu", Component: MenuBoardTile },
+  groceries: { label: "To get", Component: GroceriesTile },
 };

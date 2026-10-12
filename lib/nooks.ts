@@ -229,6 +229,32 @@ export const nookCatalog: NookDefinition[] = [
     aisle: "house",
   },
   {
+    id: "menu-board",
+    title: "Menu Board Nook",
+    icon: "menuBoard",
+    iconColor: "#8a5a2b",
+    tagline: "What's for dinner",
+    description:
+      "The week's menu for your whole Home, like the wipe-off mat on the fridge: breakfast, lunch and dinner each day, from the Recipe Box or typed in, or just \"Going out\" or \"On your own\". Copy last week, and shop for the whole week in a tap.",
+    route: "/menu-board",
+    available: true,
+    color: "#f1e4d0",
+    aisle: "kitchen",
+  },
+  {
+    id: "groceries",
+    title: "Grocery List Nook",
+    icon: "cart",
+    iconColor: "#4f7a3f",
+    tagline: "Everything to pick up",
+    description:
+      "As many grocery lists as you like, each just yours or shared with your Home, sorted by aisle and live while you shop together. Add things as you think of them, or pick what you need from a recipe, the Menu Board, or a Potluck dish (it joins the list the week of).",
+    route: "/groceries",
+    available: true,
+    color: "#e2ecd8",
+    aisle: "kitchen",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

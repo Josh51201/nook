@@ -27,7 +27,7 @@ import { useRecipeImage } from "../recipe-thumb";
 import { formatMoney } from "../../lib/subscriptions";
 import { kindInfo } from "../../lib/getaways";
 import { useSubscriptionsSummary } from "../../lib/subscriptions-data";
-import { sickdaySettingDefaults, useNookSettings } from "../../lib/nook-settings";
+import { menuBoardSettingDefaults, sickdaySettingDefaults, useNookSettings } from "../../lib/nook-settings";
 import { formatTemp as sickTemp, isFever, untilWords } from "../../lib/sickday";
 import { useNow, useSickSummary } from "../../lib/sickday-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
@@ -35,6 +35,11 @@ import { agoWords, changeWords, formatEntry, formatNumber, inRange, logStats, sc
 import { useLittleLogSummary } from "../../lib/little-log-data";
 import { checklistCounts, noteBlocks, notePreview, noteTitle, sortNotes } from "../../lib/notes";
 import { useNotesSummary } from "../../lib/notes-data";
+import { addDays, dayWords, mealTimes, nextMeal, slot, slotWords } from "../../lib/menu-board";
+import { useMenuSummary } from "../../lib/menu-board-data";
+import { itemDetail, listCounts, listParts } from "../../lib/groceries";
+import { useGroceriesSummary } from "../../lib/groceries-data";
+
 import { Sparkline } from "../log-chart";
 import { guardTouches } from "../../lib/touch-guard";
 import { conditionIcon, conditionLabel, dayName, formatTemp, windowSky } from "../../lib/weather";
@@ -274,6 +279,10 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <LittleLogWidget {...props} widget={widget} />;
     case "notes":
       return <NoteWidget {...props} widget={widget} />;
+    case "menu":
+      return <MenuWidget {...props} widget={widget} />;
+    case "groceries":
+      return <GroceriesWidget {...props} widget={widget} />;
     case "frame":
       return null; // drawn whole by PhotoFrame, above
     case "clock":
@@ -1737,6 +1746,86 @@ function NoteWidget({ widget, palette, refreshKey, height, shape, icon }: BodyPr
         )
       )}
       {lines.length > fit ? <Muted palette={palette}>+{lines.length - fit} more</Muted> : null}
+    </View>
+  );
+}
+
+// --- On the menu (MENU-008) ------------------------------------------------------
+
+function MenuWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"menu">) {
+  const { session } = useAuth();
+  const { settings } = useNookSettings("menu-board", menuBoardSettingDefaults);
+  const week = widget.settings.range === "week";
+  const data = useMenuSummary(session?.user.id, refreshKey, week ? 7 : 1);
+  if (!data) return null;
+  const today = localDay();
+  const shown = mealTimes.filter((m) => settings.meals.includes(m.key));
+
+  // Today: each meal you plan. The week: each day's dinner.
+  const lines = week
+    ? Array.from({ length: 7 }, (_, i) => addDays(today, i)).map((day) => ({ key: day, label: dayWords(day, today), text: slotWords(slot(data.meals, day, "dinner")) }))
+    : (shown.length ? shown : mealTimes).map((m) => ({ key: m.key, label: m.label, text: slotWords(slot(data.meals, today, m.key)) }));
+  const next = nextMeal(shown.map((m) => m.key), new Date().getHours()) ?? "dinner";
+  const headline = slotWords(slot(data.meals, today, next));
+
+  if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+  if (shape === "strip") {
+    return <Strip icon={icon} palette={palette} text={headline || "Nothing planned"} sub={next === "dinner" ? "Tonight" : next === "lunch" ? "Lunch" : "Breakfast"} />;
+  }
+  if (!lines.some((l) => l.text)) return <Empty icon="menuBoard" palette={palette} text={week ? "Nothing planned this week" : "Nothing planned today"} />;
+
+  const fit = rowsThatFit(height, 34, 34);
+  return (
+    <View style={{ flex: 1, gap: 6 }}>
+      {lines.slice(0, fit).map((l) => (
+        <View key={l.key}>
+          <Text style={[styles.small, { color: palette.muted, fontWeight: "700" }]} numberOfLines={1}>
+            {l.label}
+          </Text>
+          <Text style={[styles.body, { color: l.text ? palette.text : palette.muted }]} numberOfLines={1}>
+            {l.text || "—"}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// --- A grocery list (GROC-007) ------------------------------------------------------
+
+function GroceriesWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"groceries">) {
+  const { session } = useAuth();
+  const data = useGroceriesSummary(session?.user.id, refreshKey);
+  if (!data) return null;
+  const list = widget.settings.listId ? data.lists.find((l) => l.id === widget.settings.listId) : data.lists[0];
+  if (!list) {
+    if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+    return <Empty icon="cart" palette={palette} text={widget.settings.listId ? "This list isn't here any more" : "Make a list in the Grocery List Nook"} />;
+  }
+  const items = data.items.filter((i) => i.list_id === list.id);
+  const { left } = listCounts(items);
+  const toGet = listParts(items).toGet.flatMap((g) => g.items);
+
+  if (shape === "icon") return left ? <IconFace icon={icon} palette={palette} badge={left} /> : <IconFace icon={icon} palette={palette} />;
+  if (shape === "strip") return <Strip icon={icon} palette={palette} text={list.name} sub={left ? `${left} to get` : "Nothing to get"} />;
+
+  const fit = rowsThatFit(height, 21, 34);
+  return (
+    <View style={{ flex: 1, gap: 4 }}>
+      <Text style={[styles.body, { color: palette.text, fontWeight: "800", fontSize: 15 }]} numberOfLines={1}>
+        {list.name}
+      </Text>
+      {!toGet.length ? <Muted palette={palette}>Nothing to get</Muted> : null}
+      {toGet.slice(0, fit).map((item) => (
+        <View key={item.id} style={styles.row}>
+          <Icon name="todo" size={12} color={palette.accent} />
+          <Text style={[styles.small, { color: palette.text, flex: 1 }]} numberOfLines={1}>
+            {item.name}
+            {item.amount ? <Text style={{ color: palette.muted }}>{`  ${itemDetail({ amount: item.amount, source: null })}`}</Text> : null}
+          </Text>
+        </View>
+      ))}
+      {toGet.length > fit ? <Muted palette={palette}>+{toGet.length - fit} more</Muted> : null}
     </View>
   );
 }
