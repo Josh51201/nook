@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, StyleSheet, View, type AccessibilityActionEvent } from "react-native";
 import { Text } from "../text";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -7,6 +7,7 @@ import Animated, {
   FadeIn,
   useAnimatedReaction,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withSequence,
@@ -71,6 +72,10 @@ const RESIZE_HOLD_MS = 120;
 // A drop the Hearth didn't take after all (too full, or it couldn't save)
 // goes back where it was after this long.
 const DROP_TIMEOUT_MS = 700;
+// How long a change of size takes to play (CORE-093), and how long the drop
+// outline takes to glide to its next cell.
+const GROW_MS = 260;
+const GLIDE_MS = 110;
 
 // The free-form Hearth canvas (CORE-006/019). Items sit at exact grid cells;
 // in edit mode you hold one to drag it anywhere (an outline shows where it
@@ -163,6 +168,9 @@ export function HearthGrid({
   const [plan, setPlan] = useState<MovePlan | null>(null);
   const planRef = useRef<MovePlan | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // The active item is being resized (not moved): it's drawn at the outline's
+  // size as you drag its corner, so you watch it grow (CORE-077, CORE-093).
+  const [sizing, setSizing] = useState(false);
   const [dropHollow, setDropHollow] = useState<HollowItem | null>(null);
   const dropHollowRef = useRef<HollowItem | null>(null);
   // While a Cubby (CORE-084) is dragged, the things inside it come along:
@@ -194,6 +202,7 @@ export function HearthGrid({
     setGhost(null);
     setPlan(null);
     planRef.current = null;
+    setSizing(false);
     setDropHollow(null);
     dropHollowRef.current = null;
     setActiveId(null);
@@ -250,10 +259,11 @@ export function HearthGrid({
         <>
           {/* Where it'll land: the open spot it settles into, or the spot of
               the thing it swaps with. With no room it goes back (CORE-091). */}
-          <View
+          <Animated.View
             pointerEvents="none"
             style={[
               styles.ghost,
+              glide,
               {
                 left: (plan?.x ?? ghost.x) * stride,
                 top: (plan?.y ?? ghost.y) * stride,
@@ -263,15 +273,7 @@ export function HearthGrid({
                 backgroundColor: plan?.kind === "blocked" ? "transparent" : `${accent}14`,
               },
             ]}
-          >
-            {plan?.kind === "blocked" ? (
-              <View style={[styles.dropLabel, styles.noRoom]}>
-                <Text style={styles.dropLabelText} numberOfLines={1}>
-                  No room here
-                </Text>
-              </View>
-            ) : null}
-          </View>
+          />
           {plan?.kind === "swap" ? (
             <View
               pointerEvents="none"
@@ -286,13 +288,7 @@ export function HearthGrid({
                   backgroundColor: `${accent}0d`,
                 },
               ]}
-            >
-              <View style={[styles.dropLabel, { backgroundColor: accent }]}>
-                <Text style={styles.dropLabelText} numberOfLines={1}>
-                  Swaps to here
-                </Text>
-              </View>
-            </View>
+            />
           ) : null}
         </>
       ) : null}
@@ -356,6 +352,7 @@ export function HearthGrid({
             setDropHollow(target);
             // A Trinket has no cell to snap to, so no outline.
             setGhost(item.kind === "trinket" ? null : rect);
+            setSizing(!finger);
             // Moving (not resizing): what letting go here would do.
             const next = finger && !target ? planMove(items, item.id, rect.x, rect.y) : null;
             if (next?.kind === "swap" && planRef.current?.kind !== "swap") tap();
@@ -381,10 +378,27 @@ export function HearthGrid({
             finish();
             if (w !== item.w || h !== item.h) onResize(item.id, w, h);
           }}
-        >
-          <ItemContent item={item} {...liveSize(item, activeId === item.id ? ghost : null, stride)} render={renderItem} />
-        </GridItem>
+          size={activeId === item.id && sizing && ghost ? ghost : item}
+          content={(width, height) => <ItemContent item={item} width={width} height={height} render={renderItem} />}
+        />
       ))}
+
+      {/* Over everything else, so no tile hides it. */}
+      {ghost && plan?.kind === "swap" ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.labelSpot,
+            { left: plan.to.x * stride, top: plan.to.y * stride, width: ghost.w * stride - GRID_GAP },
+          ]}
+        >
+          <View style={[styles.dropLabel, { backgroundColor: accent }]}>
+            <Text style={styles.dropLabelText} numberOfLines={1}>
+              Swaps to here
+            </Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -409,19 +423,17 @@ const ItemContent = memo(
   (a, b) => a.item === b.item && a.width === b.width && a.height === b.height && a.render === b.render
 );
 
-// Text being resized redraws at the new size as you drag the corner, so you
-// see how it'll fit before letting go (CORE-077), and so does a Cubby, so you
-// can see what it'll hold. Everything else keeps its size until you let go.
-function liveSize(item: HearthItem, ghost: GridRect | null, stride: number) {
-  const resizing = ghost && (item.kind === "label" || item.kind === "cubby") && ghost.x === item.x && ghost.y === item.y;
-  const rect = resizing ? ghost : item;
-  return { width: rect.w * stride - GRID_GAP, height: rect.h * stride - GRID_GAP };
-}
+// The drop outline glides from cell to cell instead of jumping.
+const glide = {
+  transitionProperty: ["left", "top", "width", "height"] as ("left" | "top" | "width" | "height")[],
+  transitionDuration: GLIDE_MS,
+  transitionTimingFunction: "ease-out" as const,
+};
 
 // The shadow follows the item's outline: Nook tiles are arched (CORE-036).
-function shadowShape(item: HearthItem, stride: number) {
-  const width = item.w * stride - GRID_GAP;
-  const height = item.h * stride - GRID_GAP;
+function shadowShape(item: HearthItem, stride: number, size: { w: number; h: number } = item) {
+  const width = size.w * stride - GRID_GAP;
+  const height = size.h * stride - GRID_GAP;
   if (item.kind === "widget") return { borderRadius: cornerRadius(item.corners, width, height) };
   if (item.kind !== "nook") return { borderRadius: 24 };
   const { top, bottom } = nookRadii(width, height, item.corners, item.shape);
@@ -477,7 +489,8 @@ function GridItem({
   onDrop,
   onSettle,
   onResizeEnd,
-  children,
+  size,
+  content,
 }: {
   item: HearthItem;
   stride: number;
@@ -516,11 +529,40 @@ function GridItem({
   // A drag or resize is over, however it ended.
   onSettle: () => void;
   onResizeEnd: (w: number, h: number) => void;
-  children: ReactNode;
+  // The size it's drawn at: its own, or the outline's while being resized.
+  size: { w: number; h: number };
+  content: (width: number, height: number) => ReactNode;
 }) {
   const min = minSize(item);
   const halfRows = usesHalfRows(item);
   const carries = item.kind === "cubby";
+
+  // Changing size plays smoothly (CORE-093): the frame (and its shadow) grows
+  // or shrinks to the new size while what's inside, already laid out for it,
+  // is revealed or tucked away. While that plays, the inside is drawn at the
+  // larger of the two sizes so there's never a gap, then settles. Boxes and
+  // Trinkets just change, since they draw past their edges.
+  const reduceMotion = useReducedMotion();
+  const grows = !reduceMotion && item.kind !== "cubby" && item.kind !== "trinket";
+  const boxW = size.w * stride - GRID_GAP;
+  const boxH = size.h * stride - GRID_GAP;
+  const shown = useRef({ w: boxW, h: boxH });
+  const [held, setHeld] = useState<{ w: number; h: number } | null>(null);
+  const changed = grows && (shown.current.w !== boxW || shown.current.h !== boxH);
+  const inside =
+    held ?? (changed ? { w: Math.max(shown.current.w, boxW), h: Math.max(shown.current.h, boxH) } : null);
+  useLayoutEffect(() => {
+    const last = shown.current;
+    shown.current = { w: boxW, h: boxH };
+    if (!grows || (last.w === boxW && last.h === boxH)) return;
+    setHeld((was) => ({ w: Math.max(was?.w ?? 0, last.w, boxW), h: Math.max(was?.h ?? 0, last.h, boxH) }));
+  }, [boxW, boxH, grows]);
+  // Once it has played, the inside settles at the new size.
+  useEffect(() => {
+    if (!held) return;
+    const timer = setTimeout(() => setHeld(null), GROW_MS + 40);
+    return () => clearTimeout(timer);
+  }, [held]);
   const left = useSharedValue(item.x * stride);
   const top = useSharedValue(item.y * stride);
   const dragX = useSharedValue(0);
@@ -933,10 +975,23 @@ function GridItem({
       <GestureDetector gesture={moveGesture}>
         <Animated.View
           key={`${item.kind === "nook" ? (item.shape ?? "arch") : ""}-${item.corners ?? ""}-${shadow ?? ""}`}
-          style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, noRoom ? styles.noRoomItem : null, wiggle]}
+          style={[shadow ? { ...shadowShape(item, stride, size), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, noRoom ? styles.noRoomItem : null, wiggle]}
           {...spokenAs(item, editing, { press, hold: askToArrange, nudge: onNudge })}
         >
-          {children}
+          <Animated.View
+            style={[
+              {
+                width: boxW,
+                height: boxH,
+                transitionProperty: ["width", "height"],
+                transitionDuration: grows ? GROW_MS : 0,
+                transitionTimingFunction: "ease-out",
+              },
+              inside ? [styles.clip, shadowShape(item, stride, size)] : null,
+            ]}
+          >
+            {content(inside ? Math.max(inside.w, boxW) : boxW, inside ? Math.max(inside.h, boxH) : boxH)}
+          </Animated.View>
           {showGrip ? (
             // Something to hold to pick the box up, on its top edge.
             <Animated.View entering={FadeIn.duration(200)} style={[styles.copyButton, styles.grip, { left: outset + nearX, borderColor: accent }]}>
@@ -949,6 +1004,17 @@ function GridItem({
         pointerEvents="none"
         style={[styles.glow, shadowShape(item, stride), { borderColor: accent, boxShadow: `0px 0px 18px 2px ${accent}` }, glowStyle]}
       />
+      {/* On the dragged item itself, so it's never hidden (CORE-091). */}
+      {noRoom ? (
+        <Animated.View entering={FadeIn.duration(120)} pointerEvents="none" style={styles.noRoomSpot}>
+          <View style={[styles.dropLabel, styles.noRoom]}>
+            <Icon name="close" size={12} color="#ffffff" />
+            <Text style={styles.dropLabelText} numberOfLines={1}>
+              No room here
+            </Text>
+          </View>
+        </Animated.View>
+      ) : null}
       {focused ? (
         <View
           pointerEvents="none"
@@ -1026,8 +1092,23 @@ const styles = StyleSheet.create({
   dropTarget: { position: "absolute", borderRadius: 28, borderWidth: 3, zIndex: 50, alignItems: "center" },
   dropLabel: { position: "absolute", top: -14, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, maxWidth: "100%" },
   dropLabelText: { color: "#ffffff", fontSize: 12, fontWeight: "800" },
-  noRoom: { backgroundColor: "#6b625b", alignSelf: "center" },
+  noRoom: {
+    position: "relative",
+    top: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#4a403a",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.3)",
+  },
   noRoomItem: { opacity: 0.6 },
+  // Centred just above the dragged item.
+  noRoomSpot: { position: "absolute", top: -34, left: -40, right: -40, alignItems: "center" },
+  // Where the swap label sits: above the spot, over every tile.
+  labelSpot: { position: "absolute", zIndex: 200, elevation: 20, alignItems: "center" },
+  clip: { overflow: "hidden" },
   item: {
     position: "absolute",
     shadowColor: "#3a2414",
