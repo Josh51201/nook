@@ -8,6 +8,7 @@ import {
   nookCount,
   defaultHearthLayout,
   EDGE_MAX_SPEED,
+  edgeScrollBottom,
   edgeScrollSpeed,
   findFreeSpot,
   hasNook,
@@ -367,6 +368,17 @@ describe("edgeScrollSpeed (auto-scroll while dragging)", () => {
 
   it("does nothing until the scrolling area has been measured", () => {
     expect(edgeScrollSpeed(10, 0, 0)).toBe(0);
+  });
+
+  it("moves the bottom zone above the trash can, so it scrolls without going around it", () => {
+    const trashTop = bottom - 82;
+    const scrollBottom = edgeScrollBottom(bottom, trashTop);
+    expect(scrollBottom).toBe(trashTop);
+    // Just above the can: full speed, not the slow start of the zone.
+    expect(edgeScrollSpeed(trashTop - 2, top, scrollBottom)).toBeGreaterThan(EDGE_MAX_SPEED * 0.9);
+    // Beside the can: full speed.
+    expect(edgeScrollSpeed(bottom - 40, top, scrollBottom)).toBe(EDGE_MAX_SPEED);
+    expect(edgeScrollBottom(bottom, null)).toBe(bottom);
   });
 });
 

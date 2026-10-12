@@ -23,6 +23,7 @@ import {
   canNudge,
   COLUMNS,
   cubbyContents,
+  edgeScrollBottom,
   edgeScrollSpeed,
   itemSpokenName,
   minSize,
@@ -415,16 +416,16 @@ export function HearthGrid({
             }
           }}
           onDrop={(x, y) => {
+            // Read before finish() clears them.
             const into = dropHollowRef.current;
+            const making = pushRef.current;
             finish();
             if (into && onDropIntoHollow) {
               onDropIntoHollow(item.id, into.id);
               return true;
             }
             // Held there to make room: everything slides down (CORE-092).
-            const making = pushRef.current;
             if (making && making.x === x && making.y === y) {
-              finish();
               onPush(item.id, x, y);
               return true;
             }
@@ -925,7 +926,8 @@ function GridItem({
         }
         // Near the top or bottom of the screen? Scroll that way (not while
         // aiming at the trash can or a page tab).
-        const speed = over || hit !== "" ? 0 : edgeScrollSpeed(event.absoluteY, viewTop.value, viewBottom.value);
+        const scrollBottom = edgeScrollBottom(viewBottom.value, bin === null ? null : bin.y - TRASH_SLOP);
+        const speed = over || hit !== "" ? 0 : edgeScrollSpeed(event.absoluteY, viewTop.value, scrollBottom);
         if (speed !== lastSpeed.value) {
           lastSpeed.value = speed;
           scheduleOnRN(edge, speed);

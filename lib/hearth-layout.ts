@@ -1213,3 +1213,12 @@ export function edgeScrollSpeed(fingerY: number, top: number, bottom: number) {
   if (intoBottom > 0) return (Math.min(1, intoBottom) ** 1.5) * EDGE_MAX_SPEED;
   return 0;
 }
+
+// While dragging, the trash can (CORE-040) sits at the bottom of the screen,
+// and a finger over it doesn't scroll. So the bottom scrolling zone ends at
+// the top of the can instead: the whole zone sits above it, and beside it is
+// past the edge (full speed).
+export function edgeScrollBottom(bottom: number, trashTop: number | null) {
+  "worklet";
+  return trashTop === null ? bottom : Math.min(bottom, trashTop);
+}
