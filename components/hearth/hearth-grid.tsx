@@ -25,11 +25,15 @@ import {
   edgeScrollSpeed,
   itemSpokenName,
   minSize,
+  planMove,
+  ROW_STEP,
   rowsUsed,
+  stickySnap,
   usesHalfRows,
   type GridRect,
   type HearthItem,
   type HollowItem,
+  type MovePlan,
   type Nudge,
 } from "../../lib/hearth-layout";
 import { Icon } from "../icon";
@@ -61,10 +65,17 @@ export type DragScroll = {
 // past on the way somewhere else never deletes anything.
 const TRASH_SLOP = 6;
 const TRASH_ARM_MS = 450;
+// A corner handle needs a moment's hold before it resizes, so a scroll that
+// happens to start on one scrolls instead of grabbing the tile.
+const RESIZE_HOLD_MS = 120;
+// A drop the Hearth didn't take after all (too full, or it couldn't save)
+// goes back where it was after this long.
+const DROP_TIMEOUT_MS = 700;
 
 // The free-form Hearth canvas (CORE-006/019). Items sit at exact grid cells;
 // in edit mode you hold one to drag it anywhere (an outline shows where it
-// will land), or drag its corner handle to resize it. Calm, eased motion
+// will land, whether it'll swap, or that there's no room, CORE-091), or drag
+// its corner handle to resize it. Calm, eased motion
 // throughout — no springs (the Hearth felt too bouncy). Tiles and widgets
 // rest on a soft shadow, sink a touch when pressed, and lift higher while
 // dragged, so the Hearth has some depth. Hold an item near the top or bottom
@@ -111,7 +122,9 @@ export function HearthGrid({
   onNudge?: (id: string, way: Nudge) => void;
   onResize: (id: string, w: number, h: number) => void;
   onPressItem: (item: HearthItem) => void;
-  onLongPress: () => void;
+  // Edit switched on by holding a tile (`picked`: and it's being dragged now,
+  // rather than asked for by a screen reader).
+  onLongPress: (picked: boolean) => void;
   onDraggingChange: (dragging: boolean) => void;
   // Dropping a tile onto a Hollow puts it inside (CORE-024). Only on the
   // Hearth itself, since Hollows never hold Hollows.
@@ -146,6 +159,9 @@ export function HearthGrid({
   const cell = (width - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
   const stride = cell + GRID_GAP;
   const [ghost, setGhost] = useState<GridRect | null>(null);
+  // What letting go right now would do (moving, not resizing).
+  const [plan, setPlan] = useState<MovePlan | null>(null);
+  const planRef = useRef<MovePlan | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dropHollow, setDropHollow] = useState<HollowItem | null>(null);
   const dropHollowRef = useRef<HollowItem | null>(null);
@@ -176,6 +192,8 @@ export function HearthGrid({
   );
   const finish = useCallback(() => {
     setGhost(null);
+    setPlan(null);
+    planRef.current = null;
     setDropHollow(null);
     dropHollowRef.current = null;
     setActiveId(null);
@@ -229,20 +247,54 @@ export function HearthGrid({
           </View>
         </View>
       ) : ghost ? (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.ghost,
-            {
-              left: ghost.x * stride,
-              top: ghost.y * stride,
-              width: ghost.w * stride - GRID_GAP,
-              height: ghost.h * stride - GRID_GAP,
-              borderColor: accent,
-              backgroundColor: `${accent}14`,
-            },
-          ]}
-        />
+        <>
+          {/* Where it'll land: the open spot it settles into, or the spot of
+              the thing it swaps with. With no room it goes back (CORE-091). */}
+          <View
+            pointerEvents="none"
+            style={[
+              styles.ghost,
+              {
+                left: (plan?.x ?? ghost.x) * stride,
+                top: (plan?.y ?? ghost.y) * stride,
+                width: ghost.w * stride - GRID_GAP,
+                height: ghost.h * stride - GRID_GAP,
+                borderColor: plan?.kind === "blocked" ? `${accent}55` : accent,
+                backgroundColor: plan?.kind === "blocked" ? "transparent" : `${accent}14`,
+              },
+            ]}
+          >
+            {plan?.kind === "blocked" ? (
+              <View style={[styles.dropLabel, styles.noRoom]}>
+                <Text style={styles.dropLabelText} numberOfLines={1}>
+                  No room here
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          {plan?.kind === "swap" ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.ghost,
+                {
+                  left: plan.to.x * stride,
+                  top: plan.to.y * stride,
+                  width: ghost.w * stride - GRID_GAP,
+                  height: ghost.h * stride - GRID_GAP,
+                  borderColor: accent,
+                  backgroundColor: `${accent}0d`,
+                },
+              ]}
+            >
+              <View style={[styles.dropLabel, { backgroundColor: accent }]}>
+                <Text style={styles.dropLabelText} numberOfLines={1}>
+                  Swaps to here
+                </Text>
+              </View>
+            </View>
+          ) : null}
+        </>
       ) : null}
 
       {ordered.map((item, index) => (
@@ -253,6 +305,7 @@ export function HearthGrid({
           editing={editing}
           seed={index}
           active={activeId === item.id}
+          noRoom={activeId === item.id && plan?.kind === "blocked"}
           carry={carry}
           carried={carriedIds.includes(item.id)}
           asleep={item.kind === "cubby" ? !(editing && cubbyMode) : editing && cubbyMode}
@@ -303,13 +356,27 @@ export function HearthGrid({
             setDropHollow(target);
             // A Trinket has no cell to snap to, so no outline.
             setGhost(item.kind === "trinket" ? null : rect);
+            // Moving (not resizing): what letting go here would do.
+            const next = finger && !target ? planMove(items, item.id, rect.x, rect.y) : null;
+            if (next?.kind === "swap" && planRef.current?.kind !== "swap") tap();
+            planRef.current = next;
+            setPlan(next);
           }}
           onDrop={(x, y) => {
             const into = dropHollowRef.current;
             finish();
-            if (into && onDropIntoHollow) onDropIntoHollow(item.id, into.id);
-            else if (x !== item.x || y !== item.y) onMove(item.id, x, y);
+            if (into && onDropIntoHollow) {
+              onDropIntoHollow(item.id, into.id);
+              return true;
+            }
+            // No room, or right back where it was: it goes home (CORE-091).
+            const landing = planMove(items, item.id, x, y);
+            if (landing.kind === "blocked") tap();
+            if (landing.kind === "blocked" || (landing.x === item.x && landing.y === item.y)) return false;
+            onMove(item.id, x, y);
+            return true;
           }}
+          onSettle={finish}
           onResizeEnd={(w, h) => {
             finish();
             if (w !== item.w || h !== item.h) onResize(item.id, w, h);
@@ -383,6 +450,7 @@ function GridItem({
   editing,
   seed,
   active,
+  noRoom,
   carry,
   carried,
   asleep,
@@ -407,6 +475,7 @@ function GridItem({
   onBegin,
   onGhost,
   onDrop,
+  onSettle,
   onResizeEnd,
   children,
 }: {
@@ -415,6 +484,8 @@ function GridItem({
   editing: boolean;
   seed: number;
   active: boolean;
+  // Being dragged over a spot with no room (CORE-091): it fades a little.
+  noRoom: boolean;
   // Inside a Cubby that's being dragged: it moves along by `carry`.
   carry: SharedValue<{ x: number; y: number }>;
   carried: boolean;
@@ -425,7 +496,7 @@ function GridItem({
   shadow?: string;
   dragScroll: DragScroll;
   onPress: () => void;
-  onLongPress: () => void;
+  onLongPress: (picked: boolean) => void;
   onNudge?: (way: Nudge) => void;
   onCopy?: () => void;
   onTrash: () => void;
@@ -440,7 +511,10 @@ function GridItem({
   onTabDrop: (tabId: string) => void;
   onBegin: () => void;
   onGhost: (rect: GridRect, finger: { x: number; y: number } | null) => void;
-  onDrop: (x: number, y: number) => void;
+  // True if it's going somewhere new; false and it goes back where it was.
+  onDrop: (x: number, y: number) => boolean;
+  // A drag or resize is over, however it ended.
+  onSettle: () => void;
   onResizeEnd: (w: number, h: number) => void;
   children: ReactNode;
 }) {
@@ -539,8 +613,8 @@ function GridItem({
   }, [item.x, item.y, stride, left, top, dragX, dragY, dropping, carried, carriedNow, carry]);
 
   // Latest callbacks without rebuilding gestures mid-drag.
-  const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop });
-  handlers.current = { onPress, onLongPress, onBegin, onGhost, onDrop, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop };
+  const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onSettle, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop });
+  handlers.current = { onPress, onLongPress, onBegin, onGhost, onDrop, onSettle, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop };
   const trashArmed = useCallback((on: boolean) => {
     if (on) tap("success");
     handlers.current.onTrashArmed(on);
@@ -558,8 +632,9 @@ function GridItem({
   const press = useCallback(() => handlers.current.onPress(), []);
   const hold = useCallback(() => {
     tap();
-    handlers.current.onLongPress();
+    handlers.current.onLongPress(true);
   }, []);
+  const askToArrange = useCallback(() => handlers.current.onLongPress(false), []);
   const begin = useCallback(() => {
     tap();
     handlers.current.onBegin();
@@ -571,7 +646,27 @@ function GridItem({
     tap();
     handlers.current.onGhost({ x, y, w, h }, null);
   }, []);
-  const drop = useCallback((x: number, y: number) => handlers.current.onDrop(x, y), []);
+  // Glide back home from wherever it was let go.
+  const springBack = useCallback(() => {
+    dropping.value = false;
+    dragX.value = withTiming(0, ease);
+    dragY.value = withTiming(0, ease);
+  }, [dropping, dragX, dragY]);
+  const drop = useCallback(
+    (x: number, y: number) => {
+      if (!handlers.current.onDrop(x, y)) return springBack();
+      // Going somewhere new, so the layout will move it; if that never comes
+      // (too full, or it couldn't save), don't leave it stranded on top of
+      // something else.
+      setTimeout(() => {
+        if (dropping.value) springBack();
+      }, DROP_TIMEOUT_MS);
+    },
+    [dropping, springBack]
+  );
+  const settle = useCallback(() => handlers.current.onSettle(), []);
+  // A drag or resize that started here, so its end can tidy up after it.
+  const began = useSharedValue(false);
   const edge = useCallback((speed: number) => onEdge(speed), [onEdge]);
 
   function follow() {
@@ -581,9 +676,10 @@ function GridItem({
     dragX.value = rawX.value;
     dragY.value = dy;
     if (carries) carry.value = { x: rawX.value, y: dy };
-    const nextX = Math.min(COLUMNS - g.w, Math.max(0, Math.round(g.x + rawX.value / g.stride)));
+    // Sticky, so a finger near a line doesn't flip between two cells (CORE-091).
+    const nextX = Math.min(COLUMNS - g.w, Math.max(0, stickySnap(g.x + rawX.value / g.stride, targetX.value, 1)));
     // Up and down snap to half rows (CORE-076).
-    const nextY = Math.max(0, Math.round((g.y + dy / g.stride) * 2) / 2);
+    const nextY = Math.max(0, stickySnap(g.y + dy / g.stride, targetY.value, ROW_STEP));
     const fx = Math.floor((g.x * g.stride + grabX.value + rawX.value) / g.stride);
     const fy = Math.floor((g.y * g.stride + grabY.value + dy) / g.stride);
     if (nextX !== targetX.value || nextY !== targetY.value || fx !== fingerX.value || fy !== fingerY.value) {
@@ -639,6 +735,7 @@ function GridItem({
         fingerX.value = Math.floor((x * stride + event.x) / stride);
         fingerY.value = Math.floor((y * stride + event.y) / stride);
         lifted.value = withTiming(1, { duration: 160 });
+        began.value = true;
         scheduleOnRN(begin);
         scheduleOnRN(ghost, x, y, w, h, fingerX.value, fingerY.value);
       })
@@ -723,6 +820,11 @@ function GridItem({
       })
       .onFinalize(() => {
         dragging.value = false;
+        // However it ended (even interrupted), nothing stays picked up.
+        if (began.value) {
+          began.value = false;
+          scheduleOnRN(settle);
+        }
         if (overTrash.value) {
           overTrash.value = false;
           if (armed.value === 1) scheduleOnRN(trashArmed, false);
@@ -745,23 +847,24 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [selecting, item.locked, free, carries, carry, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, edge, trash, tabs, tabOver, tabHover, tabDrop, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [selecting, item.locked, free, carries, carry, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, settle, began, edge, trash, tabs, tabOver, tabHover, tabDrop, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
       Gesture.Pan()
-        .minDistance(1)
+        .activateAfterLongPress(RESIZE_HOLD_MS)
         .onStart(() => {
           targetW.value = w;
           targetH.value = h;
+          began.value = true;
           scheduleOnRN(begin);
           scheduleOnRN(ghost, x, y, w, h);
         })
         .onUpdate((event) => {
-          const nextW = Math.min(COLUMNS - x, Math.max(min.w, Math.round(w + event.translationX / stride)));
+          const nextW = Math.min(COLUMNS - x, Math.max(min.w, stickySnap(w + event.translationX / stride, targetW.value, 1)));
           // Text can be half a row tall; everything else is whole rows.
           const rawH = h + event.translationY / stride;
-          const nextH = Math.min(8, Math.max(min.h, halfRows ? Math.round(rawH * 2) / 2 : Math.round(rawH)));
+          const nextH = Math.min(8, Math.max(min.h, stickySnap(rawH, targetH.value, halfRows ? ROW_STEP : 1)));
           if (nextW !== targetW.value || nextH !== targetH.value) {
             targetW.value = nextW;
             targetH.value = nextH;
@@ -770,8 +873,14 @@ function GridItem({
         })
         .onEnd(() => {
           scheduleOnRN(resizeEnd, targetW.value, targetH.value);
+        })
+        .onFinalize(() => {
+          if (began.value) {
+            began.value = false;
+            scheduleOnRN(settle);
+          }
         }),
-    [x, y, w, h, min.w, min.h, stride, halfRows, begin, ghost, sizeTick, resizeEnd, targetW, targetH]
+    [x, y, w, h, min.w, min.h, stride, halfRows, begin, ghost, sizeTick, resizeEnd, settle, began, targetW, targetH]
   );
 
   const style = useAnimatedStyle(() => ({
@@ -824,8 +933,8 @@ function GridItem({
       <GestureDetector gesture={moveGesture}>
         <Animated.View
           key={`${item.kind === "nook" ? (item.shape ?? "arch") : ""}-${item.corners ?? ""}-${shadow ?? ""}`}
-          style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, wiggle]}
-          {...spokenAs(item, editing, { press, hold, nudge: onNudge })}
+          style={[shadow ? { ...shadowShape(item, stride), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, noRoom ? styles.noRoomItem : null, wiggle]}
+          {...spokenAs(item, editing, { press, hold: askToArrange, nudge: onNudge })}
         >
           {children}
           {showGrip ? (
@@ -913,10 +1022,12 @@ function GridItem({
 
 const styles = StyleSheet.create({
   cell: { position: "absolute", borderRadius: 18, borderWidth: 1, borderStyle: "dashed" },
-  ghost: { position: "absolute", borderRadius: 24, borderWidth: 2, borderStyle: "dashed" },
+  ghost: { position: "absolute", borderRadius: 24, borderWidth: 2, borderStyle: "dashed", alignItems: "center" },
   dropTarget: { position: "absolute", borderRadius: 28, borderWidth: 3, zIndex: 50, alignItems: "center" },
   dropLabel: { position: "absolute", top: -14, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, maxWidth: "100%" },
   dropLabelText: { color: "#ffffff", fontSize: 12, fontWeight: "800" },
+  noRoom: { backgroundColor: "#6b625b", alignSelf: "center" },
+  noRoomItem: { opacity: 0.6 },
   item: {
     position: "absolute",
     shadowColor: "#3a2414",

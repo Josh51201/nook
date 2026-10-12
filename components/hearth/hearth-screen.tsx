@@ -209,6 +209,10 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   // Edit started by holding an item: the tip card at the top stays away until
   // you let go, so the grid doesn't slide out from under your finger.
   const [holdStarted, setHoldStarted] = useState(false);
+  const holdStartedNow = useRef(false);
+  // ...and when it does come in, the page scrolls down by its height so the
+  // Hearth stays exactly where it was under your finger (CORE-091).
+  const keepGridStill = useRef(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [openingHollow, setOpeningHollow] = useState<string | null>(null);
   // Inside a Hollow: the sheet for the Hollow itself (name, look, color, size).
@@ -278,7 +282,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const [overTrash, setOverTrash] = useState(false);
   const [trashArmed, setTrashArmed] = useState(false);
   // A short message along the bottom ("Removed …  Undo", "Copied …").
-  const [toast, setToast] = useState<{ text: string; action?: { label: string; run: () => void } } | null>(null);
+  const [toast, setToast] = useState<{ text: string; action?: { label: string; run: () => void }; icon?: IconName } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // A copy just made glows for a moment (CORE-039); where the grid starts.
   const [flashId, setFlashId] = useState<string | null>(null);
@@ -346,6 +350,11 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   function onDraggingChange(isDragging: boolean) {
     draggingNow.current = isDragging;
     setDragging(isDragging);
+    if (!isDragging && holdStartedNow.current) {
+      holdStartedNow.current = false;
+      keepGridStill.current = true;
+      setTimeout(() => (keepGridStill.current = false), 1000);
+    }
     if (!isDragging) setHoldStarted(false);
     if (isDragging) {
       measureViewport();
@@ -973,9 +982,32 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     setToast(null);
   }
 
-  function showToast(text: string, action?: { label: string; run: () => void }, ms = 4000) {
-    setToast({ text, action });
+  function showToast(text: string, action?: { label: string; run: () => void }, ms = 4000, icon?: IconName) {
+    setToast({ text, action, icon });
     toastTimer.current = setTimeout(settleToast, ms);
+  }
+
+  // Moved or resized by hand (CORE-091): done, with a few seconds to undo.
+  function arrange(id: string, edit: (inner: HearthLayout) => HearthItem[], done: "Moved" | "Resized") {
+    const before = layout.items;
+    const item = items.find((i) => i.id === id);
+    if (!persistHere(edit)) return;
+    settleToast();
+    showToast(
+      item ? `${done} “${itemLabel(item)}”` : done,
+      {
+        label: "Undo",
+        run: () => {
+          if (toastTimer.current) clearTimeout(toastTimer.current);
+          toastTimer.current = null;
+          tap();
+          persist(before);
+          setToast(null);
+        },
+      },
+      4000,
+      done === "Moved" ? "drag" : "resize"
+    );
   }
 
   function itemLabel(item: HearthItem) {
@@ -1651,8 +1683,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                     {cubbyMode
                       ? "Cubby mode: everything else is faded so you can reach the boxes behind it. Hold a box (or its grip) and drag it — what's inside comes along. Drag ↘ to resize, tap a box to decorate it."
                       : scope
-                      ? "Hold anything and drag it anywhere, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."
-                      : "Hold anything and drag it anywhere — onto a Hollow to put it inside, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."}
+                      ? "Hold anything and drag it to an open spot, onto something its size to swap, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."
+                      : "Hold anything and drag it to an open spot, onto something its size to swap, onto a Hollow to put it inside, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."}
                   </Text>
                 </View>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -1720,7 +1752,15 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
               collapsable={false}
               onLayout={(e) => {
                 setGridWidth(e.nativeEvent.layout.width);
-                gridTop.current = e.nativeEvent.layout.y;
+                const y = e.nativeEvent.layout.y;
+                if (keepGridStill.current && y !== gridTop.current) {
+                  keepGridStill.current = false;
+                  (scrollView.current as unknown as { scrollTo?: (o: { y: number; animated?: boolean }) => void } | null)?.scrollTo?.({
+                    y: Math.max(0, scrollY.value + y - gridTop.current),
+                    animated: false,
+                  });
+                }
+                gridTop.current = y;
               }}
             >
               {error ? (
@@ -1778,10 +1818,10 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   editing={editing}
                   accent={theme.accent}
                   shadowAt={(level) => shadowAtLevel(themeKey, level)}
-                  onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
+                  onMove={(id, x, y) => arrange(id, (inner) => moveItem(inner, id, x, y), "Moved")}
                   onNudge={(id, way) => persistHere((inner) => nudgeItem(inner, id, way))}
                   focusId={movingId}
-                  onResize={(id, w, h) => persistHere((inner) => resizeItem(inner, id, w, h))}
+                  onResize={(id, w, h) => arrange(id, (inner) => resizeItem(inner, id, w, h), "Resized")}
                   onDropIntoHollow={
                     scope
                       ? undefined
@@ -1790,8 +1830,11 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                         }
                   }
                   onPressItem={onPressItem}
-                  onLongPress={() => {
-                    setHoldStarted(true);
+                  onLongPress={(picked) => {
+                    if (picked) {
+                      holdStartedNow.current = true;
+                      setHoldStarted(true);
+                    }
                     setEditing(true);
                   }}
                   onCopy={(item) => copyTo(item.id, scope)}
@@ -1883,7 +1926,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         >
           <View style={[styles.trash, styles.toast, { backgroundColor: theme.text, borderColor: theme.text }]}>
             <Icon
-              name={toast.action?.label === "Undo" ? (toast.text.startsWith("Tidied") ? "tidy" : toast.text.startsWith("Moved") ? "widgets" : "trash") : toast.text.includes("ocked") ? "lock" : "copy"}
+              name={toast.icon ?? (toast.action?.label === "Undo" ? (toast.text.startsWith("Tidied") ? "tidy" : toast.text.startsWith("Moved") ? "widgets" : "trash") : toast.text.includes("ocked") ? "lock" : "copy")}
               size={16}
               color={theme.background}
             />

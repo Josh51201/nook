@@ -165,7 +165,7 @@ export const helpAnswers: HelpAnswer[] = [
   {
     question: "How do I move things around on my Hearth?",
     answer:
-      "Tap Edit at the top of the Hearth, or hold your finger on any tile. Then drag it where you want it, or pull its corner to resize it. Dragging fiddly? Tap the tile while editing, open “Size & place” and tap “Move it with arrows” — a bar of arrows appears and you can watch it step around your Hearth. Tap Done when you're finished.",
+      "Tap Edit at the top of the Hearth, or hold your finger on any tile. Then drag it to an open spot, or onto something the same size to swap the two (the outline shows what will happen, and nothing else gets pushed around). Hold a corner, then pull, to resize it. Moved the wrong thing? Tap Undo at the bottom. Dragging fiddly? Tap the tile while editing, open “Size & place” and tap “Move it with arrows” — a bar of arrows appears and you can watch it step around your Hearth. Tap Done when you're finished.",
   },
   {
     question: "How do I change how the app looks?",

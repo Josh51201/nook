@@ -13,6 +13,8 @@ import {
   hasNook,
   migrateLayout,
   moveItem,
+  planMove,
+  stickySnap,
   nookLabel,
   overlaps,
   removeNook,
@@ -63,12 +65,45 @@ describe("Hearth grid", () => {
     expect(at(moveItem(layoutOf([nook("a", 0, 0)]), "a", 3, -2), "a")).toEqual({ x: 2, y: 0, w: 2, h: 2 });
   });
 
-  it("slides whatever you drop onto down out of the way, cascading", () => {
-    const items = moveItem(layoutOf([nook("a", 0, 4), nook("b", 0, 0), nook("c", 0, 2)]), "a", 0, 0);
+  it("trades places with a same-size thing it's dropped on, and nothing else moves (CORE-091)", () => {
+    const layout = layoutOf([nook("a", 0, 4), nook("b", 0, 0), nook("c", 0, 2), nook("d", 2, 0)]);
+    const items = moveItem(layout, "a", 0, 0);
     expect(at(items, "a")).toMatchObject({ x: 0, y: 0 });
-    expect(at(items, "b")).toMatchObject({ x: 0, y: 2 });
-    expect(at(items, "c")).toMatchObject({ x: 0, y: 4 });
+    expect(at(items, "b")).toMatchObject({ x: 0, y: 4 });
+    expect(at(items, "c")).toMatchObject({ x: 0, y: 2 });
+    expect(at(items, "d")).toMatchObject({ x: 2, y: 0 });
     expect(noOverlaps(items)).toBe(true);
+  });
+
+  it("swaps only when it's mostly over the other thing", () => {
+    const layout = layoutOf([nook("a", 0, 4), nook("b", 0, 0)]);
+    expect(planMove(layout.items, "a", 0, 1).kind).toBe("swap");
+    // Over b by just one column of two: that's not a swap.
+    expect(planMove(layout.items, "a", 1, 1).kind).toBe("blocked");
+  });
+
+  it("never pushes: no room, and it goes back where it was", () => {
+    // A tile half as wide as the one it's dropped on.
+    const layout = layoutOf([nook("small", 0, 5, 1, 1), nook("big", 0, 0), nook("under", 0, 2)]);
+    expect(planMove(layout.items, "small", 0, 0)).toMatchObject({ kind: "blocked", x: 0, y: 0 });
+    expect(moveItem(layout, "small", 0, 0)).toBe(layout.items);
+  });
+
+  it("lands in the open spot right there when dropped half a row off", () => {
+    const layout = layoutOf([nook("a", 2, 4), nook("top", 0, 0), nook("bottom", 0, 4)]);
+    // Rows 2 and 3 are open; a drop at 2.5 overlaps "bottom" by half a row.
+    expect(at(moveItem(layout, "a", 0, 2.5), "a")).toMatchObject({ x: 0, y: 2 });
+    expect(at(moveItem(layout, "a", 0, 1.5), "a")).toMatchObject({ x: 0, y: 2 });
+  });
+
+  it("won't swap with something locked", () => {
+    const layout = layoutOf([nook("a", 0, 4), { ...nook("b", 0, 0), locked: true }]);
+    expect(moveItem(layout, "a", 0, 0)).toBe(layout.items);
+  });
+
+  it("dropping where it already is changes nothing", () => {
+    const layout = layoutOf([nook("a", 0, 0)]);
+    expect(moveItem(layout, "a", 0, 0)).toBe(layout.items);
   });
 
   it("leaves items that don't collide alone", () => {
@@ -291,6 +326,24 @@ describe("Hollows (CORE-022..024)", () => {
   });
 });
 
+describe("stickySnap (steady outline while dragging, CORE-091)", () => {
+  it("stays in its cell until clearly over the next one", () => {
+    expect(stickySnap(1.6, 1, 1)).toBe(1);
+    expect(stickySnap(1.75, 1, 1)).toBe(2);
+    expect(stickySnap(0.4, 1, 1)).toBe(1);
+    expect(stickySnap(0.2, 1, 1)).toBe(0);
+  });
+
+  it("works in half rows too", () => {
+    expect(stickySnap(1.3, 1, 0.5)).toBe(1);
+    expect(stickySnap(1.4, 1, 0.5)).toBe(1.5);
+  });
+
+  it("jumps straight to a far-away spot", () => {
+    expect(stickySnap(3.2, 0, 1)).toBe(3);
+  });
+});
+
 describe("edgeScrollSpeed (auto-scroll while dragging)", () => {
   const top = 120;
   const bottom = 760;
@@ -376,10 +429,25 @@ describe("moving without dragging", () => {
     expect(canNudge(tile(1, 1, { locked: true }), "down")).toBe(false);
   });
 
-  it("moves one step, and pushes anything in the way down", () => {
+  it("moves one step into open space", () => {
+    const layout: HearthLayout = { ...defaultHearthLayout, items: [tile(0, 0)] };
+    expect(nudgeItem(layout, "t", "right").find((i) => i.id === "t")!).toMatchObject({ x: 1, y: 0 });
+  });
+
+  it("trades places with a same-size neighbour (CORE-091)", () => {
     const layout: HearthLayout = {
       ...defaultHearthLayout,
       items: [tile(0, 0), { id: "o", kind: "nook", nookId: "potluck", x: 2, y: 0, w: 2, h: 2 } as HearthItem],
+    };
+    const items = nudgeItem(layout, "t", "right");
+    expect(items.find((i) => i.id === "t")!).toMatchObject({ x: 2, y: 0 });
+    expect(items.find((i) => i.id === "o")!).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it("with no room, it still goes, pushing what's in the way down", () => {
+    const layout: HearthLayout = {
+      ...defaultHearthLayout,
+      items: [tile(0, 0), { id: "o", kind: "nook", nookId: "potluck", x: 2, y: 0, w: 1, h: 1 } as HearthItem],
     };
     const items = nudgeItem(layout, "t", "right");
     const moved = items.find((i) => i.id === "t")!;
@@ -420,13 +488,15 @@ describe("half rows and slim text (CORE-076)", () => {
     expect(resizeItem(layout, "t", 2, 1.5).find((i) => i.id === "t")!.h).toBe(2);
   });
 
-  it("moves to half rows, pushing what's under it down", () => {
+  it("moves to half rows, right up against what's under it", () => {
     const layout: HearthLayout = { ...defaultHearthLayout, items: [slim, tile("t", 0, 0.5)] };
-    const items = moveItem(layout, "l", 0, 1.5);
+    const items = moveItem(layout, "l", 0, 2.5);
     const text = items.find((i) => i.id === "l")!;
     const under = items.find((i) => i.id === "t")!;
-    expect(text.y).toBe(1.5);
-    expect(overlaps(text, under)).toBe(false);
+    expect(text.y).toBe(2.5);
+    expect(under.y).toBe(0.5);
+    // Dropped on the tile, it goes back instead of pushing it (CORE-091).
+    expect(moveItem(layout, "l", 0, 1.5)).toBe(layout.items);
   });
 
   it("steps text by half rows and tiles by whole ones", () => {

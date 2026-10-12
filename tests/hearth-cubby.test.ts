@@ -7,6 +7,7 @@ import {
   itemSpokenName,
   moveItem,
   nudgeItem,
+  planMove,
   resizeItem,
   tidyItems,
   type HearthItem,
@@ -68,19 +69,21 @@ describe("moving a Cubby", () => {
     expect(at(next, "b")).toEqual({ x: 2, y: 3, w: 2, h: 2 });
   });
 
-  it("slides whatever was where they land down out of the way", () => {
-    const items = [cubby("box", 0, 0, 2, 2), nook("a", 0, 0), nook("below", 0, 3)];
-    const next = moveItem(layoutOf(items), "box", 0, 3);
-    expect(at(next, "a")).toMatchObject({ x: 0, y: 3 });
-    expect(at(next, "below")).toMatchObject({ x: 0, y: 5 });
+  it("goes back where it was if what's inside would land on something, pushing nothing (CORE-091)", () => {
+    const layout = layoutOf([cubby("box", 0, 0, 2, 2), nook("a", 0, 0), nook("below", 0, 3)]);
+    expect(planMove(layout.items, "box", 0, 3).kind).toBe("blocked");
+    expect(moveItem(layout, "box", 0, 3)).toBe(layout.items);
   });
 
-  it("goes on its own if what's inside would land on something locked", () => {
-    const items = [cubby("box", 0, 0, 2, 2), nook("a", 0, 0), nook("stay", 0, 3, 2, 2, true)];
-    const next = moveItem(layoutOf(items), "box", 0, 3);
-    expect(at(next, "box")).toMatchObject({ x: 0, y: 3 });
-    expect(at(next, "a")).toMatchObject({ x: 0, y: 0 });
-    expect(at(next, "stay")).toMatchObject({ x: 0, y: 3 });
+  it("goes back too if what's inside would land on something locked", () => {
+    const layout = layoutOf([cubby("box", 0, 0, 2, 2), nook("a", 0, 0), nook("stay", 0, 3, 2, 2, true)]);
+    expect(moveItem(layout, "box", 0, 3)).toBe(layout.items);
+  });
+
+  it("an empty box goes anywhere, even behind things", () => {
+    const items = [cubby("box", 0, 4, 2, 2), nook("a", 0, 0)];
+    expect(at(moveItem(layoutOf(items), "box", 0, 0), "box")).toMatchObject({ x: 0, y: 0 });
+    expect(at(moveItem(layoutOf(items), "box", 0, 0), "a")).toMatchObject({ x: 0, y: 0 });
   });
 
   it("snaps to cells and half rows, and stays on the grid", () => {

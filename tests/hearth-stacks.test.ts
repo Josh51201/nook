@@ -52,13 +52,13 @@ describe("Widget stacks (CORE-050)", () => {
     expect(visibleItems(layout.items, { [stack]: 9 }).length).toBe(2);
   });
 
-  it("moves and resizes the whole stack together, pushing others out of the way", () => {
+  it("moves and resizes the whole stack together", () => {
     const layout = stacked();
     const moved = moveItem(layout, "a", 2, 0);
     const mates = moved.filter((i) => i.stack);
     expect(mates.every((i) => i.x === 2 && i.y === 0)).toBe(true);
-    // "other" was in that spot, so it slides down below the stack.
-    expect(moved.find((i) => i.id === "other")!.y).toBe(2);
+    // "other" was in that spot and is the same size, so they trade places (CORE-091).
+    expect(moved.find((i) => i.id === "other")!).toMatchObject({ x: 0, y: 0 });
     const bigger = resizeItem(layout, "a", 4, 3);
     expect(bigger.filter((i) => i.stack).every((i) => i.w === 4 && i.h === 3)).toBe(true);
   });

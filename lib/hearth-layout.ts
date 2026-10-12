@@ -570,9 +570,104 @@ function withStackMates(items: HearthItem[], id: string) {
   return (item: HearthItem) => item.id === id || (!!stack && item.stack === stack);
 }
 
-// A locked item (CORE-061) is never moved or resized by hand, and nothing
-// can be dropped on top of it: a drop on one lands in the nearest open spot.
-export function moveItem(layout: HearthLayout, id: string, x: number, y: number): HearthItem[] {
+// What letting go of a dragged item at x, y does (CORE-091). Nothing else on
+// the page is ever pushed: it lands in an open spot (a drop half a row off
+// lands in the open spot right there), swaps places with a same-size thing
+// it's mostly over, or, with no room, goes back where it was. `x`/`y` is
+// where it ends up; for "blocked" it's the spot that had no room.
+export type MovePlan =
+  | { kind: "place"; x: number; y: number }
+  | { kind: "swap"; x: number; y: number; withIds: string[]; to: { x: number; y: number } }
+  | { kind: "blocked"; x: number; y: number };
+
+export function planMove(items: HearthItem[], id: string, x: number, y: number, { fit = true } = {}): MovePlan {
+  const moving = items.find((item) => item.id === id);
+  if (!moving) return { kind: "blocked", x, y };
+  const target = clampRect({ ...moving, x, y });
+  const blocked: MovePlan = { kind: "blocked", x: target.x, y: target.y };
+  if (moving.locked) return blocked;
+  // A Cubby goes anywhere, but what it carries needs room where it lands.
+  if (moving.kind === "cubby") {
+    const carried = cubbyContents(items, moving).filter((item) => !isFloating(item));
+    const ids = new Set(carried.map((item) => item.id));
+    const dx = target.x - moving.x;
+    const dy = target.y - moving.y;
+    const lands = carried.map((item) => ({ ...item, x: item.x + dx, y: item.y + dy }));
+    const others = items.filter((item) => !ids.has(item.id) && !isFloating(item));
+    return lands.some((rect) => others.some((other) => overlaps(other, rect))) ? blocked : { kind: "place", x: target.x, y: target.y };
+  }
+  if (isFloating(moving)) return { kind: "place", x: target.x, y: target.y };
+
+  const goes = withStackMates(items, id);
+  const others = items.filter((item) => !goes(item) && !isFloating(item));
+  const hits = others.filter((other) => overlaps(other, target));
+  if (!hits.length) return { kind: "place", x: target.x, y: target.y };
+  // Just a little off: the open spot half a row up or down.
+  if (fit) {
+    for (const step of [-ROW_STEP, ROW_STEP]) {
+      const near = { ...target, y: target.y + step };
+      if (near.y >= 0 && !others.some((other) => overlaps(other, near))) return { kind: "place", x: near.x, y: near.y };
+    }
+  }
+  // Mostly over one thing its own size (a stack counts as one): trade places.
+  const other = hits[0];
+  const unit = others.filter((item) => item.id === other.id || (!!other.stack && item.stack === other.stack));
+  const oneThing = hits.every((hit) => unit.includes(hit));
+  const sameSize = other.w === moving.w && other.h === moving.h;
+  if (oneThing && sameSize && !unit.some((item) => item.locked) && overlapArea(other, target) * 2 >= target.w * target.h) {
+    const rest = others.filter((item) => !unit.includes(item));
+    const there = { ...target, x: other.x, y: other.y };
+    const back = { ...other, x: moving.x, y: moving.y };
+    if (!rest.some((item) => overlaps(item, there) || overlaps(item, back))) {
+      return { kind: "swap", x: other.x, y: other.y, withIds: unit.map((item) => item.id), to: { x: moving.x, y: moving.y } };
+    }
+  }
+  return blocked;
+}
+
+function overlapArea(a: GridRect, b: GridRect) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return Math.max(0, w) * Math.max(0, h);
+}
+
+// Dropped by hand (CORE-091): see planMove. Unchanged (the same array) when
+// it goes back where it was. A locked item (CORE-061) never moves.
+export function moveItem(layout: HearthLayout, id: string, x: number, y: number, options?: { fit?: boolean }): HearthItem[] {
+  const moving = layout.items.find((item) => item.id === id);
+  const plan = planMove(layout.items, id, x, y, options);
+  if (!moving || plan.kind === "blocked" || (plan.x === moving.x && plan.y === moving.y)) return layout.items;
+  if (moving.kind === "cubby") return carryCubby(layout.items, moving, plan.x, plan.y);
+  const goes = withStackMates(layout.items, id);
+  const swapped = new Set(plan.kind === "swap" ? plan.withIds : []);
+  return layout.items.map((item) =>
+    goes(item)
+      ? { ...item, x: plan.x, y: plan.y }
+      : swapped.has(item.id) && plan.kind === "swap"
+      ? { ...item, ...plan.to }
+      : item
+  );
+}
+
+// A Cubby and everything in it, moved together.
+function carryCubby(items: HearthItem[], cubby: CubbyItem, x: number, y: number): HearthItem[] {
+  const placed = clampRect({ ...cubby, x, y });
+  const dx = placed.x - cubby.x;
+  const dy = placed.y - cubby.y;
+  const carried = new Set(cubbyContents(items, cubby).map((item) => item.id));
+  return items.map((item) =>
+    item.id === cubby.id
+      ? placed
+      : carried.has(item.id)
+      ? { ...item, x: hundredths(item.x + dx), y: hundredths(item.y + dy) }
+      : item
+  );
+}
+
+// The older way, kept for the arrow buttons (CORE-075/076) when the next step
+// has no room: it goes anyway, and what it lands on slides down out of the way.
+// Nothing can be dropped on a locked item: it lands in the nearest open spot.
+export function pushItem(layout: HearthLayout, id: string, x: number, y: number): HearthItem[] {
   const moving = layout.items.find((item) => item.id === id);
   if (!moving || moving.locked) return layout.items;
   if (moving.kind === "cubby") return moveCubby(layout, moving, x, y);
@@ -886,11 +981,25 @@ export function nudgedSpot(item: GridRect & { locked?: boolean; kind?: string },
   return { x: item.x + nudgeSteps[way].dx, y: Math.max(0, item.y + nudgeSteps[way].dy * step) };
 }
 
+// One step: into the open spot there, or trading places with a same-size
+// neighbour; failing both, it pushes what's there down (CORE-091).
 export function nudgeItem(layout: HearthLayout, id: string, way: Nudge): HearthItem[] {
   const item = layout.items.find((other) => other.id === id);
   if (!item || !canNudge(item, way)) return layout.items;
   const spot = nudgedSpot(item, way);
-  return moveItem(layout, id, spot.x, spot.y);
+  const plan = planMove(layout.items, id, spot.x, spot.y, { fit: false });
+  if (plan.kind === "blocked") return pushItem(layout, id, spot.x, spot.y);
+  return moveItem(layout, id, spot.x, spot.y, { fit: false });
+}
+
+// Snapping while dragging (CORE-091): the outline stays in its cell until the
+// item is clearly over the next one, so it doesn't flicker between two spots
+// (or land half a row off) when the finger is near a line. In steps of `step`.
+export const SNAP_HOLD = 0.2;
+export function stickySnap(exact: number, current: number, step: number) {
+  "worklet";
+  if (Math.abs(exact - current) <= step * (0.5 + SNAP_HOLD)) return current;
+  return Math.round(exact / step) * step;
 }
 
 function trinketColorFallback(item: TrinketItem) {
