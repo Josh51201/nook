@@ -452,9 +452,27 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const reduceMotion = useReducedMotion();
 
   const sheetOpen = startersOpen || moreOpen || adding || decorating || pagesOpen || finding || scenesOpen || sharing || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
+  // The tab bar and Edit bar come back only once a sheet has finished sliding
+  // away (it takes ~300ms), the tab bar first and the Edit bar just after, so
+  // nothing resizes or fades in while the sheet is still moving.
+  const [tabBarHidden, setTabBarHidden] = useState(false);
+  const [barsHidden, setBarsHidden] = useState(false);
   useEffect(() => {
-    if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
-  }, [scope, sheetOpen, navigation]);
+    if (sheetOpen) {
+      setTabBarHidden(true);
+      setBarsHidden(true);
+      return;
+    }
+    const tabTimer = setTimeout(() => setTabBarHidden(false), 330);
+    const barTimer = setTimeout(() => setBarsHidden(false), 420);
+    return () => {
+      clearTimeout(tabTimer);
+      clearTimeout(barTimer);
+    };
+  }, [sheetOpen]);
+  useEffect(() => {
+    if (!scope) navigation.setOptions({ tabBarStyle: tabBarHidden ? { display: "none" } : undefined });
+  }, [scope, tabBarHidden, navigation]);
 
   // Each time this screen comes back into view: refresh widgets, close any
   // Hollow door we walked through, and (on the Hearth) make sure upcoming
@@ -1652,8 +1670,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
 
   // Edit's toolbar (CORE-094), whenever nothing else is using the bottom.
   // Both step aside while a sheet is open, so they never cover its bottom.
-  const editBarShown = editing && !selecting && !painting && !dragging && !movingItem && !sheetOpen && !hollowOptions;
-  const paintBarShown = editing && !!painting && !dragging && !movingItem && !sheetOpen && !hollowOptions;
+  const editBarShown = editing && !selecting && !painting && !dragging && !movingItem && !barsHidden && !hollowOptions;
+  const paintBarShown = editing && !!painting && !dragging && !movingItem && !barsHidden && !hollowOptions;
   const moreTools: MoreTool[] = [];
   if (!isEmpty) {
     moreTools.push({
