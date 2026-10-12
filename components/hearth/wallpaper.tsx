@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Pattern, Rect, Stop, Circle } from "react-native-svg";
 
 import { deepOf } from "../../lib/colors";
@@ -10,12 +10,16 @@ import { usePhotoUrls } from "../../lib/hearth-photos";
 // the theme's own background, and photos are dimmed with it, so text stays
 // readable on light and dark Hearths alike.
 export function WallpaperLayer({ wallpaper, background, dark }: { wallpaper: Wallpaper; background: string; dark: boolean }) {
+  const screen = useWindowDimensions();
   if (wallpaper.kind === "none") return null;
   if (wallpaper.kind === "photo") return <PhotoWallpaper path={wallpaper.path} dim={wallpaper.dim} background={background} />;
   const wash = dark ? 0.3 : 0.55;
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Svg width="100%" height="100%">
+    // Drawn at the whole screen's size, not "as big as my parent": a drawing
+    // doesn't always repaint when its parent grows (the tab bar leaving in Edit
+    // left a plain strip at the bottom), but one already big enough never needs to.
+    <View style={[StyleSheet.absoluteFill, { overflow: "hidden" }]} pointerEvents="none">
+      <Svg width={screen.width} height={screen.height} style={{ position: "absolute", top: 0, left: 0 }}>
         {wallpaper.kind === "gradient" ? (
           <>
             <Defs>
