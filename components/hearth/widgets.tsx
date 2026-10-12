@@ -56,6 +56,7 @@ import {
 import { Icon, IconBadge, type IconName } from "../icon";
 import { Tap } from "../motion";
 import { BedArt, BowlArt, CritterArt, PetStageContext, Snooze } from "./pet-art";
+import { WaitingBars } from "./waiting";
 import { WindowScene } from "./window-scene";
 import { FridgeDoor, FridgeNoteCard, LetterMagnets, Magnet } from "../fridge-door";
 import { fridgeGrid, fridgePlace, hashOf, magnets, noteMagnet } from "../../lib/fridge";
@@ -601,6 +602,12 @@ function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyPro
   );
 }
 
+// Still waiting for its data (CORE-103): pulsing bars where the content
+// will go, sized to the widget, instead of an empty card.
+function Waiting({ palette, shape }: { palette: Palette; shape: WidgetShape }) {
+  return <WaitingBars color={palette.muted} rows={shape === "strip" ? 1 : isBig(shape) ? 3 : 2} icon={shape === "icon"} />;
+}
+
 // --- Coming up -------------------------------------------------------------------
 
 type GatheringRow = { id: string; title: string; kind: string; ends_at: string };
@@ -622,7 +629,7 @@ function Gatherings({ widget, palette, refreshKey, height, shape, icon }: BodyPr
       .then(({ data }) => setRows((data ?? []) as unknown as GatheringRow[]));
   }, [burrowId, kinds.join(","), count, refreshKey]);
 
-  if (!rows) return null;
+  if (!rows) return <Waiting palette={palette} shape={shape} />;
   if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={rows.length} />;
   if (!rows.length) return <Empty icon="celebration" palette={palette} text="Nothing coming up" />;
   const [next, ...rest] = rows;
@@ -892,7 +899,7 @@ function Tucks({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"
       );
   }, [session, include, refreshKey]);
 
-  if (!rows) return null;
+  if (!rows) return <Waiting palette={palette} shape={shape} />;
   if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={rows.length} />;
   if (!rows.length) return <Empty icon="check" palette={palette} text="Nothing to buy right now" />;
   if (shape === "strip") {
@@ -1023,7 +1030,7 @@ function Inbox({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"
     ]).then(([countResult, listResult]) => setState({ unread: countResult.count ?? 0, notices: listResult.data ?? [] }));
   }, [widget.settings.count, refreshKey]);
 
-  if (!state) return null;
+  if (!state) return <Waiting palette={palette} shape={shape} />;
   if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={state.unread} />;
   if (shape === "strip") {
     return (
@@ -1071,7 +1078,7 @@ function Inbox({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"
 
 function Cards({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"cards">) {
   const summary = useLetterboxSummary(refreshKey);
-  if (!summary) return null;
+  if (!summary) return <Waiting palette={palette} shape={shape} />;
   const left = summary.toSend.length;
   const allSent = summary.total > 0 && left === 0;
 
@@ -1150,7 +1157,7 @@ function Cards({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"
 function PetCare({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"pets">) {
   const { session } = useAuth();
   const summary = usePetsSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <Waiting palette={palette} shape={shape} />;
 
   const left = summary.toFeed;
   const allFed = summary.mealsTotal > 0 && left.length === 0;
@@ -1351,7 +1358,7 @@ function PetBedWidget({
 function Rhythms({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"rhythms">) {
   const { session } = useAuth();
   const summary = useRhythmsSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <Waiting palette={palette} shape={shape} />;
 
   const mine = widget.settings.mineOnly;
   const now = summary.now.filter((r) => !mine || r.mine);
@@ -1444,7 +1451,7 @@ function Rhythms({ widget, palette, refreshKey, height, shape, icon }: BodyProps
 function Subscriptions({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"subscriptions">) {
   const { session } = useAuth();
   const summary = useSubscriptionsSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <Waiting palette={palette} shape={shape} />;
 
   const next = summary.next.filter((s) => !widget.settings.mineOnly || s.mine);
   const monthly = next.reduce((sum, s) => sum + (s.on_trial ? 0 : s.monthly), 0);
@@ -1539,7 +1546,7 @@ function SickDay({ widget, palette, refreshKey, height, shape, icon }: BodyProps
   const summary = useSickSummary(session?.user.id, refreshKey);
   const { settings } = useNookSettings("sickday", sickdaySettingDefaults);
   const now = useNow();
-  if (!summary) return null;
+  if (!summary) return <Waiting palette={palette} shape={shape} />;
 
   const sick = summary.sick;
   if (shape === "icon") {
@@ -1609,7 +1616,7 @@ function LittleLogWidget({ widget, palette, refreshKey, width, height, shape, ic
   const { session } = useAuth();
   const userId = session?.user.id;
   const data = useLittleLogSummary(userId, refreshKey);
-  if (!data) return null;
+  if (!data) return <Waiting palette={palette} shape={shape} />;
 
   // The picked log, or whichever of yours was logged most recently.
   const newest = (id: string) => data.entries.get(id)?.[0]?.logged_at ?? "";
@@ -1698,7 +1705,7 @@ function NoteWidget({ widget, palette, refreshKey, height, shape, icon }: BodyPr
   const { session } = useAuth();
   const userId = session?.user.id;
   const data = useNotesSummary(userId, refreshKey);
-  if (!data) return null;
+  if (!data) return <Waiting palette={palette} shape={shape} />;
 
   // The picked note, or your top pinned one (or newest).
   const note = widget.settings.noteId
@@ -1757,7 +1764,7 @@ function MenuWidget({ widget, palette, refreshKey, height, shape, icon }: BodyPr
   const { settings } = useNookSettings("menu-board", menuBoardSettingDefaults);
   const week = widget.settings.range === "week";
   const data = useMenuSummary(session?.user.id, refreshKey, week ? 7 : 1);
-  if (!data) return null;
+  if (!data) return <Waiting palette={palette} shape={shape} />;
   const today = localDay();
   const shown = mealTimes.filter((m) => settings.meals.includes(m.key));
 
@@ -1796,7 +1803,7 @@ function MenuWidget({ widget, palette, refreshKey, height, shape, icon }: BodyPr
 function GroceriesWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"groceries">) {
   const { session } = useAuth();
   const data = useGroceriesSummary(session?.user.id, refreshKey);
-  if (!data) return null;
+  if (!data) return <Waiting palette={palette} shape={shape} />;
   const list = widget.settings.listId ? data.lists.find((l) => l.id === widget.settings.listId) : data.lists[0];
   if (!list) {
     if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
@@ -1835,7 +1842,7 @@ function GroceriesWidget({ widget, palette, refreshKey, height, shape, icon }: B
 function Sitter({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"sitter">) {
   const { session } = useAuth();
   const summary = useSitterSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <Waiting palette={palette} shape={shape} />;
 
   const live = summary.live;
   const today = localDay();
@@ -1919,7 +1926,7 @@ function RecipeOfTheDay({ widget, palette, refreshKey, shape, icon }: BodyProps<
   const summary = useRecipesSummary(session?.user.id, refreshKey, widget.settings.shelf);
   // A TikTok recipe's thumbnail is looked up fresh (REC-013).
   const imageUrl = useRecipeImage(summary?.today?.image_url ?? null, summary?.today?.source_url ?? null);
-  if (!summary) return null;
+  if (!summary) return <Waiting palette={palette} shape={shape} />;
   const today = summary.today;
 
   if (shape === "icon") return <IconFace icon={icon} palette={palette} />;

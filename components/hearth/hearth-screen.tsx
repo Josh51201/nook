@@ -141,6 +141,7 @@ import { TagBar } from "./tag-bar";
 import { StackShell } from "./stack-shell";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
+import { WaitingPill } from "./waiting";
 import { WidgetView } from "./widgets";
 import { loadRecipesSummary } from "../../lib/recipes-data";
 import { gatheringWidgetsToTakeOff, widgetGathering } from "../../lib/gatherings-data";
@@ -1914,6 +1915,12 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   </Tap>
                 )}
               </Animated.View>
+            ) : null}
+
+            {/* CORE-103: while widgets and tiles are still fetching what
+                they show, say so (and offer a retry if it's very slow). */}
+            {!isEmpty && !isLoading && !editing ? (
+              <WaitingPill accent={theme.accent} text={theme.text} onRetry={() => setRefreshKey((k) => k + 1)} />
             ) : null}
 
             {onHome && !isEmpty && !isLoading ? (

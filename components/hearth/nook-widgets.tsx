@@ -35,6 +35,7 @@ import { useGroceriesSummary } from "../../lib/groceries-data";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
 import { Text } from "../text";
+import { WaitingBars } from "./waiting";
 
 // Live info a Nook can show on its Hearth tile (CORE-010). Each Nook lists
 // what it has to say as "facts", most important first; the tile says how
@@ -71,6 +72,14 @@ const LINE = {
   wide: { headline: 19, detail: 17, note: 16, progress: 5, gap: 4 },
   small: { headline: 16, detail: 16, note: 15, progress: 5, gap: 2 },
 };
+
+// Still waiting for the Nook's news (CORE-103): a line or two of pulsing
+// bars where the facts will go, as many as the tile has room for.
+function FactsWaiting({ size, space, mutedColor }: Omit<NookWidgetProps, "refreshKey">) {
+  const line = LINE[size];
+  const rows = Math.max(1, Math.min(3, fitCount([line.headline, line.detail, line.detail], space.height, line.gap)));
+  return <WaitingBars color={mutedColor} rows={rows} align={size === "small" ? "center" : "flex-start"} />;
+}
 
 function Facts({ facts, size, space, textColor, mutedColor, accentColor }: { facts: Fact[] } & Omit<NookWidgetProps, "refreshKey">) {
   const line = LINE[size];
@@ -183,7 +192,7 @@ function GiftNookWidget({ refreshKey, ...props }: NookWidgetProps) {
       .then(({ data }) => setUpcoming((data ?? []) as UpcomingGathering[]));
   }, [refreshKey]);
 
-  if (!upcoming) return null;
+  if (!upcoming) return <FactsWaiting {...props} />;
   if (!upcoming.length) return <Facts facts={[{ kind: "note", text: "No Gatherings coming up" }]} {...props} />;
 
   const facts: Fact[] =
@@ -205,7 +214,7 @@ function GatheringsWidget({ refreshKey, ...props }: NookWidgetProps) {
   const userId = session?.user.id;
   const upcoming = useUpcomingGatherings(Boolean(userId), refreshKey);
 
-  if (!upcoming) return null;
+  if (!upcoming) return <FactsWaiting {...props} />;
   if (!upcoming.length) return <Facts facts={[{ kind: "note", text: "Nothing planned yet" }]} {...props} />;
 
   const [next, ...rest] = upcoming;
@@ -255,7 +264,7 @@ function PotluckWidget({ refreshKey, ...props }: NookWidgetProps) {
       .then(({ data }) => setPotlucks((data ?? []) as unknown as NextPotluck[]));
   }, [refreshKey]);
 
-  if (!potlucks) return null;
+  if (!potlucks) return <FactsWaiting {...props} />;
   const [next, after] = potlucks;
   if (!next) return <Facts facts={[{ kind: "note", text: "No Potlucks planned" }]} {...props} />;
 
@@ -280,7 +289,7 @@ function PotluckWidget({ refreshKey, ...props }: NookWidgetProps) {
 // Card season while it's on (Oct–Jan), otherwise the next birthday.
 function LetterboxWidget({ refreshKey, ...props }: NookWidgetProps) {
   const summary = useLetterboxSummary(refreshKey);
-  if (!summary) return null;
+  if (!summary) return <FactsWaiting {...props} />;
 
   const inSeason = [9, 10, 11, 0].includes(new Date().getMonth()) && summary.total > 0;
   const left = summary.toSend.length;
@@ -313,7 +322,7 @@ function LetterboxWidget({ refreshKey, ...props }: NookWidgetProps) {
 function PetCareWidget({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const summary = usePetsSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <FactsWaiting {...props} />;
   if (!summary.pets) return <Facts facts={[{ kind: "note", text: "Add your first pet" }]} {...props} />;
 
   const left = summary.toFeed;
@@ -335,7 +344,7 @@ function PetCareWidget({ refreshKey, ...props }: NookWidgetProps) {
 function RhythmsWidget({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const summary = useRhythmsSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <FactsWaiting {...props} />;
   if (!summary.total) return <Facts facts={[{ kind: "note", text: "Pick your Home's chores" }]} {...props} />;
 
   const inDays = (day: string) => {
@@ -359,7 +368,7 @@ function RhythmsWidget({ refreshKey, ...props }: NookWidgetProps) {
 function SitterWidget({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const summary = useSitterSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <FactsWaiting {...props} />;
   if (!summary.started && !summary.live.length) return <Facts facts={[{ kind: "note", text: "Write your sitter sheet" }]} {...props} />;
   if (!summary.live.length) return <Facts facts={[{ kind: "headline", text: "Ready for a sitter" }, { kind: "note", text: "No links out" }]} {...props} />;
 
@@ -381,7 +390,7 @@ function SitterWidget({ refreshKey, ...props }: NookWidgetProps) {
 function RecipesWidget({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const summary = useRecipesSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <FactsWaiting {...props} />;
   if (!summary.count) return <Facts facts={[{ kind: "note", text: "Add your first recipe" }]} {...props} />;
 
   const facts: Fact[] = [];
@@ -397,7 +406,7 @@ function RecipesWidget({ refreshKey, ...props }: NookWidgetProps) {
 function SubscriptionsWidget({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const summary = useSubscriptionsSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <FactsWaiting {...props} />;
   if (!summary.count) return <Facts facts={[{ kind: "note", text: "Add what you pay for" }]} {...props} />;
 
   const when = (day: string) => {
@@ -422,7 +431,7 @@ function SubscriptionsWidget({ refreshKey, ...props }: NookWidgetProps) {
 function GetawaysWidget({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const summary = useGetawaysSummary(session?.user.id, refreshKey);
-  if (!summary) return null;
+  if (!summary) return <FactsWaiting {...props} />;
   if (!summary.next) return <Facts facts={[{ kind: "note", text: summary.count ? "Where to next?" : "Plan a Getaway" }]} {...props} />;
 
   const next = summary.next;
@@ -441,7 +450,7 @@ function SickDayWidget({ refreshKey, ...props }: NookWidgetProps) {
   const summary = useSickSummary(session?.user.id, refreshKey);
   const { settings } = useNookSettings("sickday", sickdaySettingDefaults);
   const now = useNow();
-  if (!summary) return null;
+  if (!summary) return <FactsWaiting {...props} />;
   if (!summary.sick.length) return <Facts facts={[{ kind: "note", text: "Everyone's well" }]} {...props} />;
 
   const facts: Fact[] = [];
@@ -462,7 +471,7 @@ function SickDayWidget({ refreshKey, ...props }: NookWidgetProps) {
 function LittleLogTile({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const data = useLittleLogSummary(session?.user.id, refreshKey);
-  if (!data) return null;
+  if (!data) return <FactsWaiting {...props} />;
   if (!data.logs.length) return <Facts facts={[{ kind: "note", text: "Start a log" }]} {...props} />;
 
   const today = localDay();
@@ -490,7 +499,7 @@ function NotesTile({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const userId = session?.user.id;
   const data = useNotesSummary(userId, refreshKey);
-  if (!data) return null;
+  if (!data) return <FactsWaiting {...props} />;
   if (!data.notes.length) return <Facts facts={[{ kind: "note", text: "Jot something down" }]} {...props} />;
 
   const mine = sortNotes(data.notes.filter((n) => n.owner_id === userId));
@@ -512,7 +521,7 @@ function NotesTile({ refreshKey, ...props }: NookWidgetProps) {
 function MenuBoardTile({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const data = useMenuSummary(session?.user.id, refreshKey, 2);
-  if (!data) return null;
+  if (!data) return <FactsWaiting {...props} />;
   const today = localDay();
   const next = nextMeal(mealTimes.map((m) => m.key), new Date().getHours()) ?? "dinner";
   const now = slotWords(slot(data.meals, today, next));
@@ -527,7 +536,7 @@ function MenuBoardTile({ refreshKey, ...props }: NookWidgetProps) {
 function GroceriesTile({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const data = useGroceriesSummary(session?.user.id, refreshKey);
-  if (!data) return null;
+  if (!data) return <FactsWaiting {...props} />;
   if (!data.lists.length) return <Facts facts={[{ kind: "note", text: "Start a grocery list" }]} {...props} />;
   const facts: Fact[] = data.lists.map((list, i) => {
     const words = countWords(listCounts(data.items.filter((item) => item.list_id === list.id)));

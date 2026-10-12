@@ -96,7 +96,18 @@ export function FadeSwap({ children, style }: { children: ReactNode; style?: Sty
 }
 
 // Gently pulsing placeholder while something loads.
-export function Skeleton({ height, width = "100%", radius = 12 }: { height: number; width?: number | `${number}%`; radius?: number }) {
+// `color` tints it to sit on something colored, like a Hearth widget.
+export function Skeleton({
+  height,
+  width = "100%",
+  radius = 12,
+  color,
+}: {
+  height: number;
+  width?: number | `${number}%`;
+  radius?: number;
+  color?: string;
+}) {
   const opacity = useSharedValue(0.5);
   useEffect(() => {
     opacity.value = withRepeat(withTiming(1, { duration: 700, easing: Easing.inOut(Easing.quad) }), -1, true);
@@ -105,7 +116,7 @@ export function Skeleton({ height, width = "100%", radius = 12 }: { height: numb
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <Animated.View
-      style={[{ height, width, borderRadius: radius, backgroundColor: colors.border }, animatedStyle]}
+      style={[{ height, width, borderRadius: radius, backgroundColor: color ?? colors.border }, animatedStyle]}
     />
   );
 }
