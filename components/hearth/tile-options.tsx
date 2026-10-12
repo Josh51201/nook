@@ -71,6 +71,7 @@ export function ItemOptions({
   copyTargets = [],
   onCopyTo,
   onStartMove,
+  onCopyLook,
   renderPreview,
 }: {
   item: Editable | null;
@@ -91,6 +92,8 @@ export function ItemOptions({
   onCopyTo?: (scope: Scope) => void;
   // Close this and move it with arrows while watching the Hearth (CORE-076).
   onStartMove?: () => void;
+  // Copy how it looks, to paste on other things (CORE-097).
+  onCopyLook?: () => void;
   // Draws it as it'll look on the Hearth, kept at the top while you change
   // it (CORE-079).
   renderPreview?: (item: Editable) => ReactNode;
@@ -684,6 +687,10 @@ export function ItemOptions({
                 <Text style={ui.muted}>Every copy opens the same {nook?.title ?? "Nook"} — style each one your own way.</Text>
               ) : null}
             </Collapsible>
+          ) : null}
+
+          {onCopyLook ? (
+            <Button title="Copy this look" icon="palette" variant="secondary" onPress={onCopyLook} />
           ) : null}
 
           <View style={[ui.row, { marginTop: 8 }]}>

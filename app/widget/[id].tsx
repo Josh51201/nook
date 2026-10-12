@@ -73,6 +73,7 @@ import {
 } from "../../lib/widgets";
 import { addToStack, MAX_STACK, stackMates, unstack } from "../../lib/hearth-stacks";
 import { requestMove } from "../../lib/move-request";
+import { lookOf, requestPaint } from "../../lib/hearth-looks";
 
 // Customize one Hearth widget (CORE-018): what it shows and how it looks,
 // with a live preview at its real size. Nothing is saved until "Save".
@@ -126,8 +127,9 @@ export default function WidgetEditor() {
   // Saves, then (with `copyTo`) makes a copy there and opens it (CORE-039).
   // `stackWith` puts a new widget of that kind in this one's stack and opens
   // it; "out" takes this one out of its stack (CORE-050).
-  // `thenMove` goes back to the Hearth ready to move it with the arrows (CORE-076).
-  async function saveWidget(copyTo?: Scope, stackWith?: WidgetKind | "out", thenMove = false) {
+  // `thenMove` goes back to the Hearth ready to move it with the arrows (CORE-076),
+  // and `thenPaint` ready to paste its look on other things (CORE-097).
+  async function saveWidget(copyTo?: Scope, stackWith?: WidgetKind | "out", thenMove = false, thenPaint = false) {
     if (!draft || !original || isSaving) return;
     setIsSaving(true);
     try {
@@ -188,6 +190,10 @@ export default function WidgetEditor() {
       else if (copyId) router.replace({ pathname: "/widget/[id]", params: { id: copyId, copied: "1" } });
       else {
         if (thenMove) requestMove(draft.id);
+        if (thenPaint) {
+          const look = lookOf({ ...draft, widget: next } as WidgetItem);
+          if (look) requestPaint(look);
+        }
         router.back();
       }
       pending.catch((error: Error) => Alert.alert("Couldn't save your widget", error.message));
@@ -464,6 +470,14 @@ export default function WidgetEditor() {
         {original.stack ? <Button title="Take it out of the stack" icon="close" variant="secondary" onPress={() => saveWidget(undefined, "out")} /> : null}
       </Collapsible>
 
+      <Button
+        title="Copy this look"
+        icon="palette"
+        variant="secondary"
+        onPress={() => saveWidget(undefined, undefined, false, true)}
+        style={{ marginTop: 8 }}
+      />
+      <Text style={ui.muted}>Saves this, then lets you tap other tiles and widgets on your Hearth to give them the same color, corners, shadow and style.</Text>
       <Button title="Save" icon="check" onPress={() => saveWidget()} loading={isSaving} style={{ marginTop: 8 }} />
       <Button title="Remove widget" icon="trash" variant="danger" onPress={confirmRemove} />
     </NookScroll>

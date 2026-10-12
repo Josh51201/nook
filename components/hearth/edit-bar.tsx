@@ -1,6 +1,8 @@
 import { StyleSheet, View } from "react-native";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 
+import { deepColor, tilePalette } from "../../lib/hearth-layout";
+import type { Look } from "../../lib/hearth-looks";
 import { ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
 import { Icon, type IconName } from "../icon";
@@ -89,7 +91,56 @@ export function EditBar({
   );
 }
 
-export type MoreTool = { key: string; label: string; hint: string; icon: IconName; onPress: () => void };
+// Pasting a look (CORE-097): while it's showing, tapping things gives them
+// the copied look, one tap each, until Done.
+export function PaintBar({
+  look,
+  accent,
+  background,
+  text,
+  bottom,
+  onDone,
+}: {
+  look: Look;
+  accent: string;
+  background: string;
+  text: string;
+  bottom: number;
+  onDone: () => void;
+}) {
+  const swatchColor = look.color ?? tilePalette[0];
+  return (
+    <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOutDown.duration(150)} style={[styles.wrap, { bottom }]} pointerEvents="box-none">
+      <View style={[styles.bar, styles.paint, { backgroundColor: background, borderColor: `${text}22` }]}>
+        {look.kind === "text" ? (
+          <View style={[styles.swatch, { borderColor: `${text}22`, backgroundColor: `${accent}12` }]}>
+            <Text style={{ color: look.color ?? text, fontWeight: look.bold === false ? "500" : "800", fontSize: 17 }}>Aa</Text>
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.swatch,
+              {
+                backgroundColor: look.kind === "tile" && look.style === "outline" ? "transparent" : look.kind === "tile" && look.style === "bold" ? deepColor(swatchColor) : swatchColor,
+                borderColor: look.kind === "tile" && (look.border || look.style === "outline") ? deepColor(swatchColor) : `${text}22`,
+                borderRadius: look.kind === "tile" && look.corners === "square" ? 4 : look.kind === "tile" && look.corners === "round" ? 18 : 11,
+              },
+            ]}
+          />
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: text, fontWeight: "800" }}>Pasting a look</Text>
+          <Text style={{ color: text, opacity: 0.75, fontSize: 13 }}>Tap things to give them this look.</Text>
+        </View>
+        <Tap onPress={onDone} hitSlop={10} accessibilityRole="button">
+          <Text style={{ color: accent, fontWeight: "800" }}>Done</Text>
+        </Tap>
+      </View>
+    </Animated.View>
+  );
+}
+
+export type MoreTool ={ key: string; label: string; hint: string; icon: IconName; onPress: () => void };
 
 // Everything else in Edit, with a word on what each does.
 export function EditMoreSheet({
@@ -147,5 +198,7 @@ const styles = StyleSheet.create({
   divider: { width: 1, height: 30, marginRight: 2 },
   action: { flex: 1, alignItems: "center", gap: 3, paddingVertical: 4 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
+  paint: { alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  swatch: { width: 40, height: 40, borderWidth: 2, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   rowIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 });

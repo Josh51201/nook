@@ -163,6 +163,11 @@ export const helpAnswers: HelpAnswer[] = [
       "Open the Settings tab and find Text size. Choose Large or Extra large. (Tiles on your Hearth keep their size so your layout stays as you arranged it — you can make a tile bigger from Edit.)",
   },
   {
+    question: "Can I make several tiles look the same?",
+    answer:
+      "Yes. Tap Edit, then tap the tile, widget or text whose look you like and choose “Copy this look”. Now tap anything else on your Hearth to give it the same color, corners, shadow and style (text gets the same lettering). Tap Done on the bar at the bottom when you're finished. Changed your mind? Undo steps back one tap at a time.",
+  },
+  {
     question: "How do I move things around on my Hearth?",
     answer:
       "Tap Edit at the top of the Hearth, or hold your finger on any tile. Then drag it to an open spot, or onto something the same size to swap the two (the outline shows what will happen, and nothing else gets pushed around). Want it somewhere that's full? Hold still there for a moment and the things below slide down to make room. Hold a corner, then pull, to resize it. Changed your mind? Undo and Redo are on the bar along the bottom while you edit, and step back as far as you like. Dragging fiddly? Tap the tile while editing, open “Size & place” and tap “Move it with arrows” — a bar of arrows appears and you can watch it step around your Hearth. Tap Done when you're finished.",

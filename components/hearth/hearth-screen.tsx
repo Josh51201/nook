@@ -113,7 +113,8 @@ import { Icon, IconBadge, type IconName } from "../icon";
 import { Skeleton, Tap } from "../motion";
 import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from "../tour";
 import { AddSheet } from "./add-sheet";
-import { EditBar, EditMoreSheet, type MoreTool } from "./edit-bar";
+import { EditBar, EditMoreSheet, PaintBar, type MoreTool } from "./edit-bar";
+import { lookOf, paintItem, takePaintRequest, type Look } from "../../lib/hearth-looks";
 import { StarterSheet } from "./starter-sheet";
 import { isFreshPage, starterInfo, startFrom, type StarterId } from "../../lib/hearth-starters";
 import { GRID_GAP, HearthGrid } from "./hearth-grid";
@@ -202,6 +203,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     setTipHidden(hidden);
     AsyncStorage.setItem(EDIT_TIP_KEY, hidden ? "1" : "0").catch(() => {});
   }
+  // Pasting a copied look onto things, one tap each (CORE-097).
+  const [painting, setPainting] = useState<Look | null>(null);
   // Starter layouts (CORE-096): the picker, and whether the offer on a brand
   // new Hearth has been turned down.
   const [startersOpen, setStartersOpen] = useState(false);
@@ -936,6 +939,34 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     setPickSheet(null);
   }
 
+  // Copy a look (CORE-097): from here on, tapping things gives them it.
+  function startPainting(look: Look) {
+    tap("success");
+    settleToast();
+    stopSelecting();
+    setCubbyMode(false);
+    setPainting(look);
+  }
+  function paintOne(item: HearthItem) {
+    if (!painting) return;
+    const next = paintItem(item, painting);
+    if (!next) {
+      tap();
+      settleToast();
+      const why =
+        item.kind === "label"
+          ? "Text only takes a look copied from text"
+          : item.kind === "trinket" || item.kind === "cubby"
+            ? "Decorations and boxes keep their own look"
+            : "Tiles take a look copied from a tile or widget";
+      return showToast(why, undefined, 2500, "palette");
+    }
+    tap("success");
+    persistHere((inner) => updateItem(inner, item.id, next));
+    setFlashId(item.id);
+    setTimeout(() => setFlashId((id) => (id === item.id ? null : id)), 900);
+  }
+
   function onPressItem(item: HearthItem) {
     // A checkbox inside a widget was just pressed; that's not an "open".
     if (touchesGuarded()) return;
@@ -948,6 +979,10 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     if (item.kind === "label" && item.divider && !editing && !selecting) {
       tap();
       setFolded((prev) => (prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id]));
+      return;
+    }
+    if (painting && editing) {
+      paintOne(item);
       return;
     }
     if (selecting) {
@@ -1142,6 +1177,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       setCubbyMode(false);
       setHistory(emptyHistory());
       setMoreOpen(false);
+      setPainting(null);
     }
   }, [editing]);
   const hasCubby = items.some((item) => item.kind === "cubby");
@@ -1356,6 +1392,16 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   useEffect(() => {
     if (movingId && !isLoading && !movingItem) setMovingId(null);
   }, [movingId, movingItem, isLoading]);
+  useFocusEffect(
+    useCallback(() => {
+      const look = takePaintRequest();
+      if (!look) return;
+      setEditing(true);
+      setSelecting(false);
+      setCubbyMode(false);
+      setPainting(look);
+    }, [])
+  );
   useFocusEffect(
     useCallback(() => {
       const id = takeMoveRequest();
@@ -1605,7 +1651,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   );
 
   // Edit's toolbar (CORE-094), whenever nothing else is using the bottom.
-  const editBarShown = editing && !selecting && !dragging && !movingItem && !zoom;
+  const editBarShown = editing && !selecting && !painting && !dragging && !movingItem && !zoom;
+  const paintBarShown = editing && !!painting && !dragging && !movingItem && !zoom;
   const moreTools: MoreTool[] = [];
   if (!isEmpty) {
     moreTools.push({
@@ -1616,6 +1663,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       onPress: () => {
         tap();
         setCubbyMode(false);
+        setPainting(null);
         setSelecting(true);
         setPicked([]);
       },
@@ -2045,7 +2093,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         <Animated.View
           key={toast.text}
           entering={FadeIn.duration(180)}
-          style={[styles.trashArea, { bottom: (scope ? insets.bottom : 0) + (editBarShown ? 12 + editBarHeight + 10 : 20) }]}
+          style={[styles.trashArea, { bottom: (scope ? insets.bottom : 0) + (editBarShown || paintBarShown ? 12 + (editBarHeight || 64) + 10 : 20) }]}
           pointerEvents="box-none"
         >
           <View style={[styles.trash, styles.toast, { backgroundColor: theme.text, borderColor: theme.text }]}>
@@ -2082,6 +2130,19 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           onTidy={tidyUp}
           onMore={() => setMoreOpen(true)}
           onLayout={setEditBarHeight}
+        />
+      ) : null}
+      {paintBarShown && painting ? (
+        <PaintBar
+          look={painting}
+          accent={theme.accent}
+          background={theme.background}
+          text={theme.text}
+          bottom={(scope ? insets.bottom : 0) + 12}
+          onDone={() => {
+            tap();
+            setPainting(null);
+          }}
         />
       ) : null}
       <EditMoreSheet visible={moreOpen} onClose={() => setMoreOpen(false)} tools={moreTools} accent={theme.accent} />
@@ -2150,6 +2211,15 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           setOptionsFor(null);
           setMovingId(id);
         }}
+        onCopyLook={
+          optionsItem && lookOf(optionsItem)
+            ? () => {
+                const look = lookOf(optionsItem);
+                setOptionsFor(null);
+                if (look) startPainting(look);
+              }
+            : undefined
+        }
         onOpen={
           optionsItem?.kind === "nook"
             ? () => {
