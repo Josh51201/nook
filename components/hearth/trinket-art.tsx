@@ -35,8 +35,9 @@ export function TrinketArt({
 }: {
   piece: TrinketKey;
   color: string;
-  width: number;
-  height: number;
+  // Numbers, or "100%" to fill a frame that's resized from outside.
+  width: number | "100%";
+  height: number | "100%";
   flip?: boolean;
   // Turned this many degrees (CORE-098).
   rotate?: number;

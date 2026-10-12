@@ -75,6 +75,9 @@ const DROP_TIMEOUT_MS = 700;
 // (Undo, the size slider; CORE-093), and how long the drop outline takes to
 // glide to its next cell. Dragging a corner follows the finger instantly.
 const GROW_MS = 180;
+// Asks for a drawing that fills whatever frame it's in (a Trinket, which
+// the frame resizes on the animation thread).
+export const FILL = -1;
 const GLIDE_MS = 110;
 // Holding a dragged item still this long over a spot with no room shows the
 // things there sliding down to make room; letting go then makes it (CORE-092).
@@ -610,6 +613,27 @@ function GridItem({
   const grows = !reduceMotion && !resizing && item.kind !== "cubby" && item.kind !== "trinket";
   const boxW = size.w * stride - GRID_GAP;
   const boxH = size.h * stride - GRID_GAP;
+  // A Trinket's size while its corner is dragged lives on the animation
+  // thread (CORE-098): the frame follows the finger frame by frame with no
+  // trip through React, and its drawing scales with it (it has no fixed
+  // pixel size), so resizing stays smooth.
+  const liveW = useSharedValue(boxW);
+  const liveH = useSharedValue(boxH);
+  const boxNow = useRef({ w: boxW, h: boxH });
+  boxNow.current = { w: boxW, h: boxH };
+  useEffect(() => {
+    liveW.value = boxW;
+    liveH.value = boxH;
+  }, [boxW, boxH, liveW, liveH]);
+  const liveStyle = useAnimatedStyle(() => ({ width: liveW.value, height: liveH.value }));
+  // If a resize doesn't take (too full, or it couldn't save), go back to
+  // the size the Hearth has.
+  const syncLive = useCallback(() => {
+    setTimeout(() => {
+      liveW.value = boxNow.current.w;
+      liveH.value = boxNow.current.h;
+    }, 700);
+  }, [liveW, liveH]);
   const shown = useRef({ w: boxW, h: boxH });
   const [held, setHeld] = useState<{ w: number; h: number } | null>(null);
   const changed = grows && (shown.current.w !== boxW || shown.current.h !== boxH);
@@ -977,11 +1001,10 @@ function GridItem({
             const room = Math.max(bounds.minW, Math.min(bounds.maxW, COLUMNS - x));
             const freeW = Math.round(Math.min(room, Math.max(bounds.minW, w * (1 + along))) * 50) / 50;
             const freeH = Math.round((freeW / aspect) * 100) / 100;
-            if (freeW !== targetW.value || freeH !== targetH.value) {
-              targetW.value = freeW;
-              targetH.value = freeH;
-              scheduleOnRN(ghost, x, y, freeW, freeH);
-            }
+            targetW.value = freeW;
+            targetH.value = freeH;
+            liveW.value = freeW * stride - GRID_GAP;
+            liveH.value = freeH * stride - GRID_GAP;
             return;
           }
           const nextW = Math.min(COLUMNS - x, Math.max(min.w, stickySnap(w + event.translationX / stride, targetW.value, 1)));
@@ -996,6 +1019,7 @@ function GridItem({
         })
         .onEnd(() => {
           scheduleOnRN(resizeEnd, targetW.value, targetH.value);
+          if (free) scheduleOnRN(syncLive);
         })
         .onFinalize(() => {
           if (began.value) {
@@ -1003,7 +1027,7 @@ function GridItem({
             scheduleOnRN(settle);
           }
         }),
-    [x, y, w, h, min.w, min.h, stride, halfRows, free, aspect, bounds.minW, bounds.maxW, begin, ghost, sizeTick, resizeEnd, settle, began, targetW, targetH]
+    [x, y, w, h, min.w, min.h, stride, halfRows, free, aspect, bounds.minW, bounds.maxW, begin, ghost, sizeTick, resizeEnd, settle, syncLive, began, targetW, targetH, liveW, liveH]
   );
 
   const style = useAnimatedStyle(() => ({
@@ -1060,18 +1084,22 @@ function GridItem({
           {...spokenAs(item, editing, { press, hold: askToArrange, nudge: onNudge })}
         >
           <Animated.View
-            style={[
-              {
-                width: boxW,
-                height: boxH,
-                transitionProperty: ["width", "height"],
-                transitionDuration: grows ? GROW_MS : 0,
-                transitionTimingFunction: "ease-out",
-              },
-              inside ? [styles.clip, shadowShape(item, stride, size)] : null,
-            ]}
+            style={
+              free
+                ? liveStyle
+                : [
+                    {
+                      width: boxW,
+                      height: boxH,
+                      transitionProperty: ["width", "height"],
+                      transitionDuration: grows ? GROW_MS : 0,
+                      transitionTimingFunction: "ease-out",
+                    },
+                    inside ? [styles.clip, shadowShape(item, stride, size)] : null,
+                  ]
+            }
           >
-            {content(inside ? Math.max(inside.w, boxW) : boxW, inside ? Math.max(inside.h, boxH) : boxH)}
+            {free ? content(FILL, FILL) : content(inside ? Math.max(inside.w, boxW) : boxW, inside ? Math.max(inside.h, boxH) : boxH)}
           </Animated.View>
           {showGrip ? (
             // Something to hold to pick the box up, on its top edge.

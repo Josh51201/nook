@@ -117,7 +117,7 @@ import { EditBar, EditMoreSheet, PaintBar, type MoreTool } from "./edit-bar";
 import { lookOf, paintItem, takePaintRequest, type Look } from "../../lib/hearth-looks";
 import { StarterSheet } from "./starter-sheet";
 import { isFreshPage, starterInfo, startFrom, type StarterId } from "../../lib/hearth-starters";
-import { GRID_GAP, HearthGrid } from "./hearth-grid";
+import { FILL, GRID_GAP, HearthGrid } from "./hearth-grid";
 import { PetStageContext } from "./pet-art";
 import { isPetBed, PetRoamers, strideFor } from "./pet-roamer";
 import { petSizeForStride } from "../../lib/hearth-pet";
@@ -1598,8 +1598,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           color={item.color ?? trinketInfo(item.piece).color}
           flip={item.flip}
           rotate={item.rotate}
-          width={size.width}
-          height={size.height}
+          width={size.width === FILL ? "100%" : size.width}
+          height={size.height === FILL ? "100%" : size.height}
           still={editing}
         />
       );
