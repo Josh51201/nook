@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { AccessibilityInfo, Pressable, View, useWindowDimensions } from "react-native";
-import Animated, { FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, withSpring, withTiming } from "react-native-reanimated";
 
 import type { News } from "../../lib/hearth-news";
 import { Icon } from "../icon";
@@ -12,6 +12,20 @@ import { NEWS_RED } from "./news";
 // Peek into a Hollow (CORE-116): hold a Hollow and a card shows what's
 // inside, drawn as it looks in there, without stepping in. Let go and it
 // stays open; "Go in" steps inside, and a tap outside closes it.
+
+// The card grows in from a little smaller and settles with just a hint of
+// bounce: a scaled view is drawn soft until it comes to rest, so the
+// shorter and calmer this is, the sooner the card looks sharp.
+function popIn() {
+  "worklet";
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.9 }] },
+    animations: {
+      opacity: withTiming(1, { duration: 120 }),
+      transform: [{ scale: withSpring(1, { damping: 30, stiffness: 420, mass: 0.8 }) }],
+    },
+  };
+}
 
 export function HollowPeek({
   name,
@@ -70,7 +84,7 @@ export function HollowPeek({
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.dark ? "rgba(0,0,0,0.55)" : "rgba(40,28,20,0.35)" }}
       />
       <Animated.View
-        entering={ZoomIn.springify().damping(16).stiffness(220)}
+        entering={popIn}
         accessibilityViewIsModal
         style={{
           width: cardWidth,
