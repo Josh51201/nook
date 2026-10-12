@@ -11,17 +11,20 @@ import { Text } from "./text";
 // list of Nooks stays one glance tall instead of a long scroll. The number
 // of columns follows the space there is (and the phone's text size), so the
 // names under the icons have room on small phones and big tablets alike.
-// `onAdd` puts a little "+" on each icon (put it on your Hearth); `wrap`
-// lets the screen wrap one icon (the tour points at the first).
+// `onAdd` puts a little "+" on each icon (put it on your Hearth), or only
+// on the ones `canAdd` allows; `wrap` lets the screen wrap one icon (the
+// tour points at the first).
 export function NookGrid({
   nooks,
   onOpen,
   onAdd,
+  canAdd,
   wrap,
 }: {
   nooks: NookDefinition[];
   onOpen: (nook: NookDefinition) => void;
   onAdd?: (nook: NookDefinition) => void;
+  canAdd?: (nook: NookDefinition) => boolean;
   wrap?: (nook: NookDefinition, index: number, tile: ReactNode) => ReactNode;
 }) {
   const [width, setWidth] = useState(0);
@@ -59,7 +62,7 @@ export function NookGrid({
                       {shortNookName(nook)}
                     </Text>
                   </Tap>
-                  {onAdd ? (
+                  {onAdd && (!canAdd || canAdd(nook)) ? (
                     <Tap
                       onPress={() => onAdd(nook)}
                       hitSlop={10}

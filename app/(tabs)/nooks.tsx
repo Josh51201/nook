@@ -13,14 +13,16 @@ import { tap } from "../../lib/feedback";
 import { addNook, nookCount, useHearthLayout } from "../../lib/hearth";
 import { askToPeek } from "../../lib/inbox";
 import { fullMessage, overflowing } from "../../lib/hearth-limits";
-import { nookCatalog, nookMatches, type NookDefinition } from "../../lib/nooks";
+import { nookAisles, nookCatalog, nookMatches, type NookDefinition } from "../../lib/nooks";
 import { colors, ui } from "../../lib/theme";
 import { useUnreadByNook } from "../../lib/use-unread";
 
 // CORE-067 (proposed): the Nooks tab — every Nook in one place, so
 // anything can be opened in one tap whether or not it's on your Hearth.
-// Nooks sit in small icon grids (and there's a search box) so the page stays
-// short as more Nooks arrive (CORE-088).
+// Nooks sit in small icon grids, sorted into the same groups as the Market
+// (Family & get-togethers, Around the house…), with a search box, so the
+// page stays easy to scan as more Nooks arrive (CORE-088, CORE-100). A + on
+// an icon means it isn't on your Hearth yet; tap it to put it there.
 // Someone who joined a family just for the Gift Nook, or was invited to a
 // Gathering before adding anything, finds it here: Nooks with something new
 // for you sit at the top, and opening one from there pops its bell's bubble
@@ -43,8 +45,10 @@ export default function Nooks() {
   const available = nookCatalog.filter((nook) => nook.available && nook.route);
   const comingSoon = nookCatalog.filter((nook) => !nook.available);
   const withNews = available.filter((nook) => waiting[nook.id]);
-  const onHearth = available.filter((nook) => nookCount(layout, nook.id) > 0);
-  const notOnHearth = available.filter((nook) => nookCount(layout, nook.id) === 0);
+  const anyOffHearth = available.some((nook) => nookCount(layout, nook.id) === 0);
+  const groups = nookAisles
+    .map((group) => ({ ...group, nooks: available.filter((nook) => nook.aisle === group.id) }))
+    .filter((group) => group.nooks.length);
 
   function open(nook: NookDefinition) {
     tap();
@@ -100,8 +104,15 @@ export default function Nooks() {
         onPress={options.onPress ?? (() => open(nook))}
       />
     );
-  const grid = (nooks: NookDefinition[], onAdd?: (nook: NookDefinition) => void) => (
-    <NookGrid nooks={nooks} onOpen={open} onAdd={onAdd} wrap={(nook, _i, tile) => tourFirst(nook.id, tile)} />
+  // Only Nooks that aren't on the Hearth yet get the +.
+  const grid = (nooks: NookDefinition[]) => (
+    <NookGrid
+      nooks={nooks}
+      onOpen={open}
+      onAdd={addToHearth}
+      canAdd={(nook) => nookCount(layout, nook.id) === 0}
+      wrap={(nook, _i, tile) => tourFirst(nook.id, tile)}
+    />
   );
 
   return (
@@ -151,20 +162,14 @@ export default function Nooks() {
             </>
           ) : null}
 
-          {onHearth.length ? (
-            <>
-              <SectionHeader title="On your Hearth" icon="hearth" />
-              {grid(onHearth)}
-            </>
-          ) : null}
+          {anyOffHearth ? <Text style={ui.muted}>Tap + on a Nook to put it on your Hearth.</Text> : null}
 
-          {notOnHearth.length ? (
-            <>
-              <SectionHeader title={onHearth.length ? "More Nooks" : "Nooks to try"} icon="nooks" />
-              <Text style={[ui.muted, { marginTop: -6 }]}>Tap + to put one on your Hearth.</Text>
-              {grid(notOnHearth, addToHearth)}
-            </>
-          ) : null}
+          {groups.map((group) => (
+            <View key={group.id} style={{ gap: 10 }}>
+              <SectionHeader title={group.title} icon={group.icon} />
+              {grid(group.nooks)}
+            </View>
+          ))}
 
           {comingSoon.length ? (
             <Text style={[ui.muted, { marginTop: 6 }]}>
