@@ -83,6 +83,9 @@ const GLIDE_MS = 110;
 // Holding a dragged item still this long over a spot with no room shows the
 // things there sliding down to make room; letting go then makes it (CORE-092).
 const PUSH_HOLD_MS = 700;
+// How far a finger holding a Hollow open (CORE-116) moves before it picks the
+// Hollow up instead.
+const PEEK_SLOP = 12;
 
 // The free-form Hearth canvas (CORE-006/019). Items sit at exact grid cells;
 // in edit mode you hold one to drag it anywhere (an outline shows where it
@@ -120,6 +123,9 @@ export function HearthGrid({
   onToggleLock,
   onTabHover,
   onDropOnTab,
+  spokenNews,
+  onPeek,
+  onPeekEnd,
   renderItem,
 }: {
   items: HearthItem[];
@@ -169,6 +175,13 @@ export function HearthGrid({
   // A dragged item is over a page tab ("" when it isn't), and let go there.
   onTabHover?: (tabId: string) => void;
   onDropOnTab?: (item: HearthItem, tabId: string) => void;
+  // Said after a tile's name when something in it is new (CORE-115).
+  spokenNews?: (item: HearthItem) => string;
+  // Holding a Hollow while just looking peeks inside it (CORE-116); moving
+  // the finger then picks it up to arrange, as holding anything else does,
+  // and the peek closes (onPeekEnd).
+  onPeek?: (item: HollowItem) => void;
+  onPeekEnd?: () => void;
   renderItem: (item: HearthItem, size: { width: number; height: number }) => ReactNode;
 }) {
   const cell = (width - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
@@ -342,6 +355,9 @@ export function HearthGrid({
           dragScroll={dragScroll}
           onPress={() => onPressItem(item)}
           onLongPress={onLongPress}
+          news={spokenNews?.(item) ?? ""}
+          onPeek={onPeek && item.kind === "hollow" ? () => onPeek(item) : undefined}
+          onPeekEnd={onPeekEnd}
           onNudge={onNudge ? (way) => onNudge(item.id, way) : undefined}
           onCopy={onCopy && item.kind !== "hollow" ? () => onCopy(item) : undefined}
           onTrashHover={(over) => {
@@ -536,6 +552,9 @@ function GridItem({
   dragScroll,
   onPress,
   onLongPress,
+  news,
+  onPeek,
+  onPeekEnd,
   onNudge,
   onCopy,
   onTrash,
@@ -577,6 +596,9 @@ function GridItem({
   dragScroll: DragScroll;
   onPress: () => void;
   onLongPress: (picked: boolean) => void;
+  news: string;
+  onPeek?: () => void;
+  onPeekEnd?: () => void;
   onNudge?: (way: Nudge) => void;
   onCopy?: () => void;
   onTrash: () => void;
@@ -744,8 +766,8 @@ function GridItem({
   }, [item.x, item.y, stride, left, top, dragX, dragY, dropping, carried, carriedNow, carry]);
 
   // Latest callbacks without rebuilding gestures mid-drag.
-  const handlers = useRef({ onPress, onLongPress, onBegin, onGhost, onDrop, onSettle, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop });
-  handlers.current = { onPress, onLongPress, onBegin, onGhost, onDrop, onSettle, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop };
+  const handlers = useRef({ onPress, onLongPress, onPeek, onPeekEnd, onBegin, onGhost, onDrop, onSettle, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop });
+  handlers.current = { onPress, onLongPress, onPeek, onPeekEnd, onBegin, onGhost, onDrop, onSettle, onResizeEnd, onTrash, onTrashHover, onTrashArmed, onTabHover, onTabDrop };
   const trashArmed = useCallback((on: boolean) => {
     if (on) tap("success");
     handlers.current.onTrashArmed(on);
@@ -766,6 +788,22 @@ function GridItem({
     handlers.current.onLongPress(true);
   }, []);
   const askToArrange = useCallback(() => handlers.current.onLongPress(false), []);
+  // Peeking into a Hollow (CORE-116).
+  const canPeek = Boolean(onPeek);
+  const peek = useCallback(() => {
+    tap();
+    handlers.current.onPeek?.();
+  }, []);
+  const askToPeek = useCallback(() => handlers.current.onPeek?.(), []);
+  const peekToDrag = useCallback(() => {
+    handlers.current.onPeekEnd?.();
+    tap();
+    handlers.current.onLongPress(true);
+  }, []);
+  // Held to peek, finger still down and not moved far yet.
+  const peeking = useSharedValue(false);
+  // Held while locked in Edit: nothing happens.
+  const stuck = useSharedValue(false);
   const begin = useCallback(() => {
     tap();
     handlers.current.onBegin();
@@ -852,29 +890,55 @@ function GridItem({
     // mode, so holding a tile that isn't being edited yet switches Edit on
     // AND picks the tile up in one go (the gesture isn't rebuilt when Edit
     // switches on, so the finger already down keeps dragging).
+    // Picked up, held at `grabAtX/Y` on the item.
+    function pickUp(grabAtX: number, grabAtY: number) {
+      "worklet";
+      geo.value = { x, y, w, h, stride };
+      rawX.value = 0;
+      rawY.value = 0;
+      startScroll.value = scrollY.value;
+      dragging.value = true;
+      lastSpeed.value = 0;
+      targetX.value = x;
+      targetY.value = y;
+      grabX.value = grabAtX;
+      grabY.value = grabAtY;
+      fingerX.value = Math.floor((x * stride + grabAtX) / stride);
+      fingerY.value = Math.floor((y * stride + grabAtY) / stride);
+      lifted.value = withTiming(1, { duration: 160 });
+      began.value = true;
+      scheduleOnRN(begin);
+      scheduleOnRN(ghost, x, y, w, h, fingerX.value, fingerY.value);
+    }
+    // A locked Hollow can still be peeked into, just not picked up.
+    const locked = Boolean(item.locked);
     const pan = Gesture.Pan()
-      .enabled(!selecting && !item.locked)
+      .enabled(!selecting && (!locked || canPeek))
       .activateAfterLongPress(300)
       .onStart((event) => {
+        // A Hollow held while just looking peeks inside instead (CORE-116).
+        if (canPeek && !editingNow.value) {
+          peeking.value = true;
+          scheduleOnRN(peek);
+          return;
+        }
+        if (locked) {
+          stuck.value = true;
+          return;
+        }
         if (!editingNow.value) scheduleOnRN(hold);
-        geo.value = { x, y, w, h, stride };
-        rawX.value = 0;
-        rawY.value = 0;
-        startScroll.value = scrollY.value;
-        dragging.value = true;
-        lastSpeed.value = 0;
-        targetX.value = x;
-        targetY.value = y;
-        grabX.value = event.x;
-        grabY.value = event.y;
-        fingerX.value = Math.floor((x * stride + event.x) / stride);
-        fingerY.value = Math.floor((y * stride + event.y) / stride);
-        lifted.value = withTiming(1, { duration: 160 });
-        began.value = true;
-        scheduleOnRN(begin);
-        scheduleOnRN(ghost, x, y, w, h, fingerX.value, fingerY.value);
+        pickUp(event.x, event.y);
       })
       .onUpdate((event) => {
+        if (stuck.value) return;
+        if (peeking.value) {
+          // Moving on from a peek picks the Hollow up to arrange, as
+          // holding anything else does.
+          if (locked || Math.hypot(event.translationX, event.translationY) < PEEK_SLOP) return;
+          peeking.value = false;
+          scheduleOnRN(peekToDrag);
+          pickUp(event.x - event.translationX, event.y - event.translationY);
+        }
         rawX.value = event.translationX;
         rawY.value = event.translationY;
         follow();
@@ -934,6 +998,8 @@ function GridItem({
         }
       })
       .onEnd(() => {
+        // Let go of a peek: it stays open to look at.
+        if (peeking.value || stuck.value) return;
         if (overTrash.value && armed.value === 1) {
           dropping.value = false;
           scheduleOnRN(trashDrop);
@@ -956,6 +1022,8 @@ function GridItem({
       })
       .onFinalize(() => {
         dragging.value = false;
+        peeking.value = false;
+        stuck.value = false;
         // However it ended (even interrupted), nothing stays picked up.
         if (began.value) {
           began.value = false;
@@ -983,7 +1051,7 @@ function GridItem({
         }
       });
     return Gesture.Exclusive(pan, tapGesture);
-  }, [selecting, item.locked, free, carries, carry, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, settle, began, edge, trash, tabs, tabOver, tabHover, tabDrop, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
+  }, [selecting, item.locked, canPeek, peek, peekToDrag, peeking, stuck, free, carries, carry, x, y, w, h, stride, press, hold, editingNow, begin, ghost, drop, settle, began, edge, trash, tabs, tabOver, tabHover, tabDrop, trashDrop, trashHover, trashArmed, overTrash, armed, doomed, dragX, dragY, lifted, pressed, dropping, targetX, targetY, grabX, grabY, fingerX, fingerY, viewTop, viewBottom, scrollY]);
 
   const resizeGesture = useMemo(
     () =>
@@ -1083,7 +1151,7 @@ function GridItem({
         <Animated.View
           key={`${item.kind === "nook" ? (item.shape ?? "arch") : ""}-${item.corners ?? ""}-${shadow ?? ""}`}
           style={[shadow ? { ...shadowShape(item, stride, size), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, badge === "noRoom" ? styles.noRoomItem : null, wiggle]}
-          {...spokenAs(item, editing, { press, hold: askToArrange, nudge: onNudge })}
+          {...spokenAs(item, editing, { press, hold: askToArrange, nudge: onNudge, peek: canPeek ? askToPeek : undefined }, news)}
         >
           <Animated.View
             style={
@@ -1289,17 +1357,19 @@ const nudgeWays: Nudge[] = ["up", "down", "left", "right"];
 function spokenAs(
   item: HearthItem,
   editing: boolean,
-  { press, hold, nudge }: { press: () => void; hold: () => void; nudge?: (way: Nudge) => void }
+  { press, hold, nudge, peek }: { press: () => void; hold: () => void; nudge?: (way: Nudge) => void; peek?: () => void },
+  news = ""
 ) {
   if (item.kind === "widget" && !editing) return {};
   const moves = editing && nudge ? nudgeWays.filter((way) => canNudge(item, way)) : [];
   return {
     accessible: true,
     accessibilityRole: "button" as const,
-    accessibilityLabel: `${itemSpokenName(item)}${editing && item.locked ? ", locked" : ""}`,
+    accessibilityLabel: `${itemSpokenName(item)}${editing ? "" : news}${editing && item.locked ? ", locked" : ""}`,
     accessibilityHint: editing ? "Double-tap for its options." : item.kind === "label" ? undefined : "Double-tap to open.",
     accessibilityActions: [
       { name: "activate" },
+      ...(editing || !peek ? [] : [{ name: "peek", label: "Peek inside" }]),
       ...(editing ? [] : [{ name: "longpress", label: "Arrange your Hearth" }]),
       ...moves.map((way) => ({ name: `move-${way}`, label: `Move ${way}` })),
     ],
@@ -1307,6 +1377,7 @@ function spokenAs(
       const name = event.nativeEvent.actionName;
       if (name === "activate") press();
       else if (name === "longpress") hold();
+      else if (name === "peek") peek?.();
       else if (name.startsWith("move-") && nudge) {
         const way = name.slice(5) as Nudge;
         nudge(way);

@@ -30,7 +30,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../../lib/auth-context";
-import { activeAmbience, effectiveWallpaper, liftLevel, wallpaperPath, type Ambience, type Corners, type TileShape, type Wallpaper } from "../../lib/decor";
+import { activeAmbience, cornerRadius, effectiveWallpaper, liftLevel, wallpaperPath, type Ambience, type Corners, type TileShape, type Wallpaper } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { keepPhotosForScenes, removeUnusedPhotos } from "../../lib/hearth-photos";
 import {
@@ -51,6 +51,8 @@ import { addEmptyPage, addPage, neighbourPage, removePage, renamePage, switchPag
 import { foldItems, hiddenBy } from "../../lib/hearth-folds";
 import { allTags, hideTagged, tagMany } from "../../lib/hearth-tags";
 import { stackMates, stackPosition, visibleItems as oneOfEachStack } from "../../lib/hearth-stacks";
+import { newsFor, pagesWithNews as pagesWithAnyNews, smartStacks, spokenNews, stackNewsKey } from "../../lib/hearth-news";
+import { askToPeek } from "../../lib/inbox";
 import type { FoundItem } from "../../lib/hearth-find";
 import { copyMany, lockMany, moveManyToPage, moveManyToScope, recolorMany, removeMany } from "../../lib/hearth-select";
 import { trinketFit, trinketInfo, type TrinketKey } from "../../lib/trinkets";
@@ -145,6 +147,8 @@ import { PagesSheet, PageStrip } from "./pages-sheet";
 import { ColorManySheet, MoveManySheet, SelectionBar, TagManySheet, type SelectionAction, type SelectionTarget } from "./selection";
 import { TagBar } from "./tag-bar";
 import { StackShell } from "./stack-shell";
+import { NewsDot, useHearthNews } from "./news";
+import { HollowPeek } from "./hollow-peek";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WaitingPill } from "./waiting";
@@ -262,6 +266,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const [pickSheet, setPickSheet] = useState<"move" | "color" | "tag" | null>(null);
   // Which widget of each stack is showing (CORE-050).
   const [stackShown, setStackShown] = useState<Record<string, number>>({});
+  // Smart stacks (CORE-114): the news each stack had when you last swiped it,
+  // so your choice stands until something newer comes in.
+  const [stackSwiped, setStackSwiped] = useState<Record<string, string>>({});
   const [dragging, setDragging] = useState(false);
   // Edit started by holding an item: the tip card at the top stays away for
   // the rest of that Edit, so nothing appears above the grid and shoves it
@@ -275,6 +282,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   // data is never mixed up between screens (CORE-104).
   const [refreshKey, setRefreshKey] = useState(nextHearthRefresh);
   const [openingHollow, setOpeningHollow] = useState<string | null>(null);
+  // The Hollow being peeked into (CORE-116).
+  const [peekId, setPeekId] = useState<string | null>(null);
   // Inside a Hollow: the sheet for the Hollow itself (name, look, color, size).
   const [hollowOptions, setHollowOptions] = useState(false);
   const entering = useRef(false);
@@ -432,7 +441,14 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       contentHeight.value = height;
     },
   };
-  const unread = useUnreadCount(!scope, refreshKey);
+  // What's new (CORE-115): your unread notices, matched to the tiles and
+  // widgets they're about. The bell's count comes along with them.
+  const { unread, news } = useHearthNews(refreshKey, home.homeId, fridgeNews);
+  // Other pages with news somewhere on them get a dot on their tab (a page
+  // whose news is a fridge note already wears the note).
+  const pagesWithDots = scope
+    ? []
+    : pagesWithAnyNews(layout, news, HOME_PAGE, layout.activePage).filter((id) => !pagesWithNews.includes(id));
 
   // The first time someone lands on their Hearth, show them around (CORE-026).
   useTourAutoStart(!scope && !isLoading && !error);
@@ -933,6 +949,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   function openNookFromTile(item: NookItem) {
     const nook = findNook(item.nookId);
     if (!nook?.route) return;
+    // What's new pops out of its bell when it opens (CORE-099, CORE-115).
+    if (newsFor(item, news)) askToPeek(item.nookId);
     const route = nook.route;
     if (reduceMotion || !gridRef.current || zoomRef.current) return router.push(route);
     const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
@@ -970,6 +988,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   // to buy, Card season) open that list; the rest open their own page, with Edit there.
   // In edit mode a tap opens its settings instead.
   function openWidget(item: HearthItem & { kind: "widget" }) {
+    // Widgets that open their Nook's own page show what's new there (CORE-115).
+    const widgetNews = newsFor(item, news, onHomePageNow);
+    if (widgetNews?.nook && ["pets", "rhythms", "sitter", "subscriptions", "sickday"].includes(item.widget.kind)) askToPeek(widgetNews.nook);
     switch (item.widget.kind) {
       case "tucks":
         return router.push("/gift-nook/my-tucks");
@@ -1590,7 +1611,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   // Things set to show only in some months (CORE-053) are hidden out of
   // season, but stay (dimmed) while you're editing so you can find them.
   const today = new Date();
-  const inSight = oneOfEachStack(items, stackShown);
+  // A smart stack (CORE-114) shows whichever of its widgets has news, while
+  // you're looking (not while editing).
+  const inSight = oneOfEachStack(items, editing ? stackShown : smartStacks(items, stackShown, news, stackSwiped, onHomePageNow));
   const inSeasonItems = editing ? inSight : inSight.filter((item) => inSeason(item.showIn, today));
   // Folding and hidden tags only apply when you are looking, not designing.
   const visibleItems = editing ? inSeasonItems : foldItems(hideTagged(inSeasonItems, hiddenTags), folded);
@@ -1602,7 +1625,23 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
 
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
     const inner = renderInner(item, size);
-    return editing && !inSeason(item.showIn, today) ? <View style={{ opacity: 0.4 }}>{inner}</View> : inner;
+    if (editing) return inSeason(item.showIn, today) ? inner : <View style={{ opacity: 0.4 }}>{inner}</View>;
+    // A little dot when something in it is new (CORE-115).
+    const itemNews = selecting || item.kind === "trinket" ? null : newsFor(item, news, onHomePageNow);
+    if (!itemNews) return inner;
+    return (
+      <View style={{ width: size.width, height: size.height }}>
+        {inner}
+        <NewsDot ring={theme.background} radius={newsCorner(item, size)} />
+      </View>
+    );
+  }
+
+  // How round the top-right corner is, so the dot sits on the curve.
+  function newsCorner(item: HearthItem, size: { width: number; height: number }) {
+    if (item.kind === "nook") return nookRadii(size.width, size.height, item.corners, item.shape).top;
+    if (item.kind === "widget") return cornerRadius(item.corners, size.width, size.height);
+    return 0;
   }
 
   function renderInner(item: HearthItem, size: { width: number; height: number }) {
@@ -1658,6 +1697,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           onSelect={(i) => {
             tap();
             setStackShown((prev) => ({ ...prev, [stack]: i }));
+            setStackSwiped((prev) => ({ ...prev, [stack]: stackNewsKey(stackMates(items, item), news, onHomePageNow) }));
           }}
         >
           {view}
@@ -1700,6 +1740,51 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         folded={item.divider && folded.includes(item.id) && !editing}
         hiddenCount={item.divider ? hiddenBy(items, item.id) : 0}
       />
+    );
+  }
+
+  // Peeking into a Hollow (CORE-116): what's inside, drawn as it is in there.
+  const peekItem = peekId && !editing ? items.find((item) => item.id === peekId) : undefined;
+  const peekHollow = peekItem?.kind === "hollow" ? peekItem : null;
+  function renderPeek(inside: HollowItem) {
+    const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
+    const shown = oneOfEachStack(inside.items, smartStacks(inside.items, {}, news, {}))
+      .filter((item) => inSeason(item.showIn, today))
+      // Boxes are drawn behind what's in them.
+      .sort((a, b) => (a.kind === "cubby" ? 0 : 1) - (b.kind === "cubby" ? 0 : 1));
+    const rows = Math.max(1, ...shown.map((item) => item.y + item.h));
+    const close = () => setPeekId(null);
+    return (
+      <HollowPeek
+        name={inside.name}
+        count={shown.filter((item) => item.kind !== "trinket" && item.kind !== "cubby").length}
+        news={newsFor(inside, news)}
+        width={gridWidth}
+        height={rows * stride - GRID_GAP}
+        colors={{ accent: theme.accent, text: theme.text, background: theme.background, dark: theme.dark }}
+        backdrop={
+          <WallpaperLayer
+            wallpaper={effectiveWallpaper(layout.wallpaper, inside.wallpaper, true)}
+            background={theme.background}
+            dark={theme.dark}
+          />
+        }
+        onClose={close}
+        onGoIn={() => {
+          close();
+          tap();
+          setOpeningHollow(inside.id);
+        }}
+      >
+        {shown.map((item) => {
+          const size = { width: item.w * stride - GRID_GAP, height: item.h * stride - GRID_GAP };
+          return (
+            <View key={item.id} style={{ position: "absolute", left: item.x * stride, top: item.y * stride, ...size }}>
+              {renderItem(item, size)}
+            </View>
+          );
+        })}
+      </HollowPeek>
     );
   }
 
@@ -1918,6 +2003,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
             activeId={layout.activePage}
             homeId={showsHome ? HOME_PAGE : undefined}
             newsIds={pagesWithNews}
+            dotIds={pagesWithDots}
             accent={theme.accent}
             text={theme.text}
             background={theme.background}
@@ -2095,6 +2181,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                     if (picked) setHoldStarted(true);
                     setEditing(true);
                   }}
+                  spokenNews={(item) => (editing ? "" : spokenNews(newsFor(item, news, onHomePageNow)))}
+                  onPeek={(hollowItem) => setPeekId(hollowItem.id)}
+                  onPeekEnd={() => setPeekId(null)}
                   onCopy={(item) => copyTo(item.id, scope)}
                   onTrash={trash}
                   onTrashHover={setOverTrash}
@@ -2283,6 +2372,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           strength={theme.dark ? 0.34 : 0.26}
         />
       ) : null}
+
+      {peekHollow ? renderPeek(peekHollow) : null}
 
       {zoom ? (
         <NookZoom
@@ -2545,26 +2636,6 @@ function greeting(name: string | null) {
   const hour = new Date().getHours();
   const hello = hour < 5 ? "Up late" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   return name ? `${hello}, ${name}` : hello;
-}
-
-// How many unread notices are waiting, for the Hearth's inbox bell.
-function useUnreadCount(enabled: boolean, refreshKey: number) {
-  const [unread, setUnread] = useState(0);
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .is("read_at", null)
-      .then(({ count }) => {
-        if (!cancelled) setUnread(count ?? 0);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, refreshKey]);
-  return unread;
 }
 
 // The inbox, top right of the Hearth: a bell with a little count when

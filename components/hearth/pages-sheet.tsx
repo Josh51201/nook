@@ -7,6 +7,7 @@ import { MAX_PAGES } from "../../lib/hearth-pages";
 import type { HearthPage } from "../../lib/hearth-layout";
 import { BottomSheet } from "../bottom-sheet";
 import { Icon } from "../icon";
+import { NewsDot } from "./news";
 import { Tap } from "../motion";
 import { Text } from "../text";
 import { Button, Chip } from "../ui";
@@ -28,6 +29,7 @@ export function PageStrip({
   onAdd,
   homeId,
   newsIds = [],
+  dotIds = [],
 }: {
   pages: HearthPage[];
   activeId: string;
@@ -36,6 +38,9 @@ export function PageStrip({
   // Pages with a Fridge door someone's left a note on (CORE-086): their tab
   // wears a tiny note under a magnet until you've looked.
   newsIds?: string[];
+  // Pages with something else new on them, Hollows included (CORE-115):
+  // their tab wears a little dot.
+  dotIds?: string[];
   accent: string;
   text: string;
   background: string;
@@ -63,6 +68,7 @@ export function PageStrip({
           const hover = hoverId === page.id;
           const shared = page.id === homeId;
           const news = newsIds.includes(page.id);
+          const dot = !news && dotIds.includes(page.id);
           return (
             <View key={page.id} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             {/* The shared Home page (CORE-054) sits apart from your own pages:
@@ -74,7 +80,7 @@ export function PageStrip({
                 pressedScale={0.94}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={news ? `${page.name}, someone left a note on the fridge` : undefined}
+                accessibilityLabel={news ? `${page.name}, someone left a note on the fridge` : dot ? `${page.name}, something new` : undefined}
                 style={{
                   paddingHorizontal: shared ? 12 : 14,
                   paddingVertical: 6,
@@ -92,6 +98,7 @@ export function PageStrip({
                 </View>
               </Tap>
               {news ? <FridgeNews /> : null}
+              {dot ? <NewsDot ring={background} size={11} /> : null}
             </View>
             </View>
           );

@@ -36,6 +36,9 @@ type ItemBase = GridRect & {
   // Widgets that share a stack (CORE-050) sit in the same spot and the same
   // size; you swipe between them. Items in one stack have the same id here.
   stack?: string;
+  // A stack flips by itself to whichever widget has news (CORE-114) unless
+  // this is set on its widgets.
+  stackStill?: boolean;
   // Locked in place (CORE-061): can't be dragged, resized or removed until
   // unlocked, and other things move around it.
   locked?: boolean;
@@ -830,7 +833,7 @@ export function normalizeStacks(items: HearthItem[]): HearthItem[] {
   if (![...counts.values()].some((n) => n < 2)) return items;
   return items.map((item) => {
     if (!item.stack || (counts.get(item.stack) ?? 0) >= 2) return item;
-    const { stack: _stack, ...rest } = item;
+    const { stack: _stack, stackStill: _still, ...rest } = item;
     return rest as HearthItem;
   });
 }
@@ -917,7 +920,7 @@ export function copyItem(layout: HearthLayout, id: string, to: Scope): { items: 
     return { items: layout.items, copyId: null };
   }
   // A copy stands on its own: it doesn't join the stack it was copied from.
-  const { x: _x, y: _y, id: _id, stack: _stack, locked: _locked, ...rest } = JSON.parse(JSON.stringify(found.item)) as HearthItem;
+  const { x: _x, y: _y, id: _id, stack: _stack, stackStill: _still, locked: _locked, ...rest } = JSON.parse(JSON.stringify(found.item)) as HearthItem;
   if (rest.kind === "widget" && rest.widget.kind === "reminders") {
     rest.widget.settings.items = rest.widget.settings.items.map(({ notificationId: _n, schedule: _s, ...reminder }) => ({
       ...reminder,
@@ -1178,7 +1181,7 @@ export function moveToScope(layout: HearthLayout, id: string, to: Scope): Hearth
   if (to && !findHollow(layout, to)) return layout.items;
 
   const removed = { ...layout, items: inScope(layout, found.scope, (inner) => removeItem(inner, id)) };
-  const { x: _x, y: _y, stack: _stack, ...rest } = found.item;
+  const { x: _x, y: _y, stack: _stack, stackStill: _still, ...rest } = found.item;
   return inScope(removed, to, (inner) => addItem(inner, rest as Omit<HearthItem, "x" | "y"> as never));
 }
 

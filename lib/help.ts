@@ -246,12 +246,27 @@ export const helpSections: HelpSection[] = [
       {
         question: "How do I move things around on my Hearth?",
         answer:
-          "Tap Edit at the top of the Hearth, or hold your finger on any tile. Then drag it to an open spot, or onto something the same size to swap the two (the outline shows what will happen, and nothing else gets pushed around). Want it somewhere that's full? Hold still there for a moment and the things below slide down to make room. Hold a corner, then pull, to resize it. Changed your mind? Undo and Redo are on the bar along the bottom while you edit. Dragging fiddly? Tap the tile while editing, open \"Size & place\" and tap \"Move it with arrows\". Tap Done when you're finished.",
+          "Tap Edit at the top of the Hearth, or hold your finger on any tile (holding a Hollow peeks inside first; just keep your finger moving to pick it up). Then drag it to an open spot, or onto something the same size to swap the two (the outline shows what will happen, and nothing else gets pushed around). Want it somewhere that's full? Hold still there for a moment and the things below slide down to make room. Hold a corner, then pull, to resize it. Changed your mind? Undo and Redo are on the bar along the bottom while you edit. Dragging fiddly? Tap the tile while editing, open \"Size & place\" and tap \"Move it with arrows\". Tap Done when you're finished.",
       },
       {
         question: "How do I add a widget or a decoration?",
         answer:
           "Tap Edit, then Add on the bar at the bottom. Widgets show something live, like a countdown, today's menu or what's left on your grocery list. Decorate has little drawings to dress up your Hearth.",
+      },
+      {
+        question: "What are the little red dots on my Hearth?",
+        answer:
+          "A dot means something in it is new: a notice from that Nook you haven't read yet, or a note on a Fridge door. A Hollow gets a dot when anything inside it has one, and so does a page's name at the top. The dots go away once you've read those notices (in the Nook, or in your inbox).",
+      },
+      {
+        question: "Can I see inside a Hollow without going in?",
+        answer:
+          "Yes. Hold your finger on the Hollow for a moment and a card shows what's inside, with anything new. Tap \"Go in\" to step inside, or tap outside the card to close it.",
+      },
+      {
+        question: "Why did my widget stack turn by itself?",
+        answer:
+          "A stack turns to whichever of its widgets has something new for you, like a dose that's OK again or a chore that's overdue, then goes back to the one you picked once you've seen it. Swipe it back yourself any time. Don't want it to? Tap Edit, tap the stack, open \"Copy & stack\" and turn off \"Flip to what needs you\".",
       },
       {
         question: "Can I make several tiles look the same?",

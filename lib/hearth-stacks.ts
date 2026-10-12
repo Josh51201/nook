@@ -52,6 +52,7 @@ export function addToStack(
     w: Math.max(base.w, size.w),
     h: Math.max(base.h, size.h),
     stack,
+    ...(base.stackStill ? { stackStill: true } : {}),
   };
   const items = layout.items.map((item) => (item.id === id ? { ...item, stack } : item));
   return { items: [...items, added], id: newId };
@@ -63,7 +64,7 @@ export function unstack(layout: Pick<HearthLayout, "items">, id: string): Hearth
   if (!item?.stack) return layout.items;
   const others = layout.items.filter((i) => i.id !== id);
   const spot = findFreeSpot(others, item.w, item.h);
-  const { stack: _stack, ...alone } = item;
+  const { stack: _stack, stackStill: _still, ...alone } = item;
   return normalizeStacks([...others, { ...alone, ...spot } as HearthItem]);
 }
 
@@ -72,4 +73,16 @@ export function stackPosition(items: HearthItem[], item: HearthItem): [number, n
   if (!item.stack) return null;
   const mates = stackMates(items, item);
   return mates.length > 1 ? [mates.indexOf(item), mates.length] : null;
+}
+
+// Smart stacks (CORE-114): whether the stack flips by itself to whichever
+// widget has news. Set on every widget in it, so it survives any one of them
+// leaving.
+export function setStackStill(items: HearthItem[], stack: string, still: boolean): HearthItem[] {
+  return items.map((item) => {
+    if (item.stack !== stack) return item;
+    if (still) return { ...item, stackStill: true };
+    const { stackStill: _still, ...rest } = item;
+    return rest as HearthItem;
+  });
 }

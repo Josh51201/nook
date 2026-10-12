@@ -2,7 +2,7 @@
 
 _Only what's open, or a rule for the whole app, lives here. Built requirements are archived — grep them by ID, don't read whole files: shell, Hearth and app-wide `CORE-` in `docs/archive/NOOK_HEARTH_BUILT.md`; every built Nook plus `PROF-` and `HOME-` in `docs/archive/NOOK_NOOKS_BUILT.md`; older fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. To change a built requirement, edit it in its archive file._
 
-_Last updated: 2026-10-12 (rev 68)_
+_Last updated: 2026-10-12 (rev 69)_
 
 ## 1. Rules for the whole app
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -17,7 +17,7 @@ _Last updated: 2026-10-12 (rev 68)_
 - **CORE-015** Nooks are added to the Hearth from a shop-like catalog; the Gift Nook is one of the Nooks you add (nothing is on the Hearth until you add it). Removing a Nook only takes it off the Hearth; its data stays and comes back if you re-add it *(proposed)*. _(Exception, CORE-072: a brand-new Hearth starts with one Greeting widget.)_
 - **CORE-021** Nook ships as its own app with its own icon (not inside Expo Go). _(Prepared: Josh's own painting of a little cream house with a reading nook (2026-10-12) as the icon, a matching house silhouette for Android's themed and notification icon, a plain cream iPhone launch screen; app ID `app.mynookapp.nook` (Q-025); app.json and eas.json set up; build guide in docs/BUILDING_THE_APP.md. Waiting on Josh's Expo and Apple Developer accounts — see section 9.)_
 
-Everything else in CORE-006..099 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md): the Hearth, Hollows, widgets, Trinkets, Cubbies, the Fridge door, Edit mode, the Nooks tab and Market, Help, text size, accessibility and Settings → Notifications. Josh said yes to these; details marked proposed are Claude's until he confirms. Some is paid under Nook Plus (Q-028).
+Everything else in CORE-006..116 that isn't listed here is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md): the Hearth, Hollows, widgets, Trinkets, Cubbies, the Fridge door, Edit mode, the Nooks tab and Market, Help, text size, accessibility and Settings → Notifications. Josh said yes to these; details marked proposed are Claude's until he confirms. Some is paid under Nook Plus (Q-028).
 
 **Hearth to-do (not built yet).** Claude suggested these on 2026-10-12, and Josh said "Add all of those on the next to do". Everything past the one-line idea is Claude's design and stays proposed until Josh tries it.
 - **CORE-105** **This week** widget: one agenda for the coming days that mixes every Nook (Gatherings, chores due, vet visits, renewals, trips, meals), grouped by day.
@@ -29,9 +29,6 @@ Everything else in CORE-006..099 is built and archived in [archive/NOOK_HEARTH_B
 - **CORE-111** **Whose turn?** widget: a spinner or rotation for who does the dishes, picks the movie, and so on; made for the shared Home page.
 - **CORE-112** **Sky** widget: sunrise and sunset, the moon phase and the season, drawn cozy to match the Window widget.
 - **CORE-113** **Gratitude jar** widget: one line a day, and now and then it shows an old one back to you (could share its design with the Quote Jar backlog idea).
-- **CORE-114** Smart stacks: a widget stack can flip by itself to whichever widget needs you now (a dose due, a chore overdue, a new fridge note), then go back to the one you chose.
-- **CORE-115** Badges: widgets and Hollows show a small dot when something inside is new, so a closed Hollow never hides news.
-- **CORE-116** Peek into a Hollow: hold a Hollow to see a small preview of what's inside without going in.
 - **CORE-117** A look per page: each Hearth page can have its own wallpaper and theme (e.g. a festive "Holidays" page).
 - **CORE-118** Seasonal Trinkets: Trinkets that swap themselves for the season (a pumpkin in October, a stocking in December).
 - **CORE-119** Kid's Hearth: a simple, locked Hearth for a kid in your Home, with big buttons and nothing they can delete by accident.
@@ -168,7 +165,7 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 
 ## 9. Up next
 0. **Hearth to-do** (CORE-105..121, section 1), built one at a time and committed after each. Phases *(proposed)*:
-   - **Phase 1, make what's there smarter:** badges (CORE-115), then smart stacks (CORE-114) and peek into a Hollow (CORE-116), which reuse the badges' "something needs you" signal.
+   - ~~**Phase 1, make what's there smarter:** badges (CORE-115), smart stacks (CORE-114), peek into a Hollow (CORE-116).~~ Built 2026-10-12, archived; Josh tries them.
    - **Phase 2, widgets from Nooks you already have:** This week (CORE-105), Birthdays coming up (CORE-106), Getaway (CORE-108), then New in Wishbooks (CORE-107) last, with its GIFT-007 privacy tests.
    - **Phase 3, new stand-alone widgets:** Sky (CORE-112), Kitchen timer (CORE-109), Gratitude jar (CORE-113), Whose turn? (CORE-111).
    - **Phase 4, looks:** a look per page (CORE-117), Seasonal Trinkets (CORE-118), Bedtime look (CORE-120).

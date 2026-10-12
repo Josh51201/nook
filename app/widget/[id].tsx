@@ -74,7 +74,7 @@ import {
   type WidgetLook,
   type WidgetOf,
 } from "../../lib/widgets";
-import { addToStack, MAX_STACK, stackMates, unstack } from "../../lib/hearth-stacks";
+import { addToStack, MAX_STACK, setStackStill, stackMates, unstack } from "../../lib/hearth-stacks";
 import { requestMove } from "../../lib/move-request";
 import { lookOf, requestPaint } from "../../lib/hearth-looks";
 
@@ -156,6 +156,11 @@ export default function WidgetEditor() {
           tags: draft.tags,
         } as Partial<WidgetItem>)
       );
+      // Smart stacks (CORE-114): set on every widget in the stack.
+      const stackId = original.stack;
+      if (stackId && Boolean(draft.stackStill) !== Boolean(original.stackStill)) {
+        items = inScope({ ...layout, items }, home, (inner) => setStackStill(inner.items, stackId, Boolean(draft.stackStill)));
+      }
       if (draft.w !== original.w || draft.h !== original.h) {
         items = inScope({ ...layout, items }, home, (inner) => resizeItem(inner, draft.id, draft.w, draft.h));
       }
@@ -455,6 +460,18 @@ export default function WidgetEditor() {
           A stack keeps several widgets in one spot: swipe sideways on the Hearth to flip through them.
           {original.stack ? ` This one is in a stack of ${stackMates(layout.items, original).length}.` : ""}
         </Text>
+        {original.stack ? (
+          <>
+            <SwitchRow
+              label="Flip to what needs you"
+              value={!draft.stackStill}
+              onChange={(smart) => setDraft({ ...draft, stackStill: smart ? undefined : true })}
+            />
+            <Text style={ui.muted}>
+              When one of these widgets has something new (a dose due, a chore overdue, a note on the fridge), the stack turns to it by itself, then back to the one you picked.
+            </Text>
+          </>
+        ) : null}
         {stackMates(layout.items, original).length < MAX_STACK ? (
           <>
             <Text style={ui.label}>Put another widget in the stack</Text>
