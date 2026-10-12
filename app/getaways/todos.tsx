@@ -6,6 +6,7 @@ import { DateField } from "../../components/date-field";
 import { CheckRow } from "../../components/getaway-bits";
 import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { NudgePill, useNudges } from "../../components/nudge";
 import { Text, TextInput } from "../../components/text";
 import { Button, Chip, EmptyState, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
@@ -28,6 +29,7 @@ export default function BeforeYouGo() {
   const [dueOn, setDueOn] = useState<string | null>(null);
   const [who, setWho] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const nudges = useNudges();
 
   if (isLoading && !data) return <LoadingScreen cards={3} />;
   if (!data) return <EmptyState icon="plane" title="That Getaway isn't here" body="It may have been removed." />;
@@ -96,6 +98,16 @@ export default function BeforeYouGo() {
                 done={!!t.done_at}
                 onToggle={() => toggle(t)}
                 onLongPress={() => remove(t)}
+                right={
+                  // CORE-101: remind whoever's doing it.
+                  !t.done_at && t.for_person && t.for_person !== userId ? (
+                    <NudgePill
+                      sent={nudges.isSent(t.id)}
+                      label={`Nudge ${doer} about ${t.text}`}
+                      onPress={() => nudges.nudge(t.id, "todo", t.id)}
+                    />
+                  ) : null
+                }
               />
             );
           })}

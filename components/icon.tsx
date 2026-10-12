@@ -143,6 +143,8 @@ const icons = {
   note: { ios: "note.text", android: "sticky_note_2" },
   folder: { ios: "folder.fill", android: "folder" },
   pin: { ios: "pin.fill", android: "push_pin" },
+  // Nudges (CORE-101): a little wave to remind someone.
+  nudge: { ios: "hand.wave.fill", android: "waving_hand" },
   // Menu Board
   menuBoard: { ios: "list.bullet.rectangle.portrait.fill", android: "restaurant_menu" },
 } satisfies Record<string, { ios: SymbolViewProps["name"] & string; android: AndroidName }>;

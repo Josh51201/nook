@@ -188,6 +188,12 @@ export const fridgeSettingDefaults = {
   notifyBurrow: true, // … or on one of your Burrows' fridges
 };
 
+// Nudges (CORE-101): a reminder someone sends you by hand. Read by the
+// database too (public.wants_nudges), so rename in both places or not at all.
+export const nudgeSettingDefaults = {
+  notifyNudges: true,
+};
+
 // Menu Board settings (MENU-001, MENU-007): which day the week starts on
 // (0 Sunday, 1 Monday) and which meals you plan.
 export const menuBoardSettingDefaults = {

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { displayName, type Profile } from "../lib/gift-nook";
@@ -19,6 +20,7 @@ export function CheckRow({
   onToggle,
   onLongPress,
   warn,
+  right,
 }: {
   text: string;
   sub?: string | null;
@@ -26,6 +28,8 @@ export function CheckRow({
   onToggle: () => void;
   onLongPress?: () => void;
   warn?: boolean;
+  // Something at the end of the row, like a Nudge (CORE-101).
+  right?: ReactNode;
 }) {
   return (
     <Tap
@@ -55,6 +59,7 @@ export function CheckRow({
         <Text style={[{ fontSize: 16, color: colors.text }, done && { color: colors.muted, textDecorationLine: "line-through" }]}>{text}</Text>
         {sub ? <Text style={[ui.muted, { fontSize: 13 }, warn && !done && { color: colors.error, fontWeight: "600" }]}>{sub}</Text> : null}
       </View>
+      {right}
     </Tap>
   );
 }

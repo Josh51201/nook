@@ -7,6 +7,7 @@ import { Avatar } from "../../components/avatar";
 import { Icon } from "../../components/icon";
 import { Appear, LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { NudgeButton, useNudges } from "../../components/nudge";
 import { RsvpCard } from "../../components/rsvp";
 import { Banner, Button, EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
@@ -24,6 +25,7 @@ import {
 import { setRsvp } from "../../lib/gatherings-data";
 import { isPotluckWeek, isWaiting } from "../../lib/groceries";
 import { potluckShopping } from "../../lib/groceries-data";
+import { dishNudgeTargets } from "../../lib/nudges";
 import { localDay } from "../../lib/pets";
 import { loadPotluck, potluckWhen, type Dish, type PotluckData } from "../../lib/potluck-data";
 import { supabase } from "../../lib/supabase";
@@ -45,6 +47,7 @@ export default function PotluckScreen() {
   const [error, setError] = useState<string | null>(null);
   // What you've put on grocery lists for this Potluck (GROC-006).
   const [shopping, setShopping] = useState<Awaited<ReturnType<typeof potluckShopping>>>([]);
+  const nudges = useNudges();
 
   const load = useCallback(
     () =>
@@ -83,6 +86,8 @@ export default function PotluckScreen() {
   const { going, maybe } = headcount(rsvps);
   const looseDishes = dishes.filter((dish) => !dish.slot_id || !slots.some((slot) => slot.id === dish.slot_id));
   const withNeeds = coming.filter((person) => person.allergies.length || person.diets.length);
+  // CORE-101: hosts can nudge people coming who haven't picked a dish.
+  const noDish = isHost && new Date(potluck.starts_at) > new Date() ? dishNudgeTargets(coming, dishes, userId) : [];
 
   async function answer(profileId: string, status: RsvpStatus, extraGuests: number) {
     tap();
@@ -279,6 +284,15 @@ export default function PotluckScreen() {
             variant="secondary"
             onPress={() => router.push({ pathname: "/gatherings/form", params: { gatheringId: potluck.gathering_id } })}
           />
+          {noDish.length ? (
+            <NudgeButton
+              title={noDish.length === 1 ? `Nudge ${noDish[0].name} to pick a dish` : `Nudge ${noDish.length} people to pick a dish`}
+              hint={`Coming but not bringing anything yet: ${noDish.map((p) => p.name).join(", ")}.`}
+              sent={nudges.isSent("dish")}
+              busy={nudges.isBusy("dish")}
+              onPress={() => nudges.nudge("dish", "dish", id, { many: noDish.length > 1 })}
+            />
+          ) : null}
           <Text style={ui.muted}>Who's invited, the day and place, and co-hosts are set on the Gathering.</Text>
           <Text style={ui.muted}>Tap a dish to take it off the list if someone can't bring it any more.</Text>
         </>

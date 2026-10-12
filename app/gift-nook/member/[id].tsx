@@ -15,6 +15,7 @@ import { Appear, FadeSwap, LoadingScreen, Tap } from "../../../components/motion
 import { NookScroll } from "../../../components/nook-scroll";
 import { Banner, Button, Chip, EmptyState } from "../../../components/ui";
 import { GiftCard } from "../../../components/gift-card";
+import { NudgeButton, useNudges } from "../../../components/nudge";
 import { useAuth } from "../../../lib/auth-context";
 import {
   displayName,
@@ -87,6 +88,7 @@ export default function MemberWishbook() {
   const [error, setError] = useState<string | null>(null);
   const [shelfFilter, setShelfFilter] = useState<string | null>(null);
   const [budget, setBudget] = useState<number | null>(null);
+  const nudges = useNudges();
 
   const load = useCallback(
     () =>
@@ -555,6 +557,21 @@ export default function MemberWishbook() {
         variant="secondary"
         onPress={() => router.push({ pathname: "/gift-nook/stash", params: { aboutId: profileId } })}
       />
+      {/* CORE-101: a nudge to add more. Same words whatever's been tucked,
+          and only ever sent by someone tapping this (GIFT-007). */}
+      {!isManager && !error ? (
+        <NudgeButton
+          title={isManaged ? `Ask for more ideas for ${name}` : `Ask ${name} for more ideas`}
+          hint={
+            isManaged
+              ? `Goes to the grown-ups who look after ${name}'s Wishbook.`
+              : `${name} gets a friendly reminder to add to their Wishbook${gatheringTitle ? ` for ${gatheringTitle}` : ""}. It never says what's been tucked.`
+          }
+          sent={nudges.isSent("wishbook")}
+          busy={nudges.isBusy("wishbook")}
+          onPress={() => nudges.nudge("wishbook", "wishbook", profileId, { aboutGathering: gatheringId })}
+        />
+      ) : null}
 
       {gifts.length > 4 ? (
         <View style={{ gap: 8 }}>

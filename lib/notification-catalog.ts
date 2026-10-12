@@ -5,6 +5,7 @@ import {
   gatheringSettingDefaults,
   giftNookSettingDefaults,
   letterboxSettingDefaults,
+  nudgeSettingDefaults,
   petSettingDefaults,
   potluckSettingDefaults,
   rhythmSettingDefaults,
@@ -65,6 +66,19 @@ export const notificationCatalog: NookNotifications[] = [
       { key: "notifyChanged", icon: "edit", title: "The plan changes", body: "If the time, place or name changes and you're going or bringing something." },
       { key: "notifyRsvps", icon: "check", title: "Someone RSVPs", body: "For Potlucks you host. Off unless you turn it on, since it can get busy." },
       { key: "notifyDishes", icon: "food", title: "Someone picks a dish", body: "For Potlucks you host. Off unless you turn it on." },
+    ],
+  },
+  {
+    nook: "nudges",
+    label: { title: "Nudges", icon: "nudge" },
+    defaults: nudgeSettingDefaults,
+    switches: [
+      {
+        key: "notifyNudges",
+        icon: "nudge",
+        title: "When someone nudges you",
+        body: "A reminder from family: answer an invite, add to your Wishbook, pick a Potluck dish, or a job that's yours. They're never told if this is off.",
+      },
     ],
   },
   {

@@ -148,6 +148,11 @@ export const helpAnswers: HelpAnswer[] = [
       "Every Nook lives in the Nooks tab at the bottom, even if it isn't on your Hearth. To put it on your Hearth, tap the + on its icon. Taking a Nook off your Hearth never deletes anything inside it.",
   },
   {
+    question: "How do I remind someone about something?",
+    answer:
+      "Look for the Nudge button (a little waving hand). On someone's Wishbook you can ask them for more ideas. If you're hosting a Gathering, you can nudge anyone who hasn't said if they're coming, and on a Potluck, anyone coming who hasn't picked a dish. On a Getaway task or a Rhythm that's someone else's, you can remind them. It lands in their inbox, and you can nudge each person once a day. Don't want nudges? Turn them off in Settings → Notifications.",
+  },
+  {
     question: "How do I add a gift to my Wishbook?",
     answer:
       "Open the Gift Nook, tap My Wishbook, then add a gift. Give it a name, and add a link, a price or a note if you like. Your family can then see it and tuck it.",

@@ -7,6 +7,7 @@ import { DateField } from "../../components/date-field";
 import { Icon, IconBadge } from "../../components/icon";
 import { Appear, LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { NudgeButton, useNudges } from "../../components/nudge";
 import { Text, TextInput } from "../../components/text";
 import { Button, EmptyState, SectionHeader } from "../../components/ui";
 import { useAuth } from "../../lib/auth-context";
@@ -38,6 +39,7 @@ export default function RhythmPage() {
   const [onDay, setOnDay] = useState(localDay());
   const [note, setNote] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const nudges = useNudges();
 
   const rhythm = data?.rhythms.find((r) => r.id === id);
 
@@ -144,6 +146,16 @@ export default function RhythmPage() {
         </View>
         {rhythm.notes ? <Text style={[ui.muted, { color: colors.text }]}>{rhythm.notes}</Text> : null}
       </View>
+
+      {/* CORE-101: it's someone else's job, so you can remind them. */}
+      {owner && rhythm.owner !== userId ? (
+        <NudgeButton
+          title={`Remind ${owner}`}
+          sent={nudges.isSent("rhythm")}
+          busy={nudges.isBusy("rhythm")}
+          onPress={() => nudges.nudge("rhythm", "rhythm", rhythm.id)}
+        />
+      ) : null}
 
       {logging ? (
         <View style={[ui.card, { gap: 10 }]}>

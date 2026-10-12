@@ -6,6 +6,7 @@ import { Avatar } from "../../components/avatar";
 import { Icon, IconBadge, type IconName } from "../../components/icon";
 import { Appear, LoadingScreen } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
+import { NudgeButton, NudgePill, useNudges } from "../../components/nudge";
 import { RsvpCard } from "../../components/rsvp";
 import { Text } from "../../components/text";
 import { EmptyState, HeaderIcon, NavCard, SectionHeader } from "../../components/ui";
@@ -17,6 +18,7 @@ import { friendlyError, guarded, tap } from "../../lib/feedback";
 import { guestSummary, rsvpChoices, whenWords, type Guest } from "../../lib/gatherings";
 import { addPotluck, loadGathering, setRsvp, type GatheringData } from "../../lib/gatherings-data";
 import { countdown, displayName, gatheringKindInfo, isArchived } from "../../lib/gift-nook";
+import { rsvpNudgeTargets } from "../../lib/nudges";
 import type { Rsvp, RsvpStatus } from "../../lib/potluck";
 import { colors, themed, ui } from "../../lib/theme";
 
@@ -32,6 +34,7 @@ export default function GatheringScreen() {
   const [data, setData] = useState<GatheringData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const nudges = useNudges();
 
   const load = useCallback(
     () =>
@@ -76,6 +79,9 @@ export default function GatheringScreen() {
   const amInvited = guests.some((g) => g.profile_id === userId);
   const pickedAlone = guests.filter((g) => g.invited_alone).length;
   const forWhom = honorees.map(nameOf);
+  // CORE-101: hosts can nudge whoever hasn't answered.
+  const toNudge = canHost && !archived ? rsvpNudgeTargets(guests, userId, myKids) : [];
+  const canNudge = new Set(toNudge.map((g) => g.profile_id));
 
   async function answer(profileId: string, status: RsvpStatus, extraGuests: number) {
     tap();
@@ -210,8 +216,30 @@ export default function GatheringScreen() {
             {group.status ? rsvpChoices.find((c) => c.key === group.status)!.label : "Hasn't answered"} · {group.people.length}
           </Text>
           {group.people.map((guest) => (
-            <GuestRow key={guest.profile_id} guest={guest} me={guest.profile_id === userId} />
+            <GuestRow
+              key={guest.profile_id}
+              guest={guest}
+              me={guest.profile_id === userId}
+              right={
+                canNudge.has(guest.profile_id) ? (
+                  <NudgePill
+                    sent={nudges.isSent("all") || nudges.isSent(guest.profile_id)}
+                    label={`Nudge ${displayName(guest)} to answer`}
+                    onPress={() => nudges.nudge(guest.profile_id, "rsvp", id, { person: guest.profile_id })}
+                  />
+                ) : null
+              }
+            />
           ))}
+          {!group.status && toNudge.length > 1 ? (
+            <NudgeButton
+              title={`Nudge all ${toNudge.length} to answer`}
+              hint="Each gets a reminder in their inbox. Kids' go to their grown-ups."
+              sent={nudges.isSent("all") || toNudge.every((g) => nudges.isSent(g.profile_id))}
+              busy={nudges.isBusy("all")}
+              onPress={() => nudges.nudge("all", "rsvp", id, { many: true })}
+            />
+          ) : null}
         </View>
       ))}
     </NookScroll>
@@ -286,7 +314,7 @@ function HearthPin({ gatheringId, title, over }: { gatheringId: string; title: s
   );
 }
 
-function GuestRow({ guest, me }: { guest: Guest; me: boolean }) {
+function GuestRow({ guest, me, right }: { guest: Guest; me: boolean; right?: React.ReactNode }) {
   return (
     <View style={[ui.row, { gap: 10 }]}>
       <Avatar name={guest.display_name} icon={guest.avatar_icon} color={guest.avatar_color} photo={guest.avatar_path} size={32} />
@@ -296,6 +324,7 @@ function GuestRow({ guest, me }: { guest: Guest; me: boolean }) {
       </Text>
       {guest.extra_guests && guest.status !== "no" ? <Text style={ui.muted}>+{guest.extra_guests}</Text> : null}
       {guest.is_host ? <Text style={styles.hostTag}>Host</Text> : null}
+      {right}
     </View>
   );
 }

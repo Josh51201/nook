@@ -121,6 +121,7 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The Nook shop | The Market | proposed |
 | The bottom tab listing every Nook (CORE-067) | Nooks | proposed |
 | The page of common questions (CORE-070) | Help | proposed |
+| A one-tap reminder sent to someone (CORE-101) | Nudge | proposed |
 | A house/stump on the Hearth you enter to reach its own organized screen | Hollow | approved |
 
 ## 8. Nook Backlog
@@ -140,7 +141,7 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 Everything Josh has asked for so far is built.
 1. **Josh tries the Menu Board and Grocery List Nooks** and confirms or changes their proposed details (MENU-, GROC- in the Nooks archive). Then he picks the next Nook from the backlog (section 8).
 2. **Waiting on Josh** — setup only he can do; Claude walks him through each:
-   - Run the newer database migrations in Supabase if they haven't been yet: `delete_account` (AUTH-003), `little_log`, `notes`, `menu_and_groceries` (MENU, GROC).
+   - Run the newer database migrations in Supabase if they haven't been yet: `delete_account` (AUTH-003), `little_log`, `notes`, `menu_and_groceries` (MENU, GROC), `nudges` (CORE-101).
    - Put a Supabase service key in `.env.test.local` so the privacy tests (GIFT-007 and each Nook's) stop skipping.
    - Make the Expo and Apple Developer accounts so the real app can be built (CORE-021, docs/BUILDING_THE_APP.md).
    - Make the App Review demo account in Supabase and add it to App Store Connect (AUTH-004).

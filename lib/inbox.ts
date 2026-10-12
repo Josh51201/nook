@@ -27,6 +27,10 @@ export type Notice = {
     invite_id?: string;
     home_id?: string;
     note_id?: string;
+    item_id?: string;
+    profile_id?: string;
+    // A nudge about a kid's Wishbook, sent to the grown-ups who look after it.
+    kid?: boolean;
     expires_at?: string;
   };
   created_at: string;
@@ -45,6 +49,7 @@ const kinds: Record<string, Record<string, KindInfo>> = {
     gathering_changed: { icon: "edit", route: gatheringRoute },
     gathering_rsvp: { icon: "check", route: gatheringRoute },
     gathering_soon: { icon: "calendar", route: gatheringRoute },
+    nudge_rsvp: { icon: "nudge", route: gatheringRoute },
   },
   "gift-nook": {
     gathering_soon: {
@@ -64,6 +69,11 @@ const kinds: Record<string, Record<string, KindInfo>> = {
       icon: "invite",
       route: (data) => (data.burrow_id ? `/burrow/${data.burrow_id}` : null),
     },
+    // Your own Wishbook, or the kid's you look after.
+    nudge_wishbook: {
+      icon: "nudge",
+      route: (data) => (data.kid && data.owner_id ? `/gift-nook/member/${data.owner_id}` : "/gift-nook/wishbook"),
+    },
   },
   potluck: {
     potluck_reminder: { icon: "potluck", route: (data) => potluckRoute(data) },
@@ -71,6 +81,7 @@ const kinds: Record<string, Record<string, KindInfo>> = {
     potluck_changed: { icon: "edit", route: (data) => potluckRoute(data) },
     potluck_rsvp: { icon: "check", route: (data) => potluckRoute(data) },
     potluck_dish: { icon: "food", route: (data) => potluckRoute(data) },
+    nudge_dish: { icon: "nudge", route: (data) => potluckRoute(data) },
   },
   pets: {
     pet_fed: { icon: "paw", route: (data) => (data.pet_id ? `/pets/${data.pet_id}` : "/pets") },
@@ -82,6 +93,7 @@ const kinds: Record<string, Record<string, KindInfo>> = {
     rhythm_due: { icon: "rhythm", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
     rhythm_overdue: { icon: "warning", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
     rhythm_done: { icon: "check", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
+    nudge_rhythm: { icon: "nudge", route: (data) => (data.rhythm_id ? `/rhythms/${data.rhythm_id}` : "/rhythms") },
   },
   subscriptions: {
     trial_ending: {
@@ -97,6 +109,7 @@ const kinds: Record<string, Record<string, KindInfo>> = {
     getaway_added: { icon: "plane", route: (data) => (data.getaway_id ? `/getaways/${data.getaway_id}` : "/getaways") },
     getaway_todo: { icon: "todo", route: (data) => (data.getaway_id ? `/getaways/todos?id=${data.getaway_id}` : "/getaways") },
     getaway_tomorrow: { icon: "calendar", route: (data) => (data.getaway_id ? `/getaways/${data.getaway_id}` : "/getaways") },
+    nudge_todo: { icon: "nudge", route: (data) => (data.getaway_id ? `/getaways/todos?id=${data.getaway_id}` : "/getaways") },
   },
   sickday: {
     sick_dose_given: { icon: "pill", route: (data) => (data.spell_id ? `/sickday/${data.spell_id}` : "/sickday") },
