@@ -25,7 +25,11 @@ import { formatMinutes } from "../../lib/recipes";
 import { useRecipesSummary } from "../../lib/recipes-data";
 import { useRecipeImage } from "../recipe-thumb";
 import { formatMoney } from "../../lib/subscriptions";
-import { kindInfo } from "../../lib/getaways";
+import { kindInfo, tripState } from "../../lib/getaways";
+import { birthdayWhen } from "../../lib/birthdays";
+import { useGetawayGlance, useNewWishes, useUpcomingBirthdays, useWeekEntries, type BirthdayGlance } from "../../lib/glance-data";
+import { groupNewWishes, wishTitles } from "../../lib/new-wishes";
+import { buildWeek, tripDayWords, weekCount, type WeekEntry } from "../../lib/this-week";
 import { useSubscriptionsSummary } from "../../lib/subscriptions-data";
 import { menuBoardSettingDefaults, sickdaySettingDefaults, useNookSettings } from "../../lib/nook-settings";
 import { formatTemp as sickTemp, isFever, untilWords } from "../../lib/sickday";
@@ -303,6 +307,14 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return null; // drawn whole by PetBedWidget, below
     case "fridge":
       return null; // drawn whole by FridgeWidget, below
+    case "week":
+      return <WeekWidget {...props} widget={widget} />;
+    case "birthdays":
+      return <BirthdaysWidget {...props} widget={widget} />;
+    case "getaway":
+      return <GetawayWidget {...props} widget={widget} />;
+    case "wishes":
+      return <WishesWidget {...props} widget={widget} />;
   }
 }
 
@@ -1836,6 +1848,231 @@ function GroceriesWidget({ widget, palette, refreshKey, height, shape, icon }: B
         </View>
       ))}
       {toGet.length > fit ? <Muted palette={palette}>+{toGet.length - fit} more</Muted> : null}
+    </View>
+  );
+}
+
+// --- This week (CORE-105) ---------------------------------------------------------
+
+function WeekWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"week">) {
+  const { session } = useAuth();
+  const { days, skip } = widget.settings;
+  const data = useWeekEntries(session?.user.id, refreshKey, days);
+  if (!data) return <Waiting palette={palette} shape={shape} />;
+  const week = buildWeek(data.entries, data.today, days, skip);
+  const total = weekCount(week);
+  const todays = week[0]?.day === data.today ? week[0].entries.length : 0;
+
+  if (shape === "icon") return todays ? <IconFace icon={icon} palette={palette} badge={todays} /> : <IconFace icon={icon} palette={palette} />;
+  if (!total) return <Empty icon="calendar" palette={palette} text={`Nothing in the next ${days} days`} />;
+  if (shape === "strip") {
+    const [first] = week;
+    const entry = first.entries[0];
+    return (
+      <Strip
+        icon={entry.icon}
+        palette={palette}
+        text={`${first.label} · ${entry.title}`}
+        sub={total > 1 ? `${total - 1} more coming up` : entry.detail}
+      />
+    );
+  }
+
+  // Day headings and their entries, as many lines as fit.
+  const fit = rowsThatFit(height, 21, 6);
+  const lines: ({ kind: "day"; day: string; label: string } | { kind: "entry"; entry: WeekEntry; key: string })[] = [];
+  for (const day of week) {
+    if (lines.length >= fit - 1) break;
+    lines.push({ kind: "day", day: day.day, label: day.label });
+    day.entries.forEach((entry, i) => lines.push({ kind: "entry", entry, key: `${day.day}-${i}` }));
+  }
+  const shown = lines.slice(0, fit);
+  // Never end on a heading with nothing under it.
+  if (shown[shown.length - 1]?.kind === "day") shown.pop();
+  const left = total - shown.filter((l) => l.kind === "entry").length;
+
+  return (
+    <View style={{ flex: 1, gap: 3 }}>
+      {shown.map((line) =>
+        line.kind === "day" ? (
+          <Text key={line.day} style={[styles.tiny, { color: palette.muted, fontWeight: "800", letterSpacing: 0.6, marginTop: 2 }]} numberOfLines={1}>
+            {line.label.toUpperCase()}
+          </Text>
+        ) : (
+          <View key={line.key} style={styles.row}>
+            <Icon name={line.entry.overdue ? "warning" : line.entry.icon} size={13} color={palette.accent} />
+            <Text
+              style={[styles.small, { color: palette.text, flex: 1, fontWeight: line.entry.overdue ? "700" : "500" }]}
+              numberOfLines={1}
+            >
+              {line.entry.title}
+            </Text>
+            {line.entry.detail && isBig(shape) ? (
+              <Text style={[styles.tiny, { color: palette.muted }]} numberOfLines={1}>
+                {line.entry.detail}
+              </Text>
+            ) : null}
+          </View>
+        )
+      )}
+      {left > 0 ? <Muted palette={palette}>+{left} more</Muted> : null}
+    </View>
+  );
+}
+
+// --- Birthdays coming up (CORE-106) -----------------------------------------------
+
+function BirthdaysWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"birthdays">) {
+  const { session } = useAuth();
+  const list = useUpcomingBirthdays(session?.user.id, refreshKey, widget.settings.burrowId);
+  if (!list) return <Waiting palette={palette} shape={shape} />;
+  const [next] = list;
+
+  if (shape === "icon") {
+    if (!next) return <IconFace icon={icon} palette={palette} />;
+    return next.daysAway === 0 ? (
+      <IconFace icon={icon} palette={palette} value="Today" />
+    ) : (
+      <IconFace icon={icon} palette={palette} value={String(next.daysAway)} caption={next.daysAway === 1 ? "day" : "days"} />
+    );
+  }
+  if (!next) return <Empty icon="birthday" palette={palette} text="No birthdays shared yet. Family can add theirs in their profile." />;
+  const about = (b: BirthdayGlance) => [birthdayWhen(b), b.turning ? `turns ${b.turning}` : null].filter(Boolean).join(" · ");
+  if (shape === "strip") {
+    return <Strip icon={icon} palette={palette} text={`${next.name} · ${birthdayWhen(next)}`} sub={list[1] ? `Then ${list[1].name}` : next.turning ? `Turns ${next.turning}` : null} />;
+  }
+
+  const rest = list.slice(1, 1 + Math.max(0, Math.min(widget.settings.count - 1, rowsThatFit(height, 22, 70))));
+  return (
+    <View style={{ flex: 1, gap: 6 }}>
+      <View style={[styles.row, { gap: 10 }]}>
+        {isBig(shape) ? <IconBadge name="birthday" size={40} color={palette.accent} background={palette.panel} /> : null}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.body, { color: palette.text, fontWeight: "800", fontSize: 16 }]} numberOfLines={1}>
+            {next.name}
+          </Text>
+          <Text style={[styles.small, { color: next.daysAway === 0 ? palette.accent : palette.muted, fontWeight: next.daysAway === 0 ? "800" : "500" }]} numberOfLines={1}>
+            {next.daysAway === 0 ? `Birthday today${next.turning ? ` · turns ${next.turning}` : ""}` : about(next)}
+          </Text>
+        </View>
+      </View>
+      {rest.length ? (
+        <Panel palette={palette} style={{ padding: 8, gap: 4 }}>
+          {rest.map((b) => (
+            <View key={b.profileId} style={styles.row}>
+              <Icon name="birthday" size={12} color={palette.accent} />
+              <Text style={[styles.small, { color: palette.text, flex: 1 }]} numberOfLines={1}>
+                {b.name}
+              </Text>
+              <Text style={[styles.tiny, { color: palette.muted }]}>{birthdayWhen(b)}</Text>
+            </View>
+          ))}
+        </Panel>
+      ) : null}
+    </View>
+  );
+}
+
+// --- A Getaway (CORE-108) ---------------------------------------------------------
+
+function GetawayWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"getaway">) {
+  const { session } = useAuth();
+  const data = useGetawayGlance(session?.user.id, refreshKey, widget.settings.getawayId);
+  if (!data) return <Waiting palette={palette} shape={shape} />;
+  if (!data.glance) {
+    if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+    return <Empty icon="plane" palette={palette} text={widget.settings.getawayId ? "This trip isn't here any more" : "Plan a Getaway"} />;
+  }
+  const { trip, today, packed, packTotal, toPack } = data.glance;
+  const state = tripState(trip, today);
+  const kindIcon = kindInfo(trip.kind).icon;
+  const daysTo = Math.round((Date.parse(`${trip.starts_on}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 86400000);
+  const big = state === "upcoming" ? (daysTo === 1 ? "Tomorrow" : String(daysTo)) : state === "now" ? tripDayWords(trip.starts_on, trip.ends_on, today) : "Home";
+  const caption = state === "upcoming" ? (daysTo === 1 ? "you're off" : "days to go") : state === "now" ? "Enjoy it!" : "Welcome back";
+  const showPacking = widget.settings.showPacking && packTotal > 0 && state !== "past";
+  const packWords = packed === packTotal ? "All packed" : `${packed} of ${packTotal} packed`;
+
+  if (shape === "icon") {
+    return state === "upcoming" && daysTo > 1 ? (
+      <IconFace icon={kindIcon} palette={palette} value={String(daysTo)} caption="days" />
+    ) : (
+      <IconFace icon={kindIcon} palette={palette} />
+    );
+  }
+  if (shape === "strip") {
+    return <Strip icon={kindIcon} palette={palette} text={`${trip.title} · ${big}${state === "upcoming" && daysTo > 1 ? " days" : ""}`} sub={showPacking ? packWords : trip.place} />;
+  }
+
+  const fit = Math.max(0, rowsThatFit(height, 20, shape === "tall" || shape === "large" ? 150 : 400));
+  return (
+    <View style={{ flex: 1, gap: 6 }}>
+      <View style={styles.row}>
+        <Icon name={kindIcon} size={15} color={palette.accent} />
+        <Text style={[styles.body, { color: palette.text, fontWeight: "800", flex: 1 }]} numberOfLines={1}>
+          {trip.title}
+        </Text>
+      </View>
+      <View style={{ flex: 1, justifyContent: "center" }}>
+        <Text
+          style={{ fontSize: big.length > 4 ? 22 : 34, fontWeight: "800", color: palette.text, letterSpacing: -1 }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {big}
+        </Text>
+        <Muted palette={palette}>{caption}</Muted>
+      </View>
+      {showPacking ? (
+        <View style={{ gap: 4 }}>
+          <ProgressBar palette={palette} done={packed} total={packTotal} />
+          <Text style={[styles.tiny, { color: palette.muted }]} numberOfLines={1}>
+            {packWords}
+          </Text>
+          {toPack.slice(0, fit).map((text, i) => (
+            <View key={`${i}-${text}`} style={styles.row}>
+              <Icon name="todo" size={11} color={palette.accent} />
+              <Text style={[styles.small, { color: palette.text, flex: 1 }]} numberOfLines={1}>
+                {text}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// --- New in Wishbooks (CORE-107) --------------------------------------------------
+// GIFT-007: only other people's Wishbooks, and never anything about tucks.
+
+function WishesWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"wishes">) {
+  const { session } = useAuth();
+  const wishes = useNewWishes(session?.user.id, refreshKey, widget.settings.days);
+  if (!wishes) return <Waiting palette={palette} shape={shape} />;
+  const people = groupNewWishes(wishes);
+
+  if (shape === "icon") return wishes.length ? <IconFace icon={icon} palette={palette} badge={wishes.length} /> : <IconFace icon={icon} palette={palette} />;
+  if (!people.length) return <Empty icon="gift" palette={palette} text={`Nothing new in the last ${widget.settings.days} days`} />;
+  if (shape === "strip") {
+    const [first] = people;
+    return <Strip icon={icon} palette={palette} text={`${first.name} added ${first.count === 1 ? first.titles[0] : `${first.count} things`}`} sub={people.length > 1 ? `And ${people.length - 1} more` : wishTitles(first.titles)} />;
+  }
+
+  const rows = people.slice(0, Math.max(1, Math.min(widget.settings.count, rowsThatFit(height, 38, 14))));
+  return (
+    <View style={{ flex: 1, gap: 7 }}>
+      {rows.map((person) => (
+        <View key={person.profileId}>
+          <Text style={[styles.small, { color: palette.text, fontWeight: "800" }]} numberOfLines={1}>
+            {person.name}
+            <Text style={{ color: palette.muted, fontWeight: "500" }}>{` added ${person.count}`}</Text>
+          </Text>
+          <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+            {wishTitles(person.titles)}
+          </Text>
+        </View>
+      ))}
+      {people.length > rows.length ? <Muted palette={palette}>+{people.length - rows.length} more</Muted> : null}
     </View>
   );
 }

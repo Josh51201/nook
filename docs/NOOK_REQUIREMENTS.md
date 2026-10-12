@@ -2,7 +2,7 @@
 
 _Only what's open, or a rule for the whole app, lives here. Built requirements are archived — grep them by ID, don't read whole files: shell, Hearth and app-wide `CORE-` in `docs/archive/NOOK_HEARTH_BUILT.md`; every built Nook plus `PROF-` and `HOME-` in `docs/archive/NOOK_NOOKS_BUILT.md`; older fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. To change a built requirement, edit it in its archive file._
 
-_Last updated: 2026-10-12 (rev 69)_
+_Last updated: 2026-10-12 (rev 70)_
 
 ## 1. Rules for the whole app
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -20,10 +20,6 @@ _Last updated: 2026-10-12 (rev 69)_
 Everything else in CORE-006..116 that isn't listed here is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md): the Hearth, Hollows, widgets, Trinkets, Cubbies, the Fridge door, Edit mode, the Nooks tab and Market, Help, text size, accessibility and Settings → Notifications. Josh said yes to these; details marked proposed are Claude's until he confirms. Some is paid under Nook Plus (Q-028).
 
 **Hearth to-do (not built yet).** Claude suggested these on 2026-10-12, and Josh said "Add all of those on the next to do". Everything past the one-line idea is Claude's design and stays proposed until Josh tries it.
-- **CORE-105** **This week** widget: one agenda for the coming days that mixes every Nook (Gatherings, chores due, vet visits, renewals, trips, meals), grouped by day.
-- **CORE-106** **Birthdays coming up** widget: the next birthdays in your Burrows (from GIFT-035), with a button to start a gift list.
-- **CORE-107** **New in Wishbooks** widget: what family members recently added to their Wishbooks. It shows only other people's lists and never says anything about claims, including on your own (GIFT-007).
-- **CORE-108** **Getaway** widget: your next trip's countdown and packing list in one card.
 - **CORE-109** **Kitchen timer** widget: one or more named timers ("Cookies – 12 min") that ring on the phone.
 - **CORE-110** **Sticker chart** widget: a kid earns a sticker per task and gets a reward at a goal (e.g. 10); it can be tied to a kid in your Home.
 - **CORE-111** **Whose turn?** widget: a spinner or rotation for who does the dishes, picks the movie, and so on; made for the shared Home page.
@@ -166,7 +162,7 @@ Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was
 ## 9. Up next
 0. **Hearth to-do** (CORE-105..121, section 1), built one at a time and committed after each. Phases *(proposed)*:
    - ~~**Phase 1, make what's there smarter:** badges (CORE-115), smart stacks (CORE-114), peek into a Hollow (CORE-116).~~ Built 2026-10-12, archived; Josh tries them.
-   - **Phase 2, widgets from Nooks you already have:** This week (CORE-105), Birthdays coming up (CORE-106), Getaway (CORE-108), then New in Wishbooks (CORE-107) last, with its GIFT-007 privacy tests.
+   - ~~**Phase 2, widgets from Nooks you already have:** This week (CORE-105), Birthdays coming up (CORE-106), Getaway (CORE-108), New in Wishbooks (CORE-107).~~ Built 2026-10-12, archived; Josh tries them.
    - **Phase 3, new stand-alone widgets:** Sky (CORE-112), Kitchen timer (CORE-109), Gratitude jar (CORE-113), Whose turn? (CORE-111).
    - **Phase 4, looks:** a look per page (CORE-117), Seasonal Trinkets (CORE-118), Bedtime look (CORE-120).
    - **Phase 5, kids:** Sticker chart (CORE-110) and Kid's Hearth (CORE-119), after Q-035.

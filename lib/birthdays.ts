@@ -56,3 +56,61 @@ export function upcomingBirthdays(
   }
   return plans.sort((a, b) => a.endsAt.getTime() - b.endsAt.getTime());
 }
+
+// Birthdays coming up (CORE-106): each person's next birthday, soonest
+// first, one entry per person even if they're in two of your Burrows.
+// `turning` is their new age, kept only for kids (under 18), since grown-ups
+// may rather it not be on the fridge.
+export type NextBirthday = {
+  profileId: string;
+  name: string;
+  burrowIds: string[];
+  // YYYY-MM-DD, local.
+  day: string;
+  year: number;
+  daysAway: number;
+  turning: number | null;
+};
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const dayOf = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+export function nextBirthdays(people: BirthdayPerson[], today = new Date(), withinDays = 366): NextBirthday[] {
+  const from = startOfDay(today);
+  const byPerson = new Map<string, NextBirthday>();
+  for (const person of people) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(person.birthday)) continue;
+    const known = byPerson.get(person.profileId);
+    if (known) {
+      if (!known.burrowIds.includes(person.burrowId)) known.burrowIds.push(person.burrowId);
+      continue;
+    }
+    let year = from.getFullYear();
+    let day = birthdayIn(person.birthday, year);
+    if (day.getTime() < from.getTime()) day = birthdayIn(person.birthday, (year += 1));
+    const daysAway = Math.round((day.getTime() - from.getTime()) / 86400000);
+    if (daysAway > withinDays) continue;
+    const born = Number(person.birthday.slice(0, 4));
+    const age = year - born;
+    byPerson.set(person.profileId, {
+      profileId: person.profileId,
+      name: person.name,
+      burrowIds: [person.burrowId],
+      day: dayOf(day),
+      year,
+      daysAway,
+      turning: born > 1900 && age > 0 && age < 18 ? age : null,
+    });
+  }
+  return [...byPerson.values()].sort((a, b) => a.daysAway - b.daysAway || a.name.localeCompare(b.name));
+}
+
+// "Today", "Tomorrow", "in 5 days", "in 3 weeks", "Mar 4".
+export function birthdayWhen(b: Pick<NextBirthday, "daysAway" | "day">) {
+  if (b.daysAway === 0) return "Today";
+  if (b.daysAway === 1) return "Tomorrow";
+  if (b.daysAway < 14) return `in ${b.daysAway} days`;
+  if (b.daysAway < 56) return `in ${Math.round(b.daysAway / 7)} weeks`;
+  const [y, m, d] = b.day.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}

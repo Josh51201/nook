@@ -32,6 +32,12 @@ import {
 } from "../../../lib/hearth";
 import { syncReminders } from "../../../lib/reminders";
 import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../../lib/auth-context";
+import { birthdayWhen } from "../../../lib/birthdays";
+import { planBirthdayGifts, useNewWishes, useUpcomingBirthdays, useWeekEntries, type BirthdayGlance } from "../../../lib/glance-data";
+import { shortDate } from "../../../lib/menu-board";
+import { groupNewWishes, wishTitles } from "../../../lib/new-wishes";
+import { buildWeek, weekCount, weekSources } from "../../../lib/this-week";
 import { colors, shadow, ui, useTheme } from "../../../lib/theme";
 import {
   daysUntil,
@@ -101,6 +107,15 @@ export default function WidgetPage() {
       break;
     case "note":
       body = <NotePage widget={widget} {...card} onEdit={edit} />;
+      break;
+    case "week":
+      body = <ThisWeekPage widget={widget} {...card} refreshKey={refreshKey} />;
+      break;
+    case "birthdays":
+      body = <BirthdaysPage widget={widget} {...card} refreshKey={refreshKey} />;
+      break;
+    case "wishes":
+      body = <WishesPage widget={widget} {...card} refreshKey={refreshKey} />;
       break;
     default:
       body = <BigWidget item={item} themeText={theme.text} refreshKey={refreshKey} onChange={saveWidget} />;
@@ -275,6 +290,175 @@ function CountdownPage({
 // --- Coming up ----------------------------------------------------------------------
 
 type GatheringRow = { id: string; title: string; kind: string; ends_at: string; burrows: { name: string } | null };
+
+// --- This week (CORE-105) -----------------------------------------------------------
+// Every day with something on, each thing tappable to open where it lives.
+
+function ThisWeekPage({ widget, refreshKey, ...card }: CardProps & { widget: WidgetOf<"week">; refreshKey: number }) {
+  const router = useRouter();
+  const { session } = useAuth();
+  const { palette } = card;
+  const { days, skip } = widget.settings;
+  const data = useWeekEntries(session?.user.id, refreshKey, days);
+  if (!data) return <Skeleton height={190} radius={28} />;
+  const week = buildWeek(data.entries, data.today, days, skip);
+  const total = weekCount(week);
+  const span = days === 3 ? "the next 3 days" : days === 7 ? "the coming week" : "the next 2 weeks";
+  if (!total) return <EmptyState icon="calendar" title="A quiet stretch" body={`Nothing on in ${span} in your Nooks.`} />;
+  const todays = week[0]?.day === data.today ? week[0].entries : [];
+  let index = 0;
+  return (
+    <>
+      <ColorCard {...card}>
+        <Text style={[styles.eyebrow, { color: palette.muted }]}>{todays.length ? "TODAY" : "COMING UP"}</Text>
+        <Text style={[styles.headline, { color: palette.text }]} numberOfLines={2}>
+          {todays.length ? (todays.length === 1 ? todays[0].title : `${todays.length} things today`) : week[0].entries[0].title}
+        </Text>
+        <Text style={[styles.note, { color: palette.muted }]}>
+          {total === 1 ? `1 thing in ${span}` : `${total} things in ${span}`}
+        </Text>
+      </ColorCard>
+      {week.map((day) => (
+        <View key={day.day} style={{ gap: 10 }}>
+          <SectionHeader title={day.day === data.today || day.label === "Tomorrow" ? day.label : `${day.label}, ${shortDate(day.day)}`} icon="calendar" />
+          {day.entries.map((entry) => (
+            <NavCard
+              key={`${entry.source}-${entry.route}-${entry.title}`}
+              index={index++}
+              icon={entry.overdue ? "warning" : entry.icon}
+              iconColor={palette.deep}
+              iconBackground={`${palette.deep}1f`}
+              title={entry.title}
+              subtitle={[weekSources.find((s) => s.key === entry.source)?.label, entry.overdue ? "Overdue" : entry.detail].filter(Boolean).join(" · ")}
+              onPress={() => router.push(entry.route as never)}
+            />
+          ))}
+        </View>
+      ))}
+    </>
+  );
+}
+
+// --- Birthdays coming up (CORE-106) -------------------------------------------------
+// Everyone's next birthday, with a way to start planning gifts: the Birthday
+// Gathering (GIFT-035), planned now if it isn't yet.
+
+function BirthdaysPage({ widget, refreshKey, ...card }: CardProps & { widget: WidgetOf<"birthdays">; refreshKey: number }) {
+  const router = useRouter();
+  const { session } = useAuth();
+  const { palette } = card;
+  const list = useUpcomingBirthdays(session?.user.id, refreshKey, widget.settings.burrowId);
+  const [busy, setBusy] = useState<string | null>(null);
+  if (!list) return <Skeleton height={190} radius={28} />;
+  if (!list.length) {
+    return <EmptyState icon="birthday" title="No birthdays yet" body="When family add their birthday to their profile, it shows up here." />;
+  }
+
+  async function planGifts(b: BirthdayGlance) {
+    if (busy) return;
+    setBusy(b.profileId);
+    tap();
+    try {
+      const gatheringId = await planBirthdayGifts(b);
+      router.push(gatheringId ? `/gift-nook/gathering/${gatheringId}` : `/gift-nook/member/${b.profileId}`);
+    } catch {
+      router.push(`/gift-nook/member/${b.profileId}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const [next] = list;
+  const longDate = (day: string) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  };
+  return (
+    <>
+      <ColorCard {...card}>
+        <Text style={[styles.eyebrow, { color: palette.muted }]}>{next.daysAway === 0 ? "TODAY" : "NEXT UP"}</Text>
+        <View style={[ui.row, { gap: 14 }]}>
+          <IconBadge name="birthday" size={56} color={palette.deep} background="rgba(255,255,255,0.75)" />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[styles.headline, { color: palette.text }]} numberOfLines={2}>
+              {next.name}
+            </Text>
+            <Text style={[styles.note, { color: palette.muted }]}>
+              {[longDate(next.day), next.turning ? `turns ${next.turning}` : null].filter(Boolean).join(" · ")}
+            </Text>
+          </View>
+        </View>
+        <View style={[ui.row, { justifyContent: "space-between" }]}>
+          <Pill palette={palette} text={birthdayWhen(next)} />
+          <Tap onPress={() => planGifts(next)} accessibilityRole="button" hitSlop={8}>
+            <Text style={[styles.note, { color: palette.text, fontWeight: "800" }]}>
+              {busy === next.profileId ? "Opening…" : next.gatheringId ? "Gift list ›" : "Plan gifts ›"}
+            </Text>
+          </Tap>
+        </View>
+      </ColorCard>
+      {list.slice(1).map((b, i) => (
+        <NavCard
+          key={b.profileId}
+          index={i}
+          icon="birthday"
+          iconColor={palette.deep}
+          iconBackground={`${palette.deep}1f`}
+          title={b.name}
+          subtitle={[shortDate(b.day), birthdayWhen(b), b.turning ? `turns ${b.turning}` : null].filter(Boolean).join(" · ")}
+          right={
+            <Text style={[ui.muted, { color: colors.bark, fontWeight: "700" }]}>
+              {busy === b.profileId ? "Opening…" : b.gatheringId ? "Gift list" : "Plan gifts"}
+            </Text>
+          }
+          onPress={() => planGifts(b)}
+        />
+      ))}
+      <Text style={[ui.muted, { textAlign: "center" }]}>
+        Plan gifts makes their Birthday Gathering, where everyone can see their Wishbook and tuck gifts. It's made by itself a month before, too.
+      </Text>
+    </>
+  );
+}
+
+// --- New in Wishbooks (CORE-107) ----------------------------------------------------
+// GIFT-007: other people's Wishbooks only, and nothing about tucks.
+
+function WishesPage({ widget, refreshKey, ...card }: CardProps & { widget: WidgetOf<"wishes">; refreshKey: number }) {
+  const router = useRouter();
+  const { session } = useAuth();
+  const { palette } = card;
+  const wishes = useNewWishes(session?.user.id, refreshKey, widget.settings.days);
+  if (!wishes) return <Skeleton height={190} radius={28} />;
+  const people = groupNewWishes(wishes);
+  const span = widget.settings.days === 7 ? "the last week" : widget.settings.days === 14 ? "the last 2 weeks" : "the last month";
+  if (!people.length) return <EmptyState icon="gift" title="Nothing new" body={`No one's added to their Wishbook in ${span}.`} />;
+  return (
+    <>
+      <ColorCard {...card}>
+        <Text style={[styles.eyebrow, { color: palette.muted }]}>{`IN ${span.toUpperCase()}`}</Text>
+        <Text style={[styles.headline, { color: palette.text }]} numberOfLines={2}>
+          {wishes.length === 1 ? "1 new wish" : `${wishes.length} new wishes`}
+        </Text>
+        <Text style={[styles.note, { color: palette.muted }]}>
+          {people.length === 1 ? `From ${people[0].name}` : `From ${people.length} people`}
+        </Text>
+      </ColorCard>
+      {people.map((person, i) => (
+        <NavCard
+          key={person.profileId}
+          index={i}
+          icon="gift"
+          iconColor={palette.deep}
+          iconBackground={`${palette.deep}1f`}
+          title={`${person.name} added ${person.count}`}
+          subtitle={wishTitles(person.titles, 4)}
+          onPress={() => router.push(`/gift-nook/member/${person.profileId}`)}
+        />
+      ))}
+    </>
+  );
+}
 
 function ComingUpPage({ widget, refreshKey, ...card }: CardProps & { widget: WidgetOf<"gatherings">; refreshKey: number }) {
   const router = useRouter();

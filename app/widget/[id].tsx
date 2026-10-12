@@ -57,6 +57,8 @@ import { sortLists, type GroceryList } from "../../lib/groceries";
 import { rangeWords } from "../../lib/getaways";
 import { localDay } from "../../lib/pets";
 import { supabase } from "../../lib/supabase";
+import { weekLengths, weekSources } from "../../lib/this-week";
+import { wishWindows } from "../../lib/new-wishes";
 import { colors, themed, ui, useTheme } from "../../lib/theme";
 import {
   describeSchedule,
@@ -1111,6 +1113,30 @@ function KindSettings({
           <Text style={ui.muted}>Who's on your holiday list and still waiting for a card, from your Letterbox Nook.</Text>
         </>
       );
+    case "week":
+      return <WeekSettings widget={widget} setSettings={setSettings} />;
+    case "birthdays":
+      return <BirthdaysSettings widget={widget} setSettings={setSettings} />;
+    case "getaway":
+      return <GetawaySettings widget={widget} setSettings={setSettings} />;
+    case "wishes":
+      return (
+        <>
+          <Text style={ui.label}>Added in the last</Text>
+          <View style={ui.chips}>
+            {wishWindows.map((days) => (
+              <Chip key={days} selected={widget.settings.days === days} onPress={() => setSettings({ days })}>
+                {days === 7 ? "Week" : days === 14 ? "2 weeks" : "Month"}
+              </Chip>
+            ))}
+          </View>
+          <Stepper label="People to list" value={widget.settings.count} min={1} max={6} onChange={(count) => setSettings({ count })} />
+          <Text style={ui.muted}>
+            What family have added to their Wishbooks lately, newest first, from your Gift Nook. Never yours, and never anything about who's
+            getting what.
+          </Text>
+        </>
+      );
     case "inbox":
       return <Stepper label="Notices to list" value={widget.settings.count} min={0} max={5} onChange={(count) => setSettings({ count })} />;
     case "greeting":
@@ -1129,6 +1155,125 @@ function KindSettings({
         </>
       );
   }
+}
+
+// This week (CORE-105): how far ahead, and which Nooks.
+function WeekSettings({
+  widget,
+  setSettings,
+}: {
+  widget: WidgetOf<"week">;
+  setSettings: (changes: Partial<WidgetOf<"week">["settings"]>) => void;
+}) {
+  const { days, skip } = widget.settings;
+  return (
+    <>
+      <Text style={ui.label}>How far ahead</Text>
+      <View style={ui.chips}>
+        {weekLengths.map((n) => (
+          <Chip key={n} selected={days === n} onPress={() => setSettings({ days: n })}>
+            {n === 3 ? "3 days" : n === 7 ? "A week" : "2 weeks"}
+          </Chip>
+        ))}
+      </View>
+      <Text style={ui.label}>Show</Text>
+      <View style={ui.chips}>
+        {weekSources.map((source) => (
+          <Chip
+            key={source.key}
+            icon={source.icon}
+            selected={!skip.includes(source.key)}
+            onPress={() => setSettings({ skip: skip.includes(source.key) ? skip.filter((k) => k !== source.key) : [...skip, source.key] })}
+          >
+            {source.label}
+          </Chip>
+        ))}
+      </View>
+      <Text style={ui.muted}>
+        Everything coming up, day by day, from the Nooks you use. Overdue chores and pet visits show on today. Tap it on your Hearth to see it
+        all and open any of it.
+      </Text>
+    </>
+  );
+}
+
+// Birthdays coming up (CORE-106): from every Burrow or one.
+function BirthdaysSettings({
+  widget,
+  setSettings,
+}: {
+  widget: WidgetOf<"birthdays">;
+  setSettings: (changes: Partial<WidgetOf<"birthdays">["settings"]>) => void;
+}) {
+  const { burrowId, count } = widget.settings;
+  const [burrows, setBurrows] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    supabase
+      .from("burrows")
+      .select("id, name")
+      .order("name")
+      .then(({ data }) => setBurrows(data ?? []));
+  }, []);
+  return (
+    <>
+      <Text style={ui.label}>From</Text>
+      <View style={ui.chips}>
+        <Chip selected={!burrowId} onPress={() => setSettings({ burrowId: null })}>
+          All my Burrows
+        </Chip>
+        {burrows.map((b) => (
+          <Chip key={b.id} icon="burrow" selected={burrowId === b.id} onPress={() => setSettings({ burrowId: b.id })}>
+            {b.name}
+          </Chip>
+        ))}
+      </View>
+      <Stepper label="Birthdays to list" value={count} min={1} max={6} onChange={(n) => setSettings({ count: n })} />
+      <Text style={ui.muted}>
+        The next birthdays of everyone who's shared theirs in their profile. Tap it on your Hearth to plan gifts for any of them.
+      </Text>
+    </>
+  );
+}
+
+// A Getaway (CORE-108): one trip, or whichever's next.
+function GetawaySettings({
+  widget,
+  setSettings,
+}: {
+  widget: WidgetOf<"getaway">;
+  setSettings: (changes: Partial<WidgetOf<"getaway">["settings"]>) => void;
+}) {
+  const { getawayId, showPacking } = widget.settings;
+  const [trips, setTrips] = useState<{ id: string; title: string; starts_on: string }[]>([]);
+  useEffect(() => {
+    supabase
+      .from("getaways")
+      .select("id, title, starts_on")
+      .gte("ends_on", localDay())
+      .order("starts_on")
+      .limit(20)
+      .then(({ data }) => setTrips(data ?? []));
+  }, []);
+  return (
+    <>
+      <Text style={ui.label}>Which trip</Text>
+      <View style={ui.chips}>
+        <Chip selected={!getawayId} onPress={() => setSettings({ getawayId: null })}>
+          Whichever's next
+        </Chip>
+        {trips.map((trip) => (
+          <Chip key={trip.id} icon="plane" selected={getawayId === trip.id} onPress={() => setSettings({ getawayId: trip.id })}>
+            {trip.title}
+          </Chip>
+        ))}
+      </View>
+      <SwitchRow label="Show what's left to pack" value={showPacking} onChange={(next) => setSettings({ showPacking: next })} />
+      <Text style={ui.muted}>
+        How long until you go (or which day of the trip it is), and your packing list plus the shared one, from your Getaways Nook. Tap it
+        on your Hearth to open the trip.
+      </Text>
+    </>
+  );
 }
 
 function CountdownSettings({

@@ -2,6 +2,7 @@ import type { IconName } from "../components/icon";
 import type { GatheringKind } from "./gift-nook";
 import type { BedStyle, CritterKind } from "./hearth-pet";
 import type { QuoteSource } from "./widget-extras";
+import type { WeekSource } from "./this-week";
 import type { Condition, Place, Unit, WindowFrame } from "./weather";
 
 // Hearth widgets (CORE-018): standalone, fully customizable cards on the
@@ -9,7 +10,7 @@ import type { Condition, Place, Unit, WindowFrame } from "./weather";
 // widget's renderer lives in components/hearth/widgets.tsx and its editor
 // in app/widget/[id].tsx.
 
-export type WidgetKind = "countdown" | "gatherings" | "gathering" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "sitter" | "recipe" | "subscriptions" | "sickday" | "littlelog" | "notes" | "menu" | "groceries" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion" | "fridge";
+export type WidgetKind = "countdown" | "gatherings" | "gathering" | "reminders" | "tucks" | "note" | "inbox" | "greeting" | "cards" | "pets" | "rhythms" | "sitter" | "recipe" | "subscriptions" | "sickday" | "littlelog" | "notes" | "menu" | "groceries" | "frame" | "clock" | "quote" | "launch" | "streak" | "weather" | "window" | "companion" | "fridge" | "week" | "birthdays" | "getaway" | "wishes";
 
 // How a widget card is drawn: soft pastel, bold deep color, or just an outline.
 export type WidgetLook = "soft" | "bold" | "outline";
@@ -133,6 +134,15 @@ export type WidgetSettings = {
   // The Fridge door (CORE-086): your Home's fridge, or one Burrow's. On the
   // Home page it's always the Home's, whatever this says.
   fridge: { place: "home" | "burrow"; burrowId: string | null };
+  // This week (CORE-105): the coming `days` from every Nook, leaving out
+  // the kinds of thing in `skip`.
+  week: { days: number; skip: WeekSource[] };
+  // Birthdays coming up (CORE-106): from all your Burrows, or one.
+  birthdays: { burrowId: string | null; count: number };
+  // A Getaway (CORE-108): one you pick, or with null, whichever's next.
+  getaway: { getawayId: string | null; showPacking: boolean };
+  // New in Wishbooks (CORE-107): what family added in the last `days`.
+  wishes: { days: number; count: number };
 };
 
 export type WidgetConfig = {
@@ -184,13 +194,17 @@ export const widgetKinds: {
   { kind: "window", label: "Window", description: "A little window with the weather outside: live from a town, or a sky you choose.", icon: "sun", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "companion", label: "Hearth pet", description: "A little pet in its own bed that hops out to visit your widgets and Nooks. Bring one from Pet Care or make one up.", icon: "paw", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "fridge", label: "Fridge door", description: "Notes and doodles your Home or a Burrow sticks up for each other. Each comes down by itself after a day or so.", icon: "fridge", size: { w: 2, h: 3 }, minSize: { w: 1, h: 1 } },
+  { kind: "week", label: "This week", description: "Everything coming up in the next few days from all your Nooks: Gatherings, birthdays, chores, pet visits, renewals, trips and dinners.", icon: "calendar", size: { w: 4, h: 3 }, minSize: { w: 1, h: 1 } },
+  { kind: "birthdays", label: "Birthdays coming up", description: "The next birthdays in your Burrows, with a way to start planning gifts.", icon: "birthday", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "getaway", label: "Getaway", description: "Your next trip at a glance: how long until you go, and what's left to pack.", icon: "plane", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
+  { kind: "wishes", label: "New in Wishbooks", description: "What family have added to their Wishbooks lately, so you see it before you shop.", icon: "gift", size: { w: 2, h: 2 }, minSize: { w: 1, h: 1 } },
   { kind: "greeting", label: "Greeting", description: "A warm hello with the date and your own message.", icon: "wave", size: { w: 4, h: 1 }, minSize: { w: 1, h: 1 } },
 ];
 
 // How the "Add" sheet groups widgets so it isn't one long list (CORE-059).
 // Every kind belongs to exactly one category (a test checks this).
 export const widgetCategories: { id: string; label: string; blurb: string; icon: IconName; kinds: WidgetKind[] }[] = [
-  { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["gatherings", "gathering", "tucks", "inbox", "cards", "pets", "rhythms", "sitter", "recipe", "subscriptions", "sickday", "littlelog", "notes", "menu", "groceries"] },
+  { id: "nooks", label: "From your Nooks", blurb: "Live info from the Nooks you've added", icon: "widgets", kinds: ["week", "birthdays", "wishes", "getaway", "gatherings", "gathering", "tucks", "inbox", "cards", "pets", "rhythms", "sitter", "recipe", "subscriptions", "sickday", "littlelog", "notes", "menu", "groceries"] },
   { id: "lists", label: "Lists & routines", blurb: "Things to remember, tick off and jump to", icon: "todo", kinds: ["reminders", "note", "streak", "launch"] },
   { id: "time", label: "Time & weather", blurb: "Dates, the clock and the sky", icon: "clock", kinds: ["countdown", "clock", "weather", "window"] },
   { id: "cozy", label: "Cozy touches", blurb: "Pictures, words and a warm hello", icon: "sparkles", kinds: ["fridge", "companion", "frame", "quote", "greeting"] },
@@ -290,6 +304,14 @@ export function defaultWidget(kind: WidgetKind): WidgetConfig {
       };
     case "fridge":
       return { ...base, kind, settings: { place: "home", burrowId: null } };
+    case "week":
+      return { ...base, kind, settings: { days: 7, skip: [] } };
+    case "birthdays":
+      return { ...base, kind, settings: { burrowId: null, count: 3 } };
+    case "getaway":
+      return { ...base, kind, showTitle: false, settings: { getawayId: null, showPacking: true } };
+    case "wishes":
+      return { ...base, kind, settings: { days: 14, count: 3 } };
   }
 }
 

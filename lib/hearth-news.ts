@@ -49,6 +49,12 @@ export function widgetNoticeMatch(widget: WidgetConfig): Match | null {
     }
     case "tucks":
       return (notice) => notice.nook === "gift-nook" && notice.kind === "tuck_changed";
+    case "wishes":
+      return (notice) => notice.nook === "gift-nook" && notice.kind === "new_gifts";
+    case "getaway": {
+      const id = widget.settings.getawayId;
+      return id ? (notice) => notice.data?.getaway_id === id : fromNook("getaways");
+    }
     case "cards":
       return fromNook("letterbox");
     case "pets":

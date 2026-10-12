@@ -106,6 +106,7 @@ import { findNook } from "../../lib/nooks";
 import { planBirthdays } from "../../lib/plan-birthdays";
 import { hasRealName, useMyProfile } from "../../lib/profile";
 import { supabase } from "../../lib/supabase";
+import { localDay } from "../../lib/pets";
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { touchesGuarded } from "../../lib/touch-guard";
 import { ambienceForWeather, weatherPlaceOf } from "../../lib/weather";
@@ -1040,6 +1041,18 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         return widgetGathering(item.widget.settings)
           .then((row) => router.push(row && row !== "gone" ? `/gatherings/${row.id}` : "/gatherings"))
           .catch(() => router.push("/gatherings"));
+      case "getaway": {
+        // Opens the trip it's showing (CORE-108).
+        const tripId = item.widget.settings.getawayId;
+        if (tripId) return router.push(`/getaways/${tripId}`);
+        return supabase
+          .from("getaways")
+          .select("id")
+          .gte("ends_on", localDay())
+          .order("starts_on")
+          .limit(1)
+          .then(({ data }) => router.push(data?.[0] ? `/getaways/${data[0].id}` : "/getaways"));
+      }
       case "greeting":
         return;
       case "fridge": {
