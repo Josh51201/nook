@@ -2,7 +2,7 @@
 
 _Only what's open, or a rule for the whole app, lives here. Built requirements are archived — grep them by ID, don't read whole files: shell, Hearth and app-wide `CORE-` in `docs/archive/NOOK_HEARTH_BUILT.md`; every built Nook plus `PROF-` and `HOME-` in `docs/archive/NOOK_NOOKS_BUILT.md`; older fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. To change a built requirement, edit it in its archive file._
 
-_Last updated: 2026-10-12 (rev 67)_
+_Last updated: 2026-10-12 (rev 68)_
 
 ## 1. Rules for the whole app
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -18,6 +18,25 @@ _Last updated: 2026-10-12 (rev 67)_
 - **CORE-021** Nook ships as its own app with its own icon (not inside Expo Go). _(Prepared: Josh's own painting of a little cream house with a reading nook (2026-10-12) as the icon, a matching house silhouette for Android's themed and notification icon, a plain cream iPhone launch screen; app ID `app.mynookapp.nook` (Q-025); app.json and eas.json set up; build guide in docs/BUILDING_THE_APP.md. Waiting on Josh's Expo and Apple Developer accounts — see section 9.)_
 
 Everything else in CORE-006..099 is built and archived in [archive/NOOK_HEARTH_BUILT.md](archive/NOOK_HEARTH_BUILT.md): the Hearth, Hollows, widgets, Trinkets, Cubbies, the Fridge door, Edit mode, the Nooks tab and Market, Help, text size, accessibility and Settings → Notifications. Josh said yes to these; details marked proposed are Claude's until he confirms. Some is paid under Nook Plus (Q-028).
+
+**Hearth to-do (not built yet).** Claude suggested these on 2026-10-12, and Josh said "Add all of those on the next to do". Everything past the one-line idea is Claude's design and stays proposed until Josh tries it.
+- **CORE-105** **This week** widget: one agenda for the coming days that mixes every Nook (Gatherings, chores due, vet visits, renewals, trips, meals), grouped by day.
+- **CORE-106** **Birthdays coming up** widget: the next birthdays in your Burrows (from GIFT-035), with a button to start a gift list.
+- **CORE-107** **New in Wishbooks** widget: what family members recently added to their Wishbooks. It shows only other people's lists and never says anything about claims, including on your own (GIFT-007).
+- **CORE-108** **Getaway** widget: your next trip's countdown and packing list in one card.
+- **CORE-109** **Kitchen timer** widget: one or more named timers ("Cookies – 12 min") that ring on the phone.
+- **CORE-110** **Sticker chart** widget: a kid earns a sticker per task and gets a reward at a goal (e.g. 10); it can be tied to a kid in your Home.
+- **CORE-111** **Whose turn?** widget: a spinner or rotation for who does the dishes, picks the movie, and so on; made for the shared Home page.
+- **CORE-112** **Sky** widget: sunrise and sunset, the moon phase and the season, drawn cozy to match the Window widget.
+- **CORE-113** **Gratitude jar** widget: one line a day, and now and then it shows an old one back to you (could share its design with the Quote Jar backlog idea).
+- **CORE-114** Smart stacks: a widget stack can flip by itself to whichever widget needs you now (a dose due, a chore overdue, a new fridge note), then go back to the one you chose.
+- **CORE-115** Badges: widgets and Hollows show a small dot when something inside is new, so a closed Hollow never hides news.
+- **CORE-116** Peek into a Hollow: hold a Hollow to see a small preview of what's inside without going in.
+- **CORE-117** A look per page: each Hearth page can have its own wallpaper and theme (e.g. a festive "Holidays" page).
+- **CORE-118** Seasonal Trinkets: Trinkets that swap themselves for the season (a pumpkin in October, a stocking in December).
+- **CORE-119** Kid's Hearth: a simple, locked Hearth for a kid in your Home, with big buttons and nothing they can delete by accident.
+- **CORE-120** Bedtime look: after a time you pick, the Hearth dims to warm, low-light colors.
+- **CORE-121** Widgets on the phone's own home screen (iPhone and Android), e.g. the countdown, This week and the Fridge door. Needs native code, so it waits for the real app build (CORE-021); it can't run in Expo Go.
 
 ## 2. Accounts, profile & Home
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.
@@ -123,6 +142,14 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | The page of common questions (CORE-070) | Help | proposed |
 | A one-tap reminder sent to someone (CORE-101) | Nudge | proposed |
 | A house/stump on the Hearth you enter to reach its own organized screen | Hollow | approved |
+| The widget mixing every Nook's coming days (CORE-105) | This week | proposed |
+| The kid reward widget (CORE-110) | Sticker chart | proposed |
+| The take-turns widget (CORE-111) | Whose turn? | proposed |
+| The sun-and-moon widget (CORE-112) | Sky | proposed |
+| The one-line-a-day widget (CORE-113) | Gratitude jar | proposed |
+| A stack that flips to what needs you (CORE-114) | Smart stack | proposed |
+| The locked, simple Hearth for a kid (CORE-119) | Kid's Hearth | proposed |
+| The dimmed evening look (CORE-120) | Bedtime look | proposed |
 
 ## 8. Nook Backlog
 Josh's picks, in no particular order. Names and details are proposed until he confirms them; each gets requirement IDs when it's about to be built.
@@ -138,12 +165,12 @@ Earlier faint, very broad ideas (lower priority, may be dropped): Food tracker, 
 Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was curious, not yet picked), Hand-Me-Downs, Guest Book, Growth Marks, Kid Art, Gift Closet, Daily Question; Surprise Planner (plan a surprise with a hidden to-do list, hidden from the guest of honor), Keepsakes (letters sealed until a date, e.g. a kid's 18th birthday).
 
 ## 9. Up next
-Everything Josh has asked for so far is built.
+0. **Hearth to-do** (CORE-105..120, section 1), built one or two at a time and committed after each. Proposed order: smart stacks and badges first (they make what's there more useful), then This week, Birthdays coming up and New in Wishbooks, then the rest. CORE-121 waits for the real app build (item 3).
 1. **Josh tries the Menu Board and Grocery List Nooks** and confirms or changes their proposed details (MENU-, GROC- in the Nooks archive). Then he picks the next Nook from the backlog (section 8).
 2. **Waiting on Josh** — setup only he can do; Claude walks him through each:
    - Run the newer database migrations in Supabase if they haven't been yet: `delete_account` (AUTH-003), `little_log`, `notes`, `menu_and_groceries` (MENU, GROC), `nudges` then `nudge_notes` (CORE-101).
    - Put a Supabase service key in `.env.test.local` so the privacy tests (GIFT-007 and each Nook's) stop skipping.
    - Make the Expo and Apple Developer accounts so the real app can be built (CORE-021, docs/BUILDING_THE_APP.md).
    - Make the App Review demo account in Supabase and add it to App Store Connect (AUTH-004).
-3. **Needs the real app build first:** phone push notifications (Q-032, GIFT-031) and Nook Plus (section 4, Q-028 — settle what's free before families outside Josh's use the app).
+3. **Needs the real app build first:** phone home-screen widgets (CORE-121), phone push notifications (Q-032, GIFT-031) and Nook Plus (section 4, Q-028 — settle what's free before families outside Josh's use the app).
 4. **Choices still open:** Q-003, Q-019, Q-024, Q-031 (section 5).
