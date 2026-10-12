@@ -86,6 +86,11 @@ export function useNudges() {
           placeholderTextColor={colors.muted}
           maxLength={NUDGE_NOTE_LENGTH}
           multiline
+          // Wraps like a note, but the return key sends it (a nudge note is
+          // one line anyway), so there's always a way off the keyboard.
+          submitBehavior="blurAndSubmit"
+          returnKeyType="send"
+          onSubmitEditing={send}
           accessibilityLabel="A note to go with the nudge"
         />
         <View style={[ui.row, { justifyContent: "space-between", gap: 12 }]}>

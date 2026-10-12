@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -15,7 +15,9 @@ import { colors, themed } from "../lib/theme";
 // A bottom sheet that lives *inside* the screen (not a system pop-up), so
 // opening another screen from it can never collide with a half-dismissed
 // pop-up. Drag the grabber or header down to close it, or tap the dim
-// background. Content below the header scrolls/behaves normally.
+// background. Content below the header scrolls/behaves normally. While the
+// keyboard is up, the sheet rides on top of it, so the field and the button
+// under it stay in sight (CORE-016).
 //
 // Render it as the last child of a screen's root View (it fills the screen).
 export function BottomSheet({
@@ -38,6 +40,12 @@ export function BottomSheet({
   const [mounted, setMounted] = useState(visible);
   const translateY = useSharedValue(height);
   const dim = useSharedValue(0);
+  // Negative while the keyboard is open: how far up its top edge is. The
+  // sheet fills the screen down to the bottom edge, so lifting it by exactly
+  // that much puts it right on top of the keyboard. (A KeyboardAvoidingView
+  // worked this out from its own position, which came up short under a
+  // screen's header and left the bottom of the sheet behind the keyboard.)
+  const { height: keyboard } = useReanimatedKeyboardAnimation();
 
   // Latest onClose without rebuilding the gesture.
   const closeRef = useRef(onClose);
@@ -75,6 +83,7 @@ export function BottomSheet({
 
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
   const dimStyle = useAnimatedStyle(() => ({ opacity: dim.value }));
+  const liftStyle = useAnimatedStyle(() => ({ paddingBottom: Math.max(0, -keyboard.value) }));
 
   if (!mounted) return null;
 
@@ -83,7 +92,7 @@ export function BottomSheet({
       <Animated.View style={[StyleSheet.absoluteFill, styles.dim, dimStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={requestClose} accessibilityLabel="Close" />
       </Animated.View>
-      <KeyboardAvoidingView behavior="padding" style={styles.bottom} pointerEvents="box-none">
+      <Animated.View style={[styles.bottom, liftStyle]} pointerEvents="box-none">
         <Animated.View style={[styles.sheet, { maxHeight: height * 0.88 }, sheetStyle]}>
           <GestureDetector gesture={drag}>
             <View style={styles.header} collapsable={false}>
@@ -94,7 +103,7 @@ export function BottomSheet({
           {preview ? <View style={{ marginBottom: 12 }}>{preview}</View> : null}
           {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </Animated.View>
     </View>
   );
 }
