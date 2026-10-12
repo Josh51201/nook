@@ -27,7 +27,7 @@ export function lookSummary(parts: {
 
 // "Small", "3 × 2", plus "· Locked"
 export function sizeSummary(presets: { label: string; w: number; h: number }[], w: number, h: number, locked?: boolean) {
-  const named = presets.find((p) => p.w === w && p.h === h)?.label ?? `${w} × ${h}`;
+  const named = presets.find((p) => p.w === w && p.h === h)?.label ?? `${Math.round(w * 10) / 10} × ${Math.round(h * 10) / 10}`;
   return locked ? `${named} · Locked` : named;
 }
 

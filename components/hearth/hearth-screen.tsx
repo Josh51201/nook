@@ -47,7 +47,7 @@ import { allTags, hideTagged, tagMany } from "../../lib/hearth-tags";
 import { stackMates, stackPosition, visibleItems as oneOfEachStack } from "../../lib/hearth-stacks";
 import type { FoundItem } from "../../lib/hearth-find";
 import { copyMany, lockMany, moveManyToPage, moveManyToScope, recolorMany, removeMany } from "../../lib/hearth-select";
-import { trinketInfo, type TrinketKey } from "../../lib/trinkets";
+import { trinketFit, trinketInfo, type TrinketKey } from "../../lib/trinkets";
 import { cubbyStyleInfo, type CubbyStyle } from "../../lib/cubbies";
 import { inSeason } from "../../lib/widget-extras";
 import { colors, useTheme } from "../../lib/theme";
@@ -1092,7 +1092,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     setAdding(false);
     const info = trinketInfo(piece);
     const id = newItemId("t");
-    if (!persistHere((inner) => addItem(inner, { id, kind: "trinket", piece, color: info.color, ...info.size }))) return;
+    if (!persistHere((inner) => addItem(inner, { id, kind: "trinket", piece, color: info.color, ...trinketFit(piece, info.size.w, info.size.h) }))) return;
     tap("success");
     setEditing(true);
     setOptionsFor(id);
@@ -1597,6 +1597,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           piece={item.piece}
           color={item.color ?? trinketInfo(item.piece).color}
           flip={item.flip}
+          rotate={item.rotate}
           width={size.width}
           height={size.height}
           still={editing}

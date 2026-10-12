@@ -32,7 +32,7 @@ import {
 } from "../../lib/hearth";
 import { labelFonts } from "../../lib/fonts";
 import { letteringInWords, lookSummary, sizeSummary, tagsSummary } from "../../lib/summaries";
-import { trinketInfo, trinkets } from "../../lib/trinkets";
+import { trinketInfo, trinkets, trinketSlideOf, trinketWidthAt, turnedBy } from "../../lib/trinkets";
 import { showInWords } from "../../lib/widget-extras";
 import { findNook } from "../../lib/nooks";
 import { colors, ui } from "../../lib/theme";
@@ -101,7 +101,7 @@ export function ItemOptions({
   const [text, setText] = useState("");
   // A stretch slider's spot while it's being dragged, shown in the preview
   // before it's saved.
-  const [sliding, setSliding] = useState<Partial<LabelItem>>({});
+  const [sliding, setSliding] = useState<Partial<LabelItem> & { rotate?: number }>({});
 
   // Keep showing the last item while the sheet slides away.
   const lastItem = useRef<Editable | null>(null);
@@ -143,7 +143,9 @@ export function ItemOptions({
         ? { ...shown, label: typed || undefined }
         : shown.kind === "hollow"
           ? { ...shown, name: typed || shown.name }
-          : shown;
+          : shown.kind === "trinket"
+            ? { ...shown, ...("rotate" in sliding ? { rotate: sliding.rotate } : {}) }
+            : shown;
 
   // What's chosen, for the closed sections (CORE-074).
   const looksSummary = !shown
@@ -320,6 +322,28 @@ export function ItemOptions({
                     Flipped
                   </Chip>
                 </View>
+                <Text style={ui.label}>Turn</Text>
+                <Slider
+                  label="How far it's turned, in 15 degree steps"
+                  value={turnedBy(shown.rotate) / 360}
+                  step={1 / 24}
+                  onSlide={(t) => setSliding({ rotate: Math.round(t * 360) })}
+                  onChange={(t) => {
+                    setSliding({});
+                    const rotate = turnedBy(t * 360);
+                    onChange({ rotate: rotate || undefined } as Partial<TrinketItem>);
+                  }}
+                  startLabel="Straight"
+                  endLabel="All the way round"
+                />
+                {shown.rotate ? (
+                  <Chip onPress={() => {
+                    setSliding({});
+                    onChange({ rotate: undefined } as Partial<TrinketItem>);
+                  }}>
+                    Straighten it
+                  </Chip>
+                ) : null}
               </>
             ) : null}
             {shown.kind === "hollow" ? (
@@ -609,8 +633,20 @@ export function ItemOptions({
 
           <Collapsible id="tile-size" icon="resize" title="Size & place" summary={placeSummary}>
             <Text style={ui.label}>Size</Text>
+            {shown.kind === "trinket" ? (
+              <Slider
+                label="How big it is"
+                value={trinketSlideOf(shown.piece, shown.w)}
+                onChange={(t) => {
+                  const { w, h } = trinketWidthAt(shown.piece, t);
+                  onResize(w, h);
+                }}
+                startLabel="Tiny"
+                endLabel="Big"
+              />
+            ) : null}
             <View style={ui.chips}>
-              {sizePresets[shown.kind].map((preset) => (
+              {(shown.kind === "trinket" ? [] : sizePresets[shown.kind]).map((preset) => (
                 <Chip
                   key={preset.label}
                   selected={shown.w === preset.w && shown.h === preset.h}
@@ -623,7 +659,9 @@ export function ItemOptions({
                 </Chip>
               ))}
             </View>
-            <Text style={ui.muted}>Or drag the corner handle on the Hearth for any size.</Text>
+            <Text style={ui.muted}>
+              {shown.kind === "trinket" ? "Or drag its corner handle on the Hearth." : "Or drag the corner handle on the Hearth for any size."}
+            </Text>
             <View style={[ui.row, { justifyContent: "space-between" }]}>
               <View style={{ flex: 1 }}>
                 <Text style={ui.cardTitle}>Lock in place</Text>

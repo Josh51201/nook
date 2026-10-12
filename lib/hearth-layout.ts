@@ -5,7 +5,7 @@ import type { ShowIn } from "./widget-extras";
 import { cubbyStyleInfo, type CubbyFill, type CubbyStyle } from "./cubbies";
 import { wallpaperPath, type Ambience, type Corners, type FireSound, type Lift, type PatternKey, type TileShape, type Wallpaper } from "./decor";
 import { findNook } from "./nooks";
-import { trinketInfo, type TrinketKey } from "./trinkets";
+import { trinketFit, trinketInfo, type TrinketKey } from "./trinkets";
 import { defaultWidget, newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook, type WidgetOf } from "./widgets";
 
 // Pure Hearth layout logic (no React/Supabase, so it's unit-testable).
@@ -186,7 +186,8 @@ export type HollowItem = ItemBase & {
 };
 // A little decoration (CORE-045): can't be tapped, just there. Its `color` is
 // the main color of the drawing.
-export type TrinketItem = ItemBase & { kind: "trinket"; piece: TrinketKey; flip?: boolean };
+// `rotate` is how many degrees it's turned (CORE-098).
+export type TrinketItem = ItemBase & { kind: "trinket"; piece: TrinketKey; flip?: boolean; rotate?: number };
 // A Cubby (CORE-084): a decorated box drawn behind everything else, to
 // gather the things inside it. Its `color` is the box's main color; a
 // pattern can be printed on it, and its fill can let the wallpaper through.
@@ -479,11 +480,6 @@ export function isFloating(item: HearthItem) {
   return item.kind === "trinket" || item.kind === "cubby";
 }
 
-// Placed anywhere, not snapped to cells.
-function isLoose(item: HearthItem) {
-  return item.kind === "trinket";
-}
-
 // What's in a Cubby: everything (but itself) that sits wholly inside its
 // cells. Locked things stay where they are, so they aren't carried, and so
 // does a Cubby as big as this one (two boxes in one spot can be pulled apart).
@@ -501,13 +497,53 @@ export function cubbyContents(items: HearthItem[], cubby: GridRect & { id: strin
 
 const hundredths = (n: number) => Math.round(n * 100) / 100;
 
+// A Trinket's box is the shape of its drawing, at any size between its
+// smallest and biggest (CORE-098), kept where its bottom middle was.
+export function fitTrinket<T extends HearthItem>(item: T): T {
+  if (item.kind !== "trinket") return item;
+  const fit = trinketFit(item.piece, item.w, item.h);
+  if (fit.w === item.w && fit.h === item.h) return item;
+  return {
+    ...item,
+    w: fit.w,
+    h: fit.h,
+    x: hundredths(Math.max(0, Math.min(COLUMNS - fit.w, item.x + (item.w - fit.w) / 2))),
+    y: hundredths(Math.max(0, item.y + (item.h - fit.h))),
+  };
+}
+
+// Every Trinket in these, including inside Hollows, fitted to its drawing.
+export function fitTrinkets(items: HearthItem[]): HearthItem[] {
+  let changed = false;
+  const next = items.map((item) => {
+    const fitted = item.kind === "hollow" ? { ...item, items: fitTrinkets(item.items) } : fitTrinket(item);
+    if (item.kind === "hollow" ? fitted.kind === "hollow" && fitted.items.some((inner, i) => inner !== item.items[i]) : fitted !== item) {
+      changed = true;
+      return fitted;
+    }
+    return item;
+  });
+  return changed ? next : items;
+}
+
+// A whole Hearth with its Trinkets fitted, on every page.
+function fitAllTrinkets(layout: HearthLayout): HearthLayout {
+  const otherPages: HearthLayout["otherPages"] = {};
+  for (const [id, items] of Object.entries(layout.otherPages)) otherPages[id] = fitTrinkets(items);
+  return { ...layout, items: fitTrinkets(layout.items), otherPages };
+}
+
 function clampRect<T extends HearthItem>(item: T): T {
+  if (item.kind === "trinket") {
+    const fit = trinketFit(item.piece, item.w, item.h);
+    const x = Math.max(0, Math.min(COLUMNS - fit.w, hundredths(item.x)));
+    return { ...item, x, y: Math.max(0, hundredths(item.y)), ...fit };
+  }
   const min = minSize(item);
   const w = Math.max(min.w, Math.min(COLUMNS, Math.round(item.w)));
   const h = Math.max(min.h, Math.min(8, usesHalfRows(item) ? snapRow(item.h) : Math.round(item.h)));
-  const free = isLoose(item);
-  const x = Math.max(0, Math.min(COLUMNS - w, free ? hundredths(item.x) : Math.round(item.x)));
-  const y = Math.max(0, free ? hundredths(item.y) : snapRow(item.y));
+  const x = Math.max(0, Math.min(COLUMNS - w, Math.round(item.x)));
+  const y = Math.max(0, snapRow(item.y));
   return { ...item, x, y, w, h };
 }
 
@@ -1054,7 +1090,7 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
   // Saved settings are merged over defaults (items: []), so an old Hearth
   // shows up as "sections present, no items".
   const hasItems = Array.isArray(saved.items) && saved.items.length > 0;
-  if (hasItems || !Array.isArray(saved.sections)) return { ...base, items: saved.items ?? [] };
+  if (hasItems || !Array.isArray(saved.sections)) return fitAllTrinkets({ ...base, items: saved.items ?? [] });
 
   const sizes = { small: { w: 2, h: 2 }, wide: { w: 4, h: 2 }, large: { w: 4, h: 3 } };
   const items: HearthItem[] = [];

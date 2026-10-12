@@ -3,7 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useReducer } from "react";
 
 import { useAuth } from "./auth-context";
-import type { HearthItem } from "./hearth-layout";
+import { fitTrinkets, type HearthItem } from "./hearth-layout";
 import { DEFAULT_HOME_PAGE_NAME, diffHomeItems } from "./home-hearth";
 import { supabase } from "./supabase";
 
@@ -60,7 +60,7 @@ async function fetchRows(homeId: string) {
   ]);
   if (rows.error) throw rows.error;
   return {
-    items: (rows.data ?? []).map((row) => row.item as HearthItem),
+    items: fitTrinkets((rows.data ?? []).map((row) => row.item as HearthItem)),
     name: (home.data?.hearth_page_name as string | null)?.trim() || DEFAULT_HOME_PAGE_NAME,
   };
 }

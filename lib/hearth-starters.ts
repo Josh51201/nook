@@ -1,5 +1,5 @@
 import type { IconName } from "../components/icon";
-import { newItemId, type HearthItem, type HearthLayout, type LabelItem } from "./hearth-layout";
+import { fitTrinkets, newItemId, type HearthItem, type HearthLayout, type LabelItem } from "./hearth-layout";
 import { addPage } from "./hearth-pages";
 import { HOME_PAGE } from "./home-hearth";
 import type { TrinketKey } from "./trinkets";
@@ -149,7 +149,7 @@ export function isFreshPage(layout: Pick<HearthLayout, "items" | "activePage">) 
 // no room for another page.
 export function startFrom(layout: HearthLayout, id: StarterId): { changes: Partial<HearthLayout>; newPage: boolean } | null {
   const starter = starterInfo(id);
-  const items = starter.build();
+  const items = fitTrinkets(starter.build());
   if (isFreshPage(layout)) return { changes: { items, ...starter.look }, newPage: false };
   const page = addPage(layout, starter.name);
   if (!page) return null;

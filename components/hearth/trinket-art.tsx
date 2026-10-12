@@ -11,7 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
 
-import { trinketShades, type TrinketKey } from "../../lib/trinkets";
+import { trinketShades, trinketViewBox, type TrinketKey } from "../../lib/trinkets";
 
 // The little drawings behind Trinkets (CORE-045). Each fits a box (with
 // its own proportions), sits on the "floor" at the bottom, and wears the main
@@ -20,12 +20,6 @@ import { trinketShades, type TrinketKey } from "../../lib/trinkets";
 
 type Shades = ReturnType<typeof trinketShades>;
 
-const VIEWBOX: Partial<Record<TrinketKey, string>> = {
-  rug: "0 0 200 60",
-  cat: "0 0 140 90",
-  mushrooms: "0 0 140 100",
-  books: "0 0 120 90",
-};
 
 const GREENS = ["#5b8049", "#6f9a5c", "#85b06f", "#a3c58a"];
 const CREAM = "#fbf3e4";
@@ -36,6 +30,7 @@ export function TrinketArt({
   width,
   height,
   flip,
+  rotate,
   still = false,
 }: {
   piece: TrinketKey;
@@ -43,13 +38,16 @@ export function TrinketArt({
   width: number;
   height: number;
   flip?: boolean;
+  // Turned this many degrees (CORE-098).
+  rotate?: number;
   // Hold still (for pickers and previews).
   still?: boolean;
 }) {
   const shades = trinketShades(color);
+  const box = trinketViewBox(piece);
   return (
-    <Alive piece={piece} still={still} style={flip ? { width, height, transform: [{ scaleX: -1 }] } : { width, height }}>
-      <Svg width={width} height={height} viewBox={VIEWBOX[piece] ?? "0 0 100 100"} preserveAspectRatio="xMidYMax meet">
+    <Alive piece={piece} still={still} style={{ width, height, transform: [...(rotate ? [{ rotate: `${rotate}deg` }] : []), ...(flip ? [{ scaleX: -1 }] : [])] }}>
+      <Svg width={width} height={height} viewBox={`0 0 ${box.w} ${box.h}`} preserveAspectRatio="xMidYMax meet">
         <Art piece={piece} s={shades} />
       </Svg>
     </Alive>

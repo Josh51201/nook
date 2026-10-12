@@ -38,6 +38,7 @@ import {
   type MovePlan,
   type Nudge,
 } from "../../lib/hearth-layout";
+import { trinketAspect, trinketBounds } from "../../lib/trinkets";
 import { Icon } from "../icon";
 import { Tap, useWiggle } from "../motion";
 import { nookRadii } from "./tile-face";
@@ -176,6 +177,7 @@ export function HearthGrid({
   // The active item is being resized (not moved): it's drawn at the outline's
   // size as you drag its corner, so you watch it grow (CORE-077, CORE-093).
   const [sizing, setSizing] = useState(false);
+  const activeKind = activeId ? items.find((item) => item.id === activeId)?.kind : undefined;
   const [dropHollow, setDropHollow] = useState<HollowItem | null>(null);
   const dropHollowRef = useRef<HollowItem | null>(null);
   // While a Cubby (CORE-084) is dragged, the things inside it come along:
@@ -278,7 +280,7 @@ export function HearthGrid({
             </Text>
           </View>
         </View>
-      ) : ghost ? (
+      ) : ghost && activeKind !== "trinket" ? (
         <>
           {/* Where it'll land: the open spot it settles into, or the spot of
               the thing it swaps with. With no room it goes back (CORE-091). */}
@@ -383,8 +385,9 @@ export function HearthGrid({
             if (target && target.id !== dropHollowRef.current?.id) tap();
             dropHollowRef.current = target;
             setDropHollow(target);
-            // A Trinket has no cell to snap to, so no outline.
-            setGhost(item.kind === "trinket" ? null : rect);
+            // A Trinket has no cell to snap to, so no outline while it moves;
+            // resizing it shows its new size (CORE-098).
+            setGhost(item.kind === "trinket" && finger ? null : rect);
             setSizing(!finger);
             // Moving (not resizing): what letting go here would do.
             const next = finger && !target ? planMove(items, item.id, rect.x, rect.y) : null;
@@ -805,6 +808,10 @@ function GridItem({
 
   const { x, y, w, h } = item;
   const free = item.kind === "trinket";
+  // A Trinket resizes at any size, keeping its drawing's shape, between its
+  // smallest and biggest (CORE-098).
+  const aspect = item.kind === "trinket" ? trinketAspect(item.piece) : 1;
+  const bounds = item.kind === "trinket" ? trinketBounds(item.piece) : { minW: 1, maxW: 4 };
   const moveGesture = useMemo(() => {
     const tapGesture = Gesture.Tap()
       .onBegin(() => {
@@ -964,6 +971,19 @@ function GridItem({
           scheduleOnRN(ghost, x, y, w, h);
         })
         .onUpdate((event) => {
+          if (free) {
+            // Along the corner's own diagonal, so the shape never changes.
+            const along = ((event.translationX / stride) * w + (event.translationY / stride) * h) / (w * w + h * h);
+            const room = Math.max(bounds.minW, Math.min(bounds.maxW, COLUMNS - x));
+            const freeW = Math.round(Math.min(room, Math.max(bounds.minW, w * (1 + along))) * 50) / 50;
+            const freeH = Math.round((freeW / aspect) * 100) / 100;
+            if (freeW !== targetW.value || freeH !== targetH.value) {
+              targetW.value = freeW;
+              targetH.value = freeH;
+              scheduleOnRN(ghost, x, y, freeW, freeH);
+            }
+            return;
+          }
           const nextW = Math.min(COLUMNS - x, Math.max(min.w, stickySnap(w + event.translationX / stride, targetW.value, 1)));
           // Text can be half a row tall; everything else is whole rows.
           const rawH = h + event.translationY / stride;
@@ -983,7 +1003,7 @@ function GridItem({
             scheduleOnRN(settle);
           }
         }),
-    [x, y, w, h, min.w, min.h, stride, halfRows, begin, ghost, sizeTick, resizeEnd, settle, began, targetW, targetH]
+    [x, y, w, h, min.w, min.h, stride, halfRows, free, aspect, bounds.minW, bounds.maxW, begin, ghost, sizeTick, resizeEnd, settle, began, targetW, targetH]
   );
 
   const style = useAnimatedStyle(() => ({
