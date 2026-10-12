@@ -255,13 +255,14 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   // Which widget of each stack is showing (CORE-050).
   const [stackShown, setStackShown] = useState<Record<string, number>>({});
   const [dragging, setDragging] = useState(false);
-  // Edit started by holding an item: the tip card at the top stays away until
-  // you let go, so the grid doesn't slide out from under your finger.
+  // Edit started by holding an item: the tip card at the top stays away for
+  // the rest of that Edit, so nothing appears above the grid and shoves it
+  // down, not while dragging nor when you let go (CORE-091). (Scrolling the
+  // page to make up for the card came a frame late, so the Hearth jumped.)
   const [holdStarted, setHoldStarted] = useState(false);
-  const holdStartedNow = useRef(false);
-  // ...and when it does come in, the page scrolls down by its height so the
-  // Hearth stays exactly where it was under your finger (CORE-091).
-  const keepGridStill = useRef(false);
+  useEffect(() => {
+    if (!editing) setHoldStarted(false);
+  }, [editing]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [openingHollow, setOpeningHollow] = useState<string | null>(null);
   // Inside a Hollow: the sheet for the Hollow itself (name, look, color, size).
@@ -399,12 +400,6 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   function onDraggingChange(isDragging: boolean) {
     draggingNow.current = isDragging;
     setDragging(isDragging);
-    if (!isDragging && holdStartedNow.current) {
-      holdStartedNow.current = false;
-      keepGridStill.current = true;
-      setTimeout(() => (keepGridStill.current = false), 1000);
-    }
-    if (!isDragging) setHoldStarted(false);
     if (isDragging) {
       measureViewport();
       measureTabs();
@@ -1874,7 +1869,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
             scrollEnabled={!dragging}
             keyboardShouldPersistTaps="handled"
           >
-            {editing && !holdStarted && (cubbyMode || !tipHidden) ? (
+            {editing && (cubbyMode || (!tipHidden && !holdStarted)) ? (
               <Animated.View
                 entering={FadeIn.duration(200)}
                 exiting={FadeOut.duration(150)}
@@ -1921,15 +1916,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
               collapsable={false}
               onLayout={(e) => {
                 setGridWidth(e.nativeEvent.layout.width);
-                const y = e.nativeEvent.layout.y;
-                if (keepGridStill.current && y !== gridTop.current) {
-                  keepGridStill.current = false;
-                  (scrollView.current as unknown as { scrollTo?: (o: { y: number; animated?: boolean }) => void } | null)?.scrollTo?.({
-                    y: Math.max(0, scrollY.value + y - gridTop.current),
-                    animated: false,
-                  });
-                }
-                gridTop.current = y;
+                gridTop.current = e.nativeEvent.layout.y;
               }}
             >
               {error ? (
@@ -2012,10 +1999,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   }
                   onPressItem={onPressItem}
                   onLongPress={(picked) => {
-                    if (picked) {
-                      holdStartedNow.current = true;
-                      setHoldStarted(true);
-                    }
+                    if (picked) setHoldStarted(true);
                     setEditing(true);
                   }}
                   onCopy={(item) => copyTo(item.id, scope)}
