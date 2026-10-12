@@ -3,7 +3,7 @@ import { View } from "react-native";
 import Animated, { FadeInRight } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
-import { useHearthData } from "../../lib/hearth-data";
+import { hearthSettling, useHearthData } from "../../lib/hearth-data";
 import { rsvpLabel, whenWords as gatheringWhen } from "../../lib/gatherings";
 import { useUpcomingGatherings } from "../../lib/gatherings-data";
 import { countdown, gatheringKindInfo } from "../../lib/gift-nook";
@@ -138,7 +138,7 @@ function Facts({ facts, size, space, textColor, mutedColor, accentColor }: { fac
         return (
           <Animated.View
             key={i}
-            entering={FadeInRight.delay(i * 50).springify().damping(18)}
+            entering={hearthSettling() ? undefined : FadeInRight.delay(i * 50).springify().damping(18)}
             style={{ flexDirection: "row", alignItems: "center", gap: 7, height: line[fact.kind] }}
           >
             {fact.kind === "detail" ? <Icon name={fact.icon} size={13} color={fact.iconColor ?? mutedColor} /> : null}

@@ -50,6 +50,18 @@ export function nextHearthRefresh() {
   return lastRefresh;
 }
 
+// Just after a page turn, what's already known is shown as it is, without
+// each line sliding in, so a page you've seen doesn't twitch as it appears.
+// Lines still slide in when their data arrives later than that.
+let settleUntil = 0;
+export const SETTLE_MS = 700;
+export function settleHearth(now = Date.now()) {
+  settleUntil = now + SETTLE_MS;
+}
+export function hearthSettling(now = Date.now()) {
+  return now < settleUntil;
+}
+
 // For tests, and when someone signs out.
 export function forgetHearthData() {
   cache.clear();

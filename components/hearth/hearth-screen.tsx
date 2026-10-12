@@ -149,7 +149,7 @@ import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WaitingPill } from "./waiting";
 import { WidgetView } from "./widgets";
-import { nextHearthRefresh } from "../../lib/hearth-data";
+import { nextHearthRefresh, settleHearth } from "../../lib/hearth-data";
 import { loadRecipesSummary } from "../../lib/recipes-data";
 import { gatheringWidgetsToTakeOff, widgetGathering } from "../../lib/gatherings-data";
 
@@ -881,7 +881,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       const farEnough = Math.abs(event.translationX) > windowWidth * 0.22;
       const flicked = Math.abs(event.velocityX) > 550 && Math.sign(event.velocityX) === Math.sign(event.translationX);
       if (allowed && (farEnough || flicked)) {
-        pageShift.value = withTiming(-step * windowWidth * 0.6, { duration: 140, easing: Easing.in(Easing.quad) }, (finished) => {
+        // Gone completely before the next page is built, so none of it lingers.
+        pageShift.value = withTiming(-step * windowWidth * 0.5, { duration: 130, easing: Easing.in(Easing.quad) }, (finished) => {
           if (finished) scheduleOnRN(turnPage, step);
         });
       } else {
@@ -897,6 +898,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     const step = arrivingFrom.current ?? (ids.indexOf(layout.activePage) > ids.indexOf(shownPage.current) ? 1 : -1);
     shownPage.current = layout.activePage;
     arrivingFrom.current = null;
+    settleHearth();
     if (reduceMotion) {
       pageShift.value = 0;
       return;
@@ -908,7 +910,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   }, [layout.activePage]);
   const pageStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: pageShift.value }],
-    opacity: interpolate(Math.abs(pageShift.value), [0, windowWidth * 0.6], [1, 0.25], "clamp"),
+    opacity: interpolate(Math.abs(pageShift.value), [0, windowWidth * 0.5], [1, 0], "clamp"),
   }));
 
   function openNook(nookId: string) {
@@ -1982,12 +1984,6 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
               </Animated.View>
             ) : null}
 
-            {/* CORE-103: while widgets and tiles are still fetching what
-                they show, say so (and offer a retry if it's very slow). */}
-            {!isEmpty && !isLoading && !editing ? (
-              <WaitingPill accent={theme.accent} text={theme.text} onRetry={() => setRefreshKey(nextHearthRefresh())} />
-            ) : null}
-
             {onHome && !isEmpty && !isLoading ? (
               <Animated.View entering={FadeIn.duration(200)} style={[styles.hint, { backgroundColor: `${theme.accent}12` }]}>
                 <Icon name="group" size={18} color={theme.accent} />
@@ -2186,6 +2182,13 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
               </Text>
             </View>
           </Animated.View>
+        </View>
+      ) : !toast && !isEmpty && !isLoading && !editing ? (
+        // CORE-103: while widgets and tiles are still fetching, say so (and
+        // offer a retry if it's very slow). It floats over the page so
+        // nothing jumps when it comes and goes.
+        <View style={[styles.trashArea, { bottom: bottomInset + 20 }]} pointerEvents="box-none">
+          <WaitingPill accent={theme.accent} background={theme.background} text={theme.text} onRetry={() => setRefreshKey(nextHearthRefresh())} />
         </View>
       ) : toast ? (
         <Animated.View

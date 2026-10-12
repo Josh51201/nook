@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { cachedValue, canReuse, forgetHearthData, loadOnce, nextHearthRefresh, REUSE_FOR_MS } from "../lib/hearth-data";
+import { cachedValue, canReuse, forgetHearthData, hearthSettling, loadOnce, nextHearthRefresh, REUSE_FOR_MS, SETTLE_MS, settleHearth } from "../lib/hearth-data";
 
 // What the Hearth's tiles and widgets remember between pages (CORE-104).
 describe("remembered Hearth data", () => {
@@ -43,5 +43,11 @@ describe("remembered Hearth data", () => {
     const first = nextHearthRefresh();
     expect(nextHearthRefresh()).toBe(first + 1);
     expect(first).toBeGreaterThan(0); // 0 is the widget editor's preview
+  });
+
+  it("keeps a freshly turned page still for a moment, then lets late arrivals slide in", () => {
+    settleHearth(1000);
+    expect(hearthSettling(1000 + SETTLE_MS - 1)).toBe(true);
+    expect(hearthSettling(1000 + SETTLE_MS)).toBe(false);
   });
 });

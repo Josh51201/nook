@@ -67,9 +67,20 @@ export function WaitingBars({
   );
 }
 
-// "Bringing in your Nooks…" at the top of the Hearth while any placeholder
-// is up. Quick loads show nothing; a very slow one offers to try again.
-export function WaitingPill({ accent, text, onRetry }: { accent: string; text: string; onRetry: () => void }) {
+// "Bringing in your Nooks…" floating near the bottom of the Hearth while any
+// placeholder is up. Quick loads show nothing; a very slow one offers to try
+// again. It floats (rather than sitting in the page) so nothing jumps.
+export function WaitingPill({
+  accent,
+  background,
+  text,
+  onRetry,
+}: {
+  accent: string;
+  background: string;
+  text: string;
+  onRetry: () => void;
+}) {
   const count = useSyncExternalStore(onWaitingChange, waitingCount);
   const [since, setSince] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -101,7 +112,14 @@ export function WaitingPill({ accent, text, onRetry }: { accent: string; text: s
           paddingVertical: 7,
           paddingHorizontal: 14,
           borderRadius: 999,
-          backgroundColor: `${accent}18`,
+          backgroundColor: background,
+          borderWidth: 1,
+          borderColor: `${accent}40`,
+          shadowColor: "#000",
+          shadowOpacity: 0.12,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 3,
         }}
         accessibilityRole={state === "slow" ? "button" : undefined}
         accessibilityLiveRegion="polite"

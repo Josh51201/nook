@@ -61,7 +61,7 @@ import { WindowScene } from "./window-scene";
 import { FridgeDoor, FridgeNoteCard, LetterMagnets, Magnet } from "../fridge-door";
 import { fridgeGrid, fridgePlace, hashOf, magnets, noteMagnet } from "../../lib/fridge";
 import { useFridgeNotes } from "../../lib/fridge-data";
-import { useHearthData } from "../../lib/hearth-data";
+import { hearthSettling, useHearthData } from "../../lib/hearth-data";
 import { useHomeHearth } from "../../lib/home-hearth-data";
 import { glanceLines, type GlanceLine } from "../../lib/gathering-glance";
 import { useGatheringGlance } from "../../lib/gatherings-data";
@@ -360,7 +360,7 @@ function IconFace({
       {badge ? (
         <Animated.View
           key={badge}
-          entering={ZoomIn.springify().damping(12)}
+          entering={hearthSettling() ? undefined : ZoomIn.springify().damping(12)}
           style={[styles.badge, { backgroundColor: palette.text === "#ffffff" ? "#ffffff" : palette.deep }]}
         >
           <Text style={[styles.badgeText, { color: palette.text === "#ffffff" ? palette.deep : "#ffffff" }]}>
@@ -552,7 +552,7 @@ function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyPro
     const page = Math.min(height - 6, 110);
     const number = Math.min(46, Math.max(26, height * 0.42));
     return (
-      <Animated.View entering={FadeIn.duration(250)} style={[styles.row, { flex: 1, gap: 16 }]}>
+      <Animated.View entering={hearthSettling() ? undefined : FadeIn.duration(250)} style={[styles.row, { flex: 1, gap: 16 }]}>
         <CalendarPage date={when} palette={palette} size={page} />
         <View style={{ flex: 1, gap: 2 }}>
           <Number size={number} />
@@ -577,7 +577,7 @@ function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyPro
     const page = Math.max(60, Math.min(big ? 120 : 96, (height - textRoom) * 0.55));
     const number = Math.max(28, Math.min(big ? 64 : 48, (height - textRoom) * 0.33));
     return (
-      <Animated.View entering={FadeIn.duration(250)} style={[styles.centerFill, { gap: 8 }]}>
+      <Animated.View entering={hearthSettling() ? undefined : FadeIn.duration(250)} style={[styles.centerFill, { gap: 8 }]}>
         <CalendarPage date={when} palette={palette} size={page} />
         <View style={{ alignItems: "center", alignSelf: "stretch" }}>
           <Number size={number} />
@@ -594,7 +594,7 @@ function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyPro
     );
   }
   return (
-    <Animated.View entering={FadeIn.duration(250)} style={styles.centerFill}>
+    <Animated.View entering={hearthSettling() ? undefined : FadeIn.duration(250)} style={styles.centerFill}>
       <Number size={44} />
       <Text style={[styles.small, { color: palette.muted, textAlign: "center" }]} numberOfLines={2}>
         {words}
@@ -645,7 +645,7 @@ function Gatherings({ widget, palette, refreshKey, height, shape, icon }: BodyPr
   const listRow = (row: GatheringRow, i: number) => {
     const kind = gatheringKindInfo(row.kind);
     return (
-      <Animated.View key={row.id} entering={FadeInRight.delay(i * 50).springify().damping(18)} style={styles.row}>
+      <Animated.View key={row.id} entering={hearthSettling() ? undefined : FadeInRight.delay(i * 50).springify().damping(18)} style={styles.row}>
         <Icon name={kind.icon} size={15} color={palette.accent} />
         <Text style={[styles.body, { color: palette.text, flex: 1 }]} numberOfLines={1}>
           {row.title}
@@ -728,7 +728,7 @@ function OneGathering({ widget, palette, refreshKey, height, width, shape }: Bod
   const shown = lines.slice(0, room);
 
   return (
-    <Animated.View entering={FadeIn.duration(250)} style={{ flex: 1, gap: big ? 10 : 6 }}>
+    <Animated.View entering={hearthSettling() ? undefined : FadeIn.duration(250)} style={{ flex: 1, gap: big ? 10 : 6 }}>
       {big ? (
         <Panel palette={palette} style={[styles.row, { gap: 12 }]}>
           <IconBadge name={kind.icon} size={42} color={palette.deep} background="rgba(255,255,255,0.7)" />
@@ -762,7 +762,7 @@ function OneGathering({ widget, palette, refreshKey, height, width, shape }: Bod
 
 function GlanceRow({ line, palette, big, index }: { line: GlanceLine; palette: Palette; big: boolean; index: number }) {
   return (
-    <Animated.View entering={FadeInRight.delay(index * 50).springify().damping(18)} style={[styles.row, { gap: 8, alignItems: big ? "flex-start" : "center" }]}>
+    <Animated.View entering={hearthSettling() ? undefined : FadeInRight.delay(index * 50).springify().damping(18)} style={[styles.row, { gap: 8, alignItems: big ? "flex-start" : "center" }]}>
       <Icon name={line.icon} size={15} color={palette.accent} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={[styles.body, { color: palette.text, fontWeight: big ? "700" : "500" }]} numberOfLines={1}>
@@ -2566,20 +2566,13 @@ function timeOfDay() {
 function Greeting({ widget, palette, refreshKey, shape, height, width }: BodyProps<"greeting">) {
   const { session } = useAuth();
   const { message, showName, showDate } = widget.settings;
-  const [name, setName] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!session || !showName) return;
-    supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", session.user.id)
-      .single()
-      .then(({ data }) => {
-        const value = data?.display_name?.trim();
-        setName(value && !value.includes("@") ? value.split(" ")[0] : null);
-      });
-  }, [session, showName, refreshKey]);
+  // Remembered, so the greeting doesn't change size after the page appears.
+  const userId = session?.user.id;
+  const name = useHearthData(userId && showName ? `w-name:${userId}` : null, refreshKey, async () => {
+    const { data } = await supabase.from("profiles").select("display_name").eq("id", userId!).single();
+    const value = data?.display_name?.trim();
+    return value && !value.includes("@") ? value.split(" ")[0] : "";
+  });
 
   const { hello, icon } = timeOfDay();
   const date = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
