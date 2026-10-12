@@ -71,6 +71,7 @@ const icons = {
   palette: { ios: "paintpalette.fill", android: "palette" },
   filter: { ios: "line.3.horizontal.decrease", android: "filter_list" },
   undo: { ios: "arrow.uturn.backward", android: "undo" },
+  redo: { ios: "arrow.uturn.forward", android: "redo" },
   lock: { ios: "lock.fill", android: "lock" },
   unlock: { ios: "lock.open.fill", android: "lock_open" },
   search: { ios: "magnifyingglass", android: "search" },

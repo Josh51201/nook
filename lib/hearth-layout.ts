@@ -664,10 +664,11 @@ function carryCubby(items: HearthItem[], cubby: CubbyItem, x: number, y: number)
   );
 }
 
-// The older way, kept for the arrow buttons (CORE-075/076) when the next step
-// has no room: it goes anyway, and what it lands on slides down out of the way.
+// Making room on purpose: holding a dragged item still over a filled spot
+// (CORE-092), or an arrow step with no room (CORE-075/076). It goes there
+// anyway, and what it lands on slides down out of the way.
 // Nothing can be dropped on a locked item: it lands in the nearest open spot.
-export function pushItem(layout: HearthLayout, id: string, x: number, y: number): HearthItem[] {
+export function pushItem(layout: Pick<HearthLayout, "items">, id: string, x: number, y: number): HearthItem[] {
   const moving = layout.items.find((item) => item.id === id);
   if (!moving || moving.locked) return layout.items;
   if (moving.kind === "cubby") return moveCubby(layout, moving, x, y);
@@ -703,7 +704,7 @@ export function resizeItem(layout: HearthLayout, id: string, w: number, h: numbe
 // A Cubby (CORE-084) brings what's inside it along, and anything where they
 // land slides down out of the way. If what's inside would land on something
 // locked, the box goes on its own.
-function moveCubby(layout: HearthLayout, cubby: CubbyItem, x: number, y: number): HearthItem[] {
+function moveCubby(layout: Pick<HearthLayout, "items">, cubby: CubbyItem, x: number, y: number): HearthItem[] {
   const placed = clampRect({ ...cubby, x, y });
   const dx = placed.x - cubby.x;
   const dy = placed.y - cubby.y;

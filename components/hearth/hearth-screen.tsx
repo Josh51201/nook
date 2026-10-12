@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -68,6 +69,7 @@ import {
   itemColor,
   locate,
   moveItem,
+  pushItem,
   nudgeItem,
   canNudge,
   itemDisplayName,
@@ -111,11 +113,13 @@ import { Icon, IconBadge, type IconName } from "../icon";
 import { Skeleton, Tap } from "../motion";
 import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from "../tour";
 import { AddSheet } from "./add-sheet";
+import { EditBar, EditMoreSheet, type MoreTool } from "./edit-bar";
 import { GRID_GAP, HearthGrid } from "./hearth-grid";
 import { PetStageContext } from "./pet-art";
 import { isPetBed, PetRoamers, strideFor } from "./pet-roamer";
 import { petSizeForStride } from "../../lib/hearth-pet";
 import { useHearthView } from "../../lib/hearth-view";
+import { emptyHistory, remember, stepBack, stepForward, type History } from "../../lib/hearth-history";
 import { canGoOnHomePage, HOME_PAGE } from "../../lib/home-hearth";
 import { fridgePlace, fridgeRoute, placeKey } from "../../lib/fridge";
 import { markFridgesSeen, useFridgeNews } from "../../lib/fridge-data";
@@ -161,7 +165,7 @@ export function HearthScreen(props: { scope: Scope; reveal?: string }) {
 function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) {
   const router = useRouter();
   // Your own pages, plus the page shared with your Home (CORE-054).
-  const { layout, save, isLoading, error, reload, personal, home, showsHome, onHome } = useHearthView(scope);
+  const { layout, save: saveView, isLoading, error, reload, personal, home, showsHome, onHome } = useHearthView(scope);
   // The theme in effect right now (Dusk while the phone is dark, if asked).
   const { key: themeKey } = useTheme();
   const theme = hearthThemes[themeKey] ?? hearthThemes.hearth;
@@ -169,6 +173,33 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const items = scopeItems(layout, scope);
 
   const [editing, setEditing] = useState(false);
+  // Undo and Redo in Edit (CORE-095): the Hearth as it was before each change.
+  const [history, setHistory] = useState<History<HearthLayout>>(emptyHistory);
+  const editingNow = useRef(editing);
+  editingNow.current = editing;
+  const layoutNow = useRef(layout);
+  layoutNow.current = layout;
+  // Every save goes through here. While editing, the Hearth as it was just
+  // before is kept so the change can be undone; things that aren't edits
+  // (switching pages, undoing itself) pass `undoable: false`.
+  function save(changes: Partial<HearthLayout>, { undoable = true }: { undoable?: boolean } = {}) {
+    if (undoable && editingNow.current) setHistory((h) => remember(h, layoutNow.current));
+    return saveView(changes);
+  }
+  // Edit's toolbar (CORE-094): its More sheet, its height (so messages sit
+  // above it), and the one-line tip at the top until it's put away.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [editBarHeight, setEditBarHeight] = useState(0);
+  const [tipHidden, setTipHidden] = useState(true);
+  useEffect(() => {
+    AsyncStorage.getItem(EDIT_TIP_KEY)
+      .then((value) => setTipHidden(value === "1"))
+      .catch(() => setTipHidden(false));
+  }, []);
+  function hideTip(hidden: boolean) {
+    setTipHidden(hidden);
+    AsyncStorage.setItem(EDIT_TIP_KEY, hidden ? "1" : "0").catch(() => {});
+  }
   const [gridWidth, setGridWidth] = useState(0);
   const { height: windowHeight } = useWindowDimensions();
   const [optionsFor, setOptionsFor] = useState<string | null>(null);
@@ -402,7 +433,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const gridRef = useRef<View>(null);
   const reduceMotion = useReducedMotion();
 
-  const sheetOpen = adding || decorating || pagesOpen || finding || scenesOpen || sharing || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
+  const sheetOpen = moreOpen || adding || decorating || pagesOpen || finding || scenesOpen || sharing || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: sheetOpen ? { display: "none" } : undefined });
   }, [scope, sheetOpen, navigation]);
@@ -459,14 +490,35 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
 
   // Saves, unless a page or Hollow would be over its limit: then it says so
   // and returns false, so callers can skip their "done" message.
-  function persist(next: HearthItem[]) {
+  function persist(next: HearthItem[], options?: { undoable?: boolean }) {
+    if (next === layout.items) return true;
     if (tooFull({ items: next })) return false;
-    save({ items: next }).catch((saveError: Error) => Alert.alert("Couldn't save your Hearth", saveError.message));
+    save({ items: next }, options).catch((saveError: Error) => Alert.alert("Couldn't save your Hearth", saveError.message));
     return true;
   }
   // Apply an edit to whatever this screen is showing (Hearth or a Hollow).
   function persistHere(edit: (inner: HearthLayout) => HearthItem[]) {
     return persist(inScope(layout, scope, edit));
+  }
+
+  // Step back through what was changed while editing, or forward again (CORE-095).
+  function undoEdit() {
+    const step = stepBack(history, layout);
+    if (!step) return;
+    tap();
+    settleToast();
+    setHistory(step.history);
+    save(step.show, { undoable: false }).catch((saveError: Error) => Alert.alert("Couldn't undo that", saveError.message));
+    AccessibilityInfo.announceForAccessibility("Undone");
+  }
+  function redoEdit() {
+    const step = stepForward(history, layout);
+    if (!step) return;
+    tap();
+    settleToast();
+    setHistory(step.history);
+    save(step.show, { undoable: false }).catch((saveError: Error) => Alert.alert("Couldn't redo that", saveError.message));
+    AccessibilityInfo.announceForAccessibility("Redone");
   }
 
   // Pages of the Hearth (CORE-051). Hollows have just the one.
@@ -475,7 +527,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     if (!changes) return;
     tap();
     setPagesOpen(false);
-    save(changes).catch((saveError: Error) => Alert.alert("Couldn't change page", saveError.message));
+    save(changes, { undoable: false }).catch((saveError: Error) => Alert.alert("Couldn't change page", saveError.message));
   }
   // Photos that other scenes still need must not be cleaned up.
   useEffect(() => {
@@ -500,6 +552,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       // The scenes are written first, so the Hearth you're leaving is safe.
       await scenesStore.update({ scenes: result.state.scenes, active: result.state.active });
       await personal.save({ ...result.show });
+      // A different Hearth now: earlier edits can't be undone onto it.
+      setHistory(emptyHistory());
     } catch (switchError) {
       scenesStore.update({ scenes: before.scenes, active: before.active }).catch(() => {});
       Alert.alert("Couldn't switch scenes", (switchError as Error).message);
@@ -587,6 +641,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     try {
       await scenesStore.update({ scenes: result.state.scenes, active: result.state.active });
       await personal.save({ ...result.show, customThemes: received.customThemes });
+      setHistory(emptyHistory());
     } catch (switchError) {
       scenesStore.update({ scenes: before.scenes, active: before.active }).catch(() => {});
       return Alert.alert("Couldn't switch to it", (switchError as Error).message);
@@ -987,29 +1042,6 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     toastTimer.current = setTimeout(settleToast, ms);
   }
 
-  // Moved or resized by hand (CORE-091): done, with a few seconds to undo.
-  function arrange(id: string, edit: (inner: HearthLayout) => HearthItem[], done: "Moved" | "Resized") {
-    const before = layout.items;
-    const item = items.find((i) => i.id === id);
-    if (!persistHere(edit)) return;
-    settleToast();
-    showToast(
-      item ? `${done} “${itemLabel(item)}”` : done,
-      {
-        label: "Undo",
-        run: () => {
-          if (toastTimer.current) clearTimeout(toastTimer.current);
-          toastTimer.current = null;
-          tap();
-          persist(before);
-          setToast(null);
-        },
-      },
-      4000,
-      done === "Moved" ? "drag" : "resize"
-    );
-  }
-
   function itemLabel(item: HearthItem) {
     if (item.kind === "widget") return item.widget.title || widgetKindInfo(item.widget.kind).label;
     if (item.kind === "nook") return nookLabel(item);
@@ -1039,7 +1071,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           toastTimer.current = null;
           pendingCancel.current = null; // its alerts were never cancelled
           tap();
-          persist(before);
+          persist(before, { undoable: false });
           setToast(null);
         },
       },
@@ -1062,6 +1094,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     if (!editing) {
       stopSelecting();
       setCubbyMode(false);
+      setHistory(emptyHistory());
+      setMoreOpen(false);
     }
   }, [editing]);
   const hasCubby = items.some((item) => item.kind === "cubby");
@@ -1158,7 +1192,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   toastTimer.current = null;
                   pendingCancel.current = null;
                   tap();
-                  persist(before);
+                  persist(before, { undoable: false });
                   setToast(null);
                 },
               },
@@ -1206,7 +1240,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           if (toastTimer.current) clearTimeout(toastTimer.current);
           toastTimer.current = null;
           tap();
-          persist(before);
+          persist(before, { undoable: false });
           setToast(null);
         },
       },
@@ -1524,6 +1558,51 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     outside.weather ? ambienceForWeather(outside.weather.condition) : null
   );
 
+  // Edit's toolbar (CORE-094), whenever nothing else is using the bottom.
+  const editBarShown = editing && !selecting && !dragging && !movingItem && !zoom;
+  const moreTools: MoreTool[] = [];
+  if (!isEmpty) {
+    moreTools.push({
+      key: "select",
+      label: "Select several",
+      hint: "Pick a few things to move, color, tag, lock or remove together.",
+      icon: "check",
+      onPress: () => {
+        tap();
+        setCubbyMode(false);
+        setSelecting(true);
+        setPicked([]);
+      },
+    });
+  }
+  if (hasCubby) {
+    moreTools.push({
+      key: "cubbies",
+      label: cubbyMode ? "Done with Cubbies" : "Cubbies",
+      hint: "Reach the boxes behind your tiles to move or decorate them.",
+      icon: "category",
+      onPress: () => {
+        tap();
+        stopSelecting();
+        setCubbyMode((on) => !on);
+      },
+    });
+  }
+  if (!isEmpty && !scope) {
+    moreTools.push({ key: "tidy", label: "Tidy up", hint: "Close the gaps, keeping everything in its column.", icon: "tidy", onPress: tidyUp });
+    moreTools.push({ key: "find", label: "Find", hint: "Search for something on any page or in a Hollow.", icon: "search", onPress: () => setFinding(true) });
+    moreTools.push({ key: "scenes", label: "Scenes", hint: "Save this look and switch between looks.", icon: "sparkles", onPress: () => setScenesOpen(true) });
+  }
+  if (!scope) {
+    moreTools.push({ key: "share", label: "Share your look", hint: "Send your theme or whole Hearth to someone.", icon: "share", onPress: () => setSharing(true) });
+  }
+  if (tipHidden) {
+    moreTools.push({ key: "tip", label: "Show the tip again", hint: "The one-line reminder of how moving works.", icon: "drag", onPress: () => hideTip(false) });
+  }
+  // The "?" lives here rather than in the header, so the header has room for
+  // your name (CORE-069).
+  moreTools.push({ key: "help", label: "Help", hint: "Answers to common questions, and the tour.", icon: "help", onPress: showHelp });
+
   return (
     <View style={[styles.fill, { backgroundColor: theme.background }]}>
       <WallpaperLayer wallpaper={wallpaper} background={theme.background} dark={theme.dark} />
@@ -1572,11 +1651,6 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
               </View>
             </View>
             <View style={styles.headerButtons}>
-              {editing ? (
-                <Tap onPress={() => setAdding(true)} hitSlop={10} pressedScale={0.85} accessibilityLabel="Add">
-                  <Icon name="add" size={24} color={theme.accent} />
-                </Tap>
-              ) : null}
               <TourTarget id="hearth-edit">
                 <Tap
                   onPress={() => {
@@ -1667,74 +1741,40 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
             ref={scrollView}
             {...scrollProps}
             // Room to scroll the last row above the arrow bar while moving.
-            contentContainerStyle={[styles.container, movingId ? { paddingBottom: 240 } : null]}
+            contentContainerStyle={[styles.container, movingId ? { paddingBottom: 240 } : editing ? { paddingBottom: 130 } : null]}
             scrollEnabled={!dragging}
             keyboardShouldPersistTaps="handled"
           >
-            {editing && !holdStarted ? (
+            {editing && !holdStarted && (cubbyMode || !tipHidden) ? (
               <Animated.View
                 entering={FadeIn.duration(200)}
                 exiting={FadeOut.duration(150)}
-                style={[styles.hint, { backgroundColor: `${theme.accent}18`, flexDirection: "column", alignItems: "stretch", gap: 10 }]}
+                style={[styles.hint, { backgroundColor: `${theme.accent}18` }]}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <Icon name={cubbyMode ? "category" : "drag"} size={18} color={theme.accent} />
-                  <Text style={{ color: theme.text, flex: 1 }}>
-                    {cubbyMode
-                      ? "Cubby mode: everything else is faded so you can reach the boxes behind it. Hold a box (or its grip) and drag it — what's inside comes along. Drag ↘ to resize, tap a box to decorate it."
-                      : scope
-                      ? "Hold anything and drag it to an open spot, onto something its size to swap, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."
-                      : "Hold anything and drag it to an open spot, onto something its size to swap, onto a Hollow to put it inside, or onto the trash to remove it. Drag a corner to resize, tap ⧉ to copy, tap to customize."}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {hasCubby ? (
-                    <Pill
-                      icon="category"
-                      label={cubbyMode ? "Done with Cubbies" : "Cubbies"}
-                      accent={theme.accent}
-                      background={theme.background}
-                      onPress={() => {
-                        tap();
-                        stopSelecting();
-                        setCubbyMode((on) => !on);
-                      }}
-                    />
-                  ) : null}
-                  <Pill icon="palette" label="Decorate" accent={theme.accent} background={theme.background} onPress={() => setDecorating(true)} />
-                  {scope ? null : (
-                    <Pill icon="widgets" label="Pages" accent={theme.accent} background={theme.background} onPress={() => setPagesOpen(true)} />
-                  )}
-                  {scope ? null : (
-                    <Pill icon="share" label="Share" accent={theme.accent} background={theme.background} onPress={() => setSharing(true)} />
-                  )}
-                  {isEmpty ? null : (
-                    <>
-                      <Pill
-                        icon="check"
-                        label={selecting ? "Stop selecting" : "Select"}
-                        accent={theme.accent}
-                        background={theme.background}
-                        onPress={() => {
-                          tap();
-                          setCubbyMode(false);
-                          setSelecting((s) => !s);
-                          setPicked([]);
-                        }}
-                      />
-                      {scope ? null : (
-                        <Pill icon="sparkles" label="Scenes" accent={theme.accent} background={theme.background} onPress={() => setScenesOpen(true)} />
-                      )}
-                      <Pill icon="tidy" label="Tidy up" accent={theme.accent} background={theme.background} onPress={tidyUp} />
-                      {scope ? null : (
-                        <Pill icon="search" label="Find" accent={theme.accent} background={theme.background} onPress={() => setFinding(true)} />
-                      )}
-                    </>
-                  )}
-                  {/* The "?" lives here rather than in the header, so the
-                      header has room for your name (CORE-069). */}
-                  <Pill icon="help" label="Help" accent={theme.accent} background={theme.background} onPress={showHelp} />
-                </View>
+                <Icon name={cubbyMode ? "category" : "drag"} size={18} color={theme.accent} />
+                <Text style={{ color: theme.text, flex: 1 }}>
+                  {cubbyMode
+                    ? "Cubby mode: everything else is faded so you can reach the boxes. Hold a box to move it with what's inside; drag ↘ to resize, tap to decorate."
+                    : scope
+                    ? "Hold anything and drag it: to an open spot, onto something its size to swap, or onto the trash. Hold still where there's no room to make room. Drag a corner to resize; tap to change it."
+                    : "Hold anything and drag it: to an open spot, onto something its size to swap, onto a Hollow, or onto the trash. Hold still where there's no room to make room. Drag a corner to resize; tap to change it."}
+                </Text>
+                {cubbyMode ? (
+                  <Pill
+                    icon="check"
+                    label="Done"
+                    accent={theme.accent}
+                    background={theme.background}
+                    onPress={() => {
+                      tap();
+                      setCubbyMode(false);
+                    }}
+                  />
+                ) : (
+                  <Tap onPress={() => hideTip(true)} hitSlop={12} pressedScale={0.85} accessibilityRole="button" accessibilityLabel="Hide this tip">
+                    <Icon name="close" size={16} color={theme.muted} />
+                  </Tap>
+                )}
               </Animated.View>
             ) : null}
 
@@ -1818,10 +1858,13 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   editing={editing}
                   accent={theme.accent}
                   shadowAt={(level) => shadowAtLevel(themeKey, level)}
-                  onMove={(id, x, y) => arrange(id, (inner) => moveItem(inner, id, x, y), "Moved")}
+                  onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
+                  onPush={(id, x, y) => {
+                    if (persistHere((inner) => pushItem(inner, id, x, y))) tap("success");
+                  }}
                   onNudge={(id, way) => persistHere((inner) => nudgeItem(inner, id, way))}
                   focusId={movingId}
-                  onResize={(id, w, h) => arrange(id, (inner) => resizeItem(inner, id, w, h), "Resized")}
+                  onResize={(id, w, h) => persistHere((inner) => resizeItem(inner, id, w, h))}
                   onDropIntoHollow={
                     scope
                       ? undefined
@@ -1921,7 +1964,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         <Animated.View
           key={toast.text}
           entering={FadeIn.duration(180)}
-          style={[styles.trashArea, { bottom: (scope ? insets.bottom : 0) + 20 }]}
+          style={[styles.trashArea, { bottom: (scope ? insets.bottom : 0) + (editBarShown ? 12 + editBarHeight + 10 : 20) }]}
           pointerEvents="box-none"
         >
           <View style={[styles.trash, styles.toast, { backgroundColor: theme.text, borderColor: theme.text }]}>
@@ -1941,6 +1984,26 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           </View>
         </Animated.View>
       ) : null}
+
+      {editBarShown ? (
+        <EditBar
+          accent={theme.accent}
+          background={theme.background}
+          text={theme.text}
+          bottom={(scope ? insets.bottom : 0) + 12}
+          canUndo={history.past.length > 0}
+          canRedo={history.future.length > 0}
+          onUndo={undoEdit}
+          onRedo={redoEdit}
+          onAdd={() => setAdding(true)}
+          onDecorate={() => setDecorating(true)}
+          onPages={scope ? undefined : () => setPagesOpen(true)}
+          onTidy={tidyUp}
+          onMore={() => setMoreOpen(true)}
+          onLayout={setEditBarHeight}
+        />
+      ) : null}
+      <EditMoreSheet visible={moreOpen} onClose={() => setMoreOpen(false)} tools={moreTools} accent={theme.accent} />
 
       {selecting && editing ? (
         <SelectionBar
@@ -2168,6 +2231,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     </View>
   );
 }
+
+// Whether the one-line tip at the top of Edit has been put away (CORE-094).
+const EDIT_TIP_KEY = "nook.hearth.editTipHidden";
 
 // A small button in the Edit hint.
 function Pill({

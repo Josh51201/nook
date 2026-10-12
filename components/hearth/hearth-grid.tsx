@@ -27,6 +27,7 @@ import {
   itemSpokenName,
   minSize,
   planMove,
+  pushItem,
   ROW_STEP,
   rowsUsed,
   stickySnap,
@@ -76,6 +77,9 @@ const DROP_TIMEOUT_MS = 700;
 // outline takes to glide to its next cell.
 const GROW_MS = 260;
 const GLIDE_MS = 110;
+// Holding a dragged item still this long over a spot with no room shows the
+// things there sliding down to make room; letting go then makes it (CORE-092).
+const PUSH_HOLD_MS = 700;
 
 // The free-form Hearth canvas (CORE-006/019). Items sit at exact grid cells;
 // in edit mode you hold one to drag it anywhere (an outline shows where it
@@ -94,6 +98,7 @@ export function HearthGrid({
   shadowAt,
   dragScroll,
   onMove,
+  onPush,
   onNudge,
   onResize,
   onPressItem,
@@ -123,6 +128,8 @@ export function HearthGrid({
   shadowAt?: (level: 0 | 1 | 2 | 3) => string | undefined;
   dragScroll: DragScroll;
   onMove: (id: string, x: number, y: number) => void;
+  // Dropped after holding still over a spot with no room: make room (CORE-092).
+  onPush: (id: string, x: number, y: number) => void;
   // One step in a direction, from a screen reader's actions (CORE-075).
   onNudge?: (id: string, way: Nudge) => void;
   onResize: (id: string, w: number, h: number) => void;
@@ -177,6 +184,22 @@ export function HearthGrid({
   // which ones, and how far the box has been dragged so far.
   const [carriedIds, setCarriedIds] = useState<string[]>([]);
   const carry = useSharedValue({ x: 0, y: 0 });
+  // Making room (CORE-092): where everything would go, shown while the item
+  // is held over the spot, and the spot it's for.
+  const [pushing, setPushing] = useState<{ x: number; y: number; items: Map<string, HearthItem> } | null>(null);
+  const pushRef = useRef<{ x: number; y: number } | null>(null);
+  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Over the trash can or a page tab: no making room there.
+  const aimingElsewhere = useRef(false);
+  const stopPushing = useCallback(() => {
+    if (pushTimer.current) clearTimeout(pushTimer.current);
+    pushTimer.current = null;
+    if (pushRef.current) {
+      pushRef.current = null;
+      setPushing(null);
+    }
+  }, []);
+  useEffect(() => stopPushing, [stopPushing]);
 
   // Cubbies sit behind everything else.
   const ordered = useMemo(
@@ -185,7 +208,7 @@ export function HearthGrid({
   );
 
   // Things can end on a half row (CORE-076); the grid shows whole rows.
-  const rows = Math.ceil(rowsUsed(items)) + (editing ? EXTRA_EDIT_ROWS : 0);
+  const rows = Math.ceil(rowsUsed(pushing ? [...pushing.items.values()] : items)) + (editing ? EXTRA_EDIT_ROWS : 0);
   const height = Math.max(0, rows * stride - GRID_GAP);
 
   const begin = useCallback(
@@ -207,8 +230,10 @@ export function HearthGrid({
     dropHollowRef.current = null;
     setActiveId(null);
     setCarriedIds([]);
+    stopPushing();
+    aimingElsewhere.current = false;
     onDraggingChange(false);
-  }, [onDraggingChange]);
+  }, [onDraggingChange, stopPushing]);
 
   if (!width) return null;
 
@@ -269,8 +294,8 @@ export function HearthGrid({
                 top: (plan?.y ?? ghost.y) * stride,
                 width: ghost.w * stride - GRID_GAP,
                 height: ghost.h * stride - GRID_GAP,
-                borderColor: plan?.kind === "blocked" ? `${accent}55` : accent,
-                backgroundColor: plan?.kind === "blocked" ? "transparent" : `${accent}14`,
+                borderColor: plan?.kind === "blocked" && !pushing ? `${accent}55` : accent,
+                backgroundColor: plan?.kind === "blocked" && !pushing ? "transparent" : `${accent}14`,
               },
             ]}
           />
@@ -296,12 +321,13 @@ export function HearthGrid({
       {ordered.map((item, index) => (
         <GridItem
           key={item.id}
-          item={item}
+          // While making room, everything else is shown where it would go.
+          item={(activeId !== item.id && !carriedIds.includes(item.id) && pushing?.items.get(item.id)) || item}
           stride={stride}
           editing={editing}
           seed={index}
           active={activeId === item.id}
-          noRoom={activeId === item.id && plan?.kind === "blocked"}
+          badge={activeId === item.id && plan?.kind === "blocked" ? (pushing ? "push" : "noRoom") : null}
           carry={carry}
           carried={carriedIds.includes(item.id)}
           asleep={item.kind === "cubby" ? !(editing && cubbyMode) : editing && cubbyMode}
@@ -313,14 +339,22 @@ export function HearthGrid({
           onLongPress={onLongPress}
           onNudge={onNudge ? (way) => onNudge(item.id, way) : undefined}
           onCopy={onCopy && item.kind !== "hollow" ? () => onCopy(item) : undefined}
-          onTrashHover={(over) => onTrashHover?.(over)}
+          onTrashHover={(over) => {
+            aimingElsewhere.current = over;
+            if (over) stopPushing();
+            onTrashHover?.(over);
+          }}
           onTrashArmed={(armed) => onTrashArmed?.(armed)}
           flash={flashId === item.id}
           focused={focusId === item.id}
           selecting={selecting}
           selected={selectedIds?.includes(item.id) ?? false}
           onToggleLock={onToggleLock ? () => onToggleLock(item) : undefined}
-          onTabHover={(id) => onTabHover?.(id)}
+          onTabHover={(id) => {
+            aimingElsewhere.current = id !== "";
+            if (id) stopPushing();
+            onTabHover?.(id);
+          }}
           onTabDrop={(id) => {
             finish();
             onTabHover?.("");
@@ -358,12 +392,35 @@ export function HearthGrid({
             if (next?.kind === "swap" && planRef.current?.kind !== "swap") tap();
             planRef.current = next;
             setPlan(next);
+            // Held still over a spot with no room: after a moment, show the
+            // things there sliding down to make room (CORE-092).
+            if (pushRef.current && (pushRef.current.x !== rect.x || pushRef.current.y !== rect.y)) stopPushing();
+            if (pushTimer.current) clearTimeout(pushTimer.current);
+            pushTimer.current = null;
+            if (next?.kind === "blocked" && !pushRef.current) {
+              pushTimer.current = setTimeout(() => {
+                pushTimer.current = null;
+                if (aimingElsewhere.current) return;
+                const moved = pushItem({ items }, item.id, rect.x, rect.y);
+                if (moved === items) return;
+                tap("success");
+                pushRef.current = { x: rect.x, y: rect.y };
+                setPushing({ x: rect.x, y: rect.y, items: new Map(moved.map((one) => [one.id, one])) });
+              }, PUSH_HOLD_MS);
+            }
           }}
           onDrop={(x, y) => {
             const into = dropHollowRef.current;
             finish();
             if (into && onDropIntoHollow) {
               onDropIntoHollow(item.id, into.id);
+              return true;
+            }
+            // Held there to make room: everything slides down (CORE-092).
+            const making = pushRef.current;
+            if (making && making.x === x && making.y === y) {
+              finish();
+              onPush(item.id, x, y);
               return true;
             }
             // No room, or right back where it was: it goes home (CORE-091).
@@ -462,7 +519,7 @@ function GridItem({
   editing,
   seed,
   active,
-  noRoom,
+  badge,
   carry,
   carried,
   asleep,
@@ -497,8 +554,9 @@ function GridItem({
   editing: boolean;
   seed: number;
   active: boolean;
-  // Being dragged over a spot with no room (CORE-091): it fades a little.
-  noRoom: boolean;
+  // Being dragged over a spot with no room (CORE-091): it fades a little and
+  // says so; held there, it's making room (CORE-092).
+  badge: "noRoom" | "push" | null;
   // Inside a Cubby that's being dragged: it moves along by `carry`.
   carry: SharedValue<{ x: number; y: number }>;
   carried: boolean;
@@ -975,7 +1033,7 @@ function GridItem({
       <GestureDetector gesture={moveGesture}>
         <Animated.View
           key={`${item.kind === "nook" ? (item.shape ?? "arch") : ""}-${item.corners ?? ""}-${shadow ?? ""}`}
-          style={[shadow ? { ...shadowShape(item, stride, size), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, noRoom ? styles.noRoomItem : null, wiggle]}
+          style={[shadow ? { ...shadowShape(item, stride, size), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, badge === "noRoom" ? styles.noRoomItem : null, wiggle]}
           {...spokenAs(item, editing, { press, hold: askToArrange, nudge: onNudge })}
         >
           <Animated.View
@@ -1004,13 +1062,13 @@ function GridItem({
         pointerEvents="none"
         style={[styles.glow, shadowShape(item, stride), { borderColor: accent, boxShadow: `0px 0px 18px 2px ${accent}` }, glowStyle]}
       />
-      {/* On the dragged item itself, so it's never hidden (CORE-091). */}
-      {noRoom ? (
-        <Animated.View entering={FadeIn.duration(120)} pointerEvents="none" style={styles.noRoomSpot}>
-          <View style={[styles.dropLabel, styles.noRoom]}>
-            <Icon name="close" size={12} color="#ffffff" />
+      {/* On the dragged item itself, so it's never hidden (CORE-091/092). */}
+      {badge ? (
+        <Animated.View key={badge} entering={FadeIn.duration(120)} pointerEvents="none" style={styles.noRoomSpot}>
+          <View style={[styles.dropLabel, styles.noRoom, badge === "push" ? { backgroundColor: accent } : null]}>
+            <Icon name={badge === "push" ? "check" : "close"} size={12} color="#ffffff" />
             <Text style={styles.dropLabelText} numberOfLines={1}>
-              No room here
+              {badge === "push" ? "Let go to make room" : "No room · hold to make room"}
             </Text>
           </View>
         </Animated.View>
