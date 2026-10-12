@@ -33,6 +33,8 @@ import { useNow, useSickSummary } from "../../lib/sickday-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { agoWords, changeWords, formatEntry, formatNumber, inRange, logStats, scaleWord, yesNoDays, yesStreak } from "../../lib/little-log";
 import { useLittleLogSummary } from "../../lib/little-log-data";
+import { checklistCounts, noteBlocks, notePreview, noteTitle, sortNotes } from "../../lib/notes";
+import { useNotesSummary } from "../../lib/notes-data";
 import { Sparkline } from "../log-chart";
 import { guardTouches } from "../../lib/touch-guard";
 import { conditionIcon, conditionLabel, dayName, formatTemp, windowSky } from "../../lib/weather";
@@ -270,6 +272,8 @@ function Body(props: CommonProps & { widget: WidgetConfig }) {
       return <SickDay {...props} widget={widget} />;
     case "littlelog":
       return <LittleLogWidget {...props} widget={widget} />;
+    case "notes":
+      return <NoteWidget {...props} widget={widget} />;
     case "frame":
       return null; // drawn whole by PhotoFrame, above
     case "clock":
@@ -1675,6 +1679,64 @@ function LittleLogWidget({ widget, palette, refreshKey, width, height, shape, ic
           <Sparkline entries={shown} color={palette.accent} width={chartW} height={chartH} ring="transparent" />
         ) : null}
       </View>
+    </View>
+  );
+}
+
+// --- A note (NOTE-007) ------------------------------------------------------------
+
+function NoteWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"notes">) {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const data = useNotesSummary(userId, refreshKey);
+  if (!data) return null;
+
+  // The picked note, or your top pinned one (or newest).
+  const note = widget.settings.noteId
+    ? data.notes.find((n) => n.id === widget.settings.noteId)
+    : sortNotes(data.notes.filter((n) => n.owner_id === userId))[0];
+  if (!note) {
+    if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+    return <Empty icon="note" palette={palette} text={widget.settings.noteId ? "This note isn't here any more" : "Write a note in the Notes Nook"} />;
+  }
+
+  const counts = checklistCounts(note.body);
+  if (shape === "icon") {
+    const left = counts.total - counts.done;
+    return left ? <IconFace icon={icon} palette={palette} badge={left} /> : <IconFace icon={icon} palette={palette} />;
+  }
+  if (shape === "strip") {
+    return <Strip icon={icon} palette={palette} text={noteTitle(note.body)} sub={counts.total ? `${counts.done} of ${counts.total} done` : notePreview(note.body) || null} />;
+  }
+
+  // The title, then the lines after it, as many as fit.
+  const blocks = noteBlocks(note.body);
+  const titleAt = blocks.findIndex((b) => b.text.trim());
+  const lines = blocks.slice(titleAt + 1).filter((b) => b.text.trim());
+  const fit = rowsThatFit(height, 21, 34);
+  return (
+    <View style={{ flex: 1, gap: 4 }}>
+      <Text style={[styles.body, { color: palette.text, fontWeight: "800", fontSize: 15 }]} numberOfLines={1}>
+        {noteTitle(note.body)}
+      </Text>
+      {lines.slice(0, fit).map((b) =>
+        b.kind === "check" ? (
+          <View key={b.line} style={styles.row}>
+            <Icon name={b.done ? "check" : "todo"} size={12} color={b.done ? palette.muted : palette.accent} />
+            <Text
+              style={[styles.small, { color: b.done ? palette.muted : palette.text, flex: 1, textDecorationLine: b.done ? "line-through" : "none" }]}
+              numberOfLines={1}
+            >
+              {b.text}
+            </Text>
+          </View>
+        ) : (
+          <Text key={b.line} style={[styles.small, { color: palette.text }]} numberOfLines={1}>
+            {b.text}
+          </Text>
+        )
+      )}
+      {lines.length > fit ? <Muted palette={palette}>+{lines.length - fit} more</Muted> : null}
     </View>
   );
 }

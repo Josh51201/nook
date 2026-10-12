@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode, type Ref } from "react";
 import { StyleSheet, Text as RNText, TextInput as RNTextInput, type TextInputProps, type TextProps } from "react-native";
 
 import { boldened, familyFor, weightOf } from "../lib/fonts";
@@ -57,7 +57,8 @@ export function Text({ style, ...props }: TextProps) {
   return scale === 1 ? text : <InsideText.Provider value>{text}</InsideText.Provider>;
 }
 
-export function TextInput({ style, ...props }: TextInputProps) {
+// `ref` reaches the phone's own text box (React 19 passes it as a prop).
+export function TextInput({ style, ...props }: TextInputProps & { ref?: Ref<RNTextInput> }) {
   const font = currentFont();
   const scale = useContext(FixedScale) ?? currentTextScale();
   const flat = StyleSheet.flatten(style);

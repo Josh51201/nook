@@ -195,6 +195,20 @@ Josh picked it from the backlog on 2026-10-12 ("i would like the little log nook
 - **LOG-010** _(Proposed.)_ Help explains who can see a log.
 - _Built 2026-10-12:_ LOG-001..010 in `app/little-log`, with the database rules in the `little_log` migration. The privacy tests skip until a service key is in `.env.test.local`.
 
+## 2n. Notes Nook
+Josh asked 2026-10-12 for notes that "act like the ios note app ... just being able to create notes", as their own Nook (Q-034), "just yours" unless shared with your Home. Anything marked _(Proposed)_ is Claude's detail for him to confirm.
+- **NOTE-001** A Notes Nook for creating notes, like the phone's Notes app. _(Josh asked.)_ _(Proposed: a list with pinned notes first, then the most recently changed, each with its title, when it changed and a preview.)_
+- **NOTE-002** _(Proposed.)_ Writing: the first line is the title; it saves as you type, a moment after you stop, with no Save button; a note emptied and left is removed.
+- **NOTE-003** _(Proposed.)_ Checklists: a Checklist button puts a box on a line, Return starts the next item (and ends the list on an empty one), and when reading, boxes tick with a tap and ticked items are crossed out.
+- **NOTE-004** _(Proposed.)_ Folders: put a note in a folder (or none) and filter the list by folder.
+- **NOTE-005** _(Proposed.)_ Pin notes to the top.
+- **NOTE-006** Notes are just yours by default; any note can be shared with your Home. _(Josh: agreed 2026-10-12.)_ _(Proposed: the people you live with can read a shared note and change its words, and see who edited it last; only its owner pins, files, unshares or deletes it. It follows the owner if they move Homes. Enforced in Postgres, with tests.)_
+- **NOTE-007** _(Proposed.)_ A Hearth widget, "A note": a picked note (or your top pinned one) with its first lines and checklist; the Nook's tile shows your notes by title.
+- **NOTE-008** _(Proposed.)_ Search every note you can see, by any words in it.
+- **NOTE-009** _(Proposed.)_ If two people change a shared note at once, nobody's words are lost silently: the app asks whose to keep.
+- **NOTE-010** _(Proposed.)_ The Nooks tab and Market list it under Around the house; Help explains who can see a note.
+- _Built 2026-10-12:_ NOTE-001..010 in `app/notes`, with the database rules in the `notes` migration. The privacy tests skip until a service key is in `.env.test.local`.
+
 ## 2f. Subscription (Nook Plus)
 - **MON-001** Nook earns revenue through an App Store subscription. No ads. _(Josh: "I dont want ads so Id rather go subscription based".)_
 - **MON-002** A subscription belongs to a **Home** and covers everyone in it, up to the Home's cap of 6 (HOME-006). It never covers a Burrow, so joining someone's Burrow unlocks nothing paid. The paid customization follows the Home too, not the person. _(Josh: "I like the per home idea but yes needs capped at 6".)_
@@ -282,7 +296,7 @@ Josh's picks, in no particular order. Names and details are proposed until he co
 - **Sick Day** — now built as the Sick Day Nook: see section 2k (SICK-001..014).
 - **Subscriptions** — now built as the Subscriptions Nook: see section 2i (SUB-001..012).
 - **Little Log** — now built as the Little Log Nook: see section 2m (LOG-001..010).
-- **Notes** — plain notes "like the iOS Notes app", just being able to create notes. _(Josh asked 2026-10-12, alongside Little Log; its own Nook, next (Q-034).)_
+- **Notes** — now built as the Notes Nook: see section 2n (NOTE-001..010).
 - **Trip** — now built as the Getaway Nook: see section 2j (TRIP-001..014).
 - **Idea Stash** — part of the Gift Nook (GIFT-036), not a separate Nook.
 

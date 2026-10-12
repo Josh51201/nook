@@ -216,6 +216,19 @@ export const nookCatalog: NookDefinition[] = [
     aisle: "care",
   },
   {
+    id: "notes",
+    title: "Notes Nook",
+    icon: "note",
+    iconColor: "#a07a2c",
+    tagline: "Jot it down",
+    description:
+      "Notes like your phone's own Notes app: the first line is the title, it saves as you type, and checklists tick off with a tap. Pin the ones you need, sort them into folders, search them all, and share any note with your Home — a packing list everyone ticks, the Wi-Fi password.",
+    route: "/notes",
+    available: true,
+    color: "#f3e7c9",
+    aisle: "house",
+  },
+  {
     id: "food-tracker",
     title: "Food Tracker",
     icon: "food",

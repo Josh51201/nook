@@ -52,6 +52,7 @@ import {
 import { cancelReminders, syncReminders } from "../../lib/reminders";
 import { shelvesIn } from "../../lib/recipes";
 import type { LittleLog } from "../../lib/little-log";
+import { noteTitle, sortNotes, type Note } from "../../lib/notes";
 import { rangeWords } from "../../lib/getaways";
 import { localDay } from "../../lib/pets";
 import { supabase } from "../../lib/supabase";
@@ -1026,6 +1027,8 @@ function KindSettings({
       );
     case "recipe":
       return <RecipeShelfPicker shelf={widget.settings.shelf} onChange={(shelf) => setSettings({ shelf })} />;
+    case "notes":
+      return <NotePicker noteId={widget.settings.noteId} onChange={(noteId) => setSettings({ noteId })} />;
     case "littlelog":
       return (
         <>
@@ -1579,6 +1582,40 @@ function LittleLogPicker({ logId, onChange }: { logId: string | null; onChange: 
         ))}
       </View>
       {!logs.length ? <Text style={ui.muted}>Start a log in the Little Log Nook first.</Text> : null}
+    </>
+  );
+}
+
+// Which note a note widget shows (NOTE-007): your top pinned one, or one
+// you pick (yours, or one shared with you).
+function NotePicker({ noteId, onChange }: { noteId: string | null; onChange: (noteId: string | null) => void }) {
+  const { session } = useAuth();
+  const [notes, setNotes] = useState<Note[]>([]);
+
+  useEffect(() => {
+    if (!session) return;
+    supabase
+      .from("notes")
+      .select("*")
+      .then(({ data }) => setNotes(sortNotes((data ?? []) as Note[]).slice(0, 30)));
+  }, [session]);
+
+  return (
+    <>
+      <Text style={ui.label}>Show</Text>
+      <View style={ui.chips}>
+        <Chip selected={!noteId} onPress={() => onChange(null)}>
+          My top pinned note
+        </Chip>
+        {notes.map((note) => (
+          <Chip key={note.id} icon={note.pinned ? "pin" : "note"} selected={noteId === note.id} onPress={() => onChange(note.id)}>
+            {noteTitle(note.body)}
+          </Chip>
+        ))}
+      </View>
+      <Text style={ui.muted}>
+        {notes.length ? "The note's title and its first lines, checklists and all. Tap it on your Hearth to open it." : "Write a note in the Notes Nook first."}
+      </Text>
     </>
   );
 }

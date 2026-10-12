@@ -31,6 +31,7 @@ const places: Record<string, { label: string; icon: IconName }> = {
   getaways: { label: "Getaway Nook", icon: "plane" },
   sickday: { label: "Sick Day Nook", icon: "sick" },
   "little-log": { label: "Little Log", icon: "chart" },
+  notes: { label: "Notes Nook", icon: "note" },
 };
 
 function cameFrom(navigation: Navigation) {

@@ -908,6 +908,10 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         return router.push("/subscriptions");
       case "sickday":
         return router.push("/sickday");
+      case "notes": {
+        const noteId = item.widget.settings.noteId;
+        return router.push(noteId ? `/notes/${noteId}` : "/notes");
+      }
       case "littlelog": {
         const logId = item.widget.settings.logId;
         return router.push(logId ? `/little-log/${logId}` : "/little-log");

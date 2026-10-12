@@ -26,6 +26,8 @@ import { useNow, useSickSummary } from "../../lib/sickday-data";
 import { useLetterboxSummary } from "../../lib/use-letterbox";
 import { agoWords, formatEntry } from "../../lib/little-log";
 import { useLittleLogSummary } from "../../lib/little-log-data";
+import { checklistCounts, noteTitle, sortNotes } from "../../lib/notes";
+import { useNotesSummary } from "../../lib/notes-data";
 import { fitCount } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
 import { Text } from "../text";
@@ -479,6 +481,29 @@ function LittleLogTile({ refreshKey, ...props }: NookWidgetProps) {
   return <Facts facts={facts} {...props} />;
 }
 
+// Notes (NOTE-007): how many, then the pinned and newest by title.
+function NotesTile({ refreshKey, ...props }: NookWidgetProps) {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const data = useNotesSummary(userId, refreshKey);
+  if (!data) return null;
+  if (!data.notes.length) return <Facts facts={[{ kind: "note", text: "Jot something down" }]} {...props} />;
+
+  const mine = sortNotes(data.notes.filter((n) => n.owner_id === userId));
+  const shared = data.notes.length - mine.length;
+  const facts: Fact[] = [{ kind: "headline", text: `${data.notes.length} note${data.notes.length === 1 ? "" : "s"}`, trailing: shared ? `${shared} shared` : undefined }];
+  for (const note of mine) {
+    const counts = checklistCounts(note.body);
+    facts.push({
+      kind: "detail",
+      icon: note.pinned ? "pin" : "note",
+      text: noteTitle(note.body),
+      trailing: counts.total ? `${counts.done}/${counts.total}` : undefined,
+    });
+  }
+  return <Facts facts={facts} {...props} />;
+}
+
 export const nookWidgets: Record<string, NookWidget> = {
   gatherings: { label: "Coming up", Component: GatheringsWidget },
   "gift-nook": { label: "Coming up", Component: GiftNookWidget },
@@ -492,4 +517,5 @@ export const nookWidgets: Record<string, NookWidget> = {
   getaways: { label: "Next Getaway", Component: GetawaysWidget },
   sickday: { label: "Next dose", Component: SickDayWidget },
   "little-log": { label: "Latest", Component: LittleLogTile },
+  notes: { label: "Notes", Component: NotesTile },
 };
