@@ -867,28 +867,39 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       pageShift.value = withSpring(0, { damping: 22, stiffness: 260 });
     }, 500);
   }
-  const pageSwipe = Gesture.Pan()
-    .enabled(canSwipePages)
-    .activeOffsetX([-14, 14])
-    .failOffsetY([-24, 24])
-    .onUpdate((event) => {
-      const blocked = (event.translationX < 0 && !hasNextPage) || (event.translationX > 0 && !hasPrevPage);
-      pageShift.value = blocked ? event.translationX * 0.2 : event.translationX;
-    })
-    .onEnd((event) => {
-      const step = event.translationX < 0 ? 1 : -1;
-      const allowed = step === 1 ? hasNextPage : hasPrevPage;
-      const farEnough = Math.abs(event.translationX) > windowWidth * 0.22;
-      const flicked = Math.abs(event.velocityX) > 550 && Math.sign(event.velocityX) === Math.sign(event.translationX);
-      if (allowed && (farEnough || flicked)) {
-        // Gone completely before the next page is built, so none of it lingers.
-        pageShift.value = withTiming(-step * windowWidth * 0.5, { duration: 130, easing: Easing.in(Easing.quad) }, (finished) => {
-          if (finished) scheduleOnRN(turnPage, step);
-        });
-      } else {
-        pageShift.value = withSpring(0, { damping: 22, stiffness: 260 });
-      }
-    });
+  // The gesture runs on the animation thread, and handing it a new one means
+  // copying it over there again, so it's only rebuilt when what it depends
+  // on changes, not on every redraw of the Hearth (entering Edit redraws a
+  // lot). It reaches the latest turnPage through a ref.
+  const turnPageRef = useRef(turnPage);
+  turnPageRef.current = turnPage;
+  const turnPageLatest = useCallback((step: 1 | -1) => turnPageRef.current(step), []);
+  const pageSwipe = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(canSwipePages)
+        .activeOffsetX([-14, 14])
+        .failOffsetY([-24, 24])
+        .onUpdate((event) => {
+          const blocked = (event.translationX < 0 && !hasNextPage) || (event.translationX > 0 && !hasPrevPage);
+          pageShift.value = blocked ? event.translationX * 0.2 : event.translationX;
+        })
+        .onEnd((event) => {
+          const step = event.translationX < 0 ? 1 : -1;
+          const allowed = step === 1 ? hasNextPage : hasPrevPage;
+          const farEnough = Math.abs(event.translationX) > windowWidth * 0.22;
+          const flicked = Math.abs(event.velocityX) > 550 && Math.sign(event.velocityX) === Math.sign(event.translationX);
+          if (allowed && (farEnough || flicked)) {
+            // Gone completely before the next page is built, so none of it lingers.
+            pageShift.value = withTiming(-step * windowWidth * 0.5, { duration: 130, easing: Easing.in(Easing.quad) }, (finished) => {
+              if (finished) scheduleOnRN(turnPageLatest, step);
+            });
+          } else {
+            pageShift.value = withSpring(0, { damping: 22, stiffness: 260 });
+          }
+        }),
+    [canSwipePages, hasNextPage, hasPrevPage, windowWidth, pageShift, turnPageLatest]
+  );
   // The new page slides in from the side you swiped towards (or from the
   // side of the tab you tapped).
   const shownPage = useRef(layout.activePage);
