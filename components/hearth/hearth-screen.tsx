@@ -452,27 +452,31 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const reduceMotion = useReducedMotion();
 
   const sheetOpen = startersOpen || moreOpen || adding || decorating || pagesOpen || finding || scenesOpen || sharing || pickSheet !== null || optionsFor !== null || zoom !== null || movingId !== null;
-  // The tab bar and Edit bar come back only once a sheet has finished sliding
-  // away (it takes ~300ms), the tab bar first and the Edit bar just after, so
-  // nothing resizes or fades in while the sheet is still moving.
+  // While editing (CORE-094) the tab bar is out of the way for the whole
+  // session, so the Edit bar sits at the very bottom and nothing resizes when
+  // a sheet opens or closes. Outside Edit, a sheet hides it and it returns
+  // once the sheet has slid away. The Edit bar also waits for the sheet.
   const [tabBarHidden, setTabBarHidden] = useState(false);
   const [barsHidden, setBarsHidden] = useState(false);
   useEffect(() => {
-    if (sheetOpen) {
-      setTabBarHidden(true);
-      setBarsHidden(true);
-      return;
+    if (editing || sheetOpen) setTabBarHidden(true);
+    else {
+      const timer = setTimeout(() => setTabBarHidden(false), 330);
+      return () => clearTimeout(timer);
     }
-    const tabTimer = setTimeout(() => setTabBarHidden(false), 330);
-    const barTimer = setTimeout(() => setBarsHidden(false), 420);
-    return () => {
-      clearTimeout(tabTimer);
-      clearTimeout(barTimer);
-    };
+  }, [editing, sheetOpen]);
+  useEffect(() => {
+    if (sheetOpen) setBarsHidden(true);
+    else {
+      const timer = setTimeout(() => setBarsHidden(false), 300);
+      return () => clearTimeout(timer);
+    }
   }, [sheetOpen]);
   useEffect(() => {
     if (!scope) navigation.setOptions({ tabBarStyle: tabBarHidden ? { display: "none" } : undefined });
   }, [scope, tabBarHidden, navigation]);
+  // With no tab bar under it, the screen's own bottom edge is the bottom.
+  const bottomInset = scope || editing ? insets.bottom : 0;
 
   // Each time this screen comes back into view: refresh widgets, close any
   // Hollow door we walked through, and (on the Hearth) make sure upcoming
@@ -2081,7 +2085,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
 
       {/* The trash can, while dragging (CORE-040). */}
       {dragging ? (
-        <View pointerEvents="none" style={[styles.trashArea, { bottom: (scope ? insets.bottom : 0) + 20 }]}>
+        <View pointerEvents="none" style={[styles.trashArea, { bottom: bottomInset + 20 }]}>
           <Animated.View entering={ZoomIn.duration(180)}>
             <View
               ref={trashRef}
@@ -2112,7 +2116,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         <Animated.View
           key={toast.text}
           entering={FadeIn.duration(180)}
-          style={[styles.trashArea, { bottom: (scope ? insets.bottom : 0) + (editBarShown || paintBarShown ? 12 + (editBarHeight || 64) + 10 : 20) }]}
+          style={[styles.trashArea, { bottom: bottomInset + (editBarShown || paintBarShown ? 12 + (editBarHeight || 64) + 10 : 20) }]}
           pointerEvents="box-none"
         >
           <View style={[styles.trash, styles.toast, { backgroundColor: theme.text, borderColor: theme.text }]}>
@@ -2138,7 +2142,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           accent={theme.accent}
           background={theme.background}
           text={theme.text}
-          bottom={(scope ? insets.bottom : 0) + 12}
+          bottom={bottomInset + 12}
           canUndo={history.past.length > 0}
           canRedo={history.future.length > 0}
           onUndo={undoEdit}
@@ -2157,7 +2161,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           accent={theme.accent}
           background={theme.background}
           text={theme.text}
-          bottom={(scope ? insets.bottom : 0) + 12}
+          bottom={bottomInset + 12}
           onDone={() => {
             tap();
             setPainting(null);
@@ -2172,7 +2176,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           accent={theme.accent}
           background={theme.background}
           text={theme.text}
-          bottom={(scope ? insets.bottom : 0) + 12}
+          bottom={bottomInset + 12}
           onAction={onPickAction}
           onDone={stopSelecting}
         />
