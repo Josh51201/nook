@@ -107,142 +107,145 @@ export default function GatheringScreen() {
     .filter((group) => group.people.length);
 
   return (
-    <NookScroll onRefresh={load}>
-      <Stack.Screen
-        options={{
-          title: gathering.title,
-          headerRight: canHost
-            ? () => (
-                <HeaderIcon
-                  icon="edit"
-                  label="Change this Gathering"
-                  onPress={() => router.push({ pathname: "/gatherings/form", params: { gatheringId: id } })}
-                />
-              )
-            : undefined,
-        }}
-      />
-      {error ? <Text style={ui.error}>{error}</Text> : null}
-
-      <HearthPin gatheringId={id} title={gathering.title} over={archived} />
-
-      <Appear>
-        <View style={[ui.card, { gap: 10 }]}>
-          <View style={[ui.row, { gap: 14 }]}>
-            <IconBadge name={kind.icon} size={56} color={kind.color} background={`${kind.color}1f`} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.title}>{gathering.title}</Text>
-              <Text style={{ fontSize: 15, fontWeight: "700", color: kind.color }}>
-                {archived ? "Already happened" : countdown(gathering.ends_at)}
-              </Text>
-            </View>
-          </View>
-          <Detail icon="calendar" text={whenWords(gathering)} />
-          {gathering.place ? <Detail icon="place" text={gathering.place} /> : null}
-          {forWhom.length ? <Detail icon="heart" text={`For ${forWhom.join(" & ")}`} /> : null}
-          {gathering.notes ? <Text style={[ui.muted, { color: colors.text }]}>{gathering.notes}</Text> : null}
-          <Text style={ui.muted}>
-            {hosts.length ? `Hosted by ${hosts.map((h) => nameOf(h.profile_id)).join(", ")}` : "Anyone invited can change it"}
-          </Text>
-        </View>
-      </Appear>
-
-      {!archived && amInvited ? (
-        <>
-          <SectionHeader title="Are you coming?" icon="group" />
-          <RsvpCard userId={userId} myKids={myKids} rsvps={rsvps} nameOf={nameOf} onPick={answer} />
-        </>
-      ) : !archived && myKids.length ? (
-        <>
-          <SectionHeader title="Are they coming?" icon="group" />
-          <RsvpCard userId={userId} myKids={myKids} rsvps={rsvps} nameOf={nameOf} onPick={answer} />
-        </>
-      ) : null}
-
-      {gathering.gifts || potluckId || (canHost && !archived) ? <SectionHeader title="What's part of it" icon="sparkles" /> : null}
-      {gathering.gifts ? (
-        <NavCard
-          icon="gift"
-          iconColor="#a5532f"
-          iconBackground="#f6d9c4"
-          title="Gift lists"
-          subtitle={forWhom.length ? `${forWhom.join(" & ")}'s Wishbook${forWhom.length > 1 ? "s" : ""} in the Gift Nook` : "Everyone's Wishbooks, in the Gift Nook"}
-          onPress={() => router.push(`/gift-nook/gathering/${id}`)}
-        />
-      ) : null}
-      {potluckId ? (
-        <NavCard
-          icon="potluck"
-          iconColor="#4f6b45"
-          iconBackground="#dfe8d6"
-          title="Potluck"
-          subtitle="Who's bringing what"
-          onPress={() => router.push(`/potluck/${potluckId}`)}
-        />
-      ) : canHost && !archived ? (
-        <NavCard
-          icon="potluck"
-          iconColor="#4f6b45"
-          iconBackground="#dfe8d6"
-          title="Add a Potluck"
-          subtitle="Sort out who's bringing what to eat"
-          onPress={startPotluck}
-        />
-      ) : null}
-      {!gathering.gifts && canHost && !archived ? (
-        <NavCard
-          icon="gift"
-          iconColor="#a5532f"
-          iconBackground="#f6d9c4"
-          title="Add gift lists"
-          subtitle="Turn it on in Change, and it shows in the Gift Nook"
-          onPress={() => router.push({ pathname: "/gatherings/form", params: { gatheringId: id, gifts: "1" } })}
-        />
-      ) : null}
-
-      <SectionHeader title={`Who's invited (${guests.length})`} icon="invite" />
-      <Text style={ui.muted}>
-        {[
-          burrows.length ? `Everyone in ${burrows.map((b) => b.name).join(", ")}` : null,
-          pickedAlone ? `${pickedAlone} ${pickedAlone === 1 ? "person" : "people"} picked one by one` : null,
-        ]
-          .filter(Boolean)
-          .join(", plus ")}
-      </Text>
-      <Text style={[ui.cardTitle, { color: kind.color }]}>{guestSummary(guests)}</Text>
-      {groups.map((group) => (
-        <View key={group.status ?? "waiting"} style={[ui.card, { gap: 10 }]}>
-          <Text style={[ui.muted, { fontWeight: "700" }]}>
-            {group.status ? rsvpChoices.find((c) => c.key === group.status)!.label : "Hasn't answered"} · {group.people.length}
-          </Text>
-          {group.people.map((guest) => (
-            <GuestRow
-              key={guest.profile_id}
-              guest={guest}
-              me={guest.profile_id === userId}
-              right={
-                canNudge.has(guest.profile_id) ? (
-                  <NudgePill
-                    sent={nudges.isSent("all") || nudges.isSent(guest.profile_id)}
-                    label={`Nudge ${displayName(guest)} to answer`}
-                    onPress={() => nudges.nudge(guest.profile_id, "rsvp", id, { person: guest.profile_id })}
+    <View style={{ flex: 1 }}>
+      <NookScroll onRefresh={load}>
+        <Stack.Screen
+          options={{
+            title: gathering.title,
+            headerRight: canHost
+              ? () => (
+                  <HeaderIcon
+                    icon="edit"
+                    label="Change this Gathering"
+                    onPress={() => router.push({ pathname: "/gatherings/form", params: { gatheringId: id } })}
                   />
-                ) : null
-              }
-            />
-          ))}
-          {!group.status && toNudge.length > 1 ? (
-            <NudgeButton
-              title={`Nudge all ${toNudge.length} to answer`}
-              hint="Each gets a reminder in their inbox. Kids' go to their grown-ups."
-              sent={nudges.isSent("all") || toNudge.every((g) => nudges.isSent(g.profile_id))}
-              busy={nudges.isBusy("all")}
-              onPress={() => nudges.nudge("all", "rsvp", id, { many: true })}
-            />
-          ) : null}
-        </View>
-      ))}
-    </NookScroll>
+                )
+              : undefined,
+          }}
+        />
+        {error ? <Text style={ui.error}>{error}</Text> : null}
+
+        <HearthPin gatheringId={id} title={gathering.title} over={archived} />
+
+        <Appear>
+          <View style={[ui.card, { gap: 10 }]}>
+            <View style={[ui.row, { gap: 14 }]}>
+              <IconBadge name={kind.icon} size={56} color={kind.color} background={`${kind.color}1f`} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.title}>{gathering.title}</Text>
+                <Text style={{ fontSize: 15, fontWeight: "700", color: kind.color }}>
+                  {archived ? "Already happened" : countdown(gathering.ends_at)}
+                </Text>
+              </View>
+            </View>
+            <Detail icon="calendar" text={whenWords(gathering)} />
+            {gathering.place ? <Detail icon="place" text={gathering.place} /> : null}
+            {forWhom.length ? <Detail icon="heart" text={`For ${forWhom.join(" & ")}`} /> : null}
+            {gathering.notes ? <Text style={[ui.muted, { color: colors.text }]}>{gathering.notes}</Text> : null}
+            <Text style={ui.muted}>
+              {hosts.length ? `Hosted by ${hosts.map((h) => nameOf(h.profile_id)).join(", ")}` : "Anyone invited can change it"}
+            </Text>
+          </View>
+        </Appear>
+
+        {!archived && amInvited ? (
+          <>
+            <SectionHeader title="Are you coming?" icon="group" />
+            <RsvpCard userId={userId} myKids={myKids} rsvps={rsvps} nameOf={nameOf} onPick={answer} />
+          </>
+        ) : !archived && myKids.length ? (
+          <>
+            <SectionHeader title="Are they coming?" icon="group" />
+            <RsvpCard userId={userId} myKids={myKids} rsvps={rsvps} nameOf={nameOf} onPick={answer} />
+          </>
+        ) : null}
+
+        {gathering.gifts || potluckId || (canHost && !archived) ? <SectionHeader title="What's part of it" icon="sparkles" /> : null}
+        {gathering.gifts ? (
+          <NavCard
+            icon="gift"
+            iconColor="#a5532f"
+            iconBackground="#f6d9c4"
+            title="Gift lists"
+            subtitle={forWhom.length ? `${forWhom.join(" & ")}'s Wishbook${forWhom.length > 1 ? "s" : ""} in the Gift Nook` : "Everyone's Wishbooks, in the Gift Nook"}
+            onPress={() => router.push(`/gift-nook/gathering/${id}`)}
+          />
+        ) : null}
+        {potluckId ? (
+          <NavCard
+            icon="potluck"
+            iconColor="#4f6b45"
+            iconBackground="#dfe8d6"
+            title="Potluck"
+            subtitle="Who's bringing what"
+            onPress={() => router.push(`/potluck/${potluckId}`)}
+          />
+        ) : canHost && !archived ? (
+          <NavCard
+            icon="potluck"
+            iconColor="#4f6b45"
+            iconBackground="#dfe8d6"
+            title="Add a Potluck"
+            subtitle="Sort out who's bringing what to eat"
+            onPress={startPotluck}
+          />
+        ) : null}
+        {!gathering.gifts && canHost && !archived ? (
+          <NavCard
+            icon="gift"
+            iconColor="#a5532f"
+            iconBackground="#f6d9c4"
+            title="Add gift lists"
+            subtitle="Turn it on in Change, and it shows in the Gift Nook"
+            onPress={() => router.push({ pathname: "/gatherings/form", params: { gatheringId: id, gifts: "1" } })}
+          />
+        ) : null}
+
+        <SectionHeader title={`Who's invited (${guests.length})`} icon="invite" />
+        <Text style={ui.muted}>
+          {[
+            burrows.length ? `Everyone in ${burrows.map((b) => b.name).join(", ")}` : null,
+            pickedAlone ? `${pickedAlone} ${pickedAlone === 1 ? "person" : "people"} picked one by one` : null,
+          ]
+            .filter(Boolean)
+            .join(", plus ")}
+        </Text>
+        <Text style={[ui.cardTitle, { color: kind.color }]}>{guestSummary(guests)}</Text>
+        {groups.map((group) => (
+          <View key={group.status ?? "waiting"} style={[ui.card, { gap: 10 }]}>
+            <Text style={[ui.muted, { fontWeight: "700" }]}>
+              {group.status ? rsvpChoices.find((c) => c.key === group.status)!.label : "Hasn't answered"} · {group.people.length}
+            </Text>
+            {group.people.map((guest) => (
+              <GuestRow
+                key={guest.profile_id}
+                guest={guest}
+                me={guest.profile_id === userId}
+                right={
+                  canNudge.has(guest.profile_id) ? (
+                    <NudgePill
+                      sent={nudges.isSent("all") || nudges.isSent(guest.profile_id)}
+                      label={`Nudge ${displayName(guest)} to answer`}
+                      onPress={() => nudges.nudge(guest.profile_id, "rsvp", id, { person: guest.profile_id, who: displayName(guest) })}
+                    />
+                  ) : null
+                }
+              />
+            ))}
+            {!group.status && toNudge.length > 1 ? (
+              <NudgeButton
+                title={`Nudge all ${toNudge.length} to answer`}
+                hint="Each gets a reminder in their inbox. Kids' go to their grown-ups."
+                sent={nudges.isSent("all") || toNudge.every((g) => nudges.isSent(g.profile_id))}
+                busy={nudges.isBusy("all")}
+                onPress={() => nudges.nudge("all", "rsvp", id, { many: true, who: `all ${toNudge.length}` })}
+              />
+            ) : null}
+          </View>
+        ))}
+      </NookScroll>
+      {nudges.sheet}
+    </View>
   );
 }
 

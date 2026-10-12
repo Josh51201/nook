@@ -150,7 +150,7 @@ export const helpAnswers: HelpAnswer[] = [
   {
     question: "How do I remind someone about something?",
     answer:
-      "Look for the Nudge button (a little waving hand). On someone's Wishbook you can ask them for more ideas. If you're hosting a Gathering, you can nudge anyone who hasn't said if they're coming, and on a Potluck, anyone coming who hasn't picked a dish. On a Getaway task or a Rhythm that's someone else's, you can remind them. It lands in their inbox, and you can nudge each person once a day. Don't want nudges? Turn them off in Settings → Notifications.",
+      "Look for the Nudge button (a little waving hand). On someone's Wishbook you can ask them for more ideas. If you're hosting a Gathering, you can nudge anyone who hasn't said if they're coming, and on a Potluck, anyone coming who hasn't picked a dish. On a Getaway task or a Rhythm that's someone else's, you can remind them. You can add a short note if you like. It lands in their inbox, and you can nudge each person once a day. Don't want nudges? Turn them off in Settings → Notifications.",
   },
   {
     question: "How do I add a gift to my Wishbook?",

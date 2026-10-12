@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // Nudges (CORE-101), enforced in Postgres: only people who should can send
 // one, the right people hear, once a day, never if they've turned nudges
-// off, and a Wishbook nudge leaks nothing about tucks (GIFT-007). Same setup
+// off, and a Wishbook nudge leaks nothing about tucks (GIFT-007). An
+// optional note from the sender goes first in the notice. Same setup
 // as gift-nook-rls.test.ts (needs .env plus SUPABASE_SERVICE_ROLE_KEY in
 // .env.test.local); skipped without them.
 
@@ -179,8 +180,12 @@ describe.runIf(canRun)("Nudges: the right people, once a day, and no hints about
         .select("id")
         .single();
       expect((await nudge("stranger", "rhythm", rhythm!.id)).error).not.toBeNull();
-      expect((await nudge("host", "rhythm", rhythm!.id)).data).toBe(1);
-      expect((await notices("guest", "nudge_rhythm")).map((n) => n.title)).toEqual(["host is reminding you: Change the furnace filter"]);
+      // A note over 140 letters is turned away, and doesn't use up the day's nudge.
+      expect((await nudge("host", "rhythm", rhythm!.id, { note: "x".repeat(141) })).error).not.toBeNull();
+      expect((await nudge("host", "rhythm", rhythm!.id, { note: "   " })).data).toBe(1);
+      const got = await notices("guest", "nudge_rhythm");
+      expect(got.map((n) => n.title)).toEqual(["host is reminding you: Change the furnace filter"]);
+      expect(got[0].body).toBe("It's yours to do."); // a blank note is no note
     });
 
     it("Getaways: reminds whoever's doing a before-you-go task, only from someone going", async () => {
@@ -201,8 +206,9 @@ describe.runIf(canRun)("Nudges: the right people, once a day, and no hints about
         .select("id")
         .single();
       expect((await nudge("stranger", "todo", todo!.id)).error).not.toBeNull();
-      expect((await nudge("host", "todo", todo!.id)).data).toBe(1);
-      expect((await notices("guest", "nudge_todo")).map((n) => n.body)).toEqual(["Before Beach week."]);
+      expect((await nudge("host", "todo", todo!.id, { note: "  Biscuit's  usual   place, please!  " })).data).toBe(1);
+      // The sender's note comes first, tidied up.
+      expect((await notices("guest", "nudge_todo")).map((n) => n.body)).toEqual(["“Biscuit's usual place, please!” · Before Beach week."]);
     });
   });
 });

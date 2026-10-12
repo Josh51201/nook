@@ -440,86 +440,108 @@ export default function MemberWishbook() {
   if (isLoading) return <LoadingScreen />;
 
   return (
-    <NookScroll onRefresh={load}>
-      <Stack.Screen options={{ title: `${name}'s Wishbook` }} />
-      {error ? <Text style={ui.error}>{error}</Text> : null}
+    <View style={{ flex: 1 }}>
+      <NookScroll onRefresh={load}>
+        <Stack.Screen options={{ title: `${name}'s Wishbook` }} />
+        {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      {person ? (
-        <Appear>
-          <View style={[ui.card, ui.row, { gap: 14, alignItems: "flex-start" }]}>
-            <Avatar name={person.display_name} icon={person.avatar_icon} color={person.avatar_color} photo={person.avatar_path} size={64} />
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text }} numberOfLines={2}>
-                {name}
-              </Text>
-              {person.bio ? <Text style={[ui.muted, { color: colors.text }]}>{person.bio}</Text> : null}
-              {person.birthday ? (
-                <View style={[ui.row, { gap: 6 }]}>
-                  <Icon name="birthday" size={14} />
-                  <Text style={ui.muted}>Birthday: {formatBirthday(person.birthday)}</Text>
-                </View>
-              ) : null}
+        {person ? (
+          <Appear>
+            <View style={[ui.card, ui.row, { gap: 14, alignItems: "flex-start" }]}>
+              <Avatar name={person.display_name} icon={person.avatar_icon} color={person.avatar_color} photo={person.avatar_path} size={64} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text }} numberOfLines={2}>
+                  {name}
+                </Text>
+                {person.bio ? <Text style={[ui.muted, { color: colors.text }]}>{person.bio}</Text> : null}
+                {person.birthday ? (
+                  <View style={[ui.row, { gap: 6 }]}>
+                    <Icon name="birthday" size={14} />
+                    <Text style={ui.muted}>Birthday: {formatBirthday(person.birthday)}</Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
-          </View>
-        </Appear>
-      ) : null}
+          </Appear>
+        ) : null}
 
-      <Banner
-        icon={isManaged && isManager ? "kid" : "hidden"}
-        tone={isManaged && isManager ? "sky" : "bark"}
-        body={
-          isManaged && isManager
-            ? `You help manage ${name}'s list, so you can see what's been tucked away to coordinate.`
-            : `${name} can't see anything you tuck away or suggest — it stays a surprise.`
-        }
-      />
-
-      {gatheringTitle ? (
         <Banner
-          icon="calendar"
-          tone="sun"
-          body={`Showing what ${name} picked for ${gatheringTitle}.${
-            hiddenByPicks > 0
-              ? ` Tap to see their full Wishbook (${hiddenByPicks} more).`
-              : ""
-          }`}
-          onPress={
-            hiddenByPicks > 0
-              ? () => router.push(`/gift-nook/member/${profileId}`)
-              : undefined
+          icon={isManaged && isManager ? "kid" : "hidden"}
+          tone={isManaged && isManager ? "sky" : "bark"}
+          body={
+            isManaged && isManager
+              ? `You help manage ${name}'s list, so you can see what's been tucked away to coordinate.`
+              : `${name} can't see anything you tuck away or suggest — it stays a surprise.`
           }
         />
-      ) : null}
-      {gatheringId && gatheringTitle && !gifts.some((g) => g.claims.some((c) => c.claimed_by === userId && isActiveTuck(c) && c.gathering_id === gatheringId)) ? (
-        <Tap
-          onPress={() =>
-            run(
-              "skip",
-              () =>
-                skipped
-                  ? supabase.from("gathering_skips").delete().eq("gathering_id", gatheringId).eq("profile_id", profileId)
-                  : supabase.from("gathering_skips").insert({ gathering_id: gatheringId, giver_id: userId, profile_id: profileId }),
-              "light",
-            )
-          }
-          style={[ui.row, { gap: 8, alignSelf: "flex-start" }]}
-          accessibilityRole="button"
-        >
-          <Icon name={skipped ? "undo" : "minus"} size={15} color={colors.bark} />
-          <Text style={ui.link}>
-            {skipped
-              ? `You're not getting ${name} a gift for ${gatheringTitle} — undo`
-              : `Not getting ${name} a gift for ${gatheringTitle}`}
-          </Text>
-        </Tap>
-      ) : null}
 
-      <View style={ui.row}>
-        {isManager ? (
-          <>
+        {gatheringTitle ? (
+          <Banner
+            icon="calendar"
+            tone="sun"
+            body={`Showing what ${name} picked for ${gatheringTitle}.${
+              hiddenByPicks > 0
+                ? ` Tap to see their full Wishbook (${hiddenByPicks} more).`
+                : ""
+            }`}
+            onPress={
+              hiddenByPicks > 0
+                ? () => router.push(`/gift-nook/member/${profileId}`)
+                : undefined
+            }
+          />
+        ) : null}
+        {gatheringId && gatheringTitle && !gifts.some((g) => g.claims.some((c) => c.claimed_by === userId && isActiveTuck(c) && c.gathering_id === gatheringId)) ? (
+          <Tap
+            onPress={() =>
+              run(
+                "skip",
+                () =>
+                  skipped
+                    ? supabase.from("gathering_skips").delete().eq("gathering_id", gatheringId).eq("profile_id", profileId)
+                    : supabase.from("gathering_skips").insert({ gathering_id: gatheringId, giver_id: userId, profile_id: profileId }),
+                "light",
+              )
+            }
+            style={[ui.row, { gap: 8, alignSelf: "flex-start" }]}
+            accessibilityRole="button"
+          >
+            <Icon name={skipped ? "undo" : "minus"} size={15} color={colors.bark} />
+            <Text style={ui.link}>
+              {skipped
+                ? `You're not getting ${name} a gift for ${gatheringTitle} — undo`
+                : `Not getting ${name} a gift for ${gatheringTitle}`}
+            </Text>
+          </Tap>
+        ) : null}
+
+        <View style={ui.row}>
+          {isManager ? (
+            <>
+              <Button
+                title="Add a gift"
+                icon="add"
+                style={{ flex: 1 }}
+                onPress={() =>
+                  router.push({
+                    pathname: "/gift-nook/gift-form",
+                    params: { forProfileId: profileId },
+                  })
+                }
+              />
+              <Button
+                title="Manage"
+                icon="settings"
+                variant="secondary"
+                style={{ flex: 1 }}
+                onPress={() => router.push(`/gift-nook/managed/${profileId}`)}
+              />
+            </>
+          ) : (
             <Button
-              title="Add a gift"
-              icon="add"
+              title={`Suggest a gift for ${name}`}
+              icon="suggest"
+              variant="secondary"
               style={{ flex: 1 }}
               onPress={() =>
                 router.push({
@@ -528,115 +550,102 @@ export default function MemberWishbook() {
                 })
               }
             />
-            <Button
-              title="Manage"
-              icon="settings"
-              variant="secondary"
-              style={{ flex: 1 }}
-              onPress={() => router.push(`/gift-nook/managed/${profileId}`)}
-            />
-          </>
-        ) : (
-          <Button
-            title={`Suggest a gift for ${name}`}
-            icon="suggest"
-            variant="secondary"
-            style={{ flex: 1 }}
+          )}
+        </View>
+        <Button
+          title={`My private ideas for ${name}`}
+          icon="hidden"
+          variant="secondary"
+          onPress={() => router.push({ pathname: "/gift-nook/stash", params: { aboutId: profileId } })}
+        />
+        {/* CORE-101: a nudge to add more. Same words whatever's been tucked,
+            and only ever sent by someone tapping this (GIFT-007). */}
+        {!isManager && !error ? (
+          <NudgeButton
+            title={isManaged ? `Ask for more ideas for ${name}` : `Ask ${name} for more ideas`}
+            hint={
+              isManaged
+                ? `Goes to the grown-ups who look after ${name}'s Wishbook.`
+                : `${name} gets a friendly reminder to add to their Wishbook${gatheringTitle ? ` for ${gatheringTitle}` : ""}. It never says what's been tucked.`
+            }
+            sent={nudges.isSent("wishbook")}
+            busy={nudges.isBusy("wishbook")}
             onPress={() =>
-              router.push({
-                pathname: "/gift-nook/gift-form",
-                params: { forProfileId: profileId },
+              nudges.nudge("wishbook", "wishbook", profileId, {
+                who: isManaged ? `${name}'s grown-ups` : name,
+                aboutGathering: gatheringId,
+                hint: "Keep it a surprise: don't mention what's been tucked.",
               })
             }
           />
-        )}
-      </View>
-      <Button
-        title={`My private ideas for ${name}`}
-        icon="hidden"
-        variant="secondary"
-        onPress={() => router.push({ pathname: "/gift-nook/stash", params: { aboutId: profileId } })}
-      />
-      {/* CORE-101: a nudge to add more. Same words whatever's been tucked,
-          and only ever sent by someone tapping this (GIFT-007). */}
-      {!isManager && !error ? (
-        <NudgeButton
-          title={isManaged ? `Ask for more ideas for ${name}` : `Ask ${name} for more ideas`}
-          hint={
-            isManaged
-              ? `Goes to the grown-ups who look after ${name}'s Wishbook.`
-              : `${name} gets a friendly reminder to add to their Wishbook${gatheringTitle ? ` for ${gatheringTitle}` : ""}. It never says what's been tucked.`
-          }
-          sent={nudges.isSent("wishbook")}
-          busy={nudges.isBusy("wishbook")}
-          onPress={() => nudges.nudge("wishbook", "wishbook", profileId, { aboutGathering: gatheringId })}
-        />
-      ) : null}
+        ) : null}
 
-      {gifts.length > 4 ? (
-        <View style={{ gap: 8 }}>
-          <View style={ui.chips}>
-            {[[null, "All"] as const, ...shelvesHere].map(([key, label]) => (
-              <Chip
-                key={key ?? "all"}
-                icon={key ? (shelfIcons[key] ?? "category") : undefined}
-                selected={shelfFilter === key}
-                onPress={() => setShelfFilter(key)}
-              >
-                {label}
-              </Chip>
-            ))}
+        {gifts.length > 4 ? (
+          <View style={{ gap: 8 }}>
+            <View style={ui.chips}>
+              {[[null, "All"] as const, ...shelvesHere].map(([key, label]) => (
+                <Chip
+                  key={key ?? "all"}
+                  icon={key ? (shelfIcons[key] ?? "category") : undefined}
+                  selected={shelfFilter === key}
+                  onPress={() => setShelfFilter(key)}
+                >
+                  {label}
+                </Chip>
+              ))}
+            </View>
+            <View style={ui.chips}>
+              {budgets.map((option) => (
+                <Chip
+                  key={option.label}
+                  icon={option.max ? "price" : undefined}
+                  selected={budget === option.max}
+                  onPress={() => setBudget(option.max)}
+                >
+                  {option.label}
+                </Chip>
+              ))}
+            </View>
           </View>
-          <View style={ui.chips}>
-            {budgets.map((option) => (
-              <Chip
-                key={option.label}
-                icon={option.max ? "price" : undefined}
-                selected={budget === option.max}
-                onPress={() => setBudget(option.max)}
-              >
-                {option.label}
-              </Chip>
-            ))}
-          </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      {gifts.length === 0 && !error ? (
-        <EmptyState
-          icon="wishbook"
-          title={`${name} hasn't added any gifts yet`}
-          body="You can still suggest something."
-        />
-      ) : visibleGifts.length === 0 ? (
-        <EmptyState icon="filter" title="Nothing matches those filters" />
-      ) : (
-        visibleGifts.map((gift, i) => (
-          <GiftCard
-            key={gift.id}
-            index={i}
-            gift={gift}
-            onPress={
-              canEdit(gift) && !gift.removed_at
-                ? () =>
-                    router.push({
-                      pathname: "/gift-nook/gift-form",
-                      params: { giftId: gift.id },
-                    })
-                : undefined
-            }
-            footer={tuckFooter(gift)}
+        {gifts.length === 0 && !error ? (
+          <EmptyState
+            icon="wishbook"
+            title={`${name} hasn't added any gifts yet`}
+            body="You can still suggest something."
           />
-        ))
-      )}
-      {hiddenTakenCount > 0 ? (
-        <Text style={[ui.muted, { textAlign: "center" }]}>
-          {hiddenTakenCount} already-taken gift
-          {hiddenTakenCount === 1 ? "" : "s"} hidden (change this in Gift Nook
-          settings).
-        </Text>
-      ) : null}
-    </NookScroll>
+        ) : visibleGifts.length === 0 ? (
+          <EmptyState icon="filter" title="Nothing matches those filters" />
+        ) : (
+          visibleGifts.map((gift, i) => (
+            <GiftCard
+              key={gift.id}
+              index={i}
+              gift={gift}
+              onPress={
+                canEdit(gift) && !gift.removed_at
+                  ? () =>
+                      router.push({
+                        pathname: "/gift-nook/gift-form",
+                        params: { giftId: gift.id },
+                      })
+                  : undefined
+              }
+              footer={tuckFooter(gift)}
+            />
+          ))
+        )}
+        {hiddenTakenCount > 0 ? (
+          <Text style={[ui.muted, { textAlign: "center" }]}>
+            {hiddenTakenCount} already-taken gift
+            {hiddenTakenCount === 1 ? "" : "s"} hidden (change this in Gift Nook
+            settings).
+          </Text>
+        ) : null}
+      </NookScroll>
+      {nudges.sheet}
+    </View>
   );
 }
 

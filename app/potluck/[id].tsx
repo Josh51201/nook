@@ -121,183 +121,186 @@ export default function PotluckScreen() {
   }
 
   return (
-    <NookScroll onRefresh={load}>
-      <Stack.Screen
-        options={{
-          title: potluck.title,
-          headerRight: isHost
-            ? () => (
-                <HeaderIcon
-                  icon="edit"
-                  label="Edit Potluck"
-                  onPress={() => router.push({ pathname: "/potluck/form", params: { potluckId: id } })}
-                />
-              )
-            : undefined,
-        }}
-      />
-      {error ? <Text style={ui.error}>{error}</Text> : null}
-
-      {/* When and where */}
-      <Appear>
-        <View style={[ui.card, { gap: 10 }]}>
-          <Text style={styles.title}>{potluck.title}</Text>
-          <Detail icon="clock" text={`${potluckWhen(potluck)} · ${countdown(potluck.starts_at)}`} />
-          {potluck.place ? <Detail icon="place" text={potluck.place} /> : null}
-          {potluck.notes ? <Text style={[ui.muted, { color: colors.text }]}>{potluck.notes}</Text> : null}
-          <Text style={ui.muted}>Hosted by {hosts.map(nameOf).join(", ") || "nobody yet"}</Text>
-        </View>
-      </Appear>
-      <NavCard
-        icon="celebration"
-        iconColor="#9a5b1c"
-        iconBackground="#f3e3c8"
-        title={potluck.gatherings ? `Part of ${potluck.gatherings.title}` : "The Gathering"}
-        subtitle="Who's invited, and everything else about it"
-        onPress={() => router.push(`/gatherings/${potluck.gathering_id}`)}
-      />
-
-      {/* RSVPs (POT-006) */}
-      <SectionHeader title="Are you coming?" icon="group" />
-      <RsvpCard userId={userId} myKids={myKids} rsvps={rsvps} nameOf={nameOf} onPick={answer} />
-      <Text style={ui.muted}>
-        {going || maybe
-          ? `${going} coming${maybe ? `, ${maybe} maybe` : ""} — counting everyone's guests.`
-          : "Nobody has answered yet."}
-      </Text>
-      {coming.length ? (
-        <View style={styles.avatars}>
-          {coming.slice(0, 10).map((person, i) => (
-            <View key={person.id} style={[styles.avatarRing, { marginLeft: i ? -8 : 0 }]}>
-              <Avatar name={person.name} icon={person.profile?.avatar_icon} color={person.profile?.avatar_color} photo={person.profile?.avatar_path} size={30} />
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {/* Allergies and diets of people coming (PROF-004 / POT-005) */}
-      {withNeeds.length ? (
-        <Banner
-          icon="warning"
-          tone="rose"
-          title="Allergies and diets"
-          body={withNeeds
-            .map(
-              (person) =>
-                `${person.name}: ${[
-                  ...person.allergies.map((a) => `${allergens.find((x) => x.key === a)?.label ?? a} allergy`),
-                  ...person.diets.map(dietLabel),
-                ].join(", ")}`
-            )
-            .join("\n")}
+    <View style={{ flex: 1 }}>
+      <NookScroll onRefresh={load}>
+        <Stack.Screen
+          options={{
+            title: potluck.title,
+            headerRight: isHost
+              ? () => (
+                  <HeaderIcon
+                    icon="edit"
+                    label="Edit Potluck"
+                    onPress={() => router.push({ pathname: "/potluck/form", params: { potluckId: id } })}
+                  />
+                )
+              : undefined,
+          }}
         />
-      ) : null}
+        {error ? <Text style={ui.error}>{error}</Text> : null}
 
-      {/* What's needed (POT-003) */}
-      {slots.length ? <SectionHeader title="What's needed" icon="potluck" /> : null}
-      {slots.map((slot, i) => {
-        const room = slotRoom(slot, dishes);
-        const filling = dishes.filter((dish) => dish.slot_id === slot.id);
-        return (
-          <Appear key={slot.id} index={i}>
-            <View style={[ui.card, { gap: 10 }]}>
-              <View style={[ui.row, { justifyContent: "space-between" }]}>
-                <Text style={ui.cardTitle}>{slot.label}</Text>
-                <Text style={[styles.pill, room.full ? styles.pillDone : null]}>
-                  {room.full ? "Covered" : `${room.taken} of ${slot.wanted}`}
-                </Text>
-              </View>
-              {filling.map((dish) => (
-                <DishRow
-                  key={dish.id}
-                  dish={dish}
-                  who={nameOf(dish.brought_by)}
-                  warnings={dishWarnings(dish.tags, coming)}
-                  onPress={dish.brought_by === userId || isHost ? () => openDish(dish) : undefined}
-                  onRecipe={recipeOpener(dish)}
-                />
-              ))}
-              {room.open ? (
-                <Button
-                  title="I'll bring this"
-                  icon="add"
-                  variant="secondary"
-                  onPress={() =>
-                    router.push({ pathname: "/potluck/dish-form", params: { potluckId: id, slotId: slot.id } })
-                  }
-                />
-              ) : null}
-            </View>
-          </Appear>
-        );
-      })}
-
-      {/* Anything else people are bringing (POT-003) */}
-      <SectionHeader title={slots.length ? "Also bringing" : "Who's bringing what"} icon="tucks" />
-      {looseDishes.length === 0 ? (
-        <Text style={ui.muted}>
-          {slots.length ? "Nothing extra yet." : "Nobody's signed up yet — be the first."}
-        </Text>
-      ) : (
-        <View style={[ui.card, { gap: 10 }]}>
-          {looseDishes.map((dish) => (
-            <DishRow
-              key={dish.id}
-              dish={dish}
-              who={nameOf(dish.brought_by)}
-              warnings={dishWarnings(dish.tags, coming)}
-              onPress={dish.brought_by === userId || isHost ? () => openDish(dish) : undefined}
-              onRecipe={recipeOpener(dish)}
-            />
-          ))}
-        </View>
-      )}
-      <Button
-        title="Add a dish"
-        icon="potluck"
-        onPress={() => router.push({ pathname: "/potluck/dish-form", params: { potluckId: id } })}
-      />
-
-      {/* Shopping for your dish (GROC-006): it waits on your grocery list
-          until the week of, and that week this card asks if you're set. */}
-      {dishes.some((dish) => dish.brought_by === userId) && localDay(new Date(potluck.starts_at)) >= localDay() ? (
+        {/* When and where */}
+        <Appear>
+          <View style={[ui.card, { gap: 10 }]}>
+            <Text style={styles.title}>{potluck.title}</Text>
+            <Detail icon="clock" text={`${potluckWhen(potluck)} · ${countdown(potluck.starts_at)}`} />
+            {potluck.place ? <Detail icon="place" text={potluck.place} /> : null}
+            {potluck.notes ? <Text style={[ui.muted, { color: colors.text }]}>{potluck.notes}</Text> : null}
+            <Text style={ui.muted}>Hosted by {hosts.map(nameOf).join(", ") || "nobody yet"}</Text>
+          </View>
+        </Appear>
         <NavCard
-          icon="cart"
-          iconColor="#4f7a3f"
-          iconBackground="#e2ecd8"
-          title={isPotluckWeek(localDay(new Date(potluck.starts_at))) ? "It's Potluck week. Got what you need?" : "Shopping for your dish"}
-          subtitle={
-            shopping.length
-              ? `${shopping.length} thing${shopping.length === 1 ? " is" : "s are"} on your grocery list${shopping.some((item) => isWaiting(item)) ? " (joining it the week of)" : ""}. Tap to add more.`
-              : "Pick what you need and put it on a grocery list. It joins the list the week of."
-          }
-          onPress={() => router.push({ pathname: "/groceries/add", params: { potluck: id } })}
+          icon="celebration"
+          iconColor="#9a5b1c"
+          iconBackground="#f3e3c8"
+          title={potluck.gatherings ? `Part of ${potluck.gatherings.title}` : "The Gathering"}
+          subtitle="Who's invited, and everything else about it"
+          onPress={() => router.push(`/gatherings/${potluck.gathering_id}`)}
         />
-      ) : null}
 
-      {isHost ? (
-        <>
-          <SectionHeader title="Hosting" icon="person" />
-          <Button
-            title="Change the Gathering"
-            icon="edit"
-            variant="secondary"
-            onPress={() => router.push({ pathname: "/gatherings/form", params: { gatheringId: potluck.gathering_id } })}
+        {/* RSVPs (POT-006) */}
+        <SectionHeader title="Are you coming?" icon="group" />
+        <RsvpCard userId={userId} myKids={myKids} rsvps={rsvps} nameOf={nameOf} onPick={answer} />
+        <Text style={ui.muted}>
+          {going || maybe
+            ? `${going} coming${maybe ? `, ${maybe} maybe` : ""} — counting everyone's guests.`
+            : "Nobody has answered yet."}
+        </Text>
+        {coming.length ? (
+          <View style={styles.avatars}>
+            {coming.slice(0, 10).map((person, i) => (
+              <View key={person.id} style={[styles.avatarRing, { marginLeft: i ? -8 : 0 }]}>
+                <Avatar name={person.name} icon={person.profile?.avatar_icon} color={person.profile?.avatar_color} photo={person.profile?.avatar_path} size={30} />
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {/* Allergies and diets of people coming (PROF-004 / POT-005) */}
+        {withNeeds.length ? (
+          <Banner
+            icon="warning"
+            tone="rose"
+            title="Allergies and diets"
+            body={withNeeds
+              .map(
+                (person) =>
+                  `${person.name}: ${[
+                    ...person.allergies.map((a) => `${allergens.find((x) => x.key === a)?.label ?? a} allergy`),
+                    ...person.diets.map(dietLabel),
+                  ].join(", ")}`
+              )
+              .join("\n")}
           />
-          {noDish.length ? (
-            <NudgeButton
-              title={noDish.length === 1 ? `Nudge ${noDish[0].name} to pick a dish` : `Nudge ${noDish.length} people to pick a dish`}
-              hint={`Coming but not bringing anything yet: ${noDish.map((p) => p.name).join(", ")}.`}
-              sent={nudges.isSent("dish")}
-              busy={nudges.isBusy("dish")}
-              onPress={() => nudges.nudge("dish", "dish", id, { many: noDish.length > 1 })}
+        ) : null}
+
+        {/* What's needed (POT-003) */}
+        {slots.length ? <SectionHeader title="What's needed" icon="potluck" /> : null}
+        {slots.map((slot, i) => {
+          const room = slotRoom(slot, dishes);
+          const filling = dishes.filter((dish) => dish.slot_id === slot.id);
+          return (
+            <Appear key={slot.id} index={i}>
+              <View style={[ui.card, { gap: 10 }]}>
+                <View style={[ui.row, { justifyContent: "space-between" }]}>
+                  <Text style={ui.cardTitle}>{slot.label}</Text>
+                  <Text style={[styles.pill, room.full ? styles.pillDone : null]}>
+                    {room.full ? "Covered" : `${room.taken} of ${slot.wanted}`}
+                  </Text>
+                </View>
+                {filling.map((dish) => (
+                  <DishRow
+                    key={dish.id}
+                    dish={dish}
+                    who={nameOf(dish.brought_by)}
+                    warnings={dishWarnings(dish.tags, coming)}
+                    onPress={dish.brought_by === userId || isHost ? () => openDish(dish) : undefined}
+                    onRecipe={recipeOpener(dish)}
+                  />
+                ))}
+                {room.open ? (
+                  <Button
+                    title="I'll bring this"
+                    icon="add"
+                    variant="secondary"
+                    onPress={() =>
+                      router.push({ pathname: "/potluck/dish-form", params: { potluckId: id, slotId: slot.id } })
+                    }
+                  />
+                ) : null}
+              </View>
+            </Appear>
+          );
+        })}
+
+        {/* Anything else people are bringing (POT-003) */}
+        <SectionHeader title={slots.length ? "Also bringing" : "Who's bringing what"} icon="tucks" />
+        {looseDishes.length === 0 ? (
+          <Text style={ui.muted}>
+            {slots.length ? "Nothing extra yet." : "Nobody's signed up yet — be the first."}
+          </Text>
+        ) : (
+          <View style={[ui.card, { gap: 10 }]}>
+            {looseDishes.map((dish) => (
+              <DishRow
+                key={dish.id}
+                dish={dish}
+                who={nameOf(dish.brought_by)}
+                warnings={dishWarnings(dish.tags, coming)}
+                onPress={dish.brought_by === userId || isHost ? () => openDish(dish) : undefined}
+                onRecipe={recipeOpener(dish)}
+              />
+            ))}
+          </View>
+        )}
+        <Button
+          title="Add a dish"
+          icon="potluck"
+          onPress={() => router.push({ pathname: "/potluck/dish-form", params: { potluckId: id } })}
+        />
+
+        {/* Shopping for your dish (GROC-006): it waits on your grocery list
+            until the week of, and that week this card asks if you're set. */}
+        {dishes.some((dish) => dish.brought_by === userId) && localDay(new Date(potluck.starts_at)) >= localDay() ? (
+          <NavCard
+            icon="cart"
+            iconColor="#4f7a3f"
+            iconBackground="#e2ecd8"
+            title={isPotluckWeek(localDay(new Date(potluck.starts_at))) ? "It's Potluck week. Got what you need?" : "Shopping for your dish"}
+            subtitle={
+              shopping.length
+                ? `${shopping.length} thing${shopping.length === 1 ? " is" : "s are"} on your grocery list${shopping.some((item) => isWaiting(item)) ? " (joining it the week of)" : ""}. Tap to add more.`
+                : "Pick what you need and put it on a grocery list. It joins the list the week of."
+            }
+            onPress={() => router.push({ pathname: "/groceries/add", params: { potluck: id } })}
+          />
+        ) : null}
+
+        {isHost ? (
+          <>
+            <SectionHeader title="Hosting" icon="person" />
+            <Button
+              title="Change the Gathering"
+              icon="edit"
+              variant="secondary"
+              onPress={() => router.push({ pathname: "/gatherings/form", params: { gatheringId: potluck.gathering_id } })}
             />
-          ) : null}
-          <Text style={ui.muted}>Who's invited, the day and place, and co-hosts are set on the Gathering.</Text>
-          <Text style={ui.muted}>Tap a dish to take it off the list if someone can't bring it any more.</Text>
-        </>
-      ) : null}
-    </NookScroll>
+            {noDish.length ? (
+              <NudgeButton
+                title={noDish.length === 1 ? `Nudge ${noDish[0].name} to pick a dish` : `Nudge ${noDish.length} people to pick a dish`}
+                hint={`Coming but not bringing anything yet: ${noDish.map((p) => p.name).join(", ")}.`}
+                sent={nudges.isSent("dish")}
+                busy={nudges.isBusy("dish")}
+                onPress={() => nudges.nudge("dish", "dish", id, { many: noDish.length > 1, who: noDish.length === 1 ? noDish[0].name : `${noDish.length} people` })}
+              />
+            ) : null}
+            <Text style={ui.muted}>Who's invited, the day and place, and co-hosts are set on the Gathering.</Text>
+            <Text style={ui.muted}>Tap a dish to take it off the list if someone can't bring it any more.</Text>
+          </>
+        ) : null}
+      </NookScroll>
+      {nudges.sheet}
+    </View>
   );
 }
 

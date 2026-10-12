@@ -78,105 +78,108 @@ export default function BeforeYouGo() {
   }
 
   return (
-    <NookScroll onRefresh={reload}>
-      <Stack.Screen options={{ title: `Before you go · ${trip.title}` }} />
+    <View style={{ flex: 1 }}>
+      <NookScroll onRefresh={reload}>
+        <Stack.Screen options={{ title: `Before you go · ${trip.title}` }} />
 
-      {todos.length ? (
-        <View style={[ui.card, { paddingVertical: 4 }]}>
-          {todos.map((t) => {
-            const due = t.done_at ? null : dueWords(t.due_on, today);
-            const doer = t.for_person ? nameOf(data.profiles, t.for_person, userId) : null;
-            const sub = t.done_at
-              ? `Done by ${nameOf(data.profiles, t.done_by, userId)}`
-              : [due, doer ? (doer === "You" ? "yours" : `${doer}'s`) : null].filter(Boolean).join(" · ") || null;
-            return (
-              <CheckRow
-                key={t.id}
-                text={t.text}
-                sub={sub}
-                warn={!!t.due_on && t.due_on <= today}
-                done={!!t.done_at}
-                onToggle={() => toggle(t)}
-                onLongPress={() => remove(t)}
-                right={
-                  // CORE-101: remind whoever's doing it.
-                  !t.done_at && t.for_person && t.for_person !== userId ? (
-                    <NudgePill
-                      sent={nudges.isSent(t.id)}
-                      label={`Nudge ${doer} about ${t.text}`}
-                      onPress={() => nudges.nudge(t.id, "todo", t.id)}
-                    />
-                  ) : null
-                }
-              />
-            );
-          })}
-        </View>
-      ) : (
-        <Text style={ui.muted}>The things to sort out before you leave. Give one a do-by day and a reminder goes out that morning.</Text>
-      )}
-      {todos.length ? <Text style={[ui.muted, { fontSize: 13 }]}>Hold one to take it off.</Text> : null}
+        {todos.length ? (
+          <View style={[ui.card, { paddingVertical: 4 }]}>
+            {todos.map((t) => {
+              const due = t.done_at ? null : dueWords(t.due_on, today);
+              const doer = t.for_person ? nameOf(data.profiles, t.for_person, userId) : null;
+              const sub = t.done_at
+                ? `Done by ${nameOf(data.profiles, t.done_by, userId)}`
+                : [due, doer ? (doer === "You" ? "yours" : `${doer}'s`) : null].filter(Boolean).join(" · ") || null;
+              return (
+                <CheckRow
+                  key={t.id}
+                  text={t.text}
+                  sub={sub}
+                  warn={!!t.due_on && t.due_on <= today}
+                  done={!!t.done_at}
+                  onToggle={() => toggle(t)}
+                  onLongPress={() => remove(t)}
+                  right={
+                    // CORE-101: remind whoever's doing it.
+                    !t.done_at && t.for_person && t.for_person !== userId ? (
+                      <NudgePill
+                        sent={nudges.isSent(t.id)}
+                        label={`Nudge ${doer} about ${t.text}`}
+                        onPress={() => nudges.nudge(t.id, "todo", t.id, { who: doer ?? "them" })}
+                      />
+                    ) : null
+                  }
+                />
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={ui.muted}>The things to sort out before you leave. Give one a do-by day and a reminder goes out that morning.</Text>
+        )}
+        {todos.length ? <Text style={[ui.muted, { fontSize: 13 }]}>Hold one to take it off.</Text> : null}
 
-      <SectionHeader title="Add one" icon="add" />
-      <TextInput
-        style={ui.input}
-        value={text}
-        onChangeText={setText}
-        placeholder="e.g. Book the dog sitter"
-        placeholderTextColor={colors.muted}
-        maxLength={100}
-      />
-      {dueOn ? (
-        <View style={[ui.row, { gap: 12 }]}>
-          <Text style={ui.label}>Do by</Text>
-          <DateField mode="date" value={parseDateString(dueOn)} onChange={(d) => setDueOn(toDateString(d))} />
-          <Tap onPress={() => setDueOn(null)} hitSlop={8}>
-            <Text style={ui.error}>No date</Text>
-          </Tap>
-        </View>
-      ) : (
-        <Button
-          title="Add a do-by day"
-          icon="calendar"
-          variant="secondary"
-          onPress={() => setDueOn(addDays(trip.starts_on, -3) < today ? today : addDays(trip.starts_on, -3))}
-          style={{ alignSelf: "flex-start" }}
+        <SectionHeader title="Add one" icon="add" />
+        <TextInput
+          style={ui.input}
+          value={text}
+          onChangeText={setText}
+          placeholder="e.g. Book the dog sitter"
+          placeholderTextColor={colors.muted}
+          maxLength={100}
         />
-      )}
-      {grownUps.length > 1 ? (
-        <>
-          <Text style={ui.label}>Who's doing it</Text>
-          <View style={ui.chips}>
-            <Chip icon="group" selected={who === null} onPress={() => setWho(null)}>
-              Anyone
-            </Chip>
-            {grownUps.map((p) => (
-              <Chip key={p.id} icon="person" selected={who === p.id} onPress={() => setWho(p.id)}>
-                {p.id === userId ? "Me" : displayName(p)}
-              </Chip>
-            ))}
+        {dueOn ? (
+          <View style={[ui.row, { gap: 12 }]}>
+            <Text style={ui.label}>Do by</Text>
+            <DateField mode="date" value={parseDateString(dueOn)} onChange={(d) => setDueOn(toDateString(d))} />
+            <Tap onPress={() => setDueOn(null)} hitSlop={8}>
+              <Text style={ui.error}>No date</Text>
+            </Tap>
           </View>
-        </>
-      ) : null}
-      <Button title="Add" icon="add" onPress={addTyped} disabled={!text.trim()} loading={saving} />
+        ) : (
+          <Button
+            title="Add a do-by day"
+            icon="calendar"
+            variant="secondary"
+            onPress={() => setDueOn(addDays(trip.starts_on, -3) < today ? today : addDays(trip.starts_on, -3))}
+            style={{ alignSelf: "flex-start" }}
+          />
+        )}
+        {grownUps.length > 1 ? (
+          <>
+            <Text style={ui.label}>Who's doing it</Text>
+            <View style={ui.chips}>
+              <Chip icon="group" selected={who === null} onPress={() => setWho(null)}>
+                Anyone
+              </Chip>
+              {grownUps.map((p) => (
+                <Chip key={p.id} icon="person" selected={who === p.id} onPress={() => setWho(p.id)}>
+                  {p.id === userId ? "Me" : displayName(p)}
+                </Chip>
+              ))}
+            </View>
+          </>
+        ) : null}
+        <Button title="Add" icon="add" onPress={addTyped} disabled={!text.trim()} loading={saving} />
 
-      {ideas.length ? (
-        <>
-          <SectionHeader title="Ideas" icon="sparkles" />
-          <Text style={ui.muted}>Tap one to add it, with a do-by day that leaves time to do it.</Text>
-          <View style={ui.chips}>
-            {ideas.map((idea) => (
-              <Chip
-                key={idea.text}
-                icon="add"
-                onPress={() => add({ text: idea.text, due_on: ideaDue(idea.daysBefore, trip.starts_on, today), for_person: null })}
-              >
-                {idea.text}
-              </Chip>
-            ))}
-          </View>
-        </>
-      ) : null}
-    </NookScroll>
+        {ideas.length ? (
+          <>
+            <SectionHeader title="Ideas" icon="sparkles" />
+            <Text style={ui.muted}>Tap one to add it, with a do-by day that leaves time to do it.</Text>
+            <View style={ui.chips}>
+              {ideas.map((idea) => (
+                <Chip
+                  key={idea.text}
+                  icon="add"
+                  onPress={() => add({ text: idea.text, due_on: ideaDue(idea.daysBefore, trip.starts_on, today), for_person: null })}
+                >
+                  {idea.text}
+                </Chip>
+              ))}
+            </View>
+          </>
+        ) : null}
+      </NookScroll>
+      {nudges.sheet}
+    </View>
   );
 }

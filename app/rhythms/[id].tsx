@@ -94,132 +94,135 @@ export default function RhythmPage() {
   }
 
   return (
-    <NookScroll onRefresh={reload}>
-      <Stack.Screen
-        options={{
-          title: area.label,
-          headerRight: () => (
-            <Tap
-              onPress={() => router.push({ pathname: "/rhythms/form", params: { id: rhythm.id } })}
-              hitSlop={10}
-              style={[ui.row, { gap: 5 }]}
-            >
-              <Icon name="edit" size={17} />
-              <Text style={{ color: colors.bark, fontSize: 17, fontWeight: "600" }}>Edit</Text>
-            </Tap>
-          ),
-        }}
-      />
+    <View style={{ flex: 1 }}>
+      <NookScroll onRefresh={reload}>
+        <Stack.Screen
+          options={{
+            title: area.label,
+            headerRight: () => (
+              <Tap
+                onPress={() => router.push({ pathname: "/rhythms/form", params: { id: rhythm.id } })}
+                hitSlop={10}
+                style={[ui.row, { gap: 5 }]}
+              >
+                <Icon name="edit" size={17} />
+                <Text style={{ color: colors.bark, fontSize: 17, fontWeight: "600" }}>Edit</Text>
+              </Tap>
+            ),
+          }}
+        />
 
-      <Appear>
-        <View style={[styles.hero, { backgroundColor: colors.dark ? `${nook.iconColor}26` : nook.color }]}>
-          <IconBadge name={area.icon} size={56} color={hot ? "#ffffff" : nook.iconColor} background={hot ? colors.error : colors.surface} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={[styles.title, { color: colors.text }]}>{rhythm.title}</Text>
-            <Text style={[ui.muted, { color: hot ? colors.error : colors.text, fontWeight: hot ? "700" : "500" }]}>
-              {rhythmDueWords(rhythm, data.today)}
+        <Appear>
+          <View style={[styles.hero, { backgroundColor: colors.dark ? `${nook.iconColor}26` : nook.color }]}>
+            <IconBadge name={area.icon} size={56} color={hot ? "#ffffff" : nook.iconColor} background={hot ? colors.error : colors.surface} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={[styles.title, { color: colors.text }]}>{rhythm.title}</Text>
+              <Text style={[ui.muted, { color: hot ? colors.error : colors.text, fontWeight: hot ? "700" : "500" }]}>
+                {rhythmDueWords(rhythm, data.today)}
+              </Text>
+            </View>
+          </View>
+        </Appear>
+
+        <View style={[ui.card, { gap: 12 }]}>
+          <View style={[ui.row, { gap: 10 }]}>
+            <Icon name="rhythm" size={18} color={nook.iconColor} />
+            <Text style={[ui.muted, { flex: 1, color: colors.text }]}>
+              Comes round {repeatWords(rhythm.repeat_months)}
+              {rhythm.due_on ? ` · next ${dayWords(rhythm.due_on)}` : ""}
             </Text>
           </View>
+          <View style={[ui.row, { gap: 10 }]}>
+            <Icon name="person" size={18} color={nook.iconColor} />
+            <Text style={[ui.muted, { flex: 1, color: colors.text }]}>
+              {owner ? (owner === "You" ? "Yours to do" : `${owner}'s to do`) : "Anyone in the Home can do it"}
+            </Text>
+          </View>
+          <View style={[ui.row, { gap: 10 }]}>
+            <Icon name="clock" size={18} color={nook.iconColor} />
+            <Text style={[ui.muted, { flex: 1, color: colors.text }]}>
+              {lastDoneWords(rhythm.last_done_on, data.today)}
+              {rhythm.last_done_by ? ` by ${personName(data, rhythm.last_done_by, userId).replace(/^You$/, "you")}` : ""}
+            </Text>
+          </View>
+          {rhythm.notes ? <Text style={[ui.muted, { color: colors.text }]}>{rhythm.notes}</Text> : null}
         </View>
-      </Appear>
 
-      <View style={[ui.card, { gap: 12 }]}>
-        <View style={[ui.row, { gap: 10 }]}>
-          <Icon name="rhythm" size={18} color={nook.iconColor} />
-          <Text style={[ui.muted, { flex: 1, color: colors.text }]}>
-            Comes round {repeatWords(rhythm.repeat_months)}
-            {rhythm.due_on ? ` · next ${dayWords(rhythm.due_on)}` : ""}
-          </Text>
-        </View>
-        <View style={[ui.row, { gap: 10 }]}>
-          <Icon name="person" size={18} color={nook.iconColor} />
-          <Text style={[ui.muted, { flex: 1, color: colors.text }]}>
-            {owner ? (owner === "You" ? "Yours to do" : `${owner}'s to do`) : "Anyone in the Home can do it"}
-          </Text>
-        </View>
-        <View style={[ui.row, { gap: 10 }]}>
-          <Icon name="clock" size={18} color={nook.iconColor} />
-          <Text style={[ui.muted, { flex: 1, color: colors.text }]}>
-            {lastDoneWords(rhythm.last_done_on, data.today)}
-            {rhythm.last_done_by ? ` by ${personName(data, rhythm.last_done_by, userId).replace(/^You$/, "you")}` : ""}
-          </Text>
-        </View>
-        {rhythm.notes ? <Text style={[ui.muted, { color: colors.text }]}>{rhythm.notes}</Text> : null}
-      </View>
-
-      {/* CORE-101: it's someone else's job, so you can remind them. */}
-      {owner && rhythm.owner !== userId ? (
-        <NudgeButton
-          title={`Remind ${owner}`}
-          sent={nudges.isSent("rhythm")}
-          busy={nudges.isBusy("rhythm")}
-          onPress={() => nudges.nudge("rhythm", "rhythm", rhythm.id)}
-        />
-      ) : null}
-
-      {logging ? (
-        <View style={[ui.card, { gap: 10 }]}>
-          <Text style={ui.label}>When was it done?</Text>
-          <DateField mode="date" value={parseDateString(onDay)} maximumDate={new Date()} onChange={(d) => setOnDay(toDateString(d))} />
-          <TextInput
-            style={ui.input}
-            value={note}
-            onChangeText={setNote}
-            placeholder="A note, if you like: “used 16x25 filter”"
-            placeholderTextColor={colors.muted}
-            maxLength={200}
+        {/* CORE-101: it's someone else's job, so you can remind them. */}
+        {owner && rhythm.owner !== userId ? (
+          <NudgeButton
+            title={`Remind ${owner}`}
+            sent={nudges.isSent("rhythm")}
+            busy={nudges.isBusy("rhythm")}
+            onPress={() => nudges.nudge("rhythm", "rhythm", rhythm.id, { who: owner })}
           />
-          <Button title="Mark done" icon="check" onPress={() => markDone(onDay, note)} loading={busy} />
-          <Tap onPress={() => setLogging(false)} hitSlop={8} style={{ alignSelf: "center" }}>
-            <Text style={ui.link}>Cancel</Text>
-          </Tap>
-        </View>
-      ) : (
-        <>
-          <Button
-            title={rhythm.due_on ? "Done today" : "Did it again today"}
-            icon="check"
-            onPress={() => markDone(localDay(), "")}
-            loading={busy}
-          />
-          <Tap onPress={() => setLogging(true)} hitSlop={8} style={{ alignSelf: "center" }}>
-            <Text style={ui.link}>Done on another day, or add a note</Text>
-          </Tap>
-        </>
-      )}
+        ) : null}
 
-      <SectionHeader title="Who did it" icon="clock" />
-      {history.length === 0 ? (
-        <Text style={ui.muted}>Nothing logged yet. Each time it's done, it shows up here with who did it.</Text>
-      ) : (
-        <View style={[ui.card, { gap: 12 }]}>
-          {shown.map((entry) => {
-            const who = personName(data, entry.done_by, userId);
-            return (
-              <View key={entry.id} style={[ui.row, { gap: 10, alignItems: "flex-start" }]}>
-                <Avatar name={entry.done_by ? data.names.get(entry.done_by) : null} size={30} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[ui.muted, { color: colors.text, fontSize: 14 }]}>
-                    {who} · {dayWords(entry.done_on)}
-                  </Text>
-                  {entry.note ? <Text style={[ui.muted, { fontSize: 13 }]}>{entry.note}</Text> : null}
-                </View>
-                {latest?.id === entry.id ? (
-                  <Tap onPress={() => confirmUndo(entry.id)} disabled={busy} hitSlop={8}>
-                    <Text style={ui.error}>Undo</Text>
-                  </Tap>
-                ) : null}
-              </View>
-            );
-          })}
-          {history.length > 6 ? (
-            <Tap onPress={() => setShowAll((v) => !v)} hitSlop={8}>
-              <Text style={ui.link}>{showAll ? "Show less" : `Show all ${history.length}`}</Text>
+        {logging ? (
+          <View style={[ui.card, { gap: 10 }]}>
+            <Text style={ui.label}>When was it done?</Text>
+            <DateField mode="date" value={parseDateString(onDay)} maximumDate={new Date()} onChange={(d) => setOnDay(toDateString(d))} />
+            <TextInput
+              style={ui.input}
+              value={note}
+              onChangeText={setNote}
+              placeholder="A note, if you like: “used 16x25 filter”"
+              placeholderTextColor={colors.muted}
+              maxLength={200}
+            />
+            <Button title="Mark done" icon="check" onPress={() => markDone(onDay, note)} loading={busy} />
+            <Tap onPress={() => setLogging(false)} hitSlop={8} style={{ alignSelf: "center" }}>
+              <Text style={ui.link}>Cancel</Text>
             </Tap>
-          ) : null}
-        </View>
-      )}
-    </NookScroll>
+          </View>
+        ) : (
+          <>
+            <Button
+              title={rhythm.due_on ? "Done today" : "Did it again today"}
+              icon="check"
+              onPress={() => markDone(localDay(), "")}
+              loading={busy}
+            />
+            <Tap onPress={() => setLogging(true)} hitSlop={8} style={{ alignSelf: "center" }}>
+              <Text style={ui.link}>Done on another day, or add a note</Text>
+            </Tap>
+          </>
+        )}
+
+        <SectionHeader title="Who did it" icon="clock" />
+        {history.length === 0 ? (
+          <Text style={ui.muted}>Nothing logged yet. Each time it's done, it shows up here with who did it.</Text>
+        ) : (
+          <View style={[ui.card, { gap: 12 }]}>
+            {shown.map((entry) => {
+              const who = personName(data, entry.done_by, userId);
+              return (
+                <View key={entry.id} style={[ui.row, { gap: 10, alignItems: "flex-start" }]}>
+                  <Avatar name={entry.done_by ? data.names.get(entry.done_by) : null} size={30} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[ui.muted, { color: colors.text, fontSize: 14 }]}>
+                      {who} · {dayWords(entry.done_on)}
+                    </Text>
+                    {entry.note ? <Text style={[ui.muted, { fontSize: 13 }]}>{entry.note}</Text> : null}
+                  </View>
+                  {latest?.id === entry.id ? (
+                    <Tap onPress={() => confirmUndo(entry.id)} disabled={busy} hitSlop={8}>
+                      <Text style={ui.error}>Undo</Text>
+                    </Tap>
+                  ) : null}
+                </View>
+              );
+            })}
+            {history.length > 6 ? (
+              <Tap onPress={() => setShowAll((v) => !v)} hitSlop={8}>
+                <Text style={ui.link}>{showAll ? "Show less" : `Show all ${history.length}`}</Text>
+              </Tap>
+            ) : null}
+          </View>
+        )}
+      </NookScroll>
+      {nudges.sheet}
+    </View>
   );
 }
 

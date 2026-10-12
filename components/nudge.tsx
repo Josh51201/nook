@@ -6,42 +6,102 @@ import { nudgeOutcome, type NudgeKind } from "../lib/nudges";
 import { supabase } from "../lib/supabase";
 import { colors, ui } from "../lib/theme";
 import { Icon } from "./icon";
+import { BottomSheet } from "./bottom-sheet";
 import { Tap } from "./motion";
-import { Text } from "./text";
+import { Text, TextInput } from "./text";
 import { Button } from "./ui";
 
 // Nudges (CORE-101): the buttons that send one, and what they remember. A
-// screen calls useNudges() once and gives each button its own key, so each
-// flips to "Nudged" on its own after it's tapped.
+// screen calls useNudges() once, renders `sheet` as the last child of its
+// root View, and gives each button its own key, so each flips to "Nudged"
+// on its own. Tapping a button opens the sheet, where a short note can be
+// added before sending.
+
+export const NUDGE_NOTE_LENGTH = 140;
+
+type NudgeAsk = {
+  key: string;
+  kind: NudgeKind;
+  target: string;
+  // Who it's going to, for the sheet's title: "Sam", "3 people".
+  who: string;
+  person?: string;
+  aboutGathering?: string | null;
+  many?: boolean;
+  // A line under the note box, like the Wishbook's "don't give it away".
+  hint?: string;
+};
 
 export function useNudges() {
   const [sent, setSent] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
+  const [asking, setAsking] = useState<NudgeAsk | null>(null);
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
 
-  async function nudge(
-    key: string,
-    kind: NudgeKind,
-    target: string,
-    options: { person?: string; aboutGathering?: string | null; many?: boolean } = {}
-  ) {
+  function nudge(key: string, kind: NudgeKind, target: string, options: Omit<NudgeAsk, "key" | "kind" | "target">) {
     if (busy || sent.has(key)) return;
+    tap();
+    setAsking({ key, kind, target, ...options });
+    setNote("");
+    setOpen(true);
+  }
+
+  async function send() {
+    if (!asking || busy) return;
+    const { key, kind, target, person, aboutGathering, many } = asking;
     setBusy(key);
     const { data, error } = await supabase.rpc("send_nudge", {
       nudge_kind: kind,
       target,
-      person: options.person ?? null,
-      about_gathering: options.aboutGathering ?? null,
+      person: person ?? null,
+      about_gathering: aboutGathering ?? null,
+      note: note.trim() || null,
     });
     setBusy(null);
     if (error) return Alert.alert("Couldn't send that nudge", friendlyError(error));
-    const outcome = nudgeOutcome(Number(data ?? 0), options.many);
+    setOpen(false);
+    const outcome = nudgeOutcome(Number(data ?? 0), many);
     if (outcome) Alert.alert(outcome.title, outcome.body);
     else tap("success");
     setSent((before) => new Set(before).add(key));
   }
 
+  const sheet = (
+    <BottomSheet
+      visible={open}
+      onClose={() => setOpen(false)}
+      header={<Text style={[ui.cardTitle, { fontSize: 18 }]}>Nudge {asking?.who}</Text>}
+    >
+      <View style={{ gap: 12 }}>
+        <Text style={ui.muted}>
+          {asking?.many ? "Each gets a reminder in their inbox." : "They'll get a reminder in their inbox."} Add a few
+          words if you like.
+        </Text>
+        <TextInput
+          style={[ui.input, { minHeight: 70, textAlignVertical: "top" }]}
+          value={note}
+          onChangeText={setNote}
+          placeholder="A note (optional)"
+          placeholderTextColor={colors.muted}
+          maxLength={NUDGE_NOTE_LENGTH}
+          multiline
+          accessibilityLabel="A note to go with the nudge"
+        />
+        <View style={[ui.row, { justifyContent: "space-between", gap: 12 }]}>
+          <Text style={[ui.muted, { fontSize: 13, flex: 1 }]}>{asking?.hint ?? ""}</Text>
+          {note.length > NUDGE_NOTE_LENGTH - 30 ? (
+            <Text style={[ui.muted, { fontSize: 13 }]}>{NUDGE_NOTE_LENGTH - note.length} left</Text>
+          ) : null}
+        </View>
+        <Button title="Send nudge" icon="nudge" onPress={send} loading={busy !== null} />
+      </View>
+    </BottomSheet>
+  );
+
   return {
     nudge,
+    sheet,
     isSent: (key: string) => sent.has(key),
     isBusy: (key: string) => busy === key,
   };
