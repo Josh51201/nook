@@ -17,7 +17,7 @@ export function useHearthLayout() {
   return {
     layout,
     ...rest,
-    save: (changes: Partial<HearthLayout>) =>
-      update({ version: 2, items: layout.items, sections: undefined, ...changes } as Partial<HearthLayout>),
+    save: (changes: Partial<HearthLayout>, options?: { later?: boolean }) =>
+      update({ version: 2, items: layout.items, sections: undefined, ...changes } as Partial<HearthLayout>, options),
   };
 }

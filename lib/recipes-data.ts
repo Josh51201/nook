@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { guarded } from "./feedback";
 import { displayName, PROFILE_FIELDS, type Profile } from "./gift-nook";
@@ -7,6 +7,7 @@ import { localDay } from "./pets";
 import type { Person } from "./potluck";
 import { RECIPE_FIELDS, recipeOfTheDay, type Recipe } from "./recipes";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads recipes for the Recipe Box Nook (REC-001..012). Row level security
 // decides what comes back: your own, plus family's from your Burrows that
@@ -185,18 +186,6 @@ export async function loadRecipesSummary(userId: string, shelf: string | null): 
 }
 
 export function useRecipesSummary(userId: string | undefined, refreshKey: number, shelf: string | null = null) {
-  const [summary, setSummary] = useState<RecipesSummary | null>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    let live = true;
-    loadRecipesSummary(userId, shelf)
-      .then((s) => live && setSummary(s))
-      .catch(() => live && setSummary(null));
-    return () => {
-      live = false;
-    };
-  }, [userId, refreshKey, shelf]);
-
-  return summary;
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData(userId ? `recipes:${userId}:${shelf}` : null, refreshKey, () => loadRecipesSummary(userId!, shelf));
 }

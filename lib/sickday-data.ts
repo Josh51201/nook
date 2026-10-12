@@ -21,6 +21,7 @@ import {
   type Spell,
 } from "./sickday";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads the Sick Day Nook (SICK-001..014): your Home's sick spells and
 // medicine cabinet, plus any spell you're helping with. Row level security
@@ -308,20 +309,8 @@ export async function loadSickSummary(userId: string): Promise<SickSummary> {
 }
 
 export function useSickSummary(userId: string | undefined, refreshKey: number) {
-  const [summary, setSummary] = useState<SickSummary | null>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    let live = true;
-    loadSickSummary(userId)
-      .then((s) => live && setSummary(s))
-      .catch(() => live && setSummary(null));
-    return () => {
-      live = false;
-    };
-  }, [userId, refreshKey]);
-
-  return summary;
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData(userId ? `sickday:${userId}` : null, refreshKey, () => loadSickSummary(userId!));
 }
 
 // A clock that ticks every `ms`, so timers count down on screen.

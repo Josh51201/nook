@@ -7,6 +7,7 @@ import { displayName } from "./gift-nook";
 import { hungryMeal } from "./hearth-pet";
 import { healthNeedingAttention, localDay, mealStatus, toTimeOfDay, type CareEntry, type HealthItem, type Meal } from "./pets";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads the pets you look after (PET-001..007) with everything their screens
 // need. Row level security decides what comes back: your Home's pets, plus
@@ -183,34 +184,22 @@ export type PetsSummary = {
 };
 
 export function usePetsSummary(userId: string | undefined, refreshKey: number) {
-  const [summary, setSummary] = useState<PetsSummary | null>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    let live = true;
-    loadPets(userId)
-      .then((data) => {
-        if (!live) return;
-        const toFeed: PetsSummary["toFeed"] = [];
-        const due: PetsSummary["due"] = [];
-        let mealsTotal = 0;
-        for (const pet of data.pets) {
-          const status = mealStatus(pet.pet_meals, data.log.filter((l) => l.pet_id === pet.id), data.today);
-          mealsTotal += status.length;
-          for (const s of status) if (!s.fed) toFeed.push({ petId: pet.id, pet: pet.name, meal: s.meal.label });
-          for (const item of healthNeedingAttention(pet.pet_health, data.today)) {
-            due.push({ petId: pet.id, pet: pet.name, title: item.title, overdue: item.due_on! < data.today });
-          }
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData(userId ? `pets:${userId}` : null, refreshKey, () =>
+    loadPets(userId!).then((data) => {
+      const toFeed: PetsSummary["toFeed"] = [];
+      const due: PetsSummary["due"] = [];
+      let mealsTotal = 0;
+      for (const pet of data.pets) {
+        const status = mealStatus(pet.pet_meals, data.log.filter((l) => l.pet_id === pet.id), data.today);
+        mealsTotal += status.length;
+        for (const s of status) if (!s.fed) toFeed.push({ petId: pet.id, pet: pet.name, meal: s.meal.label });
+        for (const item of healthNeedingAttention(pet.pet_health, data.today)) {
+          due.push({ petId: pet.id, pet: pet.name, title: item.title, overdue: item.due_on! < data.today });
         }
-        setSummary({ pets: data.pets.length, mealsTotal, toFeed, due });
-      })
-      .catch(() => live && setSummary(null));
-    return () => {
-      live = false;
-    };
-  }, [userId, refreshKey]);
-
-  return summary;
+      }
+      return { pets: data.pets.length, mealsTotal, toFeed, due };
+    }));
 }
 
 // --- The Hearth pet (CORE-048) --------------------------------------------------------------

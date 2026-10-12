@@ -1,11 +1,12 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { guarded } from "./feedback";
 import { displayName } from "./gift-nook";
 import { localDay } from "./pets";
 import { current, monthlyCents, sortByRenewal, totals, type PriceEntry, type Status, type Subscription } from "./subscriptions";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads your Home's subscriptions (SUB-001..012) with everything their
 // screens need. Row level security means only your Home's come back, and
@@ -131,41 +132,29 @@ export type SubscriptionsSummary = {
 };
 
 export function useSubscriptionsSummary(userId: string | undefined, refreshKey: number) {
-  const [summary, setSummary] = useState<SubscriptionsSummary | null>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    let live = true;
-    loadSubscriptions(userId)
-      .then((data) => {
-        if (!live) return;
-        const active = data.subs.filter((s) => s.status === "active");
-        const sum = totals(active, data.today);
-        setSummary({
-          count: active.length,
-          monthly: sum.monthly,
-          yearly: sum.yearly,
-          trials: sum.trials,
-          next: sortByRenewal(active, data.today).map((s) => {
-            const now = current(s, data.today);
-            return {
-              id: s.id,
-              name: s.name,
-              renews_on: now.renews_on,
-              on_trial: now.on_trial,
-              price_cents: s.price_cents,
-              monthly: monthlyCents(s),
-              mine: isMine(s, userId),
-            };
-          }),
-          today: data.today,
-        });
-      })
-      .catch(() => live && setSummary(null));
-    return () => {
-      live = false;
-    };
-  }, [userId, refreshKey]);
-
-  return summary;
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData(userId ? `subscriptions:${userId}` : null, refreshKey, () =>
+    loadSubscriptions(userId!).then((data) => {
+      const active = data.subs.filter((s) => s.status === "active");
+      const sum = totals(active, data.today);
+      return {
+        count: active.length,
+        monthly: sum.monthly,
+        yearly: sum.yearly,
+        trials: sum.trials,
+        next: sortByRenewal(active, data.today).map((s) => {
+          const now = current(s, data.today);
+          return {
+            id: s.id,
+            name: s.name,
+            renews_on: now.renews_on,
+            on_trial: now.on_trial,
+            price_cents: s.price_cents,
+            monthly: monthlyCents(s),
+            mine: isMine(s, userId),
+          };
+        }),
+        today: data.today,
+      };
+    }));
 }

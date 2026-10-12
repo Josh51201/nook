@@ -1,10 +1,11 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { guarded } from "./feedback";
 import { displayName } from "./gift-nook";
 import type { Note } from "./notes";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads the Notes Nook (NOTE-001..010): your notes and the shared ones of
 // people you live with (row level security decides which).
@@ -64,20 +65,8 @@ export function useNotes(userId: string | undefined) {
 
 // For the Hearth (NOTE-007): the same, reloaded when the Hearth refreshes.
 export function useNotesSummary(userId: string | undefined, refreshKey: number) {
-  const [data, setData] = useState<NotesData | null>(null);
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    loadNotes()
-      .then((next) => {
-        if (!cancelled) setData(next);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, refreshKey]);
-  return data;
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData(userId ? `notes:${userId}` : null, refreshKey, () => loadNotes());
 }
 
 export function personName(names: Map<string, string>, id: string | null, userId: string | undefined) {

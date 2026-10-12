@@ -61,6 +61,7 @@ import { WindowScene } from "./window-scene";
 import { FridgeDoor, FridgeNoteCard, LetterMagnets, Magnet } from "../fridge-door";
 import { fridgeGrid, fridgePlace, hashOf, magnets, noteMagnet } from "../../lib/fridge";
 import { useFridgeNotes } from "../../lib/fridge-data";
+import { useHearthData } from "../../lib/hearth-data";
 import { useHomeHearth } from "../../lib/home-hearth-data";
 import { glanceLines, type GlanceLine } from "../../lib/gathering-glance";
 import { useGatheringGlance } from "../../lib/gatherings-data";
@@ -614,20 +615,23 @@ type GatheringRow = { id: string; title: string; kind: string; ends_at: string }
 
 function Gatherings({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"gatherings">) {
   const { burrowId, kinds, count, showCountdown } = widget.settings;
-  const [rows, setRows] = useState<GatheringRow[] | null>(null);
-
-  useEffect(() => {
-    let query = supabase
-      .from("gatherings")
-      .select(`id, title, kind, ends_at${burrowId ? ", gathering_burrows!inner(burrow_id)" : ""}`)
-      .gt("ends_at", new Date().toISOString());
-    if (burrowId) query = query.eq("gathering_burrows.burrow_id", burrowId);
-    if (kinds.length) query = query.in("kind", kinds);
-    query
-      .order("ends_at")
-      .limit(Math.max(count, 6))
-      .then(({ data }) => setRows((data ?? []) as unknown as GatheringRow[]));
-  }, [burrowId, kinds.join(","), count, refreshKey]);
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const rows = useHearthData(
+    userId ? `w-gatherings:${userId}:${burrowId ?? ""}:${kinds.join(",")}:${count}` : null,
+    refreshKey,
+    async () => {
+      let query = supabase
+        .from("gatherings")
+        .select(`id, title, kind, ends_at${burrowId ? ", gathering_burrows!inner(burrow_id)" : ""}`)
+        .gt("ends_at", new Date().toISOString());
+      if (burrowId) query = query.eq("gathering_burrows.burrow_id", burrowId);
+      if (kinds.length) query = query.in("kind", kinds);
+      const { data, error } = await query.order("ends_at").limit(Math.max(count, 6));
+      if (error) throw error;
+      return (data ?? []) as unknown as GatheringRow[];
+    }
+  );
 
   if (!rows) return <Waiting palette={palette} shape={shape} />;
   if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={rows.length} />;
@@ -873,31 +877,27 @@ type TuckRow = { id: string; status: TuckStatus; title: string; forName: string 
 function Tucks({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"tucks">) {
   const { session } = useAuth();
   const { include, count } = widget.settings;
-  const [rows, setRows] = useState<TuckRow[] | null>(null);
-
-  useEffect(() => {
-    if (!session) return;
-    supabase
+  // Your own tucks only (GIFT-007: never anyone's view of their own list).
+  const userId = session?.user.id;
+  const rows = useHearthData<TuckRow[]>(userId ? `w-tucks:${userId}:${include}` : null, refreshKey, async () => {
+    const { data, error } = await supabase
       .from("claims")
       .select("id, status, gifts(title, wishbooks(profiles(display_name)))")
-      .eq("claimed_by", session.user.id)
+      .eq("claimed_by", userId!)
       .is("released_at", null)
       .in("status", include === "planning" ? ["planning"] : ["planning", "bought"])
-      .order("claimed_at", { ascending: false })
-      .then(({ data }) =>
-        setRows(
-          (data ?? []).map((row) => {
-            const gift = row.gifts as unknown as { title: string; wishbooks: { profiles: { display_name: string | null } | null } | null } | null;
-            return {
-              id: row.id,
-              status: row.status as TuckStatus,
-              title: gift?.title ?? "A gift",
-              forName: displayName(gift?.wishbooks?.profiles),
-            };
-          })
-        )
-      );
-  }, [session, include, refreshKey]);
+      .order("claimed_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((row) => {
+      const gift = row.gifts as unknown as { title: string; wishbooks: { profiles: { display_name: string | null } | null } | null } | null;
+      return {
+        id: row.id,
+        status: row.status as TuckStatus,
+        title: gift?.title ?? "A gift",
+        forName: displayName(gift?.wishbooks?.profiles),
+      };
+    });
+  });
 
   if (!rows) return <Waiting palette={palette} shape={shape} />;
   if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={rows.length} />;
@@ -1017,9 +1017,10 @@ function Note({ widget, palette, height, shape, icon }: BodyProps<"note">) {
 // --- Inbox --------------------------------------------------------------------------
 
 function Inbox({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"inbox">) {
-  const [state, setState] = useState<{ unread: number; notices: { title: string; nook: string; kind: string }[] } | null>(null);
-  useEffect(() => {
-    Promise.all([
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const state = useHearthData(userId ? `w-inbox:${userId}:${widget.settings.count}` : null, refreshKey, async () => {
+    const [countResult, listResult] = await Promise.all([
       supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null),
       supabase
         .from("notifications")
@@ -1027,8 +1028,10 @@ function Inbox({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"
         .is("read_at", null)
         .order("created_at", { ascending: false })
         .limit(Math.max(widget.settings.count, 6)),
-    ]).then(([countResult, listResult]) => setState({ unread: countResult.count ?? 0, notices: listResult.data ?? [] }));
-  }, [widget.settings.count, refreshKey]);
+    ]);
+    if (listResult.error) throw listResult.error;
+    return { unread: countResult.count ?? 0, notices: (listResult.data ?? []) as { title: string; nook: string; kind: string }[] };
+  });
 
   if (!state) return <Waiting palette={palette} shape={shape} />;
   if (shape === "icon") return <IconFace icon={icon} palette={palette} badge={state.unread} />;

@@ -1,6 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Platform } from "react-native";
 
 import { guarded } from "./feedback";
@@ -9,6 +9,7 @@ import type { LittleLog, LogEntry } from "./little-log";
 import { localDay } from "./pets";
 import { canRemind, configureReminders } from "./reminders";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads Little Log (LOG-001..010): your logs and the shared ones of people
 // you live with (row level security decides which), with their entries.
@@ -86,20 +87,8 @@ export function useLittleLogs(userId: string | undefined) {
 
 // For the Hearth (LOG-007): the same, reloaded when the Hearth refreshes.
 export function useLittleLogSummary(userId: string | undefined, refreshKey: number) {
-  const [data, setData] = useState<LittleLogData | null>(null);
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    loadLittleLogs()
-      .then((next) => {
-        if (!cancelled) setData(next);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, refreshKey]);
-  return data;
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData(userId ? `littlelog:${userId}` : null, refreshKey, () => loadLittleLogs());
 }
 
 // "You" for yourself, otherwise their name.

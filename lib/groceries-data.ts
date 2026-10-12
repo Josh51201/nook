@@ -9,6 +9,7 @@ import { guessAisle, isWaiting, itemKey, mergeAmount, mergeSource, sortLists, ty
 import { localDay } from "./pets";
 import { canRemind, configureReminders } from "./reminders";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads and saves the Grocery List Nook (GROC-001..009): your lists and the
 // shared ones of people you live with (row level security decides which),
@@ -101,20 +102,8 @@ export function useGroceries(userId: string | undefined, { makeFirst = false } =
 
 // For the Hearth (GROC-007), reloaded when the Hearth refreshes.
 export function useGroceriesSummary(userId: string | undefined, refreshKey: number) {
-  const [data, setData] = useState<Groceries | null>(null);
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    loadGroceries(userId)
-      .then((next) => {
-        if (!cancelled) setData(next);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, refreshKey]);
-  return data;
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData<Groceries>(userId ? `groceries:${userId}` : null, refreshKey, () => loadGroceries(userId!));
 }
 
 // --- Items ---------------------------------------------------------------------------

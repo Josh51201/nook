@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
+import { forgetHearthData } from "./hearth-data";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
 type AuthContextValue = {
@@ -25,7 +26,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      // Signed out: forget what the Hearth's tiles last showed (CORE-104).
+      if (event === "SIGNED_OUT") forgetHearthData();
       setSession(nextSession);
     });
 

@@ -5,6 +5,7 @@ import { guarded } from "./feedback";
 import { addDays, copyPlan, slot, type MealKey, type MenuKind, type MenuMeal } from "./menu-board";
 import { localDay } from "./pets";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads and saves the Menu Board (MENU-001..010). The menu belongs to the
 // Home (MENU-002): row level security shows only your Home's meals.
@@ -83,20 +84,10 @@ export function useMenu(userId: string | undefined, start: string) {
 // For the Hearth (MENU-008): today and tomorrow, reloaded when the Hearth
 // refreshes.
 export function useMenuSummary(userId: string | undefined, refreshKey: number, days = 2) {
-  const [data, setData] = useState<MenuWeek | null>(null);
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    loadMenu(localDay(), days)
-      .then((next) => {
-        if (!cancelled) setData(next);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, refreshKey, days]);
-  return data;
+  // Remembered between Hearth pages, so a page you've seen shows at once
+  // (CORE-104). The day is in the key, so it's fresh after midnight.
+  const day = localDay();
+  return useHearthData<MenuWeek>(userId ? `menu:${userId}:${day}:${days}` : null, refreshKey, () => loadMenu(day, days));
 }
 
 export type NewMeal = { day: string; meal: MealKey; kind: MenuKind; title: string; recipe_id?: string | null };

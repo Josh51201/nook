@@ -11,16 +11,22 @@ import { MoveBar } from "./move-bar";
 import { takeMoveRequest } from "../../lib/move-request";
 import { Gesture, GestureDetector, ScrollView } from "react-native-gesture-handler";
 import Animated, {
+  Easing,
   FadeIn,
   FadeOut,
   ZoomIn,
+  interpolate,
   scrollTo,
   useAnimatedRef,
+  useAnimatedStyle,
   useFrameCallback,
   useReducedMotion,
   useScrollOffset,
   useSharedValue,
+  withSpring,
+  withTiming,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../../lib/auth-context";
@@ -143,6 +149,7 @@ import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WaitingPill } from "./waiting";
 import { WidgetView } from "./widgets";
+import { nextHearthRefresh } from "../../lib/hearth-data";
 import { loadRecipesSummary } from "../../lib/recipes-data";
 import { gatheringWidgetsToTakeOff, widgetGathering } from "../../lib/gatherings-data";
 
@@ -186,9 +193,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   // Every save goes through here. While editing, the Hearth as it was just
   // before is kept so the change can be undone; things that aren't edits
   // (switching pages, undoing itself) pass `undoable: false`.
-  function save(changes: Partial<HearthLayout>, { undoable = true }: { undoable?: boolean } = {}) {
+  function save(changes: Partial<HearthLayout>, { undoable = true, later = false }: { undoable?: boolean; later?: boolean } = {}) {
     if (undoable && editingNow.current) setHistory((h) => remember(h, layoutNow.current));
-    return saveView(changes);
+    return saveView(changes, { later });
   }
   // Edit's toolbar (CORE-094): its More sheet, its height (so messages sit
   // above it), and the one-line tip at the top until it's put away.
@@ -220,7 +227,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     AsyncStorage.setItem(STARTER_OFFER_KEY, "1").catch(() => {});
   }
   const [gridWidth, setGridWidth] = useState(0);
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const [optionsFor, setOptionsFor] = useState<string | null>(null);
   // Moving a tile with the arrow bar, watching the Hearth (CORE-076).
   const [movingId, setMovingId] = useState<string | null>(null);
@@ -264,7 +271,9 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   useEffect(() => {
     if (!editing) setHoldStarted(false);
   }, [editing]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  // From the counter every Hearth shares, so remembered tile and widget
+  // data is never mixed up between screens (CORE-104).
+  const [refreshKey, setRefreshKey] = useState(nextHearthRefresh);
   const [openingHollow, setOpeningHollow] = useState<string | null>(null);
   // Inside a Hollow: the sheet for the Hollow itself (name, look, color, size).
   const [hollowOptions, setHollowOptions] = useState(false);
@@ -479,13 +488,13 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   // family birthdays have their Gatherings (GIFT-035).
   useFocusEffect(
     useCallback(() => {
-      setRefreshKey((k) => k + 1);
+      setRefreshKey(nextHearthRefresh());
       setOpeningHollow(null);
       entering.current = false;
       // Back from a Nook we zoomed into: shrink back into its tile.
       const lastZoom = zoomRef.current;
       if (lastZoom?.pushed) setZoom({ ...lastZoom, direction: "out", pushed: false });
-      if (!scope) planBirthdays().then((created) => created && setRefreshKey((k) => k + 1));
+      if (!scope) planBirthdays().then((created) => created && setRefreshKey(nextHearthRefresh()));
     }, [scope])
   );
 
@@ -594,7 +603,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     if (!changes) return;
     tap();
     setPagesOpen(false);
-    save(changes, { undoable: false }).catch((saveError: Error) => Alert.alert("Couldn't change page", saveError.message));
+    // Swiping through pages saves once you settle, not on every page (CORE-104).
+    save(changes, { undoable: false, later: true }).catch((saveError: Error) => Alert.alert("Couldn't change page", saveError.message));
   }
   // Photos that other scenes still need must not be cleaned up.
   useEffect(() => {
@@ -836,15 +846,70 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const showStrip = !scope && (layout.pages.length > 1 || editing);
   const knownTags = allTags(layout);
   const showTags = knownTags.length > 0 && !editing;
+  // Swiping between pages (CORE-104) runs on the phone's animation thread,
+  // so it stays smooth while the next page is being put together: the page
+  // follows your finger, a quick flick is enough, it springs back if you
+  // let go early, and it resists where there's no page to go to. It claims
+  // the swipe once you've gone a little sideways, before an up-and-down
+  // drift can turn it into a scroll.
+  const hasNextPage = canSwipePages && neighbourPage(layout, 1) !== null;
+  const hasPrevPage = canSwipePages && neighbourPage(layout, -1) !== null;
+  const pageShift = useSharedValue(0);
+  const arrivingFrom = useRef<1 | -1 | null>(null);
+  function turnPage(step: 1 | -1) {
+    arrivingFrom.current = step;
+    swipePage(step);
+    // If the page didn't change after all, bring this one back rather than
+    // leave it slid off to the side.
+    setTimeout(() => {
+      if (arrivingFrom.current !== step) return;
+      arrivingFrom.current = null;
+      pageShift.value = withSpring(0, { damping: 22, stiffness: 260 });
+    }, 500);
+  }
   const pageSwipe = Gesture.Pan()
-    .runOnJS(true)
     .enabled(canSwipePages)
-    .activeOffsetX([-30, 30])
-    .failOffsetY([-18, 18])
+    .activeOffsetX([-14, 14])
+    .failOffsetY([-24, 24])
+    .onUpdate((event) => {
+      const blocked = (event.translationX < 0 && !hasNextPage) || (event.translationX > 0 && !hasPrevPage);
+      pageShift.value = blocked ? event.translationX * 0.2 : event.translationX;
+    })
     .onEnd((event) => {
-      if (event.translationX < -70) swipePage(1);
-      else if (event.translationX > 70) swipePage(-1);
+      const step = event.translationX < 0 ? 1 : -1;
+      const allowed = step === 1 ? hasNextPage : hasPrevPage;
+      const farEnough = Math.abs(event.translationX) > windowWidth * 0.22;
+      const flicked = Math.abs(event.velocityX) > 550 && Math.sign(event.velocityX) === Math.sign(event.translationX);
+      if (allowed && (farEnough || flicked)) {
+        pageShift.value = withTiming(-step * windowWidth * 0.6, { duration: 140, easing: Easing.in(Easing.quad) }, (finished) => {
+          if (finished) scheduleOnRN(turnPage, step);
+        });
+      } else {
+        pageShift.value = withSpring(0, { damping: 22, stiffness: 260 });
+      }
     });
+  // The new page slides in from the side you swiped towards (or from the
+  // side of the tab you tapped).
+  const shownPage = useRef(layout.activePage);
+  useLayoutEffect(() => {
+    if (shownPage.current === layout.activePage) return;
+    const ids = layout.pages.map((p) => p.id);
+    const step = arrivingFrom.current ?? (ids.indexOf(layout.activePage) > ids.indexOf(shownPage.current) ? 1 : -1);
+    shownPage.current = layout.activePage;
+    arrivingFrom.current = null;
+    if (reduceMotion) {
+      pageShift.value = 0;
+      return;
+    }
+    pageShift.value = step * windowWidth * 0.3;
+    pageShift.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
+    // Only a new page should slide; the rest is read fresh when it does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout.activePage]);
+  const pageStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: pageShift.value }],
+    opacity: interpolate(Math.abs(pageShift.value), [0, windowWidth * 0.6], [1, 0.25], "clamp"),
+  }));
 
   function openNook(nookId: string) {
     const route = findNook(nookId)?.route;
@@ -1874,7 +1939,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         ) : null}
 
         <GestureDetector gesture={pageSwipe}>
-        <View style={styles.fill} collapsable={false}>
+        <Animated.View style={[styles.fill, pageStyle]} collapsable={false}>
         <TourScrollArea area={tourScroll.area}>
           <AnimatedScrollView
             ref={scrollView}
@@ -1920,7 +1985,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
             {/* CORE-103: while widgets and tiles are still fetching what
                 they show, say so (and offer a retry if it's very slow). */}
             {!isEmpty && !isLoading && !editing ? (
-              <WaitingPill accent={theme.accent} text={theme.text} onRetry={() => setRefreshKey((k) => k + 1)} />
+              <WaitingPill accent={theme.accent} text={theme.text} onRetry={() => setRefreshKey(nextHearthRefresh())} />
             ) : null}
 
             {onHome && !isEmpty && !isLoading ? (
@@ -2086,7 +2151,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
             ) : null}
           </AnimatedScrollView>
         </TourScrollArea>
-        </View>
+        </Animated.View>
         </GestureDetector>
       </SafeAreaView>
 

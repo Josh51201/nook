@@ -7,6 +7,7 @@ import type { GatheringRow, Guest } from "./gatherings";
 import type { RsvpStatus, Slot } from "./potluck";
 import { supabase } from "./supabase";
 import type { WidgetOf } from "./widgets";
+import { useHearthData } from "./hearth-data";
 
 // Loading and saving Gatherings (GATH-001..). Row level security decides
 // what comes back: a Gathering you aren't invited to simply isn't found.
@@ -155,19 +156,11 @@ export async function loadPickerBurrows(): Promise<PickerBurrow[]> {
 }
 
 // For the Hearth tile: the next few Gatherings.
-export function useUpcomingGatherings(enabled: boolean, refreshKey: number) {
-  const [rows, setRows] = useState<GatheringListItem[] | null>(null);
-  useEffect(() => {
-    if (!enabled) return;
-    let live = true;
-    loadGatherings()
-      .then((all) => live && setRows(all.filter((g) => new Date(g.ends_at).getTime() >= Date.now())))
-      .catch(() => live && setRows([]));
-    return () => {
-      live = false;
-    };
-  }, [enabled, refreshKey]);
-  return rows;
+// Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+export function useUpcomingGatherings(userId: string | undefined, refreshKey: number) {
+  return useHearthData<GatheringListItem[]>(userId ? `gatherings:${userId}` : null, refreshKey, () =>
+    loadGatherings().then((all) => all.filter((g) => new Date(g.ends_at).getTime() >= Date.now()))
+  );
 }
 
 // --- One Gathering at a glance, for its Hearth widget (GATH-009/010) -------------

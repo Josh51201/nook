@@ -17,6 +17,7 @@ import {
 } from "./getaways";
 import { localDay, phoneTimeZone } from "./pets";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads Getaways (TRIP-001..014). Row level security means only the ones
 // you're going on come back.
@@ -339,16 +340,6 @@ export async function loadGetawaysSummary(userId: string): Promise<GetawaysSumma
 }
 
 export function useGetawaysSummary(userId: string | undefined, refreshKey: number) {
-  const [summary, setSummary] = useState<GetawaysSummary | null>(null);
-  useEffect(() => {
-    if (!userId) return;
-    let live = true;
-    loadGetawaysSummary(userId)
-      .then((s) => live && setSummary(s))
-      .catch(() => live && setSummary(null));
-    return () => {
-      live = false;
-    };
-  }, [userId, refreshKey]);
-  return summary;
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData(userId ? `getaways:${userId}` : null, refreshKey, () => loadGetawaysSummary(userId!));
 }

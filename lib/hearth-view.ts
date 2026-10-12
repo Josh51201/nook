@@ -24,8 +24,10 @@ export function useHearthView(scope: Scope = null) {
     [showsHome, onHome, personal.layout, homeHearth]
   );
 
-  async function save(changes: Partial<HearthLayout>) {
-    if (!showsHome) return personal.save(changes);
+  // `later`: only your own part waits a moment before it's sent (page
+  // swipes, CORE-104); anything for the Home page goes straight away.
+  async function save(changes: Partial<HearthLayout>, options?: { later?: boolean }) {
+    if (!showsHome) return personal.save(changes, options);
     const split = splitHomeChanges(personal.layout, homeHearth, onHome, changes);
     home.setOnHomePage(split.onHome);
     let homeItems = split.homeItems;
@@ -74,7 +76,7 @@ export function useHearthView(scope: Scope = null) {
     }
 
     await Promise.all([
-      mine ? personal.save(mine) : null,
+      mine ? personal.save(mine, options) : null,
       homeItems ? home.saveItems(homeItems) : null,
       split.homeName !== null ? home.rename(split.homeName) : null,
     ]);

@@ -3,6 +3,7 @@ import { View } from "react-native";
 import Animated, { FadeInRight } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
+import { useHearthData } from "../../lib/hearth-data";
 import { rsvpLabel, whenWords as gatheringWhen } from "../../lib/gatherings";
 import { useUpcomingGatherings } from "../../lib/gatherings-data";
 import { countdown, gatheringKindInfo } from "../../lib/gift-nook";
@@ -180,17 +181,18 @@ type UpcomingGathering = { id: string; title: string; kind: string; ends_at: str
 
 // GIFT-007: shows Gatherings only — never anything about claims.
 function GiftNookWidget({ refreshKey, ...props }: NookWidgetProps) {
-  const [upcoming, setUpcoming] = useState<UpcomingGathering[] | null>(null);
-
-  useEffect(() => {
-    supabase
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const upcoming = useHearthData(userId ? `t-gift:${userId}` : null, refreshKey, async () => {
+    const { data, error } = await supabase
       .from("gatherings")
       .select("id, title, kind, ends_at")
       .gt("ends_at", new Date().toISOString())
       .order("ends_at")
-      .limit(8)
-      .then(({ data }) => setUpcoming((data ?? []) as UpcomingGathering[]));
-  }, [refreshKey]);
+      .limit(8);
+    if (error) throw error;
+    return (data ?? []) as UpcomingGathering[];
+  });
 
   if (!upcoming) return <FactsWaiting {...props} />;
   if (!upcoming.length) return <Facts facts={[{ kind: "note", text: "No Gatherings coming up" }]} {...props} />;
@@ -212,7 +214,7 @@ function GiftNookWidget({ refreshKey, ...props }: NookWidgetProps) {
 function GatheringsWidget({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const userId = session?.user.id;
-  const upcoming = useUpcomingGatherings(Boolean(userId), refreshKey);
+  const upcoming = useUpcomingGatherings(userId, refreshKey);
 
   if (!upcoming) return <FactsWaiting {...props} />;
   if (!upcoming.length) return <Facts facts={[{ kind: "note", text: "Nothing planned yet" }]} {...props} />;
@@ -248,21 +250,20 @@ type NextPotluck = {
 function PotluckWidget({ refreshKey, ...props }: NookWidgetProps) {
   const { session } = useAuth();
   const userId = session?.user.id;
-  const [potlucks, setPotlucks] = useState<NextPotluck[] | null>(null);
-
-  useEffect(() => {
+  const potlucks = useHearthData(userId ? `t-potluck:${userId}` : null, refreshKey, async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    supabase
+    const { data, error } = await supabase
       .from("potlucks")
       .select(
         "id, title, starts_at, place, potluck_slots(id, label, wanted), potluck_dishes(slot_id, brought_by, name), gatherings(gathering_rsvps(profile_id, status, extra_guests))"
       )
       .gte("starts_at", today.toISOString())
       .order("starts_at")
-      .limit(2)
-      .then(({ data }) => setPotlucks((data ?? []) as unknown as NextPotluck[]));
-  }, [refreshKey]);
+      .limit(2);
+    if (error) throw error;
+    return (data ?? []) as unknown as NextPotluck[];
+  });
 
   if (!potlucks) return <FactsWaiting {...props} />;
   const [next, after] = potlucks;

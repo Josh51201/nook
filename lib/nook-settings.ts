@@ -17,6 +17,9 @@ const cache = new Map<string, Saved>();
 const loadErrors = new Map<string, string>();
 const loading = new Set<string>();
 const listeners = new Map<string, Set<() => void>>();
+// Saves waiting to go (see `later` below), one per (user, nook).
+const pendingWrites = new Map<string, ReturnType<typeof setTimeout>>();
+const WRITE_LATER_MS = 1200;
 
 function notify(key: string) {
   listeners.get(key)?.forEach((listener) => listener());
@@ -64,17 +67,37 @@ export function useNookSettings<T extends Saved>(nook: string, defaults: T) {
   // `defaults` is a literal at each call site; recompute only when saved changes.
   const settings = useMemo(() => ({ ...defaults, ...saved }) as T, [saved]);
 
+  // Changes show at once; the save to the account follows. `later` waits a
+  // moment and sends only the newest, for quick back-and-forth changes like
+  // swiping through Hearth pages (CORE-104).
   const update = useCallback(
-    async (changes: Partial<T>) => {
+    async (changes: Partial<T>, { later = false }: { later?: boolean } = {}) => {
       if (!key || !userId || !cache.has(key)) return;
       const next = { ...cache.get(key), ...changes };
       cache.set(key, next);
       notify(key);
-      const { error: saveError } = await supabase.from("nook_settings").upsert(
-        { profile_id: userId, nook, settings: next, updated_at: new Date().toISOString() },
-        { onConflict: "profile_id,nook" }
-      );
-      if (saveError) throw saveError;
+      // Whatever's waiting is part of what gets sent now (or next).
+      const waiting = pendingWrites.get(key);
+      if (waiting) clearTimeout(waiting);
+      pendingWrites.delete(key);
+      const write = async () => {
+        const { error: saveError } = await supabase.from("nook_settings").upsert(
+          { profile_id: userId, nook, settings: cache.get(key), updated_at: new Date().toISOString() },
+          { onConflict: "profile_id,nook" }
+        );
+        if (saveError) throw saveError;
+      };
+      if (later) {
+        pendingWrites.set(
+          key,
+          setTimeout(() => {
+            pendingWrites.delete(key);
+            write().catch(() => {});
+          }, WRITE_LATER_MS)
+        );
+        return;
+      }
+      await write();
     },
     [key, userId, nook]
   );

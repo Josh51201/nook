@@ -1,11 +1,12 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { guarded } from "./feedback";
 import { displayName } from "./gift-nook";
 import { localDay } from "./pets";
 import { linkState, type SitterLink, type SitterSheet } from "./sitter";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads your Home's Sitter Sheet and its links (SIT-001..008). Row level
 // security means only your Home's come back.
@@ -182,18 +183,6 @@ export async function loadSitterSummary(): Promise<SitterSummary> {
 }
 
 export function useSitterSummary(userId: string | undefined, refreshKey: number) {
-  const [summary, setSummary] = useState<SitterSummary | null>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    let live = true;
-    loadSitterSummary()
-      .then((s) => live && setSummary(s))
-      .catch(() => live && setSummary(null));
-    return () => {
-      live = false;
-    };
-  }, [userId, refreshKey]);
-
-  return summary;
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData(userId ? `sitter:${userId}` : null, refreshKey, () => loadSitterSummary());
 }

@@ -1,11 +1,12 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { guarded } from "./feedback";
 import { displayName } from "./gift-nook";
 import { localDay, phoneTimeZone } from "./pets";
 import { groupRhythms, type Rhythm, type RhythmEntry, type Starter } from "./rhythms";
 import { supabase } from "./supabase";
+import { useHearthData } from "./hearth-data";
 
 // Loads your Home's rhythms (RHY-001..008) with everything their screens
 // need. Row level security means only your Home's come back.
@@ -135,27 +136,15 @@ export type RhythmsSummary = {
 };
 
 export function useRhythmsSummary(userId: string | undefined, refreshKey: number) {
-  const [summary, setSummary] = useState<RhythmsSummary | null>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    let live = true;
-    loadRhythms(userId)
-      .then((data) => {
-        if (!live) return;
-        const groups = groupRhythms(data.rhythms, data.today);
-        setSummary({
-          total: data.rhythms.length,
-          now: groups.now.map((r) => ({ id: r.id, title: r.title, overdue: r.due_on! < data.today, mine: r.owner === userId })),
-          soon: groups.month.map((r) => ({ id: r.id, title: r.title, due_on: r.due_on!, mine: r.owner === userId })),
-          today: data.today,
-        });
-      })
-      .catch(() => live && setSummary(null));
-    return () => {
-      live = false;
-    };
-  }, [userId, refreshKey]);
-
-  return summary;
+  // Remembered between Hearth pages, so a page you've seen shows at once (CORE-104).
+  return useHearthData(userId ? `rhythms:${userId}` : null, refreshKey, () =>
+    loadRhythms(userId!).then((data) => {
+      const groups = groupRhythms(data.rhythms, data.today);
+      return {
+        total: data.rhythms.length,
+        now: groups.now.map((r) => ({ id: r.id, title: r.title, overdue: r.due_on! < data.today, mine: r.owner === userId })),
+        soon: groups.month.map((r) => ({ id: r.id, title: r.title, due_on: r.due_on!, mine: r.owner === userId })),
+        today: data.today,
+      };
+    }));
 }
