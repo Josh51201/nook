@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useContext, useEffect, useState, type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, Line, Path } from "react-native-svg";
-import { FixedTextSize, Text } from "../text";
+import { FixedTextSize, Text, WidgetFontScope } from "../text";
 import Animated, { FadeIn, FadeInRight, LinearTransition, useReducedMotion, ZoomIn } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
@@ -66,7 +66,7 @@ import { Tap } from "../motion";
 import { BedArt, BowlArt, CritterArt, PetStageContext, Snooze } from "./pet-art";
 import { WaitingBars } from "./waiting";
 import { WindowScene } from "./window-scene";
-import { HangerArt, SkinSurface, skinPadding } from "./widget-skin";
+import { AccentArt, HangerArt, SkinSurface, skinPadding } from "./widget-skin";
 import { isPlainCard, materialColors, skinFor } from "../../lib/widget-skins";
 import { faceOf, ownFrame } from "../../lib/widget-faces";
 import { Bunting, CandleArt, CarvedSign, FlipDigits, FortuneSlip, HoopQuote, JarArt, LetterBoard, PaperChain, PlantArt, TearOffPad, TypewriterQuote } from "./widget-faces";
@@ -126,18 +126,23 @@ export function widgetPalette(look: WidgetConfig["look"], color: string | undefi
 // (CORE-068): it's laid out on the Hearth's grid, here and in its previews.
 // Anything it's hung up with (CORE-124) is drawn over it, reaching a
 // little outside its space.
+// So is a little accent on a corner, and its text wears its own font (CORE-128).
 export function WidgetView(props: React.ComponentProps<typeof WidgetBody>) {
-  const hanger = skinFor(props.widget.kind, props.widget.skin).hanger;
+  const { hanger, accent, font } = skinFor(props.widget.kind, props.widget.skin);
   return (
     <FixedTextSize>
-      {hanger === "none" ? (
-        <WidgetBody {...props} />
-      ) : (
-        <View style={{ width: props.width, height: props.height }}>
+      {/* A face that's its own frame keeps its own lettering. */}
+      <WidgetFontScope font={ownFrame(props.widget) ? "app" : font}>
+        {hanger === "none" && accent === "none" ? (
           <WidgetBody {...props} />
-          <HangerArt hanger={hanger} color={props.color} width={props.width} height={props.height} />
-        </View>
-      )}
+        ) : (
+          <View style={{ width: props.width, height: props.height }}>
+            <WidgetBody {...props} />
+            <HangerArt hanger={hanger} color={props.color} width={props.width} height={props.height} />
+            <AccentArt accent={accent} hanger={hanger} color={props.color} width={props.width} height={props.height} still={props.still} />
+          </View>
+        )}
+      </WidgetFontScope>
     </FixedTextSize>
   );
 }
@@ -247,7 +252,19 @@ function WidgetBody({
   if (bare) {
     return (
       <View style={{ width, height }}>
-        <Body widget={widget} palette={palette} height={height} width={width} shape={shape} icon={icon ?? info.icon} refreshKey={refreshKey} onChange={onChange} color={color} radius={radius} />
+        <Body
+          widget={widget}
+          palette={palette}
+          height={height}
+          width={width}
+          shape={shape}
+          icon={icon ?? info.icon}
+          refreshKey={refreshKey}
+          onChange={onChange}
+          color={color}
+          radius={radius}
+          still={still}
+        />
       </View>
     );
   }
@@ -279,6 +296,7 @@ function WidgetBody({
           radius={radius}
           level={cut ? liftLevel(lift, false) : 0}
           stitchOnly={!drawn}
+          print={skin.print}
         />
       ) : null}
       {showTitle ? (
@@ -301,6 +319,7 @@ function WidgetBody({
           onChange={onChange}
           color={color}
           radius={radius}
+          still={still}
         />
       </View>
     </View>
@@ -319,6 +338,8 @@ type CommonProps = {
   // frame (CORE-127).
   color?: string;
   radius?: number;
+  // Hold animations still (CORE-130), e.g. while editing.
+  still?: boolean;
 };
 
 function Body(props: CommonProps & { widget: WidgetConfig }) {
@@ -3231,7 +3252,7 @@ function Launch({ widget, palette, shape, width, height, icon, onChange }: BodyP
 
 // --- Habit streak (CORE-049) -----------------------------------------------------------
 
-function Streak({ widget, palette, shape, width, height, icon, onChange }: BodyProps<"streak">) {
+function Streak({ widget, palette, shape, width, height, icon, onChange, still }: BodyProps<"streak">) {
   const today = dayKey(new Date());
   const { name, days } = widget.settings;
   const streak = currentStreak(days, today);
@@ -3305,7 +3326,7 @@ function Streak({ widget, palette, shape, width, height, icon, onChange }: BodyP
     return (
       <View style={[styles.centerFill, { gap: 4 }]}>
         {face === "candle" ? (
-          <CandleArt streak={streak} doneToday={doneToday} size={size} />
+          <CandleArt streak={streak} doneToday={doneToday} size={size} still={still} />
         ) : face === "plant" ? (
           <PlantArt streak={streak} size={size} />
         ) : (

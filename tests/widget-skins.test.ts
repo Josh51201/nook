@@ -48,15 +48,17 @@ describe("materials", () => {
   });
 
   it("a fridge, frame, window or pet bed can't be made of anything, but can still hang and lean", () => {
-    const s = skinFor("fridge", { material: "wood", edge: "torn", hanger: "magnet", tilt: 3 });
-    expect(s).toEqual({ material: "plain", edge: "plain", hanger: "magnet", tilt: 3 });
+    const s = skinFor("fridge", { material: "wood", edge: "torn", hanger: "magnet", tilt: 3, print: "dots", font: "handwritten", accent: "holly" });
+    expect(s).toEqual({ material: "plain", edge: "plain", hanger: "magnet", tilt: 3, print: "none", font: "app", accent: "holly" });
     expect(takesMaterial("note")).toBe(true);
   });
 
   it("an old widget with no skin is still a plain card", () => {
     const s = skinFor("note", undefined);
-    expect(s).toEqual({ material: "plain", edge: "plain", hanger: "none", tilt: 0 });
+    expect(s).toEqual({ material: "plain", edge: "plain", hanger: "none", tilt: 0, print: "none", font: "app", accent: "none" });
     expect(isPlainCard(s)).toBe(true);
+    // A print is drawn on the card, so it's not plain any more.
+    expect(isPlainCard({ ...s, print: "gingham" })).toBe(false);
     expect(isPlainCard({ ...s, edge: "stitch" })).toBe(true);
     expect(isPlainCard({ ...s, edge: "torn" })).toBe(false);
   });
@@ -106,6 +108,7 @@ describe("natural looks", () => {
     expect(skinSummary("tucks", naturalSkin("tucks"))).toBe("Kraft paper · Torn edges · Washi tape");
     expect(skinSummary("note", { tilt: -1.5 })).toBe("Leaning");
     expect(skinSummary("launch", undefined)).toBe("");
+    expect(skinSummary("note", { print: "gingham", font: "handwritten", accent: "holly" })).toBe("Gingham · Handwritten · Holly");
   });
 });
 

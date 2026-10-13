@@ -1,9 +1,12 @@
 import type { IconName } from "../components/icon";
 import { contrast, deepOf, hexToHsl, hslToHex, isHex, shade } from "./colors";
+import type { PatternKey } from "./decor";
+import type { LabelFont } from "./fonts";
 import type { WidgetKind } from "./widgets";
 
-// What a widget is made of, how its edges are cut, what it's hung up with
-// and how far it leans (CORE-122..125). Pure data and drawing maths (no
+// What a widget is made of, how its edges are cut, what it's hung up with,
+// how far it leans (CORE-122..125), and a print, font and little accent
+// (CORE-128). Pure data and drawing maths (no
 // React), so it's unit-testable. Drawn by components/hearth/widget-skin.tsx.
 //
 // A widget's color still matters: it tints the material (the stain on wood,
@@ -16,7 +19,14 @@ export type Hanger = "none" | "tape" | "pin" | "magnet" | "clip" | "clothespin" 
 // Degrees; a small lean either way.
 export type Tilt = -3 | -1.5 | 0 | 1.5 | 3;
 
-export type WidgetSkin = { material?: Material; edge?: Edge; hanger?: Hanger; tilt?: Tilt };
+// A wallpaper pattern printed on it, or none.
+export type Print = "none" | PatternKey;
+// Its words' font: the Hearth text fonts, plus a typewriter.
+export type WidgetFont = LabelFont | "typewriter";
+// A little decoration on a corner.
+export type Accent = "none" | "heart" | "star" | "daisy" | "holly" | "bow" | "mug";
+
+export type WidgetSkin = { material?: Material; edge?: Edge; hanger?: Hanger; tilt?: Tilt; print?: Print; font?: WidgetFont; accent?: Accent };
 
 export const materials: { key: Material; label: string }[] = [
   { key: "plain", label: "Plain" },
@@ -54,6 +64,35 @@ export const hangers: { key: Hanger; label: string; icon: IconName }[] = [
   { key: "shelf", label: "On a shelf", icon: "books" },
 ];
 
+export const prints: { key: Print; label: string }[] = [
+  { key: "none", label: "None" },
+  { key: "dots", label: "Polka dots" },
+  { key: "stripes", label: "Stripes" },
+  { key: "gingham", label: "Gingham" },
+  { key: "leaves", label: "Leaves" },
+  { key: "stars", label: "Stars" },
+  { key: "diamonds", label: "Diamonds" },
+];
+
+export const widgetFonts: { key: WidgetFont; label: string }[] = [
+  { key: "app", label: "Same as the app" },
+  { key: "rounded", label: "Rounded" },
+  { key: "storybook", label: "Storybook" },
+  { key: "handwritten", label: "Handwritten" },
+  { key: "typewriter", label: "Typewriter" },
+  { key: "classic", label: "Classic" },
+];
+
+export const accents: { key: Accent; label: string; icon: IconName }[] = [
+  { key: "none", label: "None", icon: "close" },
+  { key: "heart", label: "Heart sticker", icon: "heart" },
+  { key: "star", label: "Star sticker", icon: "star" },
+  { key: "daisy", label: "Daisy", icon: "flower" },
+  { key: "holly", label: "Holly", icon: "christmas" },
+  { key: "bow", label: "Bow", icon: "gift" },
+  { key: "mug", label: "Cup of cocoa", icon: "coffee" },
+];
+
 export const tilts: { key: Tilt; label: string }[] = [
   { key: -3, label: "Lean left" },
   { key: -1.5, label: "A little left" },
@@ -72,14 +111,29 @@ export function takesMaterial(kind: WidgetKind) {
 
 // What the skin comes to once anything a widget can't wear is left out.
 export function skinFor(kind: WidgetKind, skin: WidgetSkin | undefined): Required<WidgetSkin> {
-  const material = takesMaterial(kind) ? skin?.material ?? "plain" : "plain";
-  const edge = takesMaterial(kind) ? skin?.edge ?? "plain" : "plain";
-  return { material, edge, hanger: skin?.hanger ?? "none", tilt: skin?.tilt ?? 0 };
+  const own = takesMaterial(kind);
+  return {
+    material: own ? skin?.material ?? "plain" : "plain",
+    edge: own ? skin?.edge ?? "plain" : "plain",
+    hanger: skin?.hanger ?? "none",
+    tilt: skin?.tilt ?? 0,
+    print: own ? skin?.print ?? "none" : "none",
+    font: own ? skin?.font ?? "app" : "app",
+    accent: skin?.accent ?? "none",
+  };
 }
 
 // Is it drawn the old way: a plain card with smooth corners?
 export function isPlainCard(skin: Required<WidgetSkin>) {
-  return skin.material === "plain" && (skin.edge === "plain" || skin.edge === "stitch");
+  return skin.material === "plain" && (skin.edge === "plain" || skin.edge === "stitch") && skin.print === "none";
+}
+
+// Swings a little in a breeze (CORE-130): anything hung from one point (a
+// pin, clothespin, paperclip or nail), when it's raining or leaves are
+// falling on the Hearth.
+export function swaysIn(ambience: string | null | undefined, skin: Required<WidgetSkin>) {
+  const breezy = ambience === "rain" || ambience === "leaves";
+  return breezy && (skin.hanger === "pin" || skin.hanger === "clothespin" || skin.hanger === "clip" || skin.hanger === "nail");
 }
 
 // --- Natural looks (CORE-125) ----------------------------------------------------------
@@ -124,30 +178,34 @@ export function naturalSkin(kind: WidgetKind): WidgetSkin {
 // Ready-made combinations for "Surprise me" (CORE-125): picked by hand so
 // every one looks good, rather than thrown together at random.
 export const skinIdeas: WidgetSkin[] = [
-  { material: "kraft", edge: "torn", hanger: "tape", tilt: -1.5 },
-  { material: "chalkboard", hanger: "nail" },
+  { material: "kraft", edge: "torn", hanger: "tape", tilt: -1.5, font: "handwritten" },
+  { material: "chalkboard", hanger: "nail", font: "handwritten" },
   { material: "notebook", edge: "torn", hanger: "clip" },
-  { material: "index", hanger: "pin", tilt: 1.5 },
-  { material: "cork", edge: "plain" },
+  { material: "index", hanger: "pin", tilt: 1.5, font: "typewriter" },
+  { material: "cork", edge: "plain", accent: "star" },
   { material: "felt", edge: "stitch" },
-  { material: "linen", edge: "scallop" },
+  { material: "linen", edge: "scallop", font: "storybook", accent: "daisy" },
   { material: "paper", edge: "stamp", hanger: "tape", tilt: -1.5 },
-  { material: "wood", hanger: "shelf" },
+  { material: "wood", hanger: "shelf", accent: "mug" },
   { material: "glass" },
   { material: "graph", edge: "wavy", hanger: "magnet" },
   { material: "paper", edge: "ticket", hanger: "clothespin", tilt: 1.5 },
+  { material: "paper", print: "gingham", hanger: "pin", accent: "heart" },
+  { material: "plain", print: "dots", edge: "scallop", accent: "bow" },
 ];
 
+const blank: Required<WidgetSkin> = { material: "plain", edge: "plain", hanger: "none", tilt: 0, print: "none", font: "app", accent: "none" };
+
 export function sameSkin(a: WidgetSkin | undefined, b: WidgetSkin | undefined) {
-  const x = { material: "plain", edge: "plain", hanger: "none", tilt: 0, ...a };
-  const y = { material: "plain", edge: "plain", hanger: "none", tilt: 0, ...b };
-  return x.material === y.material && x.edge === y.edge && x.hanger === y.hanger && x.tilt === y.tilt;
+  const x = { ...blank, ...a };
+  const y = { ...blank, ...b };
+  return (Object.keys(blank) as (keyof WidgetSkin)[]).every((key) => x[key] === y[key]);
 }
 
 // A different idea from the one it has now; `roll` is a number in [0, 1).
 export function surpriseSkin(kind: WidgetKind, current: WidgetSkin | undefined, roll: number): WidgetSkin {
   const fits = skinIdeas
-    .map((idea) => (takesMaterial(kind) ? idea : { hanger: idea.hanger, tilt: idea.tilt }))
+    .map((idea) => (takesMaterial(kind) ? idea : { hanger: idea.hanger, tilt: idea.tilt, accent: idea.accent }))
     .filter((idea) => !sameSkin(idea, current));
   return { ...fits[Math.min(fits.length - 1, Math.floor(roll * fits.length))] };
 }
@@ -159,6 +217,9 @@ export function skinSummary(kind: WidgetKind, skin: WidgetSkin | undefined) {
   if (s.material !== "plain") words.push(materials.find((m) => m.key === s.material)!.label);
   if (s.edge !== "plain") words.push(`${edges.find((e) => e.key === s.edge)!.label} edges`);
   if (s.hanger !== "none") words.push(hangers.find((h) => h.key === s.hanger)!.label);
+  if (s.print !== "none") words.push(prints.find((p) => p.key === s.print)!.label);
+  if (s.font !== "app") words.push(widgetFonts.find((f) => f.key === s.font)!.label);
+  if (s.accent !== "none") words.push(accents.find((a) => a.key === s.accent)!.label);
   if (s.tilt) words.push("Leaning");
   return words.join(" · ");
 }

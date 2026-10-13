@@ -1,9 +1,11 @@
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { StyleSheet, View } from "react-native";
+import Animated, { cancelAnimation, Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import Svg, { Circle, Defs, Ellipse, G, Line, LinearGradient, Path, Pattern, Rect, Stop } from "react-native-svg";
 
 import { deepOf, isHex, shade } from "../../lib/colors";
-import { edgeInset, edgePath, materialColors, materialOpacity, type Edge, type Hanger, type Material } from "../../lib/widget-skins";
+import { edgeInset, edgePath, materialColors, materialOpacity, type Accent, type Edge, type Hanger, type Material, type Print } from "../../lib/widget-skins";
+import { PatternTile, patternTileSize } from "./wallpaper";
 
 // Draws what a widget is made of and how its edges are cut (CORE-122, 123),
 // behind its words, and what it's hung up with (CORE-124), on top. The
@@ -26,6 +28,7 @@ export function SkinSurface({
   radius,
   level = 0,
   stitchOnly = false,
+  print = "none",
 }: {
   material: Material;
   edge: Edge;
@@ -43,6 +46,8 @@ export function SkinSurface({
   level?: 0 | 1 | 2 | 3;
   // A plain card that only wants its stitching drawn over it.
   stitchOnly?: boolean;
+  // A wallpaper pattern printed over it (CORE-128).
+  print?: Print;
 }) {
   const id = `s${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const cut = edge !== "plain" && edge !== "stitch";
@@ -57,6 +62,11 @@ export function SkinSurface({
     <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
         <Texture id={id} material={material} ink={colors.ink} width={width} />
+        {print !== "none" ? (
+          <Pattern id={`${id}p`} patternUnits="userSpaceOnUse" {...patternTileSize(print)}>
+            <PatternTile pattern={print} ink={colors.dark ? "#ffffff" : deep} opacity={colors.dark ? 0.09 : 0.11} />
+          </Pattern>
+        ) : null}
         {material === "glass" ? (
           <LinearGradient id={`${id}g`} x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor="#ffffff" stopOpacity={0.55} />
@@ -77,6 +87,7 @@ export function SkinSurface({
               {material === "glass" ? <Path d={d} fill={`url(#${id}g)`} stroke="#ffffff" strokeOpacity={0.75} strokeWidth={1.5} /> : null}
             </>
           )}
+          {print !== "none" && !outline ? <Path d={d} fill={`url(#${id}p)`} /> : null}
           <Extras material={material} width={width} height={h} d={d} />
         </>
       )}
@@ -201,8 +212,8 @@ function Extras({ material, width, height, d }: { material: Material; width: num
     case "chalkboard":
       return (
         <>
-          <Ellipse cx={width * 0.3} cy={height * 0.35} rx={width * 0.25} ry={height * 0.12} fill="#ffffff" fillOpacity={0.04} />
-          <Ellipse cx={width * 0.7} cy={height * 0.7} rx={width * 0.2} ry={height * 0.1} fill="#ffffff" fillOpacity={0.03} />
+          <Ellipse cx={width * 0.3} cy={height * 0.35} rx={width * 0.25} ry={height * 0.12} fill="#ffffff" fillOpacity={0.03} />
+          <Ellipse cx={width * 0.7} cy={height * 0.7} rx={width * 0.2} ry={height * 0.1} fill="#ffffff" fillOpacity={0.02} />
           <Path d={d} fill="none" stroke="#a7743f" strokeWidth={10} />
           <Path d={d} fill="none" stroke="#5e3a1c" strokeOpacity={0.35} strokeWidth={1} transform="translate(0 0)" />
         </>
@@ -334,4 +345,139 @@ function HangerShape({ hanger, soft, deep, width, height }: { hanger: Hanger; so
     case "none":
       return null;
   }
+}
+
+// --- Accents (CORE-128, 130) --------------------------------------------------------------
+
+const A = 30;
+
+// A little decoration on a corner: a sticker, a daisy, a sprig of holly, a
+// bow, or a cup of cocoa that steams. It keeps clear of whatever's hanging
+// the widget up.
+export function AccentArt({
+  accent,
+  hanger,
+  color,
+  width,
+  height,
+  still = false,
+}: {
+  accent: Accent;
+  hanger: Hanger;
+  color?: string;
+  width: number;
+  height: number;
+  still?: boolean;
+}) {
+  if (accent === "none") return null;
+  const topMiddle = hanger === "pin" || hanger === "magnet" || hanger === "clothespin" || hanger === "nail";
+  const spot: { left: number; top: number; turn: number } =
+    accent === "heart" || accent === "star"
+      ? { left: width - A + 4, top: height - A + 4, turn: 14 }
+      : accent === "daisy"
+        ? { left: -6, top: height - A + 6, turn: -10 }
+        : accent === "holly"
+          ? { left: -6, top: -6, turn: -20 }
+          : accent === "bow"
+            ? topMiddle
+              ? { left: 8, top: -10, turn: -12 }
+              : { left: width / 2 - A / 2, top: -12, turn: 0 }
+            : { left: width - A - 2, top: height - A + 8, turn: 0 };
+  const ribbon = color && isHex(color) ? deepOf(color) : "#d9574f";
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", left: spot.left, top: spot.top, width: A, height: A, transform: [{ rotate: `${spot.turn}deg` }] }}>
+      {accent === "mug" ? <Steam still={still} /> : null}
+      <Svg width={A} height={A}>
+        <AccentShape accent={accent} ribbon={ribbon} />
+      </Svg>
+    </View>
+  );
+}
+
+function AccentShape({ accent, ribbon }: { accent: Accent; ribbon: string }) {
+  switch (accent) {
+    case "heart":
+      return (
+        <>
+          <Path d="M15 26 C4 18 2 12 5 8 C8 4 13 5 15 9 C17 5 22 4 25 8 C28 12 26 18 15 26 Z" fill="#e5627a" stroke="#ffffff" strokeWidth={2.5} strokeLinejoin="round" />
+          <Ellipse cx={9.5} cy={10} rx={2} ry={1.2} fill="#ffffff" fillOpacity={0.55} transform="rotate(-35 9.5 10)" />
+        </>
+      );
+    case "star":
+      return (
+        <Path
+          d="M15 3 L18.4 10.9 L27 11.6 L20.5 17.2 L22.5 25.6 L15 21.2 L7.5 25.6 L9.5 17.2 L3 11.6 L11.6 10.9 Z"
+          fill="#f2c14e"
+          stroke="#ffffff"
+          strokeWidth={2.5}
+          strokeLinejoin="round"
+        />
+      );
+    case "daisy":
+      return (
+        <G transform="translate(15 15)">
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+            <Ellipse key={a} cx={0} cy={-7.5} rx={3.2} ry={6} fill="#ffffff" stroke="#e0dbd3" strokeWidth={0.8} transform={`rotate(${a})`} />
+          ))}
+          <Circle cx={0} cy={0} r={4} fill="#f3c34a" />
+        </G>
+      );
+    case "holly":
+      return (
+        <>
+          <Path d="M15 15 L6 9 L8 13 L3 13 L7 16 L4 19 L9 18 L15 15 Z" fill="#3f8a4f" />
+          <Path d="M15 15 L21 6 L20 11 L25 9 L22 13 L27 14 L21 16 L15 15 Z" fill="#4e9c5d" />
+          <Circle cx={14} cy={17} r={2.8} fill="#d23b3b" />
+          <Circle cx={18} cy={18.5} r={2.6} fill="#c22f33" />
+          <Circle cx={15.5} cy={20.5} r={2.4} fill="#de4a45" />
+        </>
+      );
+    case "bow":
+      return (
+        <>
+          <Path d="M15 15 L9 27 L12 27 L15 19 Z M15 15 L21 27 L18 27 L15 19 Z" fill={ribbon} fillOpacity={0.85} />
+          <Ellipse cx={8.5} cy={12} rx={7} ry={4.5} fill={ribbon} transform="rotate(-18 8.5 12)" />
+          <Ellipse cx={21.5} cy={12} rx={7} ry={4.5} fill={ribbon} transform="rotate(18 21.5 12)" />
+          <Circle cx={15} cy={14} r={3.4} fill={shade(ribbon, -0.2)} />
+        </>
+      );
+    case "mug":
+      return (
+        <>
+          <Path d="M22 14 C28 14 28 22 21 22" stroke="#d4694f" strokeWidth={2.5} fill="none" />
+          <Rect x={6} y={11} width={17} height={17} rx={4} fill="#e9775b" />
+          <Ellipse cx={14.5} cy={12} rx={8.5} ry={2.4} fill="#7a4a2c" />
+          <Rect x={9} y={17} width={4} height={4} rx={1} fill="#ffffff" fillOpacity={0.5} />
+        </>
+      );
+    case "none":
+      return null;
+  }
+}
+
+// Wisps of steam rising off the cocoa (CORE-130). Still while editing or
+// when the phone asks for less motion.
+function Steam({ still }: { still: boolean }) {
+  const reduce = useReducedMotion();
+  const rise = useSharedValue(0);
+  const moving = !still && !reduce;
+  useEffect(() => {
+    if (moving) rise.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.sin) }), -1, false);
+    else {
+      cancelAnimation(rise);
+      rise.value = 0.4;
+    }
+  }, [moving, rise]);
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.75 * Math.sin(Math.PI * rise.value),
+    transform: [{ translateY: -10 * rise.value }],
+  }));
+  return (
+    <Animated.View style={[{ position: "absolute", left: 6, top: -14, width: 18, height: 22 }, style]}>
+      <Svg width={18} height={22}>
+        <Path d="M5 20 C2 15 8 12 5 7 C3 4 6 2 5 0" stroke="#ffffff" strokeWidth={1.8} fill="none" strokeLinecap="round" />
+        <Path d="M12 20 C9 15 15 12 12 7 C10 4 13 2 12 0" stroke="#ffffff" strokeWidth={1.8} fill="none" strokeLinecap="round" />
+      </Svg>
+    </Animated.View>
+  );
 }

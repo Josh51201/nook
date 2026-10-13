@@ -1,4 +1,14 @@
+import { useEffect } from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import Svg, { Circle, Defs, Ellipse, G, Line, Path, Pattern, Rect } from "react-native-svg";
 
 import { deepOf, isHex, shade } from "../../lib/colors";
@@ -32,7 +42,11 @@ export function TearOffPad({ days, size, palette }: { days: number; size: number
         ))}
       </View>
       <View style={[pad.page, { width: size, height: size * 0.9 }]}>
-        <Text style={{ fontSize: size * (today ? 0.24 : 0.46), fontWeight: "800", color: "#2a2420", letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
+        <Text
+          style={{ fontSize: size * (today ? 0.24 : 0.46), fontWeight: "800", color: "#2a2420", letterSpacing: -1 }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
           {today ? "Today!" : String(Math.abs(days))}
         </Text>
         <Text style={{ fontSize: Math.max(8, size * 0.085), fontWeight: "800", color: "#8a7f78", letterSpacing: 1.2 }} numberOfLines={1}>
@@ -243,7 +257,18 @@ export function HoopQuote({ text, width, height, color }: { text: string; width:
         {/* A little stitched flower under the words. */}
         <G transform={`translate(${cx} ${cy + ry * 0.8})`}>
           {[0, 72, 144, 216, 288].map((a) => (
-            <Ellipse key={a} cx={0} cy={-4} rx={2.4} ry={4} fill="none" stroke={thread} strokeWidth={1} strokeDasharray="1.5 1.2" transform={`rotate(${a})`} />
+            <Ellipse
+              key={a}
+              cx={0}
+              cy={-4}
+              rx={2.4}
+              ry={4}
+              fill="none"
+              stroke={thread}
+              strokeWidth={1}
+              strokeDasharray="1.5 1.2"
+              transform={`rotate(${a})`}
+            />
           ))}
           <Circle cx={0} cy={0} r={1.6} fill="#e3ae45" />
         </G>
@@ -264,8 +289,20 @@ export function HoopQuote({ text, width, height, color }: { text: string; width:
 
 // --- Habit streak ---------------------------------------------------------------------------
 
-// A candle whose flame grows with the streak; out (just a wisp) when it's broken.
-export function CandleArt({ streak, doneToday, size }: { streak: number; doneToday: boolean; size: number }) {
+// A candle whose flame grows with the streak; out (just a wisp) when it's
+// broken. The flame flickers (CORE-130), except while editing or when the
+// phone asks for less motion.
+export function CandleArt({
+  streak,
+  doneToday,
+  size,
+  still = false,
+}: {
+  streak: number;
+  doneToday: boolean;
+  size: number;
+  still?: boolean;
+}) {
   const flame = flameSize(streak, doneToday);
   const w = size;
   const h = size;
@@ -275,22 +312,85 @@ export function CandleArt({ streak, doneToday, size }: { streak: number; doneTod
   const cx = w / 2;
   const f = h * 0.24 * flame;
   return (
-    <Svg width={w} height={h}>
-      {flame ? <Circle cx={cx} cy={top - f * 0.55} r={f * 1.25} fill="#ffcf6b" fillOpacity={0.22} /> : null}
-      <Ellipse cx={cx} cy={h - 4} rx={w * 0.32} ry={4} fill="#c9a46b" />
-      <Rect x={cx - bodyW / 2} y={top} width={bodyW} height={h - top - 5} rx={2} fill="#fbf3e4" />
-      <Path d={`M${cx - bodyW / 2} ${top + 2} q${bodyW * 0.2} 7 ${bodyW * 0.32} 0 q${bodyW * 0.15} 10 ${bodyW * 0.35} 0`} stroke="#efe2cc" strokeWidth={2} fill="none" />
-      <Rect x={cx + bodyW * 0.18} y={top} width={bodyW * 0.12} height={h - top - 5} fill="#000000" fillOpacity={0.05} />
-      <Line x1={cx} y1={top} x2={cx} y2={top - 5} stroke="#3a2a1e" strokeWidth={1.5} />
+    <View style={{ width: w, height: h }}>
+      <Svg width={w} height={h} style={StyleSheet.absoluteFill}>
+        {flame ? <Circle cx={cx} cy={top - f * 0.55} r={f * 1.25} fill="#ffcf6b" fillOpacity={0.22} /> : null}
+        <Ellipse cx={cx} cy={h - 4} rx={w * 0.32} ry={4} fill="#c9a46b" />
+        <Rect x={cx - bodyW / 2} y={top} width={bodyW} height={h - top - 5} rx={2} fill="#fbf3e4" />
+        <Path
+          d={`M${cx - bodyW / 2} ${top + 2} q${bodyW * 0.2} 7 ${bodyW * 0.32} 0 q${bodyW * 0.15} 10 ${bodyW * 0.35} 0`}
+          stroke="#efe2cc"
+          strokeWidth={2}
+          fill="none"
+        />
+        <Rect x={cx + bodyW * 0.18} y={top} width={bodyW * 0.12} height={h - top - 5} fill="#000000" fillOpacity={0.05} />
+        <Line x1={cx} y1={top} x2={cx} y2={top - 5} stroke="#3a2a1e" strokeWidth={1.5} />
+        {flame ? null : (
+          <Path
+            d={`M${cx} ${top - 6} c4 -5 -4 -8 0 -13 c3 -4 -2 -6 1 -9`}
+            stroke="#9a948e"
+            strokeOpacity={0.6}
+            strokeWidth={1.4}
+            fill="none"
+            strokeLinecap="round"
+          />
+        )}
+      </Svg>
       {flame ? (
-        <>
-          <Path d={`M${cx} ${top - 4 - f * 1.6} C${cx + f * 0.75} ${top - 4 - f * 0.7} ${cx + f * 0.55} ${top - 2} ${cx} ${top - 2} C${cx - f * 0.55} ${top - 2} ${cx - f * 0.75} ${top - 4 - f * 0.7} ${cx} ${top - 4 - f * 1.6} Z`} fill="#f39a2e" />
-          <Path d={`M${cx} ${top - 4 - f * 0.9} C${cx + f * 0.35} ${top - 4 - f * 0.4} ${cx + f * 0.3} ${top - 3} ${cx} ${top - 3} C${cx - f * 0.3} ${top - 3} ${cx - f * 0.35} ${top - 4 - f * 0.4} ${cx} ${top - 4 - f * 0.9} Z`} fill="#ffe28a" />
-        </>
-      ) : (
-        <Path d={`M${cx} ${top - 6} c4 -5 -4 -8 0 -13 c3 -4 -2 -6 1 -9`} stroke="#9a948e" strokeOpacity={0.6} strokeWidth={1.4} fill="none" strokeLinecap="round" />
-      )}
-    </Svg>
+        <Flicker still={still} origin={[cx, top - 2]} size={[w, h]}>
+          <Path
+            d={`M${cx} ${top - 4 - f * 1.6} C${cx + f * 0.75} ${top - 4 - f * 0.7} ${cx + f * 0.55} ${top - 2} ${cx} ${top - 2} C${cx - f * 0.55} ${top - 2} ${cx - f * 0.75} ${top - 4 - f * 0.7} ${cx} ${top - 4 - f * 1.6} Z`}
+            fill="#f39a2e"
+          />
+          <Path
+            d={`M${cx} ${top - 4 - f * 0.9} C${cx + f * 0.35} ${top - 4 - f * 0.4} ${cx + f * 0.3} ${top - 3} ${cx} ${top - 3} C${cx - f * 0.3} ${top - 3} ${cx - f * 0.35} ${top - 4 - f * 0.4} ${cx} ${top - 4 - f * 0.9} Z`}
+            fill="#ffe28a"
+          />
+        </Flicker>
+      ) : null}
+    </View>
+  );
+}
+
+// A flame that stretches and dips a little, now and then.
+function Flicker({
+  still,
+  origin,
+  size,
+  children,
+}: {
+  still: boolean;
+  origin: [number, number];
+  size: [number, number];
+  children: React.ReactNode;
+}) {
+  const reduce = useReducedMotion();
+  const stretch = useSharedValue(1);
+  const moving = !still && !reduce;
+  useEffect(() => {
+    if (moving) {
+      stretch.value = withRepeat(
+        withSequence(
+          withTiming(1.08, { duration: 170 }),
+          withTiming(0.94, { duration: 230 }),
+          withTiming(1.04, { duration: 190 }),
+          withTiming(1, { duration: 260 }),
+        ),
+        -1,
+        false,
+      );
+    } else {
+      cancelAnimation(stretch);
+      stretch.value = 1;
+    }
+  }, [moving, stretch]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scaleY: stretch.value }, { scaleX: 2 - stretch.value }] }));
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: [origin[0], origin[1], 0] }, style]}>
+      <Svg width={size[0]} height={size[1]}>
+        {children}
+      </Svg>
+    </Animated.View>
   );
 }
 
@@ -308,11 +408,30 @@ export function PlantArt({ streak, size }: { streak: number; size: number }) {
   const leaves = Array.from({ length: Math.max(1, pairs) }, (_, i) => potTop - ((potTop - stemTop) * (i + 0.6)) / Math.max(1, pairs) - 2);
   return (
     <Svg width={w} height={h}>
-      <Path d={`M${cx} ${potTop} C${cx - 2} ${(potTop + stemTop) / 2} ${cx + 2} ${(potTop + stemTop) / 2} ${cx} ${stemTop}`} stroke="#5a8f4e" strokeWidth={2} fill="none" />
+      <Path
+        d={`M${cx} ${potTop} C${cx - 2} ${(potTop + stemTop) / 2} ${cx + 2} ${(potTop + stemTop) / 2} ${cx} ${stemTop}`}
+        stroke="#5a8f4e"
+        strokeWidth={2}
+        fill="none"
+      />
       {leaves.map((y, i) => (
         <G key={i}>
-          <Ellipse cx={cx - leaf * 0.9} cy={y} rx={leaf} ry={leaf * 0.45} fill="#6dab5f" transform={`rotate(-28 ${cx - leaf * 0.9} ${y})`} />
-          <Ellipse cx={cx + leaf * 0.9} cy={y - 3} rx={leaf} ry={leaf * 0.45} fill="#7dbb6c" transform={`rotate(28 ${cx + leaf * 0.9} ${y - 3})`} />
+          <Ellipse
+            cx={cx - leaf * 0.9}
+            cy={y}
+            rx={leaf}
+            ry={leaf * 0.45}
+            fill="#6dab5f"
+            transform={`rotate(-28 ${cx - leaf * 0.9} ${y})`}
+          />
+          <Ellipse
+            cx={cx + leaf * 0.9}
+            cy={y - 3}
+            rx={leaf}
+            ry={leaf * 0.45}
+            fill="#7dbb6c"
+            transform={`rotate(28 ${cx + leaf * 0.9} ${y - 3})`}
+          />
         </G>
       ))}
       {flower ? (
@@ -323,7 +442,10 @@ export function PlantArt({ streak, size }: { streak: number; size: number }) {
           <Circle cx={0} cy={0} r={leaf * 0.42} fill="#f3c34a" />
         </G>
       ) : null}
-      <Path d={`M${cx - w * 0.24} ${potTop} L${cx + w * 0.24} ${potTop} L${cx + w * 0.18} ${h - 2} L${cx - w * 0.18} ${h - 2} Z`} fill="#c8734f" />
+      <Path
+        d={`M${cx - w * 0.24} ${potTop} L${cx + w * 0.24} ${potTop} L${cx + w * 0.18} ${h - 2} L${cx - w * 0.18} ${h - 2} Z`}
+        fill="#c8734f"
+      />
       <Rect x={cx - w * 0.27} y={potTop - 2} width={w * 0.54} height={h * 0.08} rx={2} fill="#b5603f" />
     </Svg>
   );
@@ -343,7 +465,17 @@ export function JarArt({ streak, size }: { streak: number; size: number }) {
   const rise = Math.min(r * 1.75, (h - lid - 12 - r) / rows);
   return (
     <Svg width={size} height={h}>
-      <Rect x={x0} y={lid} width={w} height={h - lid - 2} rx={w * 0.16} fill="#ffffff" fillOpacity={0.35} stroke="#9fb6c1" strokeWidth={1.5} />
+      <Rect
+        x={x0}
+        y={lid}
+        width={w}
+        height={h - lid - 2}
+        rx={w * 0.16}
+        fill="#ffffff"
+        fillOpacity={0.35}
+        stroke="#9fb6c1"
+        strokeWidth={1.5}
+      />
       {Array.from({ length: count }, (_, i) => {
         const row = Math.floor(i / perRow);
         const col = i % perRow;
@@ -449,13 +581,36 @@ export function Bunting({ width }: { width: number }) {
 }
 
 // A wooden plank with the greeting carved into it. It's its own frame.
-export function CarvedSign({ line, sub, width, height, radius, color }: { line: string; sub?: string; width: number; height: number; radius: number; color?: string }) {
+export function CarvedSign({
+  line,
+  sub,
+  width,
+  height,
+  radius,
+  color,
+}: {
+  line: string;
+  sub?: string;
+  width: number;
+  height: number;
+  radius: number;
+  color?: string;
+}) {
   const wood = materialColors("wood", color).base;
   const ink = shade(wood, -0.6);
   const r = Math.min(radius, 14);
   const fontSize = Math.max(16, Math.min(34, height * 0.32, width * 0.09));
   return (
-    <View style={{ width, height, borderRadius: r, backgroundColor: wood, boxShadow: "0px 3px 6px rgba(0,0,0,0.25), inset 0px 1.5px 0px rgba(255,255,255,0.25)", overflow: "hidden" }}>
+    <View
+      style={{
+        width,
+        height,
+        borderRadius: r,
+        backgroundColor: wood,
+        boxShadow: "0px 3px 6px rgba(0,0,0,0.25), inset 0px 1.5px 0px rgba(255,255,255,0.25)",
+        overflow: "hidden",
+      }}
+    >
       <Svg style={StyleSheet.absoluteFill} width={width} height={height}>
         <Defs>
           <Pattern id="grain" patternUnits="userSpaceOnUse" width={140} height={17}>
@@ -464,8 +619,28 @@ export function CarvedSign({ line, sub, width, height, radius, color }: { line: 
           </Pattern>
         </Defs>
         <Rect x={0} y={0} width={width} height={height} fill="url(#grain)" />
-        <Rect x={6} y={6} width={width - 12} height={height - 12} rx={Math.max(2, r - 5)} fill="none" stroke={ink} strokeOpacity={0.45} strokeWidth={2} />
-        <Rect x={7} y={7.5} width={width - 14} height={height - 14} rx={Math.max(2, r - 6)} fill="none" stroke="#ffffff" strokeOpacity={0.18} strokeWidth={1} />
+        <Rect
+          x={6}
+          y={6}
+          width={width - 12}
+          height={height - 12}
+          rx={Math.max(2, r - 5)}
+          fill="none"
+          stroke={ink}
+          strokeOpacity={0.45}
+          strokeWidth={2}
+        />
+        <Rect
+          x={7}
+          y={7.5}
+          width={width - 14}
+          height={height - 14}
+          rx={Math.max(2, r - 6)}
+          fill="none"
+          stroke="#ffffff"
+          strokeOpacity={0.18}
+          strokeWidth={1}
+        />
       </Svg>
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 }}>
         <Text style={[carve.text, { fontSize, color: ink }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>

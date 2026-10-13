@@ -125,6 +125,7 @@ import { TourScrollArea, TourTarget, useTourAutoStart, useTourScrollArea } from 
 import { AddSheet } from "./add-sheet";
 import { EditBar, EditMoreSheet, PaintBar, type MoreTool } from "./edit-bar";
 import { lookOf, paintItem, takePaintRequest, type Look } from "../../lib/hearth-looks";
+import { applyPack, lookPack, widgetCount } from "../../lib/look-packs";
 import { StarterSheet } from "./starter-sheet";
 import { isFreshPage, starterInfo, startFrom, type StarterId } from "../../lib/hearth-starters";
 import { FILL, GRID_GAP, HearthGrid } from "./hearth-grid";
@@ -1265,6 +1266,18 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
       .catch((saveError: Error) => Alert.alert("Couldn't save that", saveError.message));
   }
 
+  // A look pack (CORE-129): every widget in this space at once, with Undo.
+  function dressPage(id: string) {
+    const pack = lookPack(id);
+    if (!pack) return;
+    const before = layout.items;
+    const count = widgetCount(items);
+    if (!persistHere((inner) => applyPack(inner.items, pack))) return;
+    setDecorating(false);
+    const which = count === 1 ? "your widget" : `all ${count} widgets`;
+    showToast(pack.plain ? `Made ${which} plain cards again` : `Dressed ${which}: ${pack.label}`, { label: "Undo", run: () => persist(before) });
+  }
+
   function changeAmbience(next: Ambience) {
     save({ ambience: next }).catch((saveError: Error) => Alert.alert("Couldn't save that", saveError.message));
   }
@@ -2192,6 +2205,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   editing={editing}
                   accent={theme.accent}
                   shadowAt={(level) => shadowAtLevel(themeKey, level)}
+                  ambience={ambienceKind}
                   onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
                   onPush={(id, x, y) => {
                     if (persistHere((inner) => pushItem(inner, id, x, y))) tap("success");
@@ -2529,6 +2543,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         fireSound={layout.fireSound}
         onFireSound={(fireSound) => save({ fireSound }).catch((saveError: Error) => Alert.alert("Couldn't save that", saveError.message))}
         weatherPlace={weatherPlaceOf(everyTopLevel(layout))?.place.name}
+        widgets={widgetCount(items)}
+        onPack={dressPage}
       />
 
       <MoveManySheet visible={pickSheet === "move"} count={pickedIds.length} targets={pickTargets()} onClose={() => setPickSheet(null)} />

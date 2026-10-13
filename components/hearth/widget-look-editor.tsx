@@ -5,9 +5,12 @@ import { cornerChoices, liftChoices, type Corners, type Lift } from "../../lib/d
 import { tap } from "../../lib/feedback";
 import { colors, themed, ui } from "../../lib/theme";
 import {
+  accents,
   edges,
   hangers,
   materials,
+  prints,
+  widgetFonts,
   naturalSkin,
   sameSkin,
   skinFor,
@@ -31,7 +34,8 @@ import { SkinSurface } from "./widget-skin";
 // "How it looks" in the widget editor (CORE-126), in two parts so it never
 // feels like a wall of settings. Simple has the choices that change the
 // most: its design (CORE-127), what it's made of, its color, what hangs it
-// up and its lean, plus "Natural look" and "Surprise me". More has the fine print: edges, style,
+// up, a little extra (CORE-128) and its lean, plus "Natural look" and
+// "Surprise me". More has the fine print: lettering, a print, edges, style,
 // corners, shadow, border and icon. Which part you were in is remembered
 // while the app is open.
 
@@ -166,6 +170,15 @@ export function WidgetLookEditor({
             ))}
           </View>
 
+          <Text style={ui.label}>A little extra</Text>
+          <View style={ui.chips}>
+            {accents.map((a) => (
+              <Chip key={a.key} icon={a.icon} selected={skin.accent === a.key} onPress={() => setSkin({ accent: a.key })}>
+                {a.label}
+              </Chip>
+            ))}
+          </View>
+
           <Text style={ui.label}>Tilt</Text>
           <View style={ui.chips}>
             {tilts.map((t) => (
@@ -206,6 +219,24 @@ export function WidgetLookEditor({
         <>
           {material ? (
             <>
+              <Text style={ui.label}>Lettering</Text>
+              <View style={ui.chips}>
+                {widgetFonts.map((f) => (
+                  <Chip key={f.key} selected={skin.font === f.key} onPress={() => setSkin({ font: f.key })}>
+                    {f.label}
+                  </Chip>
+                ))}
+              </View>
+
+              <Text style={ui.label}>Print</Text>
+              <View style={ui.chips}>
+                {prints.map((p) => (
+                  <Chip key={p.key} selected={skin.print === p.key} onPress={() => setSkin({ print: p.key })}>
+                    {p.label}
+                  </Chip>
+                ))}
+              </View>
+
               <Text style={ui.label}>Edges</Text>
               <View style={styles.swatches}>
                 {edges.map((e) => (

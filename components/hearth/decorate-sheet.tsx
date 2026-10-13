@@ -15,9 +15,11 @@ import {
 } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { pickAndUploadPhoto, usePhotoUrls } from "../../lib/hearth-photos";
+import { lookPacks } from "../../lib/look-packs";
 import { colors, themed, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
-import { IconBadge } from "../icon";
+import { Icon, IconBadge } from "../icon";
+import { Tap } from "../motion";
 import { Collapsible } from "../collapsible";
 import { Banner, Button, Chip } from "../ui";
 import { Text } from "../text";
@@ -27,7 +29,8 @@ type Kind = Wallpaper["kind"] | "inherit";
 
 // "Decorate" (CORE-041, CORE-047): the wallpaper behind this space and the
 // weather in the air over the whole Hearth. Inside a Hollow the wallpaper can
-// be its own, or the same as the Hearth's.
+// be its own, or the same as the Hearth's. Look packs (CORE-129) give every
+// widget here a look that goes together.
 export function DecorateSheet({
   visible,
   onClose,
@@ -41,6 +44,8 @@ export function DecorateSheet({
   fireSound,
   onFireSound,
   weatherPlace,
+  widgets = 0,
+  onPack,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -57,6 +62,9 @@ export function DecorateSheet({
   onFireSound: (next: FireSound) => void;
   // The town "Match the weather" follows, if any (CORE-058).
   weatherPlace?: string;
+  // How many widgets are in this space, and dressing them all in a pack.
+  widgets?: number;
+  onPack?: (id: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const kind: Kind = wallpaper?.kind ?? (inHollow ? "inherit" : "none");
@@ -200,6 +208,40 @@ export function DecorateSheet({
           ) : null}
           {uploading && wallpaper?.kind !== "photo" ? <Text style={ui.muted}>Adding your photo…</Text> : null}
         </Collapsible>
+        {onPack ? (
+          <Collapsible
+            id="decorate-packs"
+            icon="widgets"
+            title="Widget looks"
+            summary={widgets ? `Dress all ${widgets} widget${widgets === 1 ? "" : "s"} at once` : "No widgets here yet"}
+          >
+            <Text style={ui.muted}>
+              {`One tap gives every widget ${inHollow ? "in this Hollow" : "on this page"} a look that goes together. They keep their colors, and you can undo it.`}
+            </Text>
+            {lookPacks.map((pack) => (
+              <Tap
+                key={pack.id}
+                onPress={() => {
+                  tap();
+                  onPack(pack.id);
+                }}
+                disabled={!widgets}
+                style={[styles.pack, !widgets && { opacity: 0.5 }]}
+                accessibilityRole="button"
+                accessibilityLabel={`${pack.label}: ${pack.blurb}`}
+              >
+                <IconBadge name={pack.icon} size={38} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.packName}>{pack.label}</Text>
+                  <Text style={ui.muted} numberOfLines={2}>
+                    {pack.blurb}
+                  </Text>
+                </View>
+                <Icon name="chevron" size={16} color={colors.muted} />
+              </Tap>
+            ))}
+          </Collapsible>
+        ) : null}
         <Collapsible id="decorate-ambience" icon="sparkles" title="Ambience" summary={ambienceLabel(ambience)}>
           <View style={ui.chips}>
             {ambiences.map((a) => (
@@ -259,6 +301,8 @@ export function DecorateSheet({
 
 const styles = themed(() =>
   StyleSheet.create({
+    pack: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
+    packName: { fontSize: 16, fontWeight: "700", color: colors.text },
     preview: {
       height: 120,
       borderRadius: 18,

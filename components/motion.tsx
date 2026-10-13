@@ -144,11 +144,19 @@ export function LoadingScreen({ cards = 3 }: { cards?: number }) {
 // A gentle sway for things you can rearrange (Hearth edit mode) — small
 // and slow so the Hearth feels calm rather than jittery.
 // `base` is a lean it always keeps, in degrees (a tilted widget, CORE-124).
-export function useWiggle(active: boolean, seed = 0, base = 0) {
+// `sway` swings it gently from the top, like paper in a breeze (CORE-130).
+export function useWiggle(active: boolean, seed = 0, base = 0, sway = false) {
   const rotation = useSharedValue(0);
   const reduceMotion = useReducedMotion();
+  const swaying = sway && !active && !reduceMotion;
   useEffect(() => {
-    if (active && !reduceMotion) {
+    if (swaying) {
+      const amount = 0.8 + (seed % 3) * 0.15;
+      rotation.value = withSequence(
+        withTiming(-amount, { duration: 900 + (seed % 5) * 140, easing: Easing.inOut(Easing.sin) }),
+        withRepeat(withTiming(amount, { duration: 2200 + (seed % 4) * 260, easing: Easing.inOut(Easing.sin) }), -1, true)
+      );
+    } else if (active && !reduceMotion) {
       const amount = 0.55 + (seed % 3) * 0.08;
       rotation.value = withSequence(
         withTiming(-amount, { duration: 160 + (seed % 4) * 25, easing: Easing.out(Easing.sin) }),
@@ -158,6 +166,9 @@ export function useWiggle(active: boolean, seed = 0, base = 0) {
       cancelAnimation(rotation);
       rotation.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.quad) });
     }
-  }, [active, reduceMotion, rotation, seed]);
-  return useAnimatedStyle(() => ({ transform: [{ rotate: `${base + rotation.value}deg` }] }));
+  }, [active, reduceMotion, rotation, seed, swaying]);
+  return useAnimatedStyle(() => ({
+    transform: [{ rotate: `${base + rotation.value}deg` }],
+    transformOrigin: swaying ? "50% 0%" : "50% 50%",
+  }));
 }
