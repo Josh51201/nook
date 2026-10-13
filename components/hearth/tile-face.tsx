@@ -15,11 +15,9 @@ import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from "rea
 import type { Corners, TileShape } from "../../lib/decor";
 import { deepColor, itemColor, nookLabel, type NookItem } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
-import { buildColors, doorwayOf, wreathShows } from "../../lib/tile-looks";
-import { IconBadge, type IconName } from "../icon";
+import { IconBadge } from "../icon";
 import { Text } from "../text";
 import { nookWidgets } from "./nook-widgets";
-import { Nameplate, ShapeDetails, shapeRoom, TileSurface, tileOutline, WreathRing } from "./tile-build";
 
 const TEXT = "#2a2420";
 const MUTED = "#6f625a";
@@ -34,13 +32,6 @@ export function nookRadii(width: number, height: number, corners?: Corners, shap
   if (shape === "window") return { top: short / 2, bottom: short / 2 };
   if (shape === "door") return { top: Math.min(short / 2, width / 2), bottom: 6 };
   if (shape === "sign") return { top: corners === "square" ? 4 : corners === "round" ? 22 : 12, bottom: corners === "square" ? 4 : corners === "round" ? 22 : 12 };
-  // The newer shapes (CORE-138).
-  const soft = corners === "square" ? 4 : corners === "round" ? 18 : 10;
-  if (shape === "hobbit") return { top: short / 2, bottom: short / 2 };
-  if (shape === "mailbox") return { top: Math.min(short / 2, width / 2), bottom: soft };
-  if (shape === "shutters" || shape === "drawer") return { top: soft, bottom: soft };
-  if (shape === "shopfront") return { top: 4, bottom: soft };
-  if (shape === "birdhouse") return { top: 0, bottom: soft };
   const top = Math.min(58, short * (short < 110 ? 0.42 : 0.32));
   const bottom = short < 110 ? 16 : 20;
   // Square: a barely-there arch. Round: a full dome and a soft base (CORE-042).
@@ -101,17 +92,9 @@ export function TileFace({
   const shape = item.shape ?? "arch";
   const { top, bottom } = nookRadii(width, height, item.corners, shape);
   // Round windows and doors curve in, so their contents need a little more
-  // room at the sides; shutters, awnings and roofs take room too (CORE-138).
+  // room at the sides.
   const short = Math.min(width, height);
-  const room = shapeRoom(shape, width, height);
-  const extra = (shape === "window" || shape === "hobbit" ? short * 0.14 : shape === "door" ? short * 0.05 : 0) + room.side;
-  const lift = room.top;
-  // What it's built from (CORE-137), and its doorway touches (CORE-139).
-  const build = item.build && item.build !== "plain" ? item.build : null;
-  const doorway = doorwayOf(item.doorway);
-  const wreath = wreathShows(doorway.wreath, new Date());
-  // A birdhouse is drawn as its own outline, roof and all.
-  const drawn = Boolean(build) || shape === "birdhouse";
+  const extra = shape === "window" ? short * 0.14 : shape === "door" ? short * 0.05 : 0;
   // Window bars only suit a window that is roughly square; stretched into a
   // wide or tall pill they'd cut straight through the writing.
   const barsFit = Math.max(width, height) / Math.max(1, short) <= 1.5;
@@ -120,18 +103,16 @@ export function TileFace({
 
   // Colors for this look. The deep color is the chosen color's partner, or
   // the Nook's own icon color if no color was picked.
-  const bold = !build && look === "bold";
-  const outline = !build && look === "outline";
+  const bold = look === "bold";
+  const outline = look === "outline";
   const tileDeep = item.color ? deepColor(item.color) : nook?.iconColor ?? deepColor(soft);
-  const built = build ? buildColors(build, soft) : null;
-  const text = built ? built.text : bold ? "#ffffff" : outline ? themeText : TEXT;
-  const muted = built ? built.muted : bold ? "rgba(255,255,255,0.8)" : outline ? `${themeText}99` : MUTED;
-  const iconColor = built ? built.icon : bold ? "#ffffff" : tileDeep;
-  const badge = built ? built.badge : bold ? "rgba(255,255,255,0.2)" : outline ? `${tileDeep}18` : "rgba(255,255,255,0.7)";
-  const panel = built ? built.panel : bold ? "rgba(255,255,255,0.15)" : outline ? `${tileDeep}10` : "rgba(255,255,255,0.58)";
-  const frameLine = built ? built.frameLine : bold ? "rgba(255,255,255,0.32)" : outline ? `${tileDeep}55` : "rgba(255,255,255,0.75)";
-  const lantern = built ? built.lantern : bold ? "#ffffff" : outline ? tileDeep : "#fff3d6";
-  const surface = built ? { base: built.base, ink: built.ink } : { base: bold ? tileDeep : outline ? "transparent" : soft, ink: tileDeep };
+  const text = bold ? "#ffffff" : outline ? themeText : TEXT;
+  const muted = bold ? "rgba(255,255,255,0.8)" : outline ? `${themeText}99` : MUTED;
+  const iconColor = bold ? "#ffffff" : tileDeep;
+  const badge = bold ? "rgba(255,255,255,0.2)" : outline ? `${tileDeep}18` : "rgba(255,255,255,0.7)";
+  const panel = bold ? "rgba(255,255,255,0.15)" : outline ? `${tileDeep}10` : "rgba(255,255,255,0.58)";
+  const frameLine = bold ? "rgba(255,255,255,0.32)" : outline ? `${tileDeep}55` : "rgba(255,255,255,0.75)";
+  const lantern = bold ? "#ffffff" : outline ? tileDeep : "#fff3d6";
   const radii = {
     borderTopLeftRadius: top,
     borderTopRightRadius: top,
@@ -142,13 +123,11 @@ export function TileFace({
     styles.tile,
     radii,
     { width, height },
-    !drawn && bold && { backgroundColor: tileDeep },
-    !drawn && look === "soft" && { backgroundColor: soft },
-    !drawn && outline && { borderWidth: 2, borderColor: tileDeep, backgroundColor: "transparent" },
+    bold && { backgroundColor: tileDeep },
+    look === "soft" && { backgroundColor: soft },
+    outline && { borderWidth: 2, borderColor: tileDeep, backgroundColor: "transparent" },
     // A border you asked for on a solid tile (CORE-042).
-    !drawn && item.border && !outline && { borderWidth: 2.5, borderColor: bold ? "rgba(255,255,255,0.6)" : tileDeep },
-    // Built from something, or a birdhouse: drawn by TileSurface instead.
-    drawn && { backgroundColor: "transparent", borderWidth: 0 },
+    item.border && !outline && { borderWidth: 2.5, borderColor: bold ? "rgba(255,255,255,0.6)" : tileDeep },
   ];
   const widgetProps = { refreshKey, textColor: text, mutedColor: muted, accentColor: bold ? "#ffffff" : tileDeep };
 
@@ -157,17 +136,6 @@ export function TileFace({
 
   const decoration = (
     <>
-      {drawn ? (
-        <TileSurface
-          id={gid}
-          build={build}
-          colors={surface}
-          outline={tileOutline(width, height, top, bottom, shape)}
-          width={width}
-          height={height}
-          ownShadow={shape === "birdhouse"}
-        />
-      ) : null}
       <Lantern id={gid} width={width} height={height} color={lantern} strength={bold ? 0.22 : outline ? 0.1 : 0.6} />
       <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
         {/* The carved inner frame, and the lit top edge (CORE-028). */}
@@ -199,39 +167,16 @@ export function TileFace({
           <View pointerEvents="none" style={[styles.grain, { top: "66%", backgroundColor: frameLine }]} />
         </>
       ) : null}
-      <ShapeDetails shape={shape} width={width} height={height} deep={tileDeep} line={frameLine} />
       <Sheen id={gid} width={width} height={height} seed={item.id} />
     </>
   );
 
-  // The Nook's icon, in a wreath when it's up (CORE-139).
-  const iconBadge = (size: number) =>
-    wreath ? (
-      <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
-        <View style={{ position: "absolute", left: -size * 0.27, top: -size * 0.27 }}>
-          <WreathRing size={size * 1.54} />
-        </View>
-        <IconBadge name={icon as IconName} size={size} color={iconColor} background={badge} />
-      </View>
-    ) : (
-      <IconBadge name={icon as IconName} size={size} color={iconColor} background={badge} />
-    );
-  // Its name, on a brass plate if it has one (CORE-139).
-  const nameText = (style: object, center = false) =>
-    doorway.nameplate ? (
-      <Nameplate label={label} />
-    ) : (
-      <Text style={[styles.title, style, center && { textAlign: "center" }, { color: text }]} numberOfLines={1}>
-        {label}
-      </Text>
-    );
-
   // One cell: just the icon in its alcove.
   if (item.w === 1 && item.h === 1) {
     return (
-      <View style={[frame, styles.centered, { paddingTop: 8 + lift, paddingHorizontal: room.side }]}>
+      <View style={[frame, styles.centered, { paddingTop: 8 }]}>
         {decoration}
-        {iconBadge(Math.min(width - room.side * 2, height - lift) * (wreath ? 0.42 : 0.56))}
+        <IconBadge name={icon} size={Math.min(width, height) * 0.56} color={iconColor} background={badge} />
       </View>
     );
   }
@@ -240,10 +185,14 @@ export function TileFace({
   if (item.h === 1 || item.w === 1) {
     const size = Math.min(width, height) * 0.6;
     return (
-      <View style={[frame, styles.centered, { flexDirection: item.h === 1 ? "row" : "column", gap: 10, paddingHorizontal: 16 + extra, paddingTop: 14 + lift }]}>
+      <View style={[frame, styles.centered, { flexDirection: item.h === 1 ? "row" : "column", gap: 10, paddingHorizontal: 16 + extra }]}>
         {decoration}
-        {iconBadge(wreath ? size * 0.75 : size)}
-        {item.h === 1 ? <View style={{ flex: 1 }}>{nameText({})}</View> : null}
+        <IconBadge name={icon} size={size} color={iconColor} background={badge} />
+        {item.h === 1 ? (
+          <Text style={[styles.title, { flex: 1, color: text }]} numberOfLines={1}>
+            {label}
+          </Text>
+        ) : null}
       </View>
     );
   }
@@ -256,13 +205,15 @@ export function TileFace({
 
   if (tall) {
     return (
-      <View style={[frame, { paddingTop: 24 + extra * 0.6 + lift, paddingHorizontal: 14 + extra }]}>
+      <View style={[frame, { paddingTop: 24 + extra * 0.6, paddingHorizontal: 14 + extra }]}>
         {decoration}
         <View style={{ flex: 1, gap: 12 }}>
           <View style={[styles.row, { paddingHorizontal: 6 }]}>
-            {iconBadge(wreath ? 40 : 52)}
+            <IconBadge name={icon} size={52} color={iconColor} background={badge} />
             <View style={{ flex: 1 }}>
-              {nameText({ fontSize: 19 })}
+              <Text style={[styles.title, { fontSize: 19, color: text }]} numberOfLines={1}>
+                {label}
+              </Text>
               <Text style={[styles.tagline, { color: muted }]} numberOfLines={1}>
                 {nook?.tagline}
               </Text>
@@ -287,11 +238,13 @@ export function TileFace({
 
   if (wide) {
     return (
-      <View style={[frame, styles.row, { paddingHorizontal: 20 + extra, paddingTop: 14 + lift }]}>
+      <View style={[frame, styles.row, { paddingHorizontal: 20 + extra }]}>
         {decoration}
-        {iconBadge(wreath ? 42 : 56)}
+        <IconBadge name={icon} size={56} color={iconColor} background={badge} />
         <View style={{ flex: 1, gap: 4 }}>
-          {nameText({})}
+          <Text style={[styles.title, { color: text }]} numberOfLines={1}>
+            {label}
+          </Text>
           {Widget ? (
             <Widget size="wide" space={{ width: width - 40 - 56 - 12, height: height - PAD * 2 - 21 - 4 }} {...widgetProps} />
           ) : (
@@ -306,11 +259,13 @@ export function TileFace({
 
   // Small: the icon in the alcove, the name beneath it.
   return (
-    <View style={[frame, styles.centered, { gap: 8, paddingTop: 20 + lift, paddingHorizontal: 14 + extra }]}>
+    <View style={[frame, styles.centered, { gap: 8, paddingTop: 20, paddingHorizontal: 14 + extra }]}>
       {decoration}
-      {iconBadge(wreath ? 38 : 50)}
+      <IconBadge name={icon} size={50} color={iconColor} background={badge} />
       <View style={{ alignItems: "center", gap: 1, alignSelf: "stretch" }}>
-        {nameText({}, true)}
+        <Text style={[styles.title, { color: text, textAlign: "center" }]} numberOfLines={1}>
+          {label}
+        </Text>
         {Widget ? (
           <View style={{ alignItems: "center", alignSelf: "stretch" }}>
             <Widget size="small" space={{ width: width - PAD * 2, height: height - 20 - PAD - 50 - 8 - 21 - 1 }} {...widgetProps} />

@@ -35,7 +35,6 @@ import { letteringInWords, lookSummary, sizeSummary, tagsSummary } from "../../l
 import { trinketInfo, trinkets, trinketSlideOf, trinketWidthAt, turnedBy } from "../../lib/trinkets";
 import { showInWords } from "../../lib/widget-extras";
 import { findNook } from "../../lib/nooks";
-import { belowChoices, doorwayOf, doorwaySummary, tileBuilds, wreathChoices, type Doorway } from "../../lib/tile-looks";
 import { colors, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
 import { Collapsible } from "../collapsible";
@@ -380,20 +379,8 @@ export function ItemOptions({
 
             {shown.kind === "nook" && nook ? (
               <>
-                {/* What it's built from (CORE-137): parts of a house, never paper. */}
-                <Text style={ui.label}>Built from</Text>
+                <Text style={ui.label}>Style</Text>
                 <View style={ui.chips}>
-                  {tileBuilds.map((b) => (
-                    <Chip key={b.key} selected={(shown.build ?? "plain") === b.key} onPress={() => onChange({ build: b.key === "plain" ? undefined : b.key } as Partial<NookItem>)}>
-                      {b.label}
-                    </Chip>
-                  ))}
-                </View>
-                <Text style={ui.label}>{(shown.build ?? "plain") === "plain" ? "Style" : "Style · Only for plain tiles"}</Text>
-                <View
-                  style={[ui.chips, (shown.build ?? "plain") !== "plain" && { opacity: 0.35 }]}
-                  pointerEvents={(shown.build ?? "plain") === "plain" ? "auto" : "none"}
-                >
                   {(
                     [
                       ["soft", "Soft"],
@@ -644,12 +631,6 @@ export function ItemOptions({
             </Collapsible>
           ) : null}
 
-          {shown.kind === "nook" ? (
-            <Collapsible id="tile-doorway" icon="door" title="Doorway" summary={doorwaySummary(shown.doorway)}>
-              <DoorwayOptions doorway={shown.doorway} onChange={(doorway) => onChange({ doorway } as Partial<NookItem>)} />
-            </Collapsible>
-          ) : null}
-
           <Collapsible id="tile-size" icon="resize" title="Size & place" summary={placeSummary}>
             <Text style={ui.label}>Size</Text>
             {shown.kind === "trinket" ? (
@@ -782,44 +763,6 @@ export function ItemOptions({
         </ScrollView>
       ) : null}
     </BottomSheet>
-  );
-}
-
-// The doorway touches on a Nook tile (CORE-139, 140).
-function DoorwayOptions({ doorway, onChange }: { doorway: Doorway | undefined; onChange: (doorway: Doorway) => void }) {
-  const d = doorwayOf(doorway);
-  const set = (changes: Doorway) => onChange({ ...doorway, ...changes });
-  const toggle = (label: string, hint: string, value: boolean, key: "nameplate" | "porchLight" | "opens") => (
-    <View style={[ui.row, { gap: 10 }]}>
-      <View style={{ flex: 1 }}>
-        <Text style={[ui.label, { marginBottom: 0 }]}>{label}</Text>
-        <Text style={ui.muted}>{hint}</Text>
-      </View>
-      <Switch value={value} onValueChange={(on) => set({ [key]: on })} trackColor={{ true: colors.bark }} />
-    </View>
-  );
-  return (
-    <>
-      {toggle("Brass nameplate", "Its name on a little brass plate.", d.nameplate, "nameplate")}
-      {toggle("Porch light", "A lamp beside it that glows when there's something new inside.", d.porchLight, "porchLight")}
-      <Text style={ui.label}>Under it</Text>
-      <View style={ui.chips}>
-        {belowChoices.map((b) => (
-          <Chip key={b.key} icon={b.icon} selected={d.below === b.key} onPress={() => set({ below: b.key })}>
-            {b.label}
-          </Chip>
-        ))}
-      </View>
-      <Text style={ui.label}>Wreath</Text>
-      <View style={ui.chips}>
-        {wreathChoices.map((w) => (
-          <Chip key={w.key} selected={d.wreath === w.key} onPress={() => set({ wreath: w.key })}>
-            {w.label}
-          </Chip>
-        ))}
-      </View>
-      {toggle("Door swings open", "When you tap it, it opens like a door as you go in.", d.opens, "opens")}
-    </>
   );
 }
 

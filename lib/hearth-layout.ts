@@ -47,16 +47,7 @@ type ItemBase = GridRect & {
 };
 
 // Nook tiles come in the same three looks as widgets (CORE-030).
-// What it's built from and its doorway touches (CORE-137..140).
-export type NookItem = ItemBase & {
-  kind: "nook";
-  nookId: string;
-  label?: string;
-  look?: WidgetLook;
-  shape?: TileShape;
-  build?: TileBuild;
-  doorway?: Doorway;
-};
+export type NookItem = ItemBase & { kind: "nook"; nookId: string; label?: string; look?: WidgetLook; shape?: TileShape };
 export type WidgetItem = ItemBase & { kind: "widget"; widget: WidgetConfig };
 export type LabelItem = ItemBase & {
   kind: "label";
@@ -260,7 +251,6 @@ export type HearthLayout = {
 };
 
 export type { FontKey } from "./fonts";
-import type { Doorway, TileBuild } from "./tile-looks";
 import type { FontKey, LabelFont } from "./fonts";
 import type { TextSizeKey } from "./text-size";
 
