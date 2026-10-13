@@ -1,4 +1,4 @@
-import { useEffect, useId } from "react";
+import { memo, useEffect, useId } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import Svg, { Circle, Defs, Ellipse, G, Line, LinearGradient, Path, Pattern, Rect, Stop } from "react-native-svg";
@@ -29,7 +29,13 @@ import { PatternTile, patternTileSize } from "./wallpaper";
 const DROP = [0, 2, 3, 5];
 const DROP_ALPHA = [0, 0.12, 0.15, 0.2];
 
-export function SkinSurface({
+// Drawn again only when something about it changes: switching the Hearth
+// into Edit re-draws every widget, and these don't need to be (performance).
+export const SkinSurface = memo(SkinSurfaceDrawing);
+export const HangerArt = memo(HangerDrawing);
+export const AccentArt = memo(AccentDrawing);
+
+function SkinSurfaceDrawing({
   material,
   edge,
   color,
@@ -273,7 +279,7 @@ function Extras({ material, width, height, d, ink }: { material: Material; width
 // How far a hanger may reach outside the widget.
 const OUT = 22;
 
-export function HangerArt({ hanger, color, width, height }: { hanger: Hanger; color?: string; width: number; height: number }) {
+function HangerDrawing({ hanger, color, width, height }: { hanger: Hanger; color?: string; width: number; height: number }) {
   if (hanger === "none") return null;
   const soft = color && isHex(color) ? color : "#f3c9b8";
   const deep = deepOf(soft);
@@ -399,7 +405,7 @@ const A = 30;
 // A little decoration on a corner: a sticker, a daisy, a sprig of holly, a
 // bow, or a cup of cocoa that steams. It keeps clear of whatever's hanging
 // the widget up.
-export function AccentArt({
+function AccentDrawing({
   accent,
   hanger,
   color,

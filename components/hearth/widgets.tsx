@@ -375,8 +375,9 @@ function WidgetBody({
           gradient={skin.gradient}
         />
       ) : null}
-      {/* Frosted glass really blurs what's behind it on iPhone (CORE-132). */}
-      {skin.material === "glass" && !cut && Platform.OS === "ios" ? <BlurView intensity={28} tint="light" style={[StyleSheet.absoluteFill, { zIndex: -1 }]} /> : null}
+      {/* Frosted glass really blurs what's behind it on iPhone (CORE-132);
+          not while editing, when re-blurring every wiggle would be slow. */}
+      {skin.material === "glass" && !cut && Platform.OS === "ios" && !still ? <BlurView intensity={28} tint="light" style={[StyleSheet.absoluteFill, { zIndex: -1 }]} /> : null}
       {band ? <View style={[styles.band, { height: 26 + 14 + pad, backgroundColor: skin.material === "plain" ? deep : palette.deep }]} /> : null}
       {showTitle ? (
         <View style={styles.titleRow}>

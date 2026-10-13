@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, Switch, View } from "react-native";
 
 import { cornerChoices, gradientPresets, liftChoices, type Corners, type Lift } from "../../lib/decor";
@@ -73,6 +73,18 @@ export function WidgetLookEditor({
   const styleOff = frameNote ?? (skin.material !== "plain" ? "Only for plain cards" : null);
   const cornersOff = frameNote ?? (skin.edge !== "plain" && skin.edge !== "stitch" ? "Not with cut edges" : null);
   const colored = widget.kind !== "frame" && widget.kind !== "window";
+
+  // The samples are drawn a moment after the editor opens, so the screen
+  // slides in smoothly, and they keep one steady way to report a pick, so
+  // typing a title doesn't redraw them all (performance).
+  const [samplesReady, setSamplesReady] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setSamplesReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  const latestSetSkin = useRef<(changes: WidgetSkin) => void>(() => {});
+  latestSetSkin.current = setSkin;
+  const pick = useCallback((changes: WidgetSkin) => latestSetSkin.current(changes), []);
 
   function setSkin(changes: WidgetSkin) {
     onWidget({ skin: { ...widget.skin, ...changes } });
@@ -168,7 +180,9 @@ export function WidgetLookEditor({
                     edge="plain"
                     color={item.color}
                     selected={skin.material === m.key}
-                    onPress={() => setSkin({ material: m.key })}
+                    choice={{ material: m.key }}
+                    onPick={pick}
+                    ready={samplesReady}
                   />
                 ))}
               </View>
@@ -278,7 +292,9 @@ export function WidgetLookEditor({
                     edge={e.key}
                     color={item.color}
                     selected={skin.edge === e.key}
-                    onPress={() => setSkin({ edge: e.key })}
+                    choice={EDGE_CHOICES[e.key]}
+                    onPick={pick}
+                    ready={samplesReady}
                   />
                 ))}
               </View>
@@ -354,26 +370,48 @@ export function WidgetLookEditor({
 }
 
 // A little sample of a material or an edge.
-function SkinSwatch({
+// One steady choice object per edge, so a sample's props don't change
+// from one draw to the next.
+const EDGE_CHOICES = Object.fromEntries(edges.map((e) => [e.key, { edge: e.key }])) as Record<Edge, WidgetSkin>;
+
+const SkinSwatch = memo(
+  SwatchTile,
+  (a, b) =>
+    a.material === b.material &&
+    a.edge === b.edge &&
+    a.color === b.color &&
+    a.selected === b.selected &&
+    a.ready === b.ready &&
+    a.label === b.label &&
+    a.onPick === b.onPick &&
+    (a.choice.material ?? a.choice.edge) === (b.choice.material ?? b.choice.edge),
+);
+
+function SwatchTile({
   label,
   material,
   edge,
   color,
   selected,
-  onPress,
+  choice,
+  onPick,
+  ready,
 }: {
   label: string;
   material: Material;
   edge: Edge;
   color?: string;
   selected: boolean;
-  onPress: () => void;
+  choice: WidgetSkin;
+  onPick: (changes: WidgetSkin) => void;
+  // Until it's ready, the sample is an empty space of the same size.
+  ready: boolean;
 }) {
   return (
     <Tap
       onPress={() => {
         tap();
-        onPress();
+        onPick(choice);
       }}
       pressedScale={0.92}
       style={styles.swatch}
@@ -383,16 +421,18 @@ function SkinSwatch({
     >
       <View style={[styles.sample, selected && styles.sampleOn]}>
         <View style={{ width: SAMPLE_W, height: SAMPLE_H }}>
-          <SkinSurface
-            material={material}
-            edge={edge}
-            color={color}
-            fill={color ?? "#f3e7d3"}
-            width={SAMPLE_W}
-            height={SAMPLE_H}
-            radius={10}
-            level={1}
-          />
+          {ready ? (
+            <SkinSurface
+              material={material}
+              edge={edge}
+              color={color}
+              fill={color ?? "#f3e7d3"}
+              width={SAMPLE_W}
+              height={SAMPLE_H}
+              radius={10}
+              level={1}
+            />
+          ) : null}
         </View>
         {selected ? (
           <View style={styles.check}>

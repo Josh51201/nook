@@ -372,7 +372,22 @@ function readableBase(base: string, text: string) {
   return out;
 }
 
+// Worked out once per material and color, then remembered: every widget
+// asks on every draw, and the answer never changes.
+const colorCache = new Map<string, MaterialColors>();
+
 export function materialColors(material: Material, color: string | undefined): MaterialColors {
+  const key = `${material}|${color ?? ""}`;
+  let found = colorCache.get(key);
+  if (!found) {
+    found = workOutColors(material, color);
+    if (colorCache.size > 500) colorCache.clear();
+    colorCache.set(key, found);
+  }
+  return found;
+}
+
+function workOutColors(material: Material, color: string | undefined): MaterialColors {
   const light = (base: string, ink: string, text = "#2a2420"): MaterialColors => ({
     base: readableBase(base, text),
     ink,

@@ -323,9 +323,12 @@ export function PaperChrome({ face, width, height }: { face: string; width: numb
       <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
         <Rect x={0} y={9} width={width} height={height - 9} rx={4} fill="#000000" fillOpacity={0.12} transform="translate(0 3)" />
         <Rect x={0} y={9} width={width} height={height - 9} rx={4} fill={chromePaper(face)} />
-        {Array.from({ length: Math.floor((height - 30) / 20) }, (_, i) => (
-          <Line key={i} x1={0} y1={46 + i * 20} x2={width} y2={46 + i * 20} stroke="#9fb8d6" strokeOpacity={0.6} />
-        ))}
+        <Defs>
+          <Pattern id="padLines" patternUnits="userSpaceOnUse" width={width} height={20} y={46}>
+            <Line x1={0} y1={0.5} x2={width} y2={0.5} stroke="#9fb8d6" strokeOpacity={0.6} />
+          </Pattern>
+        </Defs>
+        <Rect x={0} y={40} width={width} height={height - 40} fill="url(#padLines)" />
         {Array.from({ length: rings }, (_, i) => {
           const x = ((i + 0.5) * width) / rings;
           return (
@@ -347,9 +350,12 @@ export function PaperChrome({ face, width, height }: { face: string; width: numb
         RECIPE
       </SvgText>
       <Line x1={0} y1={20} x2={width} y2={20} stroke="#e79a9a" strokeWidth={1.2} />
-      {Array.from({ length: Math.floor((height - 24) / 18) }, (_, i) => (
-        <Line key={i} x1={0} y1={38 + i * 18} x2={width} y2={38 + i * 18} stroke="#a8c3e2" strokeOpacity={0.55} />
-      ))}
+      <Defs>
+        <Pattern id="cardLines" patternUnits="userSpaceOnUse" width={width} height={18} y={38}>
+          <Line x1={0} y1={0.5} x2={width} y2={0.5} stroke="#a8c3e2" strokeOpacity={0.55} />
+        </Pattern>
+      </Defs>
+      <Rect x={0} y={30} width={width} height={height - 32} fill="url(#cardLines)" />
     </Svg>
   );
 }

@@ -523,10 +523,14 @@ export function LetterBoard({
   return (
     <View style={[board.frame, { width, height, borderRadius: Math.min(radius, 16) }]}>
       <View style={[board.felt, { backgroundColor: felt, borderRadius: Math.max(2, Math.min(radius, 16) - 6) }]}>
+        {/* The grooves: one repeating pattern rather than a line each (performance). */}
         <Svg style={StyleSheet.absoluteFill} width={width} height={height}>
-          {Array.from({ length: Math.ceil(height / 6) }, (_, i) => (
-            <Line key={i} x1={0} y1={i * 6 + 3} x2={width} y2={i * 6 + 3} stroke="#ffffff" strokeOpacity={0.06} strokeWidth={1} />
-          ))}
+          <Defs>
+            <Pattern id="grooves" patternUnits="userSpaceOnUse" width={width} height={6}>
+              <Line x1={0} y1={3} x2={width} y2={3} stroke="#ffffff" strokeOpacity={0.06} strokeWidth={1} />
+            </Pattern>
+          </Defs>
+          <Rect x={0} y={0} width={width} height={height} fill="url(#grooves)" />
         </Svg>
         {title ? (
           <Text style={[board.letters, { color: "#f2d27a", fontSize: 13, textAlign: "center", marginBottom: 6 }]} numberOfLines={1}>

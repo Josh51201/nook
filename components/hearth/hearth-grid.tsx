@@ -719,7 +719,8 @@ function GridItem({
   // it, and one hung from a single point swings in a breeze (CORE-130).
   const skin = item.kind === "widget" ? skinFor(item.widget.kind, item.widget.skin) : null;
   const lean = skin ? skin.tilt || (messy ? messyTilt(item.id) : 0) : 0;
-  const wiggle = useWiggle(editing && !active && !carries, seed, lean, Boolean(skin && !editing && swaysIn(ambience, skin)));
+  const sways = Boolean(skin && !editing && swaysIn(ambience, skin));
+  const wiggle = useWiggle(editing && !active && !carries, seed, lean, sways);
   // Edit mode as the gesture sees it (it must not be rebuilt when it changes).
   const editingNow = useSharedValue(editing);
   useEffect(() => {
@@ -1178,7 +1179,7 @@ function GridItem({
       <GestureDetector gesture={moveGesture}>
         <Animated.View
           key={`${item.kind === "nook" ? (item.shape ?? "arch") : ""}-${item.corners ?? ""}-${shadow ?? ""}`}
-          style={[shadow ? { ...shadowShape(item, stride, size), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, badge === "noRoom" ? styles.noRoomItem : null, wiggle]}
+          style={[shadow ? { ...shadowShape(item, stride, size), boxShadow: shadow } : null, carries ? { margin: -outset, padding: outset } : null, faded ? styles.faded : null, badge === "noRoom" ? styles.noRoomItem : null, sways ? styles.swingFromTop : null, wiggle]}
           {...spokenAs(item, editing, { press, hold: askToArrange, nudge: onNudge, peek: canPeek ? askToPeek : undefined }, news)}
         >
           <Animated.View
@@ -1318,6 +1319,8 @@ const styles = StyleSheet.create({
   // Where the swap label sits: above the spot, over every tile.
   labelSpot: { position: "absolute", zIndex: 200, elevation: 20, alignItems: "center" },
   clip: { overflow: "hidden" },
+  // Swinging in a breeze turns from the top, where it's hung (CORE-130).
+  swingFromTop: { transformOrigin: "50% 0%" },
   item: {
     position: "absolute",
     shadowColor: "#3a2414",

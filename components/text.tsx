@@ -51,7 +51,9 @@ export function Text({ style, ...props }: TextProps) {
   const sized = scale === 1 ? style : [style, scaledStyle(style, scale, nested)];
 
   let text;
-  const flat = StyleSheet.flatten(style);
+  // Read the style once, and only when something below needs it (with the
+  // phone's own font and no widget font, nothing does).
+  const flat = own || font !== "classic" ? StyleSheet.flatten(style) : undefined;
   if (own && !flat?.fontFamily) {
     // A widget's own font. Handwriting runs small, so it's drawn a bit bigger.
     const weight = flat?.fontWeight === undefined && parent !== null ? parent : weightOf(flat?.fontWeight);
@@ -71,10 +73,10 @@ export function Text({ style, ...props }: TextProps) {
     return scale === 1 ? text : <InsideText.Provider value>{text}</InsideText.Provider>;
   }
   // Text that names its own font (Hearth text, CORE-076) keeps it.
-  if (font === "classic" || StyleSheet.flatten(style)?.fontFamily) {
+  if (font === "classic" || flat?.fontFamily) {
     text = <RNText {...props} style={sized} />;
   } else {
-    const asked = StyleSheet.flatten(style)?.fontWeight;
+    const asked = flat?.fontWeight;
     const weight = asked === undefined && parent !== null ? parent : weightOf(asked);
     text = (
       <ParentWeight.Provider value={weight}>

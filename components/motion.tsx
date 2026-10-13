@@ -167,8 +167,7 @@ export function useWiggle(active: boolean, seed = 0, base = 0, sway = false) {
       rotation.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.quad) });
     }
   }, [active, reduceMotion, rotation, seed, swaying]);
-  return useAnimatedStyle(() => ({
-    transform: [{ rotate: `${base + rotation.value}deg` }],
-    transformOrigin: swaying ? "50% 0%" : "50% 50%",
-  }));
+  // Only the turn animates; where it turns from (the top, when swaying) is a
+  // plain style the caller sets, so it isn't sent again on every frame.
+  return useAnimatedStyle(() => ({ transform: [{ rotate: `${base + rotation.value}deg` }] }));
 }
