@@ -45,7 +45,9 @@ export function ItemPreview({
       {backdrop}
       <View style={{ width: width * scale, height: height * scale }} pointerEvents={interactive ? "auto" : "none"}>
         <View style={{ width, height, transform: [{ scale }], transformOrigin: "top left" }}>
-          <View style={{ width, height, transform: tilt ? [{ rotate: `${tilt}deg` }] : undefined }}>{children}</View>
+          {/* Always a transform, even straight: one that comes and goes trips
+              React Native's transform check while developing. */}
+          <View style={{ width, height, transform: [{ rotate: `${tilt}deg` }] }}>{children}</View>
         </View>
       </View>
     </View>
