@@ -353,7 +353,7 @@ export function CandleArt({
 }
 
 // A flame that stretches and dips a little, now and then.
-function Flicker({
+export function Flicker({
   still,
   origin,
   size,

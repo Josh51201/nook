@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  cakeCandles,
   chainLinks,
+  clockWords,
+  slipCount,
+  SLIPS_HELD,
+  sundialAngle,
+  timeFraction,
+  wheelAngle,
+  wrapsFace,
   faceLabel,
   faceOf,
   facesFor,
@@ -101,4 +109,57 @@ it("lucky numbers are six different ones, the same all day", () => {
   expect(new Set(a).size).toBe(6);
   expect(luckyNumbers(new Date(2026, 9, 12, 22))).toEqual(a);
   expect(a.every((n) => n >= 1 && n <= 49)).toBe(true);
+});
+
+describe("more faces (CORE-131)", () => {
+  it("the word clock says the time to the nearest five minutes", () => {
+    expect(clockWords(new Date(2026, 9, 12, 16, 10))).toBe("ten past four");
+    expect(clockWords(new Date(2026, 9, 12, 16, 44))).toBe("quarter to five");
+    expect(clockWords(new Date(2026, 9, 12, 18, 1))).toBe("six o'clock");
+    expect(clockWords(new Date(2026, 9, 12, 23, 58))).toBe("twelve o'clock");
+    expect(clockWords(new Date(2026, 9, 12, 0, 30))).toBe("half past twelve");
+    expect(clockWords(new Date(2026, 9, 12, 9, 35))).toBe("twenty-five to ten");
+  });
+
+  it("the sundial's shadow swings left to right through the day and rests at night", () => {
+    expect(sundialAngle(new Date(2026, 9, 12, 3))).toBeNull();
+    expect(sundialAngle(new Date(2026, 9, 12, 22))).toBeNull();
+    expect(sundialAngle(new Date(2026, 9, 12, 9))!).toBeLessThan(0);
+    expect(sundialAngle(new Date(2026, 9, 12, 13))).toBe(0);
+    expect(sundialAngle(new Date(2026, 9, 12, 19, 30))).toBe(90);
+  });
+
+  it("a timer's fraction left stays between 0 and 1", () => {
+    expect(timeFraction(600, 300)).toBe(0.5);
+    expect(timeFraction(600, 900)).toBe(1);
+    expect(timeFraction(0, 10)).toBe(0);
+  });
+
+  it("the spinner wheel always turns forward to put the name under the pointer", () => {
+    const first = wheelAngle(0, 4);
+    expect(((first % 360) + 360) % 360).toBe(315);
+    const next = wheelAngle(1, 4, first);
+    expect(next).toBeGreaterThanOrEqual(first);
+    expect((((next % 360) + 360) % 360)).toBe(225);
+    expect(wheelAngle(1, 4, first, 2) - next).toBe(720);
+  });
+
+  it("the jar holds up to its fill of slips", () => {
+    expect(slipCount(3)).toBe(3);
+    expect(slipCount(500)).toBe(SLIPS_HELD);
+  });
+
+  it("the cake gets a candle a year up to nine, then number candles", () => {
+    expect(cakeCandles(5)).toEqual({ count: 5, digits: null });
+    expect(cakeCandles(42)).toEqual({ count: 0, digits: ["4", "2"] });
+    expect(cakeCandles(null).count).toBe(3);
+  });
+
+  it("lists can be wrapped in paper and keep working", () => {
+    expect(wrapsFace({ kind: "reminders", face: "receipt" })).toBe(true);
+    expect(wrapsFace({ kind: "groceries", face: "notepad" })).toBe(true);
+    expect(wrapsFace({ kind: "recipe", face: "card" })).toBe(true);
+    expect(wrapsFace({ kind: "getaway", face: "tag" })).toBe(false);
+    expect(ownFrame({ kind: "reminders", face: "receipt" })).toBe(true);
+  });
 });

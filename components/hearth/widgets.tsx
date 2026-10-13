@@ -68,7 +68,27 @@ import { WaitingBars } from "./waiting";
 import { WindowScene } from "./window-scene";
 import { AccentArt, HangerArt, SkinSurface, skinPadding } from "./widget-skin";
 import { isPlainCard, materialColors, skinFor } from "../../lib/widget-skins";
-import { faceOf, ownFrame } from "../../lib/widget-faces";
+import { faceOf, ownFrame, wrapsFace } from "../../lib/widget-faces";
+import { clockWords } from "../../lib/widget-faces";
+import {
+  BoardingPass,
+  Cake,
+  chromeInset,
+  chromePaper,
+  CuckooClock,
+  Doormat,
+  EggTimer,
+  Hourglass,
+  LuggageTag,
+  NeonSign,
+  PaperChrome,
+  PaperFont,
+  Postcard,
+  SlipJar,
+  SpinnerWheel,
+  Sundial,
+  type TripCard,
+} from "./widget-faces-more";
 import { Bunting, CandleArt, CarvedSign, FlipDigits, FortuneSlip, HoopQuote, JarArt, LetterBoard, PaperChain, PlantArt, TearOffPad, TypewriterQuote } from "./widget-faces";
 import { FridgeDoor, FridgeNoteCard, LetterMagnets, Magnet } from "../fridge-door";
 import { fridgeGrid, fridgePlace, hashOf, magnets, noteMagnet } from "../../lib/fridge";
@@ -237,18 +257,57 @@ function WidgetBody({
   // A face that's its own frame (CORE-127): no card, material or title. Too
   // small for it (one cell, or one row except a carved sign), it's a card.
   const fits = widgetShape(width, height);
-  const bare = ownFrame(widget) && fits !== "icon" && (fits !== "strip" || widget.kind === "greeting");
+  const paper = wrapsFace(widget) && fits !== "icon" && fits !== "strip" ? faceOf(widget) : null;
+  const bare = !paper && ownFrame(widget) && fits !== "icon" && (fits !== "strip" || widget.kind === "greeting");
   const skin = bare ? { ...skinFor(widget.kind, widget.skin), material: "plain" as const, edge: "plain" as const } : skinFor(widget.kind, widget.skin);
   // Made of something, or cut into a shape: drawn by SkinSurface rather
   // than as a plain card (CORE-122, 123).
   const drawn = !isPlainCard(skin);
   const cut = skin.edge !== "plain" && skin.edge !== "stitch";
-  const palette = skin.material === "plain" ? widgetPalette(look, soft, themeText) : materialPalette(materialColors(skin.material, color));
+  const palette = paper
+    ? { ...materialPalette(materialColors("paper", undefined)), accent: deepColor(color ?? "#d9a38a"), panel: "rgba(0,0,0,0.04)" }
+    : skin.material === "plain"
+      ? widgetPalette(look, soft, themeText)
+      : materialPalette(materialColors(skin.material, color));
   const info = widgetKindInfo(widget.kind);
   const shape = widgetShape(width, height);
   const showTitle = widget.showTitle && shape !== "icon" && shape !== "strip" && !bare;
   const pad = skinPadding(skin.material, skin.edge);
 
+  if (paper) {
+    return (
+      <View style={{ width, height }}>
+        <PaperChrome face={paper} width={width} height={height} />
+        <PaperFont face={paper} own={skin.font}>
+          <View style={[styles.frame, { width, height, borderRadius: 0, paddingTop: 14 + chromeInset(paper), backgroundColor: "transparent" }]}>
+            {showTitle ? (
+              <View style={styles.titleRow}>
+                <Icon name={icon ?? info.icon} size={14} color={palette.accent} />
+                <Text style={[styles.title, { color: palette.muted }]} numberOfLines={1}>
+                  {widget.title || info.label}
+                </Text>
+              </View>
+            ) : null}
+            <View style={{ flex: 1 }}>
+              <Body
+                widget={{ ...widget, face: undefined } as WidgetConfig}
+                palette={palette}
+                height={height - (showTitle ? 26 : 0) - chromeInset(paper)}
+                width={width}
+                shape={shape}
+                icon={icon ?? info.icon}
+                refreshKey={refreshKey}
+                onChange={onChange ? (changed) => onChange({ ...changed, face: widget.face } as WidgetConfig) : undefined}
+                color={color}
+                radius={radius}
+                still={still}
+              />
+            </View>
+          </View>
+        </PaperFont>
+      </View>
+    );
+  }
   if (bare) {
     return (
       <View style={{ width, height }}>
@@ -2072,7 +2131,7 @@ function WeekWidget({ widget, palette, refreshKey, height, shape, icon }: BodyPr
 
 // --- Birthdays coming up (CORE-106) -----------------------------------------------
 
-function BirthdaysWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"birthdays">) {
+function BirthdaysWidget({ widget, palette, refreshKey, width, height, shape, icon, still }: BodyProps<"birthdays">) {
   const { session } = useAuth();
   const list = useUpcomingBirthdays(session?.user.id, refreshKey, widget.settings.burrowId);
   if (!list) return <Waiting palette={palette} shape={shape} />;
@@ -2090,6 +2149,22 @@ function BirthdaysWidget({ widget, palette, refreshKey, height, shape, icon }: B
   const about = (b: BirthdayGlance) => [birthdayWhen(b), b.turning ? `turns ${b.turning}` : null].filter(Boolean).join(" · ");
   if (shape === "strip") {
     return <Strip icon={icon} palette={palette} text={`${next.name} · ${birthdayWhen(next)}`} sub={list[1] ? `Then ${list[1].name}` : next.turning ? `Turns ${next.turning}` : null} />;
+  }
+
+  // A cake with their candles on it (CORE-131).
+  if (faceOf(widget) === "cake") {
+    const size = Math.max(44, Math.min(width - 28, height - 28 - 40));
+    return (
+      <View style={[styles.centerFill, { gap: 2 }]}>
+        <Cake turning={next.turning ?? null} size={size} still={Boolean(still)} />
+        <Text style={[styles.body, { color: palette.text, fontWeight: "800" }]} numberOfLines={1}>
+          {next.name}
+        </Text>
+        <Text style={[styles.small, { color: next.daysAway === 0 ? palette.accent : palette.muted, fontWeight: "700" }]} numberOfLines={1}>
+          {next.daysAway === 0 ? `Today!${next.turning ? ` Turns ${next.turning}` : ""}` : about(next)}
+        </Text>
+      </View>
+    );
   }
 
   const rest = list.slice(1, 1 + Math.max(0, Math.min(widget.settings.count - 1, rowsThatFit(height, 22, 70))));
@@ -2125,7 +2200,7 @@ function BirthdaysWidget({ widget, palette, refreshKey, height, shape, icon }: B
 
 // --- A Getaway (CORE-108) ---------------------------------------------------------
 
-function GetawayWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"getaway">) {
+function GetawayWidget({ widget, palette, refreshKey, width, height, shape, icon, color }: BodyProps<"getaway">) {
   const { session } = useAuth();
   const data = useGetawayGlance(session?.user.id, refreshKey, widget.settings.getawayId);
   if (!data) return <Waiting palette={palette} shape={shape} />;
@@ -2151,6 +2226,15 @@ function GetawayWidget({ widget, palette, refreshKey, height, shape, icon }: Bod
   }
   if (shape === "strip") {
     return <Strip icon={kindIcon} palette={palette} text={`${trip.title} · ${big}${state === "upcoming" && daysTo > 1 ? " days" : ""}`} sub={showPacking ? packWords : trip.place} />;
+  }
+
+  // A luggage tag, boarding pass or postcard (CORE-131).
+  const design = faceOf(widget);
+  if (design !== "classic") {
+    const card: TripCard = { title: trip.title, place: trip.place ?? null, icon: kindIcon, big, caption, packing: showPacking ? packWords : null };
+    if (design === "tag") return <LuggageTag trip={card} width={width} height={height} color={color} />;
+    if (design === "pass") return <BoardingPass trip={card} width={width} height={height} color={color} />;
+    return <Postcard trip={card} width={width} height={height} color={color} />;
   }
 
   const fit = Math.max(0, rowsThatFit(height, 20, shape === "tall" || shape === "large" ? 150 : 400));
@@ -2231,7 +2315,7 @@ function WishesWidget({ widget, palette, refreshKey, height, shape, icon }: Body
 // Play, pause and set back right on the Hearth; the phone rings when one's
 // done (lib/timer-alerts.ts, scheduled where the change is saved).
 
-function TimerWidget({ widget, palette, shape, height, icon, onChange }: BodyProps<"timer">) {
+function TimerWidget({ widget, palette, shape, width, height, icon, onChange, color }: BodyProps<"timer">) {
   const timers = widget.settings.timers;
   const ticking = timers.some((t) => timerState(t) === "running");
   const now = useNow(ticking ? 1000 : 60_000);
@@ -2306,6 +2390,31 @@ function TimerWidget({ widget, palette, shape, height, icon, onChange }: BodyPro
           <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
             {timers.length > 1 ? `${lead.name} · ${timers.length - 1} more` : lead.name}
           </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // An egg timer or an hourglass for the one that matters most (CORE-131).
+  const design = faceOf(widget);
+  if (design !== "classic") {
+    const state = timerState(lead, now);
+    const left = state === "done" ? 0 : timeLeft(lead, now);
+    const size = Math.max(40, Math.min(width - 28, height - 28 - 20 - 40 - 10));
+    return (
+      <View style={[styles.centerFill, { gap: 4 }]}>
+        {design === "egg" ? (
+          <EggTimer total={lead.seconds} left={left} size={size} color={color} />
+        ) : (
+          <Hourglass total={lead.seconds} left={left} running={state === "running"} size={size} />
+        )}
+        <Text style={{ fontSize: 15, fontWeight: "800", color: state === "done" ? palette.accent : palette.text, fontVariant: ["tabular-nums"] }} numberOfLines={1}>
+          {shownTime(lead)}
+          <Text style={{ fontSize: 12, fontWeight: "600", color: palette.muted }}>{`  ${lead.name}${timers.length > 1 ? ` · ${timers.length - 1} more` : ""}`}</Text>
+        </Text>
+        <View style={[styles.row, { gap: 14 }]}>
+          {playButton(lead, 34)}
+          {resetButton(lead)}
         </View>
       </View>
     );
@@ -2465,7 +2574,7 @@ function SkyWidget({ widget, palette, shape, width, height, icon }: BodyProps<"s
 // Today's line (or today's question), and now and then an old one handed
 // back. Tap it to write; the page is in app/widget/view.
 
-function GratitudeWidget({ widget, palette, shape, height, icon }: BodyProps<"gratitude">) {
+function GratitudeWidget({ widget, palette, shape, width, height, icon }: BodyProps<"gratitude">) {
   useNow(60_000 * 10);
   const today = localDay();
   const lines = widget.settings.lines;
@@ -2485,6 +2594,25 @@ function GratitudeWidget({ widget, palette, shape, height, icon }: BodyProps<"gr
         text={mine ? mine.text : promptFor(today)}
         sub={mine ? (memory ? `${memoryLabel}: ${memory.line.text}` : "Today") : "Tap to write"}
       />
+    );
+  }
+  // A jar, cookie jar or fishbowl filling with slips (CORE-131).
+  const design = faceOf(widget);
+  if (design === "mason" || design === "cookie" || design === "bowl") {
+    const size = Math.max(40, Math.min(width - 28, height - 28 - 44));
+    return (
+      <View style={[styles.centerFill, { gap: 4 }]}>
+        <SlipJar shape={design} lines={lines.length} size={size} />
+        {mine ? (
+          <Text style={{ fontSize: 16, fontFamily: "Caveat_600SemiBold", color: palette.text, textAlign: "center", lineHeight: 19 }} numberOfLines={2}>
+            {mine.text}
+          </Text>
+        ) : (
+          <Text style={[styles.small, { color: palette.muted, textAlign: "center" }]} numberOfLines={2}>
+            {lines.length ? `${lines.length} good thing${lines.length === 1 ? "" : "s"} · tap to add today's` : promptFor(today)}
+          </Text>
+        )}
+      </View>
     );
   }
   const roomForMemory = memory && height >= 150;
@@ -2523,7 +2651,7 @@ function GratitudeWidget({ widget, palette, shape, height, icon }: BodyProps<"gr
 // --- Whose turn? (CORE-111) -------------------------------------------------------
 // Taking turns in order ("Done" passes it on), or a spinner that picks.
 
-function TurnWidget({ widget, palette, shape, icon, onChange }: BodyProps<"turn">) {
+function TurnWidget({ widget, palette, shape, icon, onChange, width, height }: BodyProps<"turn">) {
   const turn = widget.settings;
   const reduceMotion = useReducedMotion();
   const [spinning, setSpinning] = useState<string | null>(null);
@@ -2598,6 +2726,21 @@ function TurnWidget({ widget, palette, shape, icon, onChange }: BodyProps<"turn"
       </View>
     );
   }
+  // A spinner wheel with everyone's name on it (CORE-131).
+  if (faceOf(widget) === "wheel") {
+    const index = Math.max(0, turn.names.indexOf(shownName ?? name ?? ""));
+    const size = Math.max(50, Math.min(width - 28, height - 28 - 24 - 36));
+    return (
+      <View style={[styles.centerFill, { gap: 4 }]}>
+        <SpinnerWheel names={turn.names} index={index} size={size} spinning={Boolean(spinning)} />
+        <Text style={[styles.small, { color: palette.text, fontWeight: "800" }]} numberOfLines={1}>
+          {spinning ? "…" : `${headline} · ${turn.task}`}
+        </Text>
+        {action}
+      </View>
+    );
+  }
+
   const last = turn.history[0];
   return (
     <View style={{ flex: 1, gap: 4 }}>
@@ -3080,7 +3223,7 @@ function WindowWidget({
 
 // --- Clock (CORE-049) -----------------------------------------------------------------
 
-function ClockWidget({ widget, palette, shape, width, height, icon }: BodyProps<"clock">) {
+function ClockWidget({ widget, palette, shape, width, height, icon, color, still }: BodyProps<"clock">) {
   const { face, hour24, showDate } = widget.settings;
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -3099,6 +3242,41 @@ function ClockWidget({ widget, palette, shape, width, height, icon }: BodyProps<
 
   const innerWidth = width - 28;
   const innerHeight = height - 28;
+  // A cuckoo clock, the time in words, or a sundial (CORE-131).
+  const design = faceOf(widget);
+  if (design === "cuckoo") return <CuckooClock now={now} width={width} height={height} color={color} still={Boolean(still)} />;
+  if (design === "words") {
+    const words = clockWords(now);
+    return (
+      <View style={[styles.centerFill, { gap: 2 }]}>
+        <Text style={[styles.small, { color: palette.muted, fontWeight: "700" }]}>It's about</Text>
+        <Text
+          style={{ fontSize: Math.max(18, Math.min(innerWidth * 0.13, innerHeight * 0.24, 40)), fontWeight: "800", color: palette.text, textAlign: "center", letterSpacing: -0.3 }}
+          numberOfLines={3}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
+          {words}
+        </Text>
+        {showDate ? (
+          <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+            {shape === "small" ? shortDate : longDate}
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
+  if (design === "sundial") {
+    const size = Math.max(60, Math.min(innerWidth, innerHeight - 22));
+    return (
+      <View style={[styles.centerFill, { gap: 4 }]}>
+        <Sundial now={now} size={size} ink={palette.text} />
+        <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+          {now.getHours() < 6 || now.getHours() >= 20 ? `Resting till sunrise · ${time}` : time}
+        </Text>
+      </View>
+    );
+  }
   if (face === "analog") {
     const size = Math.max(60, Math.min(innerWidth, innerHeight - (showDate ? 22 : 0)));
     return (
@@ -3383,6 +3561,10 @@ function Greeting({ widget, palette, refreshKey, shape, height, width, color, ra
 
   if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
   const face = faceOf(widget);
+  const signSub = [showDate ? date : null, message || null].filter(Boolean).join(" · ") || undefined;
+  // A neon sign or a doormat (CORE-131).
+  if (face === "neon") return <NeonSign line={line} sub={signSub} width={width} height={height} radius={radius ?? 24} color={color} />;
+  if (face === "doormat") return <Doormat line={line} sub={signSub} width={width} height={height} radius={radius ?? 24} color={color} />;
   // A carved wooden sign (CORE-127), long and thin or tall.
   if (face === "sign") {
     return (

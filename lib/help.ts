@@ -271,7 +271,7 @@ export const helpSections: HelpSection[] = [
       {
         question: "Can I make a widget look like chalkboard, wood or paper?",
         answer:
-          "Yes. Tap Edit, tap the widget, and open \"How it looks\". Some widgets have more than one Design: a countdown can be a tear-off pad, a flip clock or a paper chain, and a quote an embroidery hoop. In Simple, pick what it's made of (paper, kraft, notebook, chalkboard, wood, cork, felt, glass and more), its color, what it's hung up with (tape, a pin, a magnet, a nail and twine…) and a little tilt. \"Surprise me\" tries a new combination each tap, and \"Natural look\" puts it back how it started. \"A little extra\" adds a sticker, a daisy, holly, a bow or a cup of cocoa. More has its lettering, a print, its edges (torn, scalloped, stitched, stamp, ticket, wavy), corners, shadow and border.",
+          "Yes. Tap Edit, tap the widget, and open \"How it looks\". Many widgets have more than one Design: a countdown can be a tear-off pad, a flip clock or a paper chain, a quote an embroidery hoop, a clock a cuckoo clock, a trip a boarding pass, and a grocery list a receipt. In Simple, pick what it's made of (paper, kraft, notebook, chalkboard, wood, cork, felt, glass and more), its color, what it's hung up with (tape, a pin, a magnet, a nail and twine…) and a little tilt. \"Surprise me\" tries a new combination each tap, and \"Natural look\" puts it back how it started. \"A little extra\" adds a sticker, a daisy, holly, a bow or a cup of cocoa. More has its lettering, a print, its edges (torn, scalloped, stitched, stamp, ticket, wavy), corners, shadow and border.",
       },
       {
         question: "Can I make all my widgets match at once?",
