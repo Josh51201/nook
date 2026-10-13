@@ -237,6 +237,8 @@ export type HearthLayout = {
   ambience: Ambience;
   // The fireplace sound (CORE-047); unset is off.
   fireSound?: FireSound;
+  // Messy pinboard (CORE-134): every widget leans a little.
+  messy?: boolean;
   // Themes you've made (CORE-043), and themes that change with the seasons.
   customThemes: CustomTheme[];
   seasonal: SeasonalThemes;
@@ -1085,6 +1087,7 @@ export function migrateLayout(saved: Partial<HearthLayout> & { sections?: V1Sect
     wallpaper: saved.wallpaper ?? defaultHearthLayout.wallpaper,
     ambience: saved.ambience ?? defaultHearthLayout.ambience,
     fireSound: saved.fireSound,
+    messy: saved.messy,
     customThemes: saved.customThemes ?? defaultHearthLayout.customThemes,
     seasonal: saved.seasonal ?? defaultHearthLayout.seasonal,
     hideHomePage: saved.hideHomePage,

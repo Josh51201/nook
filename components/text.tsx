@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode, type Ref } from "react";
 import { Platform, StyleSheet, Text as RNText, TextInput as RNTextInput, type TextInputProps, type TextProps } from "react-native";
 
-import { boldened, familyFor, labelFamily, weightOf } from "../lib/fonts";
+import { boldened, chalkFamily, familyFor, labelFamily, weightOf } from "../lib/fonts";
 import type { WidgetFont } from "../lib/widget-skins";
 import { currentBoldText, currentFont, currentTextScale } from "../lib/theme";
 import { scaledType } from "../lib/text-size";
@@ -55,13 +55,17 @@ export function Text({ style, ...props }: TextProps) {
   if (own && !flat?.fontFamily) {
     // A widget's own font. Handwriting runs small, so it's drawn a bit bigger.
     const weight = flat?.fontWeight === undefined && parent !== null ? parent : weightOf(flat?.fontWeight);
-    const family = own === "typewriter" ? MONO : labelFamily(own, boldened(weight, currentBoldText()), font);
+    const family =
+      own === "typewriter" ? MONO : own === "chalk" ? chalkFamily(boldened(weight, currentBoldText())) : labelFamily(own, boldened(weight, currentBoldText()), font);
     const grow = own === "handwritten" ? 1.2 : own === "typewriter" ? 0.94 : 1;
     const size =
       scale === 1 && grow !== 1 && flat?.fontSize !== undefined ? { fontSize: flat.fontSize * grow, lineHeight: flat.lineHeight ? flat.lineHeight * grow : undefined } : null;
     text = (
       <ParentWeight.Provider value={weight}>
-        <RNText {...props} style={[sized, size, family ? { fontFamily: family, fontWeight: own === "typewriter" ? flat?.fontWeight : "normal" } : null]} />
+        <RNText
+          {...props}
+          style={[sized, size, family ? { fontFamily: family, fontWeight: own === "typewriter" ? flat?.fontWeight : "normal", letterSpacing: own === "chalk" ? 0.3 : flat?.letterSpacing } : null]}
+        />
       </ParentWeight.Provider>
     );
     return scale === 1 ? text : <InsideText.Provider value>{text}</InsideText.Provider>;

@@ -19,7 +19,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { tap } from "../../lib/feedback";
 import { CUBBY_OUTSET } from "../../lib/cubbies";
 import { cornerRadius, liftLevel } from "../../lib/decor";
-import { skinFor, swaysIn } from "../../lib/widget-skins";
+import { messyTilt, skinFor, swaysIn } from "../../lib/widget-skins";
 import { ownFrame } from "../../lib/widget-faces";
 import {
   canNudge,
@@ -106,6 +106,7 @@ export function HearthGrid({
   accent,
   shadowAt,
   ambience,
+  messy,
   dragScroll,
   onMove,
   onPush,
@@ -141,6 +142,8 @@ export function HearthGrid({
   shadowAt?: (level: 0 | 1 | 2 | 3) => string | undefined;
   // What's drifting across the Hearth (CORE-047), for widgets that swing in a breeze.
   ambience?: string | null;
+  // Messy pinboard (CORE-134): widgets without a lean of their own get one.
+  messy?: boolean;
   dragScroll: DragScroll;
   onMove: (id: string, x: number, y: number) => void;
   // Dropped after holding still over a spot with no room: make room (CORE-092).
@@ -350,6 +353,7 @@ export function HearthGrid({
           editing={editing}
           seed={index}
           ambience={ambience}
+          messy={messy}
           active={activeId === item.id}
           resizing={activeId === item.id && sizing}
           badge={activeId === item.id && plan?.kind === "blocked" ? (pushing ? "push" : "noRoom") : null}
@@ -557,6 +561,7 @@ function GridItem({
   editing,
   seed,
   ambience,
+  messy,
   active,
   resizing,
   badge,
@@ -597,6 +602,7 @@ function GridItem({
   editing: boolean;
   seed: number;
   ambience?: string | null;
+  messy?: boolean;
   active: boolean;
   // Its corner is being dragged: it keeps up with the finger, no easing.
   resizing: boolean;
@@ -712,7 +718,8 @@ function GridItem({
   // A widget can lean a little (CORE-124); the wiggle in Edit rocks around
   // it, and one hung from a single point swings in a breeze (CORE-130).
   const skin = item.kind === "widget" ? skinFor(item.widget.kind, item.widget.skin) : null;
-  const wiggle = useWiggle(editing && !active && !carries, seed, skin?.tilt ?? 0, Boolean(skin && !editing && swaysIn(ambience, skin)));
+  const lean = skin ? skin.tilt || (messy ? messyTilt(item.id) : 0) : 0;
+  const wiggle = useWiggle(editing && !active && !carries, seed, lean, Boolean(skin && !editing && swaysIn(ambience, skin)));
   // Edit mode as the gesture sees it (it must not be rebuilt when it changes).
   const editingNow = useSharedValue(editing);
   useEffect(() => {

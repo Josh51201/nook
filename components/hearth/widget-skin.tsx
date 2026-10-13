@@ -4,7 +4,20 @@ import Animated, { cancelAnimation, Easing, useAnimatedStyle, useReducedMotion, 
 import Svg, { Circle, Defs, Ellipse, G, Line, LinearGradient, Path, Pattern, Rect, Stop } from "react-native-svg";
 
 import { deepOf, isHex, shade } from "../../lib/colors";
-import { edgeInset, edgePath, materialColors, materialOpacity, type Accent, type Edge, type Hanger, type Material, type Print } from "../../lib/widget-skins";
+import { gradientPresets } from "../../lib/decor";
+import {
+  edgeInset,
+  edgePath,
+  materialColors,
+  materialOpacity,
+  seasonalAccent,
+  type Accent,
+  type Edge,
+  type Hanger,
+  type Material,
+  type Frame,
+  type Print,
+} from "../../lib/widget-skins";
 import { PatternTile, patternTileSize } from "./wallpaper";
 
 // Draws what a widget is made of and how its edges are cut (CORE-122, 123),
@@ -29,6 +42,7 @@ export function SkinSurface({
   level = 0,
   stitchOnly = false,
   print = "none",
+  gradient = "none",
 }: {
   material: Material;
   edge: Edge;
@@ -48,6 +62,8 @@ export function SkinSurface({
   stitchOnly?: boolean;
   // A wallpaper pattern printed over it (CORE-128).
   print?: Print;
+  // A gradient fill for a plain card (CORE-135): a key of gradientPresets.
+  gradient?: string;
 }) {
   const id = `s${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const cut = edge !== "plain" && edge !== "stitch";
@@ -57,6 +73,7 @@ export function SkinSurface({
   const colors = materialColors(material, color);
   const base = material === "plain" ? (fill ?? colors.base) : colors.base;
   const deep = deepOf(color && isHex(color) ? color : base);
+  const wash = material === "plain" ? gradientPresets.find((g) => g.key === gradient) : undefined;
 
   return (
     <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -67,7 +84,13 @@ export function SkinSurface({
             <PatternTile pattern={print} ink={colors.dark ? "#ffffff" : deep} opacity={colors.dark ? 0.09 : 0.11} />
           </Pattern>
         ) : null}
-        {material === "glass" ? (
+        {wash ? (
+          <LinearGradient id={`${id}w`} x1="0" y1="0" x2="0.4" y2="1">
+            <Stop offset="0" stopColor={wash.from} />
+            <Stop offset="1" stopColor={wash.to} />
+          </LinearGradient>
+        ) : null}
+        {material === "glass" || material === "tile" ? (
           <LinearGradient id={`${id}g`} x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor="#ffffff" stopOpacity={0.55} />
             <Stop offset="0.45" stopColor="#ffffff" stopOpacity={0.12} />
@@ -82,13 +105,14 @@ export function SkinSurface({
             <Path d={d} fill="none" stroke={outline} strokeWidth={2} />
           ) : (
             <>
-              <Path d={d} fill={base} fillOpacity={materialOpacity(material)} />
+              <Path d={d} fill={wash ? `url(#${id}w)` : base} fillOpacity={materialOpacity(material)} />
               {material !== "plain" ? <Path d={d} fill={`url(#${id})`} /> : null}
               {material === "glass" ? <Path d={d} fill={`url(#${id}g)`} stroke="#ffffff" strokeOpacity={0.75} strokeWidth={1.5} /> : null}
+              {material === "tile" ? <Path d={d} fill={`url(#${id}g)`} fillOpacity={0.6} /> : null}
             </>
           )}
           {print !== "none" && !outline ? <Path d={d} fill={`url(#${id}p)`} /> : null}
-          <Extras material={material} width={width} height={h} d={d} />
+          <Extras material={material} width={width} height={h} d={d} ink={colors.ink} />
         </>
       )}
       {edge === "stitch" ? (
@@ -195,7 +219,17 @@ function Texture({ id, material, ink, width }: { id: string; material: Material;
           <Line x1={1} y1={0} x2={1} y2={4} stroke={ink} strokeOpacity={0.1} strokeWidth={0.7} />
         </Pattern>
       );
+    case "tile":
+      // Square tiles with grout between them.
+      return (
+        <Pattern id={id} patternUnits="userSpaceOnUse" width={26} height={26}>
+          <Line x1={0} y1={0.5} x2={26} y2={0.5} stroke={ink} strokeWidth={1.4} />
+          <Line x1={0.5} y1={0} x2={0.5} y2={26} stroke={ink} strokeWidth={1.4} />
+          <Line x1={2} y1={2.2} x2={24} y2={2.2} stroke="#ffffff" strokeOpacity={0.8} strokeWidth={1} />
+        </Pattern>
+      );
     case "glass":
+    case "watercolor":
     case "plain":
       return null;
   }
@@ -203,8 +237,19 @@ function Texture({ id, material, ink, width }: { id: string; material: Material;
 
 // One-off touches: a notebook's margin, an index card's red line, a
 // chalkboard's wooden frame and smudges.
-function Extras({ material, width, height, d }: { material: Material; width: number; height: number; d: string }) {
+function Extras({ material, width, height, d, ink }: { material: Material; width: number; height: number; d: string; ink: string }) {
   switch (material) {
+    case "watercolor":
+      // Soft pools of paint, darker where they dried at the edge.
+      return (
+        <>
+          <Ellipse cx={width * 0.28} cy={height * 0.3} rx={width * 0.34} ry={height * 0.26} fill={ink} fillOpacity={0.12} />
+          <Ellipse cx={width * 0.72} cy={height * 0.62} rx={width * 0.32} ry={height * 0.3} fill={ink} fillOpacity={0.1} />
+          <Ellipse cx={width * 0.45} cy={height * 0.82} rx={width * 0.28} ry={height * 0.16} fill={ink} fillOpacity={0.08} />
+          <Ellipse cx={width * 0.72} cy={height * 0.62} rx={width * 0.32} ry={height * 0.3} fill="none" stroke={ink} strokeOpacity={0.07} strokeWidth={1.5} />
+          <Path d={d} fill="none" stroke={ink} strokeOpacity={0.18} strokeWidth={3} />
+        </>
+      );
     case "notebook":
       return <Line x1={10} y1={0} x2={10} y2={height} stroke="#e7a1a1" strokeWidth={1} />;
     case "index":
@@ -370,12 +415,16 @@ export function AccentArt({
   still?: boolean;
 }) {
   if (accent === "none") return null;
+  // "Follows the season" shows today's (CORE-136).
+  if (accent === "season") accent = seasonalAccent(new Date());
   const topMiddle = hanger === "pin" || hanger === "magnet" || hanger === "clothespin" || hanger === "nail";
   const spot: { left: number; top: number; turn: number } =
     accent === "heart" || accent === "star"
       ? { left: width - A + 4, top: height - A + 4, turn: 14 }
-      : accent === "daisy"
+      : accent === "daisy" || accent === "leaf" || accent === "pumpkin" || accent === "snowflake"
         ? { left: -6, top: height - A + 6, turn: -10 }
+        : accent === "sun"
+          ? { left: width - A + 6, top: -8, turn: 0 }
         : accent === "holly"
           ? { left: -6, top: -6, turn: -20 }
           : accent === "bow"
@@ -450,7 +499,45 @@ function AccentShape({ accent, ribbon }: { accent: Accent; ribbon: string }) {
           <Rect x={9} y={17} width={4} height={4} rx={1} fill="#ffffff" fillOpacity={0.5} />
         </>
       );
+    case "snowflake":
+      return (
+        <G transform="translate(15 15)">
+          {[0, 60, 120].map((a) => (
+            <G key={a} transform={`rotate(${a})`}>
+              <Line x1={0} y1={-11} x2={0} y2={11} stroke="#ffffff" strokeWidth={2.4} strokeLinecap="round" />
+              <Path d="M-3 -8 L0 -5 L3 -8 M-3 8 L0 5 L3 8" stroke="#ffffff" strokeWidth={1.6} fill="none" strokeLinecap="round" />
+            </G>
+          ))}
+          <Circle cx={0} cy={0} r={11.5} fill="none" stroke="#9fc3e6" strokeOpacity={0.35} strokeWidth={1} />
+        </G>
+      );
+    case "leaf":
+      return (
+        <G transform="rotate(-25 15 15)">
+          <Path d="M15 3 C24 8 25 20 15 27 C5 20 6 8 15 3 Z" fill="#e0823a" />
+          <Path d="M15 6 L15 27 M15 12 L10 9 M15 12 L20 9 M15 18 L9 15 M15 18 L21 15" stroke="#b5571f" strokeWidth={1} fill="none" />
+        </G>
+      );
+    case "pumpkin":
+      return (
+        <>
+          <Ellipse cx={9.5} cy={18} rx={6} ry={8} fill="#e07a2f" />
+          <Ellipse cx={20.5} cy={18} rx={6} ry={8} fill="#e07a2f" />
+          <Ellipse cx={15} cy={18} rx={6.5} ry={8.5} fill="#ef8d3c" />
+          <Path d="M15 10 C15 6 17 4 19 4" stroke="#5b8a3c" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+        </>
+      );
+    case "sun":
+      return (
+        <G transform="translate(15 15)">
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+            <Line key={a} x1={0} y1={-9} x2={0} y2={-13.5} stroke="#f2b33d" strokeWidth={2.4} strokeLinecap="round" transform={`rotate(${a})`} />
+          ))}
+          <Circle cx={0} cy={0} r={7} fill="#f6c94e" />
+        </G>
+      );
     case "none":
+    case "season":
       return null;
   }
 }
@@ -479,5 +566,45 @@ function Steam({ still }: { still: boolean }) {
         <Path d="M12 20 C9 15 15 12 12 7 C10 4 13 2 12 0" stroke="#ffffff" strokeWidth={1.8} fill="none" strokeLinecap="round" />
       </Svg>
     </Animated.View>
+  );
+}
+
+// --- Picture frames (CORE-133) -------------------------------------------------------------
+
+const FRAME_COLORS = {
+  wood: { outer: "#8a5a3b", inner: "#5e3b22", highlight: "#b07a52" },
+  gold: { outer: "#d4a63c", inner: "#9a7418", highlight: "#f3d98a" },
+  white: { outer: "#fbf7f2", inner: "#d9d2c9", highlight: "#ffffff" },
+  polaroid: { outer: "#fdfbf7", inner: "#e4ddd3", highlight: "#ffffff" },
+} as const;
+
+// How thick a frame is on each side; a polaroid's bottom is deeper.
+export function frameSides(frame: Exclude<Frame, "none">, width: number) {
+  const side = Math.round(Math.max(6, Math.min(12, width * 0.055)));
+  return { side, bottom: frame === "polaroid" ? side * 3 : side };
+}
+
+// A picture frame with the widget sitting in it.
+export function PictureFrame({ frame, width, height, radius, children }: { frame: Exclude<Frame, "none">; width: number; height: number; radius: number; children: React.ReactNode }) {
+  const c = FRAME_COLORS[frame];
+  const { side, bottom } = frameSides(frame, width);
+  // The frame's corners match the widget's, so its shadow fits.
+  const r = radius;
+  return (
+    <View
+      style={{
+        width,
+        height,
+        borderRadius: r,
+        backgroundColor: c.outer,
+        paddingTop: side,
+        paddingLeft: side,
+        paddingRight: side,
+        paddingBottom: bottom,
+        boxShadow: `inset 0px 1.5px 0px ${c.highlight}, inset 0px -2px 0px ${c.inner}`,
+      }}
+    >
+      <View style={{ flex: 1, borderRadius: Math.max(2, r - 4), overflow: "hidden", boxShadow: `inset 0px 1px 3px rgba(0,0,0,0.35)` }}>{children}</View>
+    </View>
   );
 }

@@ -1,3 +1,4 @@
+import * as CabinSketch from "@expo-google-fonts/cabin-sketch";
 import * as Caveat from "@expo-google-fonts/caveat";
 import * as Fraunces from "@expo-google-fonts/fraunces";
 import * as Nunito from "@expo-google-fonts/nunito";
@@ -24,7 +25,10 @@ configureReminders();
 const fontSources = Object.fromEntries(
   fontFiles.map((name) => [
     name,
-    (Nunito as Record<string, unknown>)[name] ?? (Fraunces as Record<string, unknown>)[name] ?? (Caveat as Record<string, unknown>)[name],
+    (Nunito as Record<string, unknown>)[name] ??
+      (Fraunces as Record<string, unknown>)[name] ??
+      (Caveat as Record<string, unknown>)[name] ??
+      (CabinSketch as Record<string, unknown>)[name],
   ])
 ) as Record<string, number>;
 

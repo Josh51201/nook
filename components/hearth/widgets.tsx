@@ -1,7 +1,8 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useContext, useEffect, useState, type ReactNode } from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { BlurView } from "expo-blur";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 import { FixedTextSize, Text, WidgetFontScope } from "../text";
 import Animated, { FadeIn, FadeInRight, LinearTransition, useReducedMotion, ZoomIn } from "react-native-reanimated";
@@ -66,7 +67,7 @@ import { Tap } from "../motion";
 import { BedArt, BowlArt, CritterArt, PetStageContext, Snooze } from "./pet-art";
 import { WaitingBars } from "./waiting";
 import { WindowScene } from "./window-scene";
-import { AccentArt, HangerArt, SkinSurface, skinPadding } from "./widget-skin";
+import { AccentArt, frameSides, HangerArt, PictureFrame, SkinSurface, skinPadding } from "./widget-skin";
 import { isPlainCard, materialColors, skinFor } from "../../lib/widget-skins";
 import { faceOf, ownFrame, wrapsFace } from "../../lib/widget-faces";
 import { clockWords } from "../../lib/widget-faces";
@@ -147,17 +148,30 @@ export function widgetPalette(look: WidgetConfig["look"], color: string | undefi
 // Anything it's hung up with (CORE-124) is drawn over it, reaching a
 // little outside its space.
 // So is a little accent on a corner, and its text wears its own font (CORE-128).
+// A picture frame goes around the whole card (CORE-133).
 export function WidgetView(props: React.ComponentProps<typeof WidgetBody>) {
-  const { hanger, accent, font } = skinFor(props.widget.kind, props.widget.skin);
+  const { hanger, accent, font, frame, material } = skinFor(props.widget.kind, props.widget.skin);
+  const framed = frame !== "none" && !ownFrame(props.widget) && widgetShape(props.width, props.height) !== "icon";
+  // Chalkboards are written in chalk unless the widget picks its own font (CORE-135).
+  const lettering = ownFrame(props.widget) ? "app" : font === "app" && material === "chalkboard" ? "chalk" : font;
+  let body = <WidgetBody {...props} />;
+  if (framed) {
+    const { side, bottom } = frameSides(frame, props.width);
+    body = (
+      <PictureFrame frame={frame} width={props.width} height={props.height} radius={cornerRadius(props.corners, props.width, props.height)}>
+        <WidgetBody {...props} width={props.width - side * 2} height={props.height - side - bottom} lift="flat" />
+      </PictureFrame>
+    );
+  }
   return (
     <FixedTextSize>
       {/* A face that's its own frame keeps its own lettering. */}
-      <WidgetFontScope font={ownFrame(props.widget) ? "app" : font}>
+      <WidgetFontScope font={lettering}>
         {hanger === "none" && accent === "none" ? (
-          <WidgetBody {...props} />
+          body
         ) : (
           <View style={{ width: props.width, height: props.height }}>
-            <WidgetBody {...props} />
+            {body}
             <HangerArt hanger={hanger} color={props.color} width={props.width} height={props.height} />
             <AccentArt accent={accent} hanger={hanger} color={props.color} width={props.width} height={props.height} still={props.still} />
           </View>
@@ -273,6 +287,8 @@ function WidgetBody({
   const shape = widgetShape(width, height);
   const showTitle = widget.showTitle && shape !== "icon" && shape !== "strip" && !bare;
   const pad = skinPadding(skin.material, skin.edge);
+  // A band of the deep color behind the title (CORE-135).
+  const band = skin.band && showTitle && !paper;
 
   if (paper) {
     return (
@@ -356,12 +372,16 @@ function WidgetBody({
           level={cut ? liftLevel(lift, false) : 0}
           stitchOnly={!drawn}
           print={skin.print}
+          gradient={skin.gradient}
         />
       ) : null}
+      {/* Frosted glass really blurs what's behind it on iPhone (CORE-132). */}
+      {skin.material === "glass" && !cut && Platform.OS === "ios" ? <BlurView intensity={28} tint="light" style={[StyleSheet.absoluteFill, { zIndex: -1 }]} /> : null}
+      {band ? <View style={[styles.band, { height: 26 + 14 + pad, backgroundColor: skin.material === "plain" ? deep : palette.deep }]} /> : null}
       {showTitle ? (
         <View style={styles.titleRow}>
-          <Icon name={icon ?? info.icon} size={14} color={palette.accent} />
-          <Text style={[styles.title, { color: palette.muted }]} numberOfLines={1}>
+          <Icon name={icon ?? info.icon} size={14} color={band ? "#ffffff" : palette.accent} />
+          <Text style={[styles.title, { color: band ? "#ffffff" : palette.muted }]} numberOfLines={1}>
             {widget.title || info.label}
           </Text>
         </View>
@@ -3675,6 +3695,7 @@ const styles = StyleSheet.create({
   },
   windowPill: { position: "absolute", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: "rgba(40,30,24,0.55)" },
   frame: { borderRadius: 24, padding: 14, overflow: "hidden" },
+  band: { position: "absolute", top: 0, left: 0, right: 0 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
   title: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6, flex: 1 },
   row: { flexDirection: "row", alignItems: "center", gap: 8 },

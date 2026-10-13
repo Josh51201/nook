@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { StyleSheet, Switch, View } from "react-native";
 
-import { cornerChoices, liftChoices, type Corners, type Lift } from "../../lib/decor";
+import { cornerChoices, gradientPresets, liftChoices, type Corners, type Lift } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { colors, themed, ui } from "../../lib/theme";
 import {
   accents,
   edges,
+  frames,
   hangers,
   materials,
   prints,
@@ -234,6 +235,35 @@ export function WidgetLookEditor({
                 {prints.map((p) => (
                   <Chip key={p.key} selected={skin.print === p.key} onPress={() => setSkin({ print: p.key })}>
                     {p.label}
+                  </Chip>
+                ))}
+              </View>
+
+              <Text style={ui.label}>Picture frame</Text>
+              <View style={ui.chips}>
+                {frames.map((f) => (
+                  <Chip key={f.key} selected={skin.frame === f.key} onPress={() => setSkin({ frame: f.key })}>
+                    {f.label}
+                  </Chip>
+                ))}
+              </View>
+
+              <View style={[ui.row, { gap: 10 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[ui.label, { marginBottom: 0 }]}>Two-tone</Text>
+                  <Text style={ui.muted}>A band of deeper color behind the title.</Text>
+                </View>
+                <Switch value={skin.band} onValueChange={(band) => setSkin({ band })} trackColor={{ true: colors.bark }} />
+              </View>
+
+              <Text style={ui.label}>{skin.material === "plain" ? "Gradient" : "Gradient · Only for plain cards"}</Text>
+              <View style={[ui.chips, skin.material !== "plain" && styles.off]} pointerEvents={skin.material === "plain" ? "auto" : "none"}>
+                <Chip selected={skin.gradient === "none"} onPress={() => setSkin({ gradient: "none" })}>
+                  None
+                </Chip>
+                {gradientPresets.map((g) => (
+                  <Chip key={g.key} selected={skin.gradient === g.key} onPress={() => setSkin({ gradient: g.key })}>
+                    {g.label}
                   </Chip>
                 ))}
               </View>

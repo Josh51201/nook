@@ -2206,6 +2206,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
                   accent={theme.accent}
                   shadowAt={(level) => shadowAtLevel(themeKey, level)}
                   ambience={ambienceKind}
+                  messy={layout.messy}
                   onMove={(id, x, y) => persistHere((inner) => moveItem(inner, id, x, y))}
                   onPush={(id, x, y) => {
                     if (persistHere((inner) => pushItem(inner, id, x, y))) tap("success");
@@ -2545,6 +2546,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
         weatherPlace={weatherPlaceOf(everyTopLevel(layout))?.place.name}
         widgets={widgetCount(items)}
         onPack={dressPage}
+        messy={Boolean(layout.messy)}
+        onMessy={(messy) => save({ messy: messy || undefined }).catch((saveError: Error) => Alert.alert("Couldn't save that", saveError.message))}
       />
 
       <MoveManySheet visible={pickSheet === "move"} count={pickedIds.length} targets={pickTargets()} onClose={() => setPickSheet(null)} />

@@ -4,6 +4,8 @@ import { contrast, pickerColor, pickerGreys, pickerHues, pickerTiers } from "../
 import { tilePalette, type WidgetItem } from "../lib/hearth-layout";
 import { lookOf, paintItem } from "../lib/hearth-looks";
 import {
+  messyTilt,
+  seasonalAccent,
   edgePath,
   edges,
   isPlainCard,
@@ -49,13 +51,13 @@ describe("materials", () => {
 
   it("a fridge, frame, window or pet bed can't be made of anything, but can still hang and lean", () => {
     const s = skinFor("fridge", { material: "wood", edge: "torn", hanger: "magnet", tilt: 3, print: "dots", font: "handwritten", accent: "holly" });
-    expect(s).toEqual({ material: "plain", edge: "plain", hanger: "magnet", tilt: 3, print: "none", font: "app", accent: "holly" });
+    expect(s).toEqual({ material: "plain", edge: "plain", hanger: "magnet", tilt: 3, print: "none", font: "app", accent: "holly", frame: "none", band: false, gradient: "none" });
     expect(takesMaterial("note")).toBe(true);
   });
 
   it("an old widget with no skin is still a plain card", () => {
     const s = skinFor("note", undefined);
-    expect(s).toEqual({ material: "plain", edge: "plain", hanger: "none", tilt: 0, print: "none", font: "app", accent: "none" });
+    expect(s).toEqual({ material: "plain", edge: "plain", hanger: "none", tilt: 0, print: "none", font: "app", accent: "none", frame: "none", band: false, gradient: "none" });
     expect(isPlainCard(s)).toBe(true);
     // A print is drawn on the card, so it's not plain any more.
     expect(isPlainCard({ ...s, print: "gingham" })).toBe(false);
@@ -157,5 +159,39 @@ describe("copy look", () => {
     const painted = paintItem(widget("b", { material: "felt" }), lookOf(tile)!) as WidgetItem;
     expect(painted.widget.skin).toEqual({ material: "felt" });
     expect(painted.color).toBe("#f4c2d7");
+  });
+});
+
+describe("more looks (CORE-132..136)", () => {
+  it("a gradient only fills a plain card, and makes it drawn", () => {
+    expect(skinFor("note", { gradient: "sunrise" }).gradient).toBe("sunrise");
+    expect(skinFor("note", { material: "wood", gradient: "sunrise" }).gradient).toBe("none");
+    expect(isPlainCard(skinFor("note", { gradient: "sunrise" }))).toBe(false);
+  });
+
+  it("frames and two-tone bands are for widgets that take a material", () => {
+    expect(skinFor("note", { frame: "gold", band: true })).toMatchObject({ frame: "gold", band: true });
+    expect(skinFor("window", { frame: "gold", band: true })).toMatchObject({ frame: "none", band: false });
+  });
+
+  it("the season's accent changes through the year", () => {
+    const month = (m: number) => seasonalAccent(new Date(2026, m, 15));
+    expect(month(11)).toBe("holly");
+    expect(month(0)).toBe("snowflake");
+    expect(month(3)).toBe("daisy");
+    expect(month(6)).toBe("sun");
+    expect(month(9)).toBe("pumpkin");
+    expect(month(10)).toBe("leaf");
+  });
+
+  it("a messy pinboard leans each widget the same way every time, and only a little", () => {
+    expect(messyTilt("w-abc")).toBe(messyTilt("w-abc"));
+    const leans = new Set(["a", "b", "c", "d", "e", "f", "g", "h"].map(messyTilt));
+    expect(leans.size).toBeGreaterThan(1);
+    for (const lean of leans) expect(Math.abs(lean)).toBeLessThanOrEqual(2.1);
+  });
+
+  it("summarizes the new choices", () => {
+    expect(skinSummary("note", { frame: "polaroid", band: true, gradient: "tea" })).toBe("Polaroid frame · Two-tone · Gradient");
   });
 });

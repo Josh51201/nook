@@ -13,7 +13,21 @@ import type { WidgetKind } from "./widgets";
 // the color of felt, a chalkboard's slate). With no color picked, each
 // material shows its own natural color.
 
-export type Material = "plain" | "paper" | "kraft" | "notebook" | "graph" | "index" | "chalkboard" | "wood" | "cork" | "felt" | "linen" | "glass";
+export type Material =
+  | "plain"
+  | "paper"
+  | "kraft"
+  | "notebook"
+  | "graph"
+  | "index"
+  | "chalkboard"
+  | "wood"
+  | "cork"
+  | "felt"
+  | "linen"
+  | "glass"
+  | "tile"
+  | "watercolor";
 export type Edge = "plain" | "torn" | "scallop" | "stitch" | "stamp" | "ticket" | "wavy";
 export type Hanger = "none" | "tape" | "pin" | "magnet" | "clip" | "clothespin" | "nail" | "shelf";
 // Degrees; a small lean either way.
@@ -21,12 +35,28 @@ export type Tilt = -3 | -1.5 | 0 | 1.5 | 3;
 
 // A wallpaper pattern printed on it, or none.
 export type Print = "none" | PatternKey;
-// Its words' font: the Hearth text fonts, plus a typewriter.
-export type WidgetFont = LabelFont | "typewriter";
-// A little decoration on a corner.
-export type Accent = "none" | "heart" | "star" | "daisy" | "holly" | "bow" | "mug";
+// Its words' font: the Hearth text fonts, plus a typewriter and chalk.
+export type WidgetFont = LabelFont | "typewriter" | "chalk";
+// A little decoration on a corner; "season" changes with the time of year
+// (CORE-136).
+export type Accent = "none" | "season" | "heart" | "star" | "daisy" | "holly" | "bow" | "mug" | "snowflake" | "leaf" | "pumpkin" | "sun";
+// A picture frame around it (CORE-133).
+export type Frame = "none" | "wood" | "gold" | "white" | "polaroid";
 
-export type WidgetSkin = { material?: Material; edge?: Edge; hanger?: Hanger; tilt?: Tilt; print?: Print; font?: WidgetFont; accent?: Accent };
+export type WidgetSkin = {
+  material?: Material;
+  edge?: Edge;
+  hanger?: Hanger;
+  tilt?: Tilt;
+  print?: Print;
+  font?: WidgetFont;
+  accent?: Accent;
+  frame?: Frame;
+  // A band of its deep color across the top, behind the title (CORE-135).
+  band?: boolean;
+  // A gradient fill on a plain card: a key of decor's gradientPresets, or "none".
+  gradient?: string;
+};
 
 export const materials: { key: Material; label: string }[] = [
   { key: "plain", label: "Plain" },
@@ -41,6 +71,8 @@ export const materials: { key: Material; label: string }[] = [
   { key: "felt", label: "Felt" },
   { key: "linen", label: "Linen" },
   { key: "glass", label: "Frosted glass" },
+  { key: "tile", label: "Ceramic tile" },
+  { key: "watercolor", label: "Watercolor" },
 ];
 
 export const edges: { key: Edge; label: string }[] = [
@@ -80,18 +112,56 @@ export const widgetFonts: { key: WidgetFont; label: string }[] = [
   { key: "storybook", label: "Storybook" },
   { key: "handwritten", label: "Handwritten" },
   { key: "typewriter", label: "Typewriter" },
+  { key: "chalk", label: "Chalk" },
   { key: "classic", label: "Classic" },
 ];
 
 export const accents: { key: Accent; label: string; icon: IconName }[] = [
   { key: "none", label: "None", icon: "close" },
+  { key: "season", label: "Follows the season", icon: "leaf" },
   { key: "heart", label: "Heart sticker", icon: "heart" },
   { key: "star", label: "Star sticker", icon: "star" },
   { key: "daisy", label: "Daisy", icon: "flower" },
   { key: "holly", label: "Holly", icon: "christmas" },
   { key: "bow", label: "Bow", icon: "gift" },
   { key: "mug", label: "Cup of cocoa", icon: "coffee" },
+  { key: "snowflake", label: "Snowflake", icon: "christmas" },
+  { key: "leaf", label: "Autumn leaf", icon: "leaf" },
+  { key: "pumpkin", label: "Pumpkin", icon: "food" },
+  { key: "sun", label: "Sunshine", icon: "sun" },
 ];
+
+export const frames: { key: Frame; label: string }[] = [
+  { key: "none", label: "None" },
+  { key: "wood", label: "Wood" },
+  { key: "gold", label: "Gold" },
+  { key: "white", label: "White mat" },
+  { key: "polaroid", label: "Polaroid" },
+];
+
+// What a "Follows the season" accent shows today (northern hemisphere):
+// holly in December, a snowflake after, a daisy in spring, sunshine in
+// summer, a pumpkin in October and leaves the rest of the autumn.
+export function seasonalAccent(now: Date): Exclude<Accent, "none" | "season"> {
+  const month = now.getMonth(); // 0 = January
+  if (month === 11) return "holly";
+  if (month <= 1) return "snowflake";
+  if (month <= 4) return "daisy";
+  if (month <= 7) return "sun";
+  if (month === 9) return "pumpkin";
+  return "leaf";
+}
+
+// A slight, steady lean for each widget when the Hearth is a messy pinboard
+// (CORE-134): the same one every time for the same widget.
+const MESSY: Tilt[] = [-3, -1.5, 1.5, 3];
+
+export function messyTilt(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  const lean = MESSY[Math.abs(hash) % MESSY.length];
+  return lean * 0.7;
+}
 
 export const tilts: { key: Tilt; label: string }[] = [
   { key: -3, label: "Lean left" },
@@ -120,12 +190,15 @@ export function skinFor(kind: WidgetKind, skin: WidgetSkin | undefined): Require
     print: own ? skin?.print ?? "none" : "none",
     font: own ? skin?.font ?? "app" : "app",
     accent: skin?.accent ?? "none",
+    frame: own ? skin?.frame ?? "none" : "none",
+    band: own ? Boolean(skin?.band) : false,
+    gradient: own && (skin?.material ?? "plain") === "plain" ? skin?.gradient ?? "none" : "none",
   };
 }
 
 // Is it drawn the old way: a plain card with smooth corners?
 export function isPlainCard(skin: Required<WidgetSkin>) {
-  return skin.material === "plain" && (skin.edge === "plain" || skin.edge === "stitch") && skin.print === "none";
+  return skin.material === "plain" && (skin.edge === "plain" || skin.edge === "stitch") && skin.print === "none" && skin.gradient === "none";
 }
 
 // Swings a little in a breeze (CORE-130): anything hung from one point (a
@@ -192,9 +265,25 @@ export const skinIdeas: WidgetSkin[] = [
   { material: "paper", edge: "ticket", hanger: "clothespin", tilt: 1.5 },
   { material: "paper", print: "gingham", hanger: "pin", accent: "heart" },
   { material: "plain", print: "dots", edge: "scallop", accent: "bow" },
+  { material: "tile", frame: "white", accent: "season" },
+  { material: "watercolor", edge: "torn", font: "handwritten", hanger: "tape" },
+  { material: "chalkboard", frame: "wood", font: "chalk" },
+  { material: "plain", gradient: "sunrise", band: true, accent: "sun" },
+  { material: "paper", frame: "polaroid", hanger: "pin", tilt: -1.5 },
 ];
 
-const blank: Required<WidgetSkin> = { material: "plain", edge: "plain", hanger: "none", tilt: 0, print: "none", font: "app", accent: "none" };
+const blank: Required<WidgetSkin> = {
+  material: "plain",
+  edge: "plain",
+  hanger: "none",
+  tilt: 0,
+  print: "none",
+  font: "app",
+  accent: "none",
+  frame: "none",
+  band: false,
+  gradient: "none",
+};
 
 export function sameSkin(a: WidgetSkin | undefined, b: WidgetSkin | undefined) {
   const x = { ...blank, ...a };
@@ -220,6 +309,9 @@ export function skinSummary(kind: WidgetKind, skin: WidgetSkin | undefined) {
   if (s.print !== "none") words.push(prints.find((p) => p.key === s.print)!.label);
   if (s.font !== "app") words.push(widgetFonts.find((f) => f.key === s.font)!.label);
   if (s.accent !== "none") words.push(accents.find((a) => a.key === s.accent)!.label);
+  if (s.frame !== "none") words.push(`${frames.find((f) => f.key === s.frame)!.label} frame`);
+  if (s.band) words.push("Two-tone");
+  if (s.gradient !== "none") words.push("Gradient");
   if (s.tilt) words.push("Leaning");
   return words.join(" · ");
 }
@@ -324,6 +416,10 @@ export function materialColors(material: Material, color: string | undefined): M
       return light(color && isHex(color) ? shade(color, 0.25) : "#efe5d3", "#8f7c62");
     case "glass":
       return { ...light(color && isHex(color) ? shade(color, 0.55) : "#ffffff", "#ffffff"), panel: "rgba(255,255,255,0.55)" };
+    case "tile":
+      return light(color && isHex(color) ? shade(color, 0.55) : "#f3f6f7", "#b9c6cc");
+    case "watercolor":
+      return light(color && isHex(color) ? shade(color, 0.7) : "#f7f0f5", deepOf(color && isHex(color) ? color : "#d9b8d2"));
     case "plain":
       return light(color ?? "#f3e7d3", "#000000");
   }

@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, View } from "react-native";
 
 import {
   ambienceLabel,
@@ -46,6 +46,8 @@ export function DecorateSheet({
   weatherPlace,
   widgets = 0,
   onPack,
+  messy = false,
+  onMessy,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -65,6 +67,9 @@ export function DecorateSheet({
   // How many widgets are in this space, and dressing them all in a pack.
   widgets?: number;
   onPack?: (id: string) => void;
+  // Messy pinboard (CORE-134).
+  messy?: boolean;
+  onMessy?: (messy: boolean) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const kind: Kind = wallpaper?.kind ?? (inHollow ? "inherit" : "none");
@@ -218,6 +223,15 @@ export function DecorateSheet({
             <Text style={ui.muted}>
               {`One tap gives every widget ${inHollow ? "in this Hollow" : "on this page"} a look that goes together. They keep their colors, and you can undo it.`}
             </Text>
+            {onMessy ? (
+              <View style={[ui.row, { gap: 10 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.packName}>Messy pinboard</Text>
+                  <Text style={ui.muted}>Every widget leans a little, as if pinned up by hand. Ones you've tilted keep their own lean.</Text>
+                </View>
+                <Switch value={messy} onValueChange={onMessy} trackColor={{ true: colors.bark }} />
+              </View>
+            ) : null}
             {lookPacks.map((pack) => (
               <Tap
                 key={pack.id}

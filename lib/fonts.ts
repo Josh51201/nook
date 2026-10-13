@@ -52,12 +52,23 @@ const frauncesItalic: Record<number, string> = {
   900: "Fraunces_900Black_Italic",
 };
 
+// Chalk, for widgets on a chalkboard (CORE-135).
+const chalk: Record<number, string> = {
+  400: "CabinSketch_400Regular",
+  700: "CabinSketch_700Bold",
+};
+
+export function chalkFamily(weight: number) {
+  return weight >= 600 ? chalk[700] : chalk[400];
+}
+
 export const fontFiles = [
   ...Object.values(nunito),
   ...Object.values(fraunces),
   ...Object.values(caveat),
   ...Object.values(nunitoItalic),
   ...Object.values(frauncesItalic),
+  ...Object.values(chalk),
 ];
 
 // Fonts a piece of Hearth text can wear (CORE-076). "app" follows the app's
