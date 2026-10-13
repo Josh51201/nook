@@ -68,6 +68,8 @@ import { WaitingBars } from "./waiting";
 import { WindowScene } from "./window-scene";
 import { HangerArt, SkinSurface, skinPadding } from "./widget-skin";
 import { isPlainCard, materialColors, skinFor } from "../../lib/widget-skins";
+import { faceOf, ownFrame } from "../../lib/widget-faces";
+import { Bunting, CandleArt, CarvedSign, FlipDigits, FortuneSlip, HoopQuote, JarArt, LetterBoard, PaperChain, PlantArt, TearOffPad, TypewriterQuote } from "./widget-faces";
 import { FridgeDoor, FridgeNoteCard, LetterMagnets, Magnet } from "../fridge-door";
 import { fridgeGrid, fridgePlace, hashOf, magnets, noteMagnet } from "../../lib/fridge";
 import { useFridgeNotes } from "../../lib/fridge-data";
@@ -227,7 +229,11 @@ function WidgetBody({
   const soft = color ?? tilePalette[0];
   const deep = deepColor(soft);
   const look = widget.look;
-  const skin = skinFor(widget.kind, widget.skin);
+  // A face that's its own frame (CORE-127): no card, material or title. Too
+  // small for it (one cell, or one row except a carved sign), it's a card.
+  const fits = widgetShape(width, height);
+  const bare = ownFrame(widget) && fits !== "icon" && (fits !== "strip" || widget.kind === "greeting");
+  const skin = bare ? { ...skinFor(widget.kind, widget.skin), material: "plain" as const, edge: "plain" as const } : skinFor(widget.kind, widget.skin);
   // Made of something, or cut into a shape: drawn by SkinSurface rather
   // than as a plain card (CORE-122, 123).
   const drawn = !isPlainCard(skin);
@@ -235,8 +241,16 @@ function WidgetBody({
   const palette = skin.material === "plain" ? widgetPalette(look, soft, themeText) : materialPalette(materialColors(skin.material, color));
   const info = widgetKindInfo(widget.kind);
   const shape = widgetShape(width, height);
-  const showTitle = widget.showTitle && shape !== "icon" && shape !== "strip";
+  const showTitle = widget.showTitle && shape !== "icon" && shape !== "strip" && !bare;
   const pad = skinPadding(skin.material, skin.edge);
+
+  if (bare) {
+    return (
+      <View style={{ width, height }}>
+        <Body widget={widget} palette={palette} height={height} width={width} shape={shape} icon={icon ?? info.icon} refreshKey={refreshKey} onChange={onChange} color={color} radius={radius} />
+      </View>
+    );
+  }
 
   return (
     <View
@@ -285,6 +299,8 @@ function WidgetBody({
           icon={icon ?? info.icon}
           refreshKey={refreshKey}
           onChange={onChange}
+          color={color}
+          radius={radius}
         />
       </View>
     </View>
@@ -299,6 +315,10 @@ type CommonProps = {
   icon: IconName;
   refreshKey: number;
   onChange?: (widget: WidgetConfig) => void;
+  // The widget's own color and corner radius, for faces that are their own
+  // frame (CORE-127).
+  color?: string;
+  radius?: number;
 };
 
 function Body(props: CommonProps & { widget: WidgetConfig }) {
@@ -570,7 +590,7 @@ export function useCountdownTarget(settings: WidgetOf<"countdown">["settings"], 
   return target;
 }
 
-function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"countdown">) {
+function Countdown({ widget, palette, refreshKey, width, height, shape, icon }: BodyProps<"countdown">) {
   const { source, display } = widget.settings;
   const target = useCountdownTarget(widget.settings, refreshKey);
 
@@ -599,6 +619,35 @@ function Countdown({ widget, palette, refreshKey, height, shape, icon }: BodyPro
     return <IconFace icon={target.icon} palette={palette} value={number} caption={days === 0 ? undefined : "days"} />;
   }
   if (shape === "strip") return <Strip icon={target.icon} palette={palette} text={sentence} sub={fullDate} />;
+
+  // A tear-off pad, flip clock or paper chain (CORE-127).
+  const face = faceOf(widget);
+  if (face !== "classic") {
+    const row = shape === "wide";
+    const innerW = width - 28;
+    const innerH = height - 28;
+    const artW = row ? Math.min(innerW * 0.5, innerH * 1.4) : innerW;
+    const artH = row ? innerH : innerH - 40;
+    const caption =
+      face === "tearoff" ? (days === 0 ? target.title : days > 0 ? `until ${target.title}` : `since ${target.title}`) : face === "flip" ? words : sentence;
+    return (
+      <Animated.View
+        entering={hearthSettling() ? undefined : FadeIn.duration(250)}
+        style={row ? [styles.row, { flex: 1, gap: 14 }] : [styles.centerFill, { gap: 8 }]}
+      >
+        {face === "tearoff" ? (
+          <TearOffPad days={days} size={Math.max(48, Math.min(artW, artH / 1.12, 130))} palette={palette} />
+        ) : face === "flip" ? (
+          <FlipDigits days={days} width={artW} height={artH} />
+        ) : (
+          <PaperChain days={days} width={artW} height={artH} palette={palette} />
+        )}
+        <Text style={[styles.body, { color: palette.text, fontWeight: "700", textAlign: row ? "left" : "center", flex: row ? 1 : undefined }]} numberOfLines={2}>
+          {caption}
+        </Text>
+      </Animated.View>
+    );
+  }
 
   if (display === "words" && shape === "small") {
     return (
@@ -1839,7 +1888,7 @@ function NoteWidget({ widget, palette, refreshKey, height, shape, icon }: BodyPr
 
 // --- On the menu (MENU-008) ------------------------------------------------------
 
-function MenuWidget({ widget, palette, refreshKey, height, shape, icon }: BodyProps<"menu">) {
+function MenuWidget({ widget, palette, refreshKey, width, height, shape, icon, color, radius }: BodyProps<"menu">) {
   const { session } = useAuth();
   const { settings } = useNookSettings("menu-board", menuBoardSettingDefaults);
   const week = widget.settings.range === "week";
@@ -1859,7 +1908,22 @@ function MenuWidget({ widget, palette, refreshKey, height, shape, icon }: BodyPr
   if (shape === "strip") {
     return <Strip icon={icon} palette={palette} text={headline || "Nothing planned"} sub={next === "dinner" ? "Tonight" : next === "lunch" ? "Lunch" : "Breakfast"} />;
   }
-  if (!lines.some((l) => l.text)) return <Empty icon="menuBoard" palette={palette} text={week ? "Nothing planned this week" : "Nothing planned today"} />;
+  const nothing = week ? "Nothing planned this week" : "Nothing planned today";
+  // A felt letter board (CORE-127).
+  if (faceOf(widget) === "letterboard") {
+    return (
+      <LetterBoard
+        title={widget.showTitle ? widget.title || "On the menu" : undefined}
+        lines={lines}
+        empty={nothing}
+        width={width}
+        height={height}
+        radius={radius ?? 24}
+        color={color}
+      />
+    );
+  }
+  if (!lines.some((l) => l.text)) return <Empty icon="menuBoard" palette={palette} text={nothing} />;
 
   const fit = rowsThatFit(height, 34, 34);
   return (
@@ -3084,12 +3148,17 @@ function AnalogClock({ size, now, palette }: { size: number; now: Date; palette:
 
 // --- Quote of the day (CORE-049) ---------------------------------------------------------
 
-function QuoteWidget({ widget, palette, shape, width, height, icon }: BodyProps<"quote">) {
+function QuoteWidget({ widget, palette, shape, width, height, icon, color }: BodyProps<"quote">) {
   const pool = quotePool(widget.settings.source, widget.settings.mine);
   const text = quoteOfDay(pool, new Date()) ?? "Add your own quotes in this widget's settings";
 
   if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
   if (shape === "strip") return <Strip icon={icon} palette={palette} text={text} />;
+  // An embroidery hoop, a typewriter or a fortune slip (CORE-127).
+  const face = faceOf(widget);
+  if (face === "hoop") return <HoopQuote text={text} width={width} height={height} color={color} />;
+  if (face === "typewriter") return <TypewriterQuote text={text} width={width - 28} height={height - 28} />;
+  if (face === "fortune") return <FortuneSlip text={text} width={width - 28} height={height - 28} palette={palette} />;
 
   const innerWidth = width - 28;
   const innerHeight = height - 28;
@@ -3229,6 +3298,28 @@ function Streak({ widget, palette, shape, width, height, icon, onChange }: BodyP
     </Tap>
   );
 
+  // A candle, a growing plant or a jar of marbles (CORE-127).
+  const face = faceOf(widget);
+  if (face !== "classic") {
+    const size = Math.max(34, Math.min(width - 28, height - 28 - 22 - 34 - 12));
+    return (
+      <View style={[styles.centerFill, { gap: 4 }]}>
+        {face === "candle" ? (
+          <CandleArt streak={streak} doneToday={doneToday} size={size} />
+        ) : face === "plant" ? (
+          <PlantArt streak={streak} size={size} />
+        ) : (
+          <JarArt streak={streak} size={size} />
+        )}
+        <Text style={[styles.small, { color: palette.text, fontWeight: "700" }]} numberOfLines={1}>
+          {streak} {streak === 1 ? "day" : "days"}
+          {shape === "small" ? "" : ` · ${name}`}
+        </Text>
+        {button}
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.centerFill, { gap: 8 }]}>
       <View style={{ alignItems: "center" }}>
@@ -3254,7 +3345,7 @@ function timeOfDay() {
   return { hello: "Good evening", icon: "moon" as IconName };
 }
 
-function Greeting({ widget, palette, refreshKey, shape, height, width }: BodyProps<"greeting">) {
+function Greeting({ widget, palette, refreshKey, shape, height, width, color, radius }: BodyProps<"greeting">) {
   const { session } = useAuth();
   const { message, showName, showDate } = widget.settings;
   // Remembered, so the greeting doesn't change size after the page appears.
@@ -3270,6 +3361,20 @@ function Greeting({ widget, palette, refreshKey, shape, height, width }: BodyPro
   const line = `${hello}${showName && name ? `, ${name}` : ""}`;
 
   if (shape === "icon") return <IconFace icon={icon} palette={palette} />;
+  const face = faceOf(widget);
+  // A carved wooden sign (CORE-127), long and thin or tall.
+  if (face === "sign") {
+    return (
+      <CarvedSign
+        line={line}
+        sub={[showDate ? date : null, message || null].filter(Boolean).join(" · ") || undefined}
+        width={width}
+        height={height}
+        radius={radius ?? 24}
+        color={color}
+      />
+    );
+  }
   if (shape === "strip") {
     return (
       <View style={[styles.row, { flex: 1, gap: 12 }]}>
@@ -3290,6 +3395,36 @@ function Greeting({ widget, palette, refreshKey, shape, height, width }: BodyPro
   const row = shape === "wide" || shape === "large";
   const badge = shape === "large" ? 64 : row ? 48 : Math.min(48, Math.max(30, height * 0.22));
   const fontSize = shape === "small" || width < 200 ? 19 : 26;
+  // Paper flags strung across the top (CORE-127).
+  if (face === "bunting") {
+    return (
+      <View style={{ flex: 1 }}>
+        <View style={{ marginTop: -14, marginHorizontal: -8 }}>
+          <Bunting width={width - 12} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 2 }}>
+          <Text
+            style={{ fontSize, fontWeight: "800", color: palette.text, letterSpacing: -0.4, textAlign: "center" }}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+          >
+            {line}
+          </Text>
+          {showDate ? (
+            <Text style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+              {date}
+            </Text>
+          ) : null}
+          {message ? (
+            <Text style={[styles.small, { color: palette.text, textAlign: "center" }]} numberOfLines={2}>
+              {message}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
   // What the greeting itself takes; the message gets whatever's left.
   const used = (row ? Math.max(badge, fontSize * 2.6) : badge + 10 + fontSize * 2.6) + (showDate ? 18 : 0);
   const messageLines = Math.floor((height - used - 12 - 24) / 19);

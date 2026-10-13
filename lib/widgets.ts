@@ -8,6 +8,7 @@ import type { GratitudeLine } from "./gratitude";
 import type { WhoseTurn } from "./whose-turn";
 import type { Condition, Place, Unit, WindowFrame } from "./weather";
 import { naturalSkin, type WidgetSkin } from "./widget-skins";
+import { naturalFace } from "./widget-faces";
 
 // Hearth widgets (CORE-018): standalone, fully customizable cards on the
 // Hearth. Pure data + defaults only (no React), so it's unit-testable. Each
@@ -167,6 +168,9 @@ export type WidgetConfig = {
     // What it's made of, its edges, what hangs it up and its lean
     // (CORE-122..125). Unset is a plain card, as widgets were before.
     skin?: WidgetSkin;
+    // Which design it wears, for kinds that have more than one (CORE-127,
+    // lib/widget-faces). Unset is the classic one.
+    face?: string;
     settings: WidgetSettings[K];
   };
 }[WidgetKind];
@@ -258,7 +262,8 @@ export function widgetKindInfo(kind: WidgetKind) {
 export function defaultWidget(kind: WidgetKind): WidgetConfig {
   const title = widgetKindInfo(kind).label;
   // Each kind starts in its own natural look (CORE-125).
-  const base = { title, showTitle: true, look: "soft" as WidgetLook, skin: naturalSkin(kind) };
+  const face = naturalFace(kind);
+  const base = { title, showTitle: true, look: "soft" as WidgetLook, skin: naturalSkin(kind), ...(face ? { face } : {}) };
   switch (kind) {
     case "countdown":
       return { ...base, kind, settings: { source: "next", customTitle: "", display: "number" } };

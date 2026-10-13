@@ -20,6 +20,7 @@ import { tap } from "../../lib/feedback";
 import { CUBBY_OUTSET } from "../../lib/cubbies";
 import { cornerRadius, liftLevel } from "../../lib/decor";
 import { skinFor } from "../../lib/widget-skins";
+import { ownFrame } from "../../lib/widget-faces";
 import {
   canNudge,
   COLUMNS,
@@ -537,6 +538,8 @@ function isRaised(item: HearthItem) {
   if (item.kind === "label" || item.kind === "trinket" || item.kind === "cubby") return false;
   // Cut edges (CORE-123) draw their own shadow, in their own shape.
   if (item.kind === "widget" && hasCutEdge(item)) return false;
+  // So do faces that are their own frame, like an embroidery hoop (CORE-127).
+  if (item.kind === "widget" && ownFrame(item.widget)) return false;
   // A shadow you asked for is always drawn, even under an outline.
   if (item.lift) return true;
   if (item.kind === "widget") return item.widget.look !== "outline";

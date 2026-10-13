@@ -15,6 +15,7 @@ import { ItemPreview } from "../../components/hearth/item-preview";
 import { WidgetView } from "../../components/hearth/widgets";
 import { WidgetLookEditor } from "../../components/hearth/widget-look-editor";
 import { skinFor, skinSummary } from "../../lib/widget-skins";
+import { faceLabel, faceOf, ownFrame } from "../../lib/widget-faces";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
@@ -243,7 +244,8 @@ export default function WidgetEditor() {
 
   // What's chosen, for the closed sections (CORE-074).
   const looksSummary =
-    skinSummary(widget.kind, widget.skin) || lookSummary({ look: widget.look, corners: draft.corners, lift: draft.lift, border: draft.border });
+    [faceOf(widget) !== "classic" ? faceLabel(widget) : "", ownFrame(widget) ? "" : skinSummary(widget.kind, widget.skin)].filter(Boolean).join(" · ") ||
+    lookSummary({ look: widget.look, corners: draft.corners, lift: draft.lift, border: draft.border });
   const whereId = livesIn ?? home;
   const whereName = whereId ? hollowsOf(layout).find((h) => h.id === whereId)?.name ?? "A Hollow" : "The Hearth";
   const placeSummary = [sizeSummary(sizePresets.widget, draft.w, draft.h, draft.locked), hollowsOf(layout).length ? whereName : null]

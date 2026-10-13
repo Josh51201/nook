@@ -18,6 +18,7 @@ import {
   type Material,
   type WidgetSkin,
 } from "../../lib/widget-skins";
+import { faceLabel, faceOf, facesFor, naturalFace, ownFrame, surpriseFace } from "../../lib/widget-faces";
 import { widgetKindInfo, type WidgetConfig, type WidgetLook } from "../../lib/widgets";
 import { Icon, type IconName } from "../icon";
 import { Tap } from "../motion";
@@ -29,8 +30,8 @@ import { SkinSurface } from "./widget-skin";
 
 // "How it looks" in the widget editor (CORE-126), in two parts so it never
 // feels like a wall of settings. Simple has the choices that change the
-// most: what it's made of, its color, what hangs it up and its lean, plus
-// "Natural look" and "Surprise me". More has the fine print: edges, style,
+// most: its design (CORE-127), what it's made of, its color, what hangs it
+// up and its lean, plus "Natural look" and "Surprise me". More has the fine print: edges, style,
 // corners, shadow, border and icon. Which part you were in is remembered
 // while the app is open.
 
@@ -52,8 +53,12 @@ export function WidgetLookEditor({
 }) {
   const [part, setPart] = useState<Part>(rememberedPart);
   const info = widgetKindInfo(widget.kind);
-  const skin = skinFor(widget.kind, widget.skin);
-  const material = takesMaterial(widget.kind);
+  const faces = facesFor(widget.kind);
+  // A face that's its own frame (an embroidery hoop) isn't made of anything.
+  const framed = ownFrame(widget);
+  const worn = skinFor(widget.kind, widget.skin);
+  const skin = framed ? { ...worn, material: "plain" as const, edge: "plain" as const } : worn;
+  const material = takesMaterial(widget.kind) && !framed;
   const colored = widget.kind !== "frame" && widget.kind !== "window";
 
   function setSkin(changes: WidgetSkin) {
@@ -88,6 +93,20 @@ export function WidgetLookEditor({
 
       {part === "simple" ? (
         <>
+          {faces.length ? (
+            <>
+              <Text style={ui.label}>Design</Text>
+              <View style={ui.chips}>
+                {faces.map((f) => (
+                  <Chip key={f.key} selected={faceOf(widget) === f.key} onPress={() => onWidget({ face: f.key })}>
+                    {f.label}
+                  </Chip>
+                ))}
+              </View>
+              {framed ? <Text style={ui.muted}>{`The ${faceLabel(widget).toLowerCase()} is its own frame, so it isn't made of anything else.`}</Text> : null}
+            </>
+          ) : null}
+
           <Text style={ui.label}>Title</Text>
           <View style={[ui.row, { gap: 10 }]}>
             <TextInput
@@ -164,7 +183,7 @@ export function WidgetLookEditor({
               style={{ flex: 1 }}
               onPress={() => {
                 const natural = naturalSkin(widget.kind);
-                onWidget({ skin: natural });
+                onWidget({ skin: natural, face: naturalFace(widget.kind) });
                 // Its material's own color, not one picked for a plain card.
                 if (natural.material) onItem({ color: undefined });
               }}
@@ -174,11 +193,11 @@ export function WidgetLookEditor({
               icon="sparkles"
               variant="secondary"
               style={{ flex: 1 }}
-              onPress={() => onWidget({ skin: surpriseSkin(widget.kind, widget.skin, Math.random()) })}
+              onPress={() => onWidget({ skin: surpriseSkin(widget.kind, widget.skin, Math.random()), face: surpriseFace(widget, Math.random()) })}
             />
           </View>
           <Text style={ui.muted}>
-            {sameSkin(widget.skin, naturalSkin(widget.kind))
+            {sameSkin(widget.skin, naturalSkin(widget.kind)) && faceOf(widget) === faceOf({ kind: widget.kind, face: naturalFace(widget.kind) })
               ? `This is how a ${info.label.toLowerCase()} widget starts out.`
               : "Natural look puts it back how this kind of widget starts out. Surprise me tries a different combination each tap."}
           </Text>
@@ -204,7 +223,7 @@ export function WidgetLookEditor({
             </>
           ) : null}
 
-          {skin.material === "plain" ? (
+          {skin.material === "plain" && !framed ? (
             <>
               <Text style={ui.label}>Style</Text>
               <View style={ui.chips}>
@@ -232,7 +251,7 @@ export function WidgetLookEditor({
             </>
           ) : null}
 
-          {skin.edge === "plain" || skin.edge === "stitch" ? (
+          {(skin.edge === "plain" || skin.edge === "stitch") && faceOf(widget) !== "hoop" ? (
             <>
               <Text style={ui.label}>Corners</Text>
               <View style={ui.chips}>
@@ -254,7 +273,7 @@ export function WidgetLookEditor({
             ))}
           </View>
 
-          {colored ? (
+          {colored && !framed ? (
             <>
               <Text style={ui.label}>Border</Text>
               <View style={ui.chips}>
