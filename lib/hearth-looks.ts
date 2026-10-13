@@ -1,5 +1,5 @@
 import type { Corners, Lift, TileShape } from "./decor";
-import type { HearthItem, LabelItem } from "./hearth-layout";
+import type { HearthItem, LabelItem, NookItem } from "./hearth-layout";
 import type { WidgetConfig, WidgetLook } from "./widgets";
 import type { WidgetSkin } from "./widget-skins";
 
@@ -8,7 +8,8 @@ import type { WidgetSkin } from "./widget-skins";
 // A tile or widget's look is its color, corners, shadow, outline and style
 // (soft, bold or outline), and a Nook tile's shape; a widget's also what
 // it's made of, its edges, its hanger and its lean (CORE-122..124), which
-// only other widgets take. Text's look is how it's
+// only other widgets take, and a Nook tile's what it's made of, nameplate
+// and porch light (CORE-137, 139), which only other Nook tiles take. Text's look is how it's
 // written. Things of a kind share all of it; a Hollow just takes the color;
 // text only takes text's look, since a tile's soft color would be too pale
 // to read as words. Boxes and Trinkets keep their own looks.
@@ -29,6 +30,9 @@ export type Look =
       shape?: TileShape | null;
       // Only when it came from a widget; set (even to undefined) means "paste it".
       skin?: WidgetSkin;
+      // Only when it came from a Nook tile: what it's made of, its nameplate
+      // and porch light (CORE-137, 139), which only other Nook tiles take.
+      touches?: Pick<NookItem, "material" | "nameplate" | "porchLight">;
     }
   | ({ kind: "text"; color?: string } & Pick<LabelItem, TextKey>)
   | { kind: "color"; color?: string };
@@ -39,7 +43,7 @@ export function lookOf(item: HearthItem): Look | null {
     return { kind: "tile", color: item.color, corners: item.corners, lift: item.lift, border: item.border, style: item.widget.look, skin: item.widget.skin };
   }
   if (item.kind === "nook") {
-    return { kind: "tile", color: item.color, corners: item.corners, lift: item.lift, border: item.border, style: item.look ?? "soft", shape: item.shape ?? null };
+    return { kind: "tile", color: item.color, corners: item.corners, lift: item.lift, border: item.border, style: item.look ?? "soft", shape: item.shape ?? null, touches: { material: item.material, nameplate: item.nameplate, porchLight: item.porchLight } };
   }
   if (item.kind === "label") {
     const look: Look = { kind: "text", color: item.color, size: item.size };
@@ -65,6 +69,7 @@ export function paintItem(item: HearthItem, look: Look): HearthItem | null {
       border: look.border,
       look: look.style,
       shape: look.shape === undefined ? item.shape : look.shape ?? undefined,
+      ...look.touches,
     };
   }
   if (item.kind === "label" && look.kind === "text") {

@@ -5,6 +5,7 @@ import type { ShowIn } from "./widget-extras";
 import { cubbyStyleInfo, type CubbyFill, type CubbyStyle } from "./cubbies";
 import { wallpaperPath, type Ambience, type Corners, type FireSound, type Lift, type PatternKey, type TileShape, type Wallpaper } from "./decor";
 import { findNook } from "./nooks";
+import type { TileMaterial } from "./tile-skins";
 import { trinketFit, trinketInfo, type TrinketKey } from "./trinkets";
 import { defaultWidget, newReminderId, widgetKindInfo, type WidgetConfig, type WidgetLook, type WidgetOf } from "./widgets";
 
@@ -47,7 +48,17 @@ type ItemBase = GridRect & {
 };
 
 // Nook tiles come in the same three looks as widgets (CORE-030).
-export type NookItem = ItemBase & { kind: "nook"; nookId: string; label?: string; look?: WidgetLook; shape?: TileShape };
+// What it's made of, and a brass nameplate and porch light (CORE-137, 139).
+export type NookItem = ItemBase & {
+  kind: "nook";
+  nookId: string;
+  label?: string;
+  look?: WidgetLook;
+  shape?: TileShape;
+  material?: TileMaterial;
+  nameplate?: boolean;
+  porchLight?: boolean;
+};
 export type WidgetItem = ItemBase & { kind: "widget"; widget: WidgetConfig };
 export type LabelItem = ItemBase & {
   kind: "label";

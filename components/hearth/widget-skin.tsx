@@ -49,6 +49,7 @@ function SkinSurfaceDrawing({
   stitchOnly = false,
   print = "none",
   gradient = "none",
+  path,
 }: {
   material: Material;
   edge: Edge;
@@ -70,12 +71,15 @@ function SkinSurfaceDrawing({
   print?: Print;
   // A gradient fill for a plain card (CORE-135): a key of gradientPresets.
   gradient?: string;
+  // Its own outline in place of a card's, such as a Nook tile's arch
+  // (CORE-137); for smooth edges only.
+  path?: string;
 }) {
   const id = `s${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const cut = edge !== "plain" && edge !== "stitch";
   const drop = cut ? DROP[level] : 0;
   const h = Math.max(1, height - drop);
-  const d = edgePath(edge, width, h, radius);
+  const d = path ?? edgePath(edge, width, h, radius);
   const colors = materialColors(material, color);
   const base = material === "plain" ? (fill ?? colors.base) : colors.base;
   const deep = deepOf(color && isHex(color) ? color : base);

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ScrollView, Switch, View } from "react-native";
 import { Text, TextInput } from "../text";
 
-import { cornerChoices, liftChoices, patterns, tileShapes } from "../../lib/decor";
+import { cornerChoices, liftChoices, patterns } from "../../lib/decor";
 import { cubbyFills, cubbyStyleInfo, cubbyStyles } from "../../lib/cubbies";
 import { decorStretchesTall } from "../../lib/label-fit";
 import { Slider } from "../slider";
@@ -35,6 +35,7 @@ import { letteringInWords, lookSummary, sizeSummary, tagsSummary } from "../../l
 import { trinketInfo, trinkets, trinketSlideOf, trinketWidthAt, turnedBy } from "../../lib/trinkets";
 import { showInWords } from "../../lib/widget-extras";
 import { findNook } from "../../lib/nooks";
+import { tileMaterialOf, tileTouchesSummary } from "../../lib/tile-skins";
 import { colors, ui } from "../../lib/theme";
 import { BottomSheet } from "../bottom-sheet";
 import { Collapsible } from "../collapsible";
@@ -43,7 +44,7 @@ import { Button, Chip } from "../ui";
 import { ColorPicker } from "./color-picker";
 import { SeasonPicker } from "./season-picker";
 import { TagsEditor } from "./tag-bar";
-import { IconPicker } from "./icon-picker";
+import { NookLookEditor } from "./widget-look-editor";
 import { TrinketThumb } from "./trinket-art";
 import { CubbyThumb } from "./cubby-art";
 
@@ -151,7 +152,13 @@ export function ItemOptions({
   const looksSummary = !shown
     ? ""
     : shown.kind === "nook"
-      ? lookSummary({ look: shown.look ?? "soft", corners: shown.corners, lift: shown.lift, defaultLift: "raised", border: shown.border })
+      ? [
+          tileTouchesSummary(shown),
+          // A material takes the place of soft, bold or outline.
+          lookSummary({ look: tileMaterialOf(shown.material) === "plain" ? shown.look ?? "soft" : undefined, corners: shown.corners, lift: shown.lift, defaultLift: "raised", border: shown.border }),
+        ]
+          .filter(Boolean)
+          .join(" · ")
       : shown.kind === "hollow"
         ? `${hollowLookInfo(shown.look).label} · ${hollowDecors.find((d) => d.decor === (shown.decor ?? "none"))?.label ?? "Plain"}`
         : shown.kind === "label"
@@ -378,32 +385,7 @@ export function ItemOptions({
             ) : null}
 
             {shown.kind === "nook" && nook ? (
-              <>
-                <Text style={ui.label}>Style</Text>
-                <View style={ui.chips}>
-                  {(
-                    [
-                      ["soft", "Soft"],
-                      ["bold", "Bold"],
-                      ["outline", "Outline"],
-                    ] as const
-                  ).map(([look, labelText]) => (
-                    <Chip
-                      key={look}
-                      selected={(shown.look ?? "soft") === look}
-                      onPress={() => onChange({ look } as Partial<NookItem>)}
-                    >
-                      {labelText}
-                    </Chip>
-                  ))}
-                </View>
-                <Text style={ui.label}>Icon</Text>
-                <IconPicker
-                  value={shown.icon}
-                  fallback={nook.icon}
-                  onChange={(icon) => onChange({ icon } as Partial<NookItem>)}
-                />
-              </>
+              <NookLookEditor item={shown} fallbackIcon={nook.icon} onChange={(changes) => onChange(changes)} />
             ) : null}
 
             {shown.kind === "label" ? (
@@ -498,13 +480,17 @@ export function ItemOptions({
                 )}
               </>
             ) : null}
-            <Text style={ui.label}>{shown.kind === "trinket" ? "Main color" : shown.kind === "cubby" ? "Box color" : "Color"}</Text>
-            <ColorPicker
-              value={shown.kind === "label" ? shown.color : itemColor(shown)}
-              onChange={(color) => onChange({ color })}
-              deep={shown.kind === "label"}
-              fallback={shown.kind === "label" ? "" : itemColor(shown)}
-            />
+            {shown.kind !== "nook" ? (
+              <>
+                <Text style={ui.label}>{shown.kind === "trinket" ? "Main color" : shown.kind === "cubby" ? "Box color" : "Color"}</Text>
+                <ColorPicker
+                  value={shown.kind === "label" ? shown.color : itemColor(shown)}
+                  onChange={(color) => onChange({ color })}
+                  deep={shown.kind === "label"}
+                  fallback={shown.kind === "label" ? "" : itemColor(shown)}
+                />
+              </>
+            ) : null}
 
             {shown.kind === "cubby" ? (
               <>
@@ -523,53 +509,16 @@ export function ItemOptions({
               </>
             ) : null}
 
-            {shown.kind === "nook" || shown.kind === "hollow" || shown.kind === "cubby" ? (
+            {shown.kind === "hollow" || shown.kind === "cubby" ? (
               <>
-                {shown.kind === "nook" ? (
-                  <>
-                    <Text style={ui.label}>Shape</Text>
-                    <View style={ui.chips}>
-                      {tileShapes.map((t) => (
-                        <Chip key={t.key} icon={t.icon} selected={(shown.shape ?? "arch") === t.key} onPress={() => onChange({ shape: t.key })}>
-                          {t.label}
-                        </Chip>
-                      ))}
-                    </View>
-                    <Text style={ui.label}>Corners</Text>
-                    <View style={ui.chips}>
-                      {cornerChoices.map((c) => (
-                        <Chip key={c.key} selected={(shown.corners ?? "soft") === c.key} onPress={() => onChange({ corners: c.key })}>
-                          {c.label}
-                        </Chip>
-                      ))}
-                    </View>
-                  </>
-                ) : null}
                 <Text style={ui.label}>Shadow</Text>
                 <View style={ui.chips}>
                   {liftChoices.map((c) => (
-                    <Chip
-                      key={c.key}
-                      selected={(shown.lift ?? (shown.kind === "nook" ? "raised" : "soft")) === c.key}
-                      onPress={() => onChange({ lift: c.key })}
-                    >
+                    <Chip key={c.key} selected={(shown.lift ?? "soft") === c.key} onPress={() => onChange({ lift: c.key })}>
                       {c.label}
                     </Chip>
                   ))}
                 </View>
-                {shown.kind === "nook" ? (
-                  <>
-                    <Text style={ui.label}>Border</Text>
-                    <View style={ui.chips}>
-                      <Chip selected={!shown.border} onPress={() => onChange({ border: false })}>
-                        None
-                      </Chip>
-                      <Chip selected={Boolean(shown.border)} onPress={() => onChange({ border: true })}>
-                        Outlined
-                      </Chip>
-                    </View>
-                  </>
-                ) : null}
               </>
             ) : null}
           </Collapsible>

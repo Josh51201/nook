@@ -152,7 +152,9 @@ import { TagBar } from "./tag-bar";
 import { StackShell } from "./stack-shell";
 import { NewsDot, useHearthNews } from "./news";
 import { HollowPeek } from "./hollow-peek";
-import { TileFace } from "./tile-face";
+import { PorchLight, TileFace } from "./tile-face";
+import { tileMaterialOf } from "../../lib/tile-skins";
+import { materialColors } from "../../lib/widget-skins";
 import { ItemOptions, type MoveTarget } from "./tile-options";
 import { WaitingPill } from "./waiting";
 import { WidgetView } from "./widgets";
@@ -959,13 +961,16 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
     const look = item.look ?? "soft";
     const deep = item.color ? deepColor(item.color) : nook.iconColor;
+    // Made of wood or felt (CORE-137), it grows in that color.
+    const material = tileMaterialOf(item.material);
+    const made = material !== "plain" ? materialColors(material, item.color) : null;
     gridRef.current.measureInWindow((gx, gy) => {
       tap();
       setZoom({
         rect: { x: gx + item.x * stride, y: gy + item.y * stride, width: item.w * stride - GRID_GAP, height: item.h * stride - GRID_GAP },
-        color: look === "bold" ? deep : look === "outline" ? theme.background : itemColor(item),
+        color: made ? made.base : look === "bold" ? deep : look === "outline" ? theme.background : itemColor(item),
         icon: item.icon ?? nook.icon,
-        iconColor: look === "bold" ? "#ffffff" : deep,
+        iconColor: made?.dark ? made.accent : look === "bold" ? "#ffffff" : deep,
         corners: item.corners,
         shape: item.shape,
         route,
@@ -1667,9 +1672,22 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
 
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
     const inner = renderInner(item, size);
-    if (editing) return inSeason(item.showIn, today) ? inner : <View style={{ opacity: 0.4 }}>{inner}</View>;
+    // A Nook tile's porch light hangs beside it, and glows when there's news
+    // in place of the dot (CORE-139). Never lit while editing.
+    const porch = item.kind === "nook" && item.porchLight;
+    const withPorch = (lit: boolean) => (
+      <View style={{ width: size.width, height: size.height }}>
+        {inner}
+        <PorchLight lit={lit} height={size.height} />
+      </View>
+    );
+    if (editing) {
+      const shown = porch ? withPorch(false) : inner;
+      return inSeason(item.showIn, today) ? shown : <View style={{ opacity: 0.4 }}>{shown}</View>;
+    }
     // A little dot when something in it is new (CORE-115).
     const itemNews = selecting || item.kind === "trinket" ? null : newsFor(item, news, onHomePageNow);
+    if (porch) return withPorch(Boolean(itemNews));
     if (!itemNews) return inner;
     return (
       <View style={{ width: size.width, height: size.height }}>
@@ -1692,11 +1710,12 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     if (item.kind === "nook") {
       return (
         <TileFace
-          key={`${item.shape ?? "arch"}-${item.corners ?? "soft"}`}
+          key={`${item.shape ?? "arch"}-${item.corners ?? "soft"}-${item.material ?? "plain"}`}
           item={item}
           {...size}
           refreshKey={refreshKey}
           themeText={theme.text}
+          still={editing}
         />
       );
     }

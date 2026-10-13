@@ -24,6 +24,19 @@ describe("copying and pasting a look", () => {
     expect(paintItem(tile({ id: "other", shape: "arch" }), lookOf(from)!)).toMatchObject({ shape: "window", look: "outline", color: "#dfe8d6" });
   });
 
+  it("gives a Nook tile's material, nameplate and porch light to another tile (CORE-137, 139)", () => {
+    const from = tile({ material: "wood", nameplate: true, porchLight: true });
+    expect(paintItem(tile({ id: "other" }), lookOf(from)!)).toMatchObject({ material: "wood", nameplate: true, porchLight: true });
+    // Pasting a plain tile's look takes them off again.
+    const painted = paintItem(from, lookOf(tile({ id: "plain" }))!)!;
+    expect(painted.kind === "nook" && [painted.material, painted.nameplate, painted.porchLight]).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("a widget's look leaves a Nook tile's material, nameplate and porch light be", () => {
+    const painted = paintItem(tile({ material: "felt", nameplate: true, porchLight: true }), lookOf(widget())!)!;
+    expect(painted).toMatchObject({ material: "felt", nameplate: true, porchLight: true });
+  });
+
   it("makes things the same, clearing what the copied one doesn't have", () => {
     const plain = widget();
     const fancy = widget({ id: "fancy", color: "#f3e6b8", corners: "round", lift: "floating", border: true }, "bold");

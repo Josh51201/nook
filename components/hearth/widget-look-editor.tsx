@@ -1,8 +1,10 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, Switch, View } from "react-native";
 
-import { cornerChoices, gradientPresets, liftChoices, type Corners, type Lift } from "../../lib/decor";
+import { cornerChoices, gradientPresets, liftChoices, tileShapes, type Corners, type Lift } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
+import { itemColor, type NookItem } from "../../lib/hearth";
+import { tileMaterialOf, tileMaterials } from "../../lib/tile-skins";
 import { colors, themed, ui } from "../../lib/theme";
 import {
   accents,
@@ -97,24 +99,7 @@ export function WidgetLookEditor({
 
   return (
     <>
-      <View style={styles.tabs} accessibilityRole="tablist">
-        {(
-          [
-            ["simple", "Simple"],
-            ["more", "More"],
-          ] as [Part, string][]
-        ).map(([key, label]) => (
-          <Tap
-            key={key}
-            onPress={() => choose(key)}
-            style={[styles.tab, part === key && styles.tabOn]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: part === key }}
-          >
-            <Text style={[styles.tabText, part === key && styles.tabTextOn]}>{label}</Text>
-          </Tap>
-        ))}
-      </View>
+      <PartTabs part={part} onChoose={choose} />
 
       {part === "simple" ? (
         <>
@@ -369,6 +354,175 @@ export function WidgetLookEditor({
   );
 }
 
+// The Simple / More switch at the top of a look editor.
+function PartTabs({ part, onChoose }: { part: Part; onChoose: (part: Part) => void }) {
+  return (
+    <View style={styles.tabs} accessibilityRole="tablist">
+      {(
+        [
+          ["simple", "Simple"],
+          ["more", "More"],
+        ] as [Part, string][]
+      ).map(([key, label]) => (
+        <Tap
+          key={key}
+          onPress={() => onChoose(key)}
+          style={[styles.tab, part === key && styles.tabOn]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: part === key }}
+        >
+          <Text style={[styles.tabText, part === key && styles.tabTextOn]}>{label}</Text>
+        </Tap>
+      ))}
+    </View>
+  );
+}
+
+// "How it looks" for a Nook tile, laid out like the widget editor's
+// (CORE-126, 137, 139). Simple has what it's made of, its color and icon,
+// and a nameplate and porch light; More has its style, shape, corners,
+// shadow and border. Style is greyed out (not hidden) while it's made of
+// something, so the page doesn't jump.
+export function NookLookEditor({
+  item,
+  fallbackIcon,
+  onChange,
+}: {
+  item: NookItem;
+  fallbackIcon: IconName;
+  onChange: (changes: Partial<NookItem>) => void;
+}) {
+  const [part, setPart] = useState<Part>(rememberedPart);
+  const material = tileMaterialOf(item.material);
+  const styleOff = material !== "plain" ? "Only for plain tiles" : null;
+
+  const [samplesReady, setSamplesReady] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setSamplesReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  const latest = useRef(onChange);
+  latest.current = onChange;
+  const pick = useCallback((changes: WidgetSkin) => latest.current({ material: tileMaterialOf(changes.material) }), []);
+
+  function choose(next: Part) {
+    tap();
+    rememberedPart = next;
+    setPart(next);
+  }
+
+  return (
+    <>
+      <PartTabs part={part} onChoose={choose} />
+
+      {part === "simple" ? (
+        <>
+          <Text style={ui.label}>Made of</Text>
+          <View style={styles.swatches}>
+            {tileMaterials.map((m) => (
+              <SkinSwatch
+                key={m.key}
+                label={m.label}
+                material={m.key}
+                edge="plain"
+                color={item.color}
+                fill={itemColor(item)}
+                selected={material === m.key}
+                choice={MATERIAL_CHOICES[m.key]}
+                onPick={pick}
+                ready={samplesReady}
+              />
+            ))}
+          </View>
+
+          <Text style={ui.label}>Color</Text>
+          <View style={ui.chips}>
+            <Chip selected={!item.color} onPress={() => onChange({ color: undefined })}>
+              {material === "plain" ? "Usual color" : `Natural ${tileMaterials.find((m) => m.key === material)!.label.toLowerCase()}`}
+            </Chip>
+          </View>
+          <ColorPicker value={itemColor(item)} fallback={itemColor(item)} onChange={(color) => onChange({ color })} />
+          {material !== "plain" ? <Text style={ui.muted}>A color tints what it's made of: the stain on wood, the color of felt.</Text> : null}
+
+          <Text style={ui.label}>Icon</Text>
+          <IconPicker value={item.icon} fallback={fallbackIcon} onChange={(icon) => onChange({ icon })} />
+
+          <View style={[ui.row, { gap: 10 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[ui.label, { marginBottom: 0 }]}>Nameplate</Text>
+              <Text style={ui.muted}>Its name on a little brass plate, on tiles big enough to show the name.</Text>
+            </View>
+            <Switch value={Boolean(item.nameplate)} onValueChange={(nameplate) => onChange({ nameplate })} trackColor={{ true: colors.bark }} />
+          </View>
+          <View style={[ui.row, { gap: 10 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[ui.label, { marginBottom: 0 }]}>Porch light</Text>
+              <Text style={ui.muted}>A lamp by the tile that glows when there's something new inside, in place of the dot.</Text>
+            </View>
+            <Switch value={Boolean(item.porchLight)} onValueChange={(porchLight) => onChange({ porchLight })} trackColor={{ true: colors.bark }} />
+          </View>
+        </>
+      ) : (
+        <>
+          <Text style={ui.label}>{styleOff ? `Style · ${styleOff}` : "Style"}</Text>
+          <View style={[ui.chips, styleOff && styles.off]} pointerEvents={styleOff ? "none" : "auto"}>
+            {(
+              [
+                ["soft", "Soft"],
+                ["bold", "Bold"],
+                ["outline", "Outline"],
+              ] as [WidgetLook, string][]
+            ).map(([look, label]) => (
+              <Chip key={look} selected={(item.look ?? "soft") === look} onPress={() => onChange({ look })}>
+                {label}
+              </Chip>
+            ))}
+          </View>
+
+          <Text style={ui.label}>Shape</Text>
+          <View style={ui.chips}>
+            {tileShapes.map((t) => (
+              <Chip key={t.key} icon={t.icon} selected={(item.shape ?? "arch") === t.key} onPress={() => onChange({ shape: t.key })}>
+                {t.label}
+              </Chip>
+            ))}
+          </View>
+
+          <Text style={ui.label}>Corners</Text>
+          <View style={ui.chips}>
+            {cornerChoices.map((c) => (
+              <Chip key={c.key} selected={(item.corners ?? "soft") === c.key} onPress={() => onChange({ corners: c.key })}>
+                {c.label}
+              </Chip>
+            ))}
+          </View>
+
+          <Text style={ui.label}>Shadow</Text>
+          <View style={ui.chips}>
+            {liftChoices.map((c) => (
+              <Chip key={c.key} selected={(item.lift ?? "raised") === c.key} onPress={() => onChange({ lift: c.key })}>
+                {c.label}
+              </Chip>
+            ))}
+          </View>
+
+          <Text style={ui.label}>Border</Text>
+          <View style={ui.chips}>
+            <Chip selected={!item.border} onPress={() => onChange({ border: false })}>
+              None
+            </Chip>
+            <Chip selected={Boolean(item.border)} onPress={() => onChange({ border: true })}>
+              Outlined
+            </Chip>
+          </View>
+        </>
+      )}
+    </>
+  );
+}
+
+const MATERIAL_CHOICES = Object.fromEntries(tileMaterials.map((m) => [m.key, { material: m.key }])) as Record<string, WidgetSkin>;
+
 // A little sample of a material or an edge.
 // One steady choice object per edge, so a sample's props don't change
 // from one draw to the next.
@@ -380,6 +534,7 @@ const SkinSwatch = memo(
     a.material === b.material &&
     a.edge === b.edge &&
     a.color === b.color &&
+    a.fill === b.fill &&
     a.selected === b.selected &&
     a.ready === b.ready &&
     a.label === b.label &&
@@ -392,6 +547,7 @@ function SwatchTile({
   material,
   edge,
   color,
+  fill,
   selected,
   choice,
   onPick,
@@ -401,6 +557,8 @@ function SwatchTile({
   material: Material;
   edge: Edge;
   color?: string;
+  // What a plain sample is filled with, when it isn't its color.
+  fill?: string;
   selected: boolean;
   choice: WidgetSkin;
   onPick: (changes: WidgetSkin) => void;
@@ -426,7 +584,7 @@ function SwatchTile({
               material={material}
               edge={edge}
               color={color}
-              fill={color ?? "#f3e7d3"}
+              fill={fill ?? color ?? "#f3e7d3"}
               width={SAMPLE_W}
               height={SAMPLE_H}
               radius={10}

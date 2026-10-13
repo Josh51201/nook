@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useId, useMemo } from "react";
+import { BlurView } from "expo-blur";
+import { Platform, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -10,14 +11,17 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import type { Corners, TileShape } from "../../lib/decor";
 import { deepColor, itemColor, nookLabel, type NookItem } from "../../lib/hearth";
 import { findNook } from "../../lib/nooks";
+import { tileMaterialOf } from "../../lib/tile-skins";
+import { materialColors } from "../../lib/widget-skins";
 import { IconBadge } from "../icon";
 import { Text } from "../text";
 import { nookWidgets } from "./nook-widgets";
+import { SkinSurface } from "./widget-skin";
 
 const TEXT = "#2a2420";
 const MUTED = "#6f625a";
@@ -68,19 +72,23 @@ function roundedPath(width: number, height: number, top: number, bottom: number,
 // from the top, and now and then a slow shimmer of light across it. Its
 // icon sits in the alcove; bigger tiles add the Nook's own live info
 // (CORE-010). Its icon and look — soft, bold or outline — are the person's
-// to pick (CORE-030).
+// to pick (CORE-030), or it can be made of one of a few widget materials,
+// drawn in its own shape, with its name on a brass nameplate (CORE-137, 139).
 export function TileFace({
   item,
   width,
   height,
   refreshKey,
   themeText = TEXT,
+  still = false,
 }: {
   item: NookItem;
   width: number;
   height: number;
   refreshKey: number;
   themeText?: string;
+  // While editing: frosted glass doesn't live-blur (performance).
+  still?: boolean;
 }) {
   const nook = findNook(item.nookId);
   const widget = nookWidgets[item.nookId];
@@ -101,18 +109,28 @@ export function TileFace({
   // Ids for the shared gradients must be unique per tile.
   const gid = item.id.replace(/[^a-zA-Z0-9]/g, "");
 
+  // What it's made of (CORE-137). A material takes the place of the soft,
+  // bold and outline looks, and a picked color tints it.
+  const material = tileMaterialOf(item.material);
+  const made = material !== "plain" ? materialColors(material, item.color) : null;
+  const dark = Boolean(made?.dark);
+
   // Colors for this look. The deep color is the chosen color's partner, or
   // the Nook's own icon color if no color was picked.
-  const bold = look === "bold";
-  const outline = look === "outline";
+  const bold = !made && look === "bold";
+  const outline = !made && look === "outline";
   const tileDeep = item.color ? deepColor(item.color) : nook?.iconColor ?? deepColor(soft);
-  const text = bold ? "#ffffff" : outline ? themeText : TEXT;
-  const muted = bold ? "rgba(255,255,255,0.8)" : outline ? `${themeText}99` : MUTED;
-  const iconColor = bold ? "#ffffff" : tileDeep;
-  const badge = bold ? "rgba(255,255,255,0.2)" : outline ? `${tileDeep}18` : "rgba(255,255,255,0.7)";
-  const panel = bold ? "rgba(255,255,255,0.15)" : outline ? `${tileDeep}10` : "rgba(255,255,255,0.58)";
-  const frameLine = bold ? "rgba(255,255,255,0.32)" : outline ? `${tileDeep}55` : "rgba(255,255,255,0.75)";
-  const lantern = bold ? "#ffffff" : outline ? tileDeep : "#fff3d6";
+  // Bold tiles and dark materials (wood, felt, chalkboard) take light marks.
+  const light = bold || dark;
+  const text = made ? made.text : bold ? "#ffffff" : outline ? themeText : TEXT;
+  const muted = made ? made.muted : bold ? "rgba(255,255,255,0.8)" : outline ? `${themeText}99` : MUTED;
+  const iconColor = dark ? made!.accent : bold ? "#ffffff" : tileDeep;
+  const badge = light ? "rgba(255,255,255,0.2)" : outline ? `${tileDeep}18` : "rgba(255,255,255,0.7)";
+  const panel = made ? made.panel : bold ? "rgba(255,255,255,0.15)" : outline ? `${tileDeep}10` : "rgba(255,255,255,0.58)";
+  const frameLine = light ? "rgba(255,255,255,0.32)" : outline ? `${tileDeep}55` : "rgba(255,255,255,0.75)";
+  const lantern = dark ? "#ffe6b0" : bold ? "#ffffff" : outline ? tileDeep : "#fff3d6";
+  // Door knob and sign nails.
+  const trim = light ? "rgba(255,255,255,0.85)" : tileDeep;
   const radii = {
     borderTopLeftRadius: top,
     borderTopRightRadius: top,
@@ -124,28 +142,51 @@ export function TileFace({
     radii,
     { width, height },
     bold && { backgroundColor: tileDeep },
-    look === "soft" && { backgroundColor: soft },
+    !made && look === "soft" && { backgroundColor: soft },
     outline && { borderWidth: 2, borderColor: tileDeep, backgroundColor: "transparent" },
     // A border you asked for on a solid tile (CORE-042).
-    item.border && !outline && { borderWidth: 2.5, borderColor: bold ? "rgba(255,255,255,0.6)" : tileDeep },
+    item.border && !outline && !made && { borderWidth: 2.5, borderColor: bold ? "rgba(255,255,255,0.6)" : tileDeep },
+    // Made of something: drawn by SkinSurface, in the tile's own shape.
+    made && { backgroundColor: "transparent", borderWidth: 0 },
   ];
-  const widgetProps = { refreshKey, textColor: text, mutedColor: muted, accentColor: bold ? "#ffffff" : tileDeep };
+  const widgetProps = { refreshKey, textColor: text, mutedColor: muted, accentColor: light ? iconColor : tileDeep };
 
   // Radius of the lit top edge (never more than half the tile's width).
   const rt = Math.max(1.5, Math.min(top, width / 2 - 0.75, height - 1));
 
   const decoration = (
     <>
-      <Lantern id={gid} width={width} height={height} color={lantern} strength={bold ? 0.22 : outline ? 0.1 : 0.6} />
+      {made ? (
+        <>
+          <SkinSurface
+            material={material}
+            edge="plain"
+            color={item.color}
+            border={item.border}
+            width={width}
+            height={height}
+            radius={top}
+            path={roundedPath(width, height, top, bottom, 0)}
+          />
+          {/* Frosted glass really blurs what's behind it on iPhone (CORE-132). */}
+          {material === "glass" && Platform.OS === "ios" && !still ? (
+            <BlurView intensity={28} tint="light" style={[StyleSheet.absoluteFill, { zIndex: -1 }]} />
+          ) : null}
+        </>
+      ) : null}
+      <Lantern id={gid} width={width} height={height} color={lantern} strength={dark ? 0.25 : bold ? 0.22 : outline ? 0.1 : 0.6} />
       <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
-        {/* The carved inner frame, and the lit top edge (CORE-028). */}
-        <Path d={roundedPath(width, height, top, bottom, 5.75)} fill="none" stroke={frameLine} strokeWidth={1.5} />
+        {/* The carved inner frame (a chalkboard has its wooden one), and the
+            lit top edge (CORE-028). */}
+        {material !== "chalkboard" ? (
+          <Path d={roundedPath(width, height, top, bottom, 5.75)} fill="none" stroke={frameLine} strokeWidth={1.5} />
+        ) : null}
         {!outline ? (
           <Path d={`M0.75 ${rt} A${rt - 0.75} ${rt - 0.75} 0 0 1 ${rt} 0.75 H${width - rt} A${rt - 0.75} ${rt - 0.75} 0 0 1 ${width - 0.75} ${rt}`} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />
         ) : null}
       </Svg>
       {shape === "arch" ? (
-        <View style={[styles.keystone, { backgroundColor: bold ? "rgba(255,255,255,0.55)" : tileDeep }]} />
+        <View style={[styles.keystone, { backgroundColor: light ? "rgba(255,255,255,0.55)" : tileDeep }]} />
       ) : null}
       {shape === "window" && barsFit ? (
         <>
@@ -155,14 +196,14 @@ export function TileFace({
       ) : null}
       {shape === "door" ? (
         <>
-          <View pointerEvents="none" style={[styles.knob, { backgroundColor: bold ? "rgba(255,255,255,0.85)" : tileDeep }]} />
+          <View pointerEvents="none" style={[styles.knob, { backgroundColor: trim }]} />
           <View pointerEvents="none" style={[styles.threshold, { backgroundColor: frameLine }]} />
         </>
       ) : null}
       {shape === "sign" ? (
         <>
-          <View pointerEvents="none" style={[styles.nail, { left: 12, backgroundColor: bold ? "rgba(255,255,255,0.85)" : tileDeep }]} />
-          <View pointerEvents="none" style={[styles.nail, { right: 12, backgroundColor: bold ? "rgba(255,255,255,0.85)" : tileDeep }]} />
+          <View pointerEvents="none" style={[styles.nail, { left: 12, backgroundColor: trim }]} />
+          <View pointerEvents="none" style={[styles.nail, { right: 12, backgroundColor: trim }]} />
           <View pointerEvents="none" style={[styles.grain, { top: "34%", backgroundColor: frameLine }]} />
           <View pointerEvents="none" style={[styles.grain, { top: "66%", backgroundColor: frameLine }]} />
         </>
@@ -189,9 +230,15 @@ export function TileFace({
         {decoration}
         <IconBadge name={icon} size={size} color={iconColor} background={badge} />
         {item.h === 1 ? (
-          <Text style={[styles.title, { flex: 1, color: text }]} numberOfLines={1}>
-            {label}
-          </Text>
+          item.nameplate ? (
+            <View style={{ flex: 1 }}>
+              <Nameplate label={label} />
+            </View>
+          ) : (
+            <Text style={[styles.title, { flex: 1, color: text }]} numberOfLines={1}>
+              {label}
+            </Text>
+          )
         ) : null}
       </View>
     );
@@ -211,9 +258,13 @@ export function TileFace({
           <View style={[styles.row, { paddingHorizontal: 6 }]}>
             <IconBadge name={icon} size={52} color={iconColor} background={badge} />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.title, { fontSize: 19, color: text }]} numberOfLines={1}>
-                {label}
-              </Text>
+              {item.nameplate ? (
+                <Nameplate label={label} big />
+              ) : (
+                <Text style={[styles.title, { fontSize: 19, color: text }]} numberOfLines={1}>
+                  {label}
+                </Text>
+              )}
               <Text style={[styles.tagline, { color: muted }]} numberOfLines={1}>
                 {nook?.tagline}
               </Text>
@@ -242,9 +293,13 @@ export function TileFace({
         {decoration}
         <IconBadge name={icon} size={56} color={iconColor} background={badge} />
         <View style={{ flex: 1, gap: 4 }}>
-          <Text style={[styles.title, { color: text }]} numberOfLines={1}>
-            {label}
-          </Text>
+          {item.nameplate ? (
+            <Nameplate label={label} />
+          ) : (
+            <Text style={[styles.title, { color: text }]} numberOfLines={1}>
+              {label}
+            </Text>
+          )}
           {Widget ? (
             <Widget size="wide" space={{ width: width - 40 - 56 - 12, height: height - PAD * 2 - 21 - 4 }} {...widgetProps} />
           ) : (
@@ -263,15 +318,60 @@ export function TileFace({
       {decoration}
       <IconBadge name={icon} size={50} color={iconColor} background={badge} />
       <View style={{ alignItems: "center", gap: 1, alignSelf: "stretch" }}>
-        <Text style={[styles.title, { color: text, textAlign: "center" }]} numberOfLines={1}>
-          {label}
-        </Text>
+        {item.nameplate ? (
+          <Nameplate label={label} center />
+        ) : (
+          <Text style={[styles.title, { color: text, textAlign: "center" }]} numberOfLines={1}>
+            {label}
+          </Text>
+        )}
         {Widget ? (
           <View style={{ alignItems: "center", alignSelf: "stretch" }}>
             <Widget size="small" space={{ width: width - PAD * 2, height: height - 20 - PAD - 50 - 8 - 21 - 1 }} {...widgetProps} />
           </View>
         ) : null}
       </View>
+    </View>
+  );
+}
+
+// The Nook's name on a little brass plate, screwed on at each end (CORE-139).
+// It's as wide as the name, up to the room there is, and the name shortens
+// with "…" rather than running off it. Its height matches a plain title's,
+// so the Nook's live info below keeps its room.
+function Nameplate({ label, center = false, big = false }: { label: string; center?: boolean; big?: boolean }) {
+  return (
+    <View style={[styles.plate, big && styles.plateBig, center && { alignSelf: "center" }]}>
+      <View style={[styles.screw, { left: 4 }]} />
+      <View style={[styles.screw, { right: 4 }]} />
+      <Text style={[styles.plateText, big && styles.plateTextBig]} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+// A little lamp hung beside a Nook tile's top left corner, reaching just
+// outside it, that glows when the Nook has news, in place of the news dot
+// (CORE-139). `height` is the tile's.
+export function PorchLight({ lit, height }: { lit: boolean; height: number }) {
+  const id = `porch${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  return (
+    <View pointerEvents="none" style={[styles.porch, { top: Math.max(4, Math.min(height * 0.16, 24)) }]}>
+      <Svg width={22} height={34}>
+        <Defs>
+          <RadialGradient id={id} cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor="#ffd77a" stopOpacity={0.9} />
+            <Stop offset="1" stopColor="#ffd77a" stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        {lit ? <Circle cx={11} cy={15} r={11} fill={`url(#${id})`} /> : null}
+        <Path d="M11 0 V5" stroke="#4b4540" strokeWidth={2} />
+        <Path d="M5 8 L11 4 L17 8 Z" fill="#3b3632" />
+        <Rect x={6} y={8} width={10} height={14} rx={1.5} fill={lit ? "#ffe39a" : "#cfd3d6"} fillOpacity={lit ? 1 : 0.8} stroke="#3b3632" strokeWidth={1.6} />
+        <Path d="M11 8 V22" stroke="#3b3632" strokeWidth={0.8} />
+        <Rect x={5} y={22} width={12} height={2.5} rx={1} fill="#3b3632" />
+      </Svg>
     </View>
   );
 }
@@ -365,6 +465,7 @@ const styles = StyleSheet.create({
   nail: { position: "absolute", top: 9, width: 7, height: 7, borderRadius: 4 },
   grain: { position: "absolute", left: 22, right: 22, height: 1.5, borderRadius: 1, opacity: 0.6 },
   sheen: { position: "absolute", left: 0 },
+  porch: { position: "absolute", left: -9, width: 22, height: 34 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   title: { fontSize: 16, lineHeight: 21, fontWeight: "800", color: TEXT },
   tagline: { fontSize: 13, color: MUTED },
@@ -375,5 +476,21 @@ const styles = StyleSheet.create({
     gap: 8,
     overflow: "hidden",
   },
+  plate: {
+    alignSelf: "flex-start",
+    maxWidth: "100%",
+    minHeight: 21,
+    justifyContent: "center",
+    paddingHorizontal: 13,
+    borderRadius: 4,
+    backgroundColor: "#d4ae58",
+    borderWidth: 1,
+    borderColor: "#9a7418",
+    boxShadow: "inset 0px 1px 0px #f3d98a, 0px 1px 1.5px rgba(0,0,0,0.25)",
+  },
+  plateBig: { minHeight: 25 },
+  screw: { position: "absolute", top: "50%", marginTop: -2, width: 4, height: 4, borderRadius: 2, backgroundColor: "#8a6a1c" },
+  plateText: { fontSize: 13, lineHeight: 17, fontWeight: "800", color: "#3b2a0e", letterSpacing: 0.3 },
+  plateTextBig: { fontSize: 16, lineHeight: 20 },
   widgetLabel: { fontSize: 11, lineHeight: 14, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6 },
 });
