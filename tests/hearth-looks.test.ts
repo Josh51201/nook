@@ -13,15 +13,22 @@ const text = (extra: Partial<HearthItem> = {}) =>
   ({ id: "l", kind: "label", text: "Hi", size: "heading", align: "left", x: 0, y: 2, w: 4, h: 1, ...extra }) as HearthItem;
 
 describe("copying and pasting a look", () => {
-  it("gives a widget's whole look to a Nook tile, but leaves the tile's shape", () => {
+  it("a widget only gives a Nook tile its color: the tile stays part of the house (CORE-137)", () => {
     const from = widget({ color: "#efd9e4", corners: "round", lift: "floating", border: true }, "bold");
-    const painted = paintItem(tile({ shape: "door", corners: "square" }), lookOf(from)!)!;
-    expect(painted).toMatchObject({ color: "#efd9e4", corners: "round", lift: "floating", border: true, look: "bold", shape: "door" });
+    const painted = paintItem(tile({ shape: "door", corners: "square", build: "brick" }), lookOf(from)!)!;
+    expect(painted).toMatchObject({ color: "#efd9e4", corners: "square", shape: "door", build: "brick" });
+    expect(painted).not.toMatchObject({ lift: "floating" });
   });
 
-  it("gives a Nook tile's look, shape and all, to another tile", () => {
-    const from = tile({ color: "#dfe8d6", shape: "window", look: "outline" });
-    expect(paintItem(tile({ id: "other", shape: "arch" }), lookOf(from)!)).toMatchObject({ shape: "window", look: "outline", color: "#dfe8d6" });
+  it("gives a Nook tile's look, shape, build and doorway to another tile", () => {
+    const from = tile({ color: "#dfe8d6", shape: "window", look: "outline", build: "stone", doorway: { nameplate: true, below: "flowers" } });
+    expect(paintItem(tile({ id: "other", shape: "arch" }), lookOf(from)!)).toMatchObject({
+      shape: "window",
+      look: "outline",
+      color: "#dfe8d6",
+      build: "stone",
+      doorway: { nameplate: true, below: "flowers" },
+    });
   });
 
   it("makes things the same, clearing what the copied one doesn't have", () => {
@@ -33,9 +40,10 @@ describe("copying and pasting a look", () => {
     expect(painted.kind === "widget" && painted.widget.look).toBe("soft");
   });
 
-  it("a plain Nook tile's look is soft, so pasting it isn't left bold", () => {
-    const painted = paintItem(widget({}, "bold"), lookOf(tile())!)!;
-    expect(painted.kind === "widget" && painted.widget.look).toBe("soft");
+  it("a Nook tile only gives a widget its color, so a bold widget stays bold", () => {
+    const painted = paintItem(widget({}, "bold"), lookOf(tile({ color: "#cfe6b5" }))!)!;
+    expect(painted.kind === "widget" && painted.widget.look).toBe("bold");
+    expect(painted.color).toBe("#cfe6b5");
   });
 
   it("copies how text is written onto other text, but keeps its words and place", () => {

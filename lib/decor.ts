@@ -131,13 +131,21 @@ export function ambienceLabel(mode: Ambience | undefined) {
 
 // --- Nook tile shapes (CORE-044) ---------------------------------------------------------
 
-export type TileShape = "arch" | "window" | "door" | "sign";
+// More shapes (CORE-138): a hobbit door, a window with shutters, a shop
+// front with an awning, a mailbox, a drawer and a birdhouse.
+export type TileShape = "arch" | "window" | "door" | "sign" | "hobbit" | "shutters" | "shopfront" | "mailbox" | "drawer" | "birdhouse";
 
 export const tileShapes: { key: TileShape; label: string; icon: IconName }[] = [
   { key: "arch", label: "Arched alcove", icon: "burrow" },
   { key: "window", label: "Round window", icon: "sun" },
   { key: "door", label: "Little door", icon: "door" },
   { key: "sign", label: "Hanging sign", icon: "price" },
+  { key: "hobbit", label: "Round door", icon: "door" },
+  { key: "shutters", label: "Window with shutters", icon: "hearth" },
+  { key: "shopfront", label: "Shop front", icon: "market" },
+  { key: "mailbox", label: "Mailbox", icon: "mail" },
+  { key: "drawer", label: "Drawer", icon: "folder" },
+  { key: "birdhouse", label: "Birdhouse", icon: "tree" },
 ];
 
 // --- Shape: corners, shadow, border (CORE-042) -----------------------------------------

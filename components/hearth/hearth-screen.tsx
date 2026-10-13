@@ -151,6 +151,8 @@ import { ColorManySheet, MoveManySheet, SelectionBar, TagManySheet, type Selecti
 import { TagBar } from "./tag-bar";
 import { StackShell } from "./stack-shell";
 import { NewsDot, useHearthNews } from "./news";
+import { DoorwayExtras } from "./doorway-extras";
+import { buildColors, doorwayOf } from "../../lib/tile-looks";
 import { HollowPeek } from "./hollow-peek";
 import { TileFace } from "./tile-face";
 import { ItemOptions, type MoveTarget } from "./tile-options";
@@ -461,6 +463,8 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   // Stepping into a Nook from its tile (CORE-034).
   const [zoom, setZoom] = useState<{
     rect: ZoomRect;
+    // The door swings open first (CORE-140).
+    door?: boolean;
     color: string;
     icon: IconName;
     iconColor: string;
@@ -959,11 +963,14 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     const stride = (gridWidth - GRID_GAP * (COLUMNS - 1)) / COLUMNS + GRID_GAP;
     const look = item.look ?? "soft";
     const deep = item.color ? deepColor(item.color) : nook.iconColor;
+    // Built from brick or stone (CORE-137), it grows in that color.
+    const built = item.build && item.build !== "plain" ? buildColors(item.build, itemColor(item)).base : null;
     gridRef.current.measureInWindow((gx, gy) => {
       tap();
       setZoom({
         rect: { x: gx + item.x * stride, y: gy + item.y * stride, width: item.w * stride - GRID_GAP, height: item.h * stride - GRID_GAP },
-        color: look === "bold" ? deep : look === "outline" ? theme.background : itemColor(item),
+        door: doorwayOf(item.doorway).opens,
+        color: built ?? (look === "bold" ? deep : look === "outline" ? theme.background : itemColor(item)),
         icon: item.icon ?? nook.icon,
         iconColor: look === "bold" ? "#ffffff" : deep,
         corners: item.corners,
@@ -1666,11 +1673,22 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
   const petStage = { roaming: petsOut, pet: gridWidth ? petSizeForStride(strideFor(gridWidth)) : null };
 
   function renderItem(item: HearthItem, size: { width: number; height: number }) {
-    const inner = renderInner(item, size);
+    // A Nook tile's porch light, flower box or doormat sit around it (CORE-139).
+    const door = item.kind === "nook" ? doorwayOf(item.doorway) : null;
+    const itemNews = editing || selecting || item.kind === "trinket" ? null : newsFor(item, news, onHomePageNow);
+    let inner = renderInner(item, size);
+    if (door && (door.porchLight || door.below !== "none")) {
+      inner = (
+        <View style={{ width: size.width, height: size.height }}>
+          {inner}
+          <DoorwayExtras doorway={door} width={size.width} height={size.height} lit={Boolean(itemNews)} color={itemColor(item)} />
+        </View>
+      );
+    }
     if (editing) return inSeason(item.showIn, today) ? inner : <View style={{ opacity: 0.4 }}>{inner}</View>;
-    // A little dot when something in it is new (CORE-115).
-    const itemNews = selecting || item.kind === "trinket" ? null : newsFor(item, news, onHomePageNow);
-    if (!itemNews) return inner;
+    // A little dot when something in it is new (CORE-115); a porch light
+    // does that job itself.
+    if (!itemNews || door?.porchLight) return inner;
     return (
       <View style={{ width: size.width, height: size.height }}>
         {inner}
@@ -1692,7 +1710,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
     if (item.kind === "nook") {
       return (
         <TileFace
-          key={`${item.shape ?? "arch"}-${item.corners ?? "soft"}`}
+          key={`${item.shape ?? "arch"}-${item.corners ?? "soft"}-${item.build ?? "plain"}`}
           item={item}
           {...size}
           refreshKey={refreshKey}
@@ -2430,6 +2448,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           icon={zoom.icon}
           iconColor={zoom.iconColor}
           direction={zoom.direction}
+          door={zoom.door && zoom.direction === "in"}
           onDone={finishZoom}
         />
       ) : null}
