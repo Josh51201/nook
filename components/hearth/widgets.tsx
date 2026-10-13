@@ -7,7 +7,7 @@ import { FixedTextSize, Text } from "../text";
 import Animated, { FadeIn, FadeInRight, LinearTransition, useReducedMotion, ZoomIn } from "react-native-reanimated";
 
 import { useAuth } from "../../lib/auth-context";
-import { cornerRadius, type Corners } from "../../lib/decor";
+import { cornerRadius, liftLevel, type Corners, type Lift } from "../../lib/decor";
 import { usePhotoUrls } from "../../lib/hearth-photos";
 import { tap } from "../../lib/feedback";
 import { countdown, displayName, formatDate, gatheringKindInfo, type TuckStatus } from "../../lib/gift-nook";
@@ -66,6 +66,8 @@ import { Tap } from "../motion";
 import { BedArt, BowlArt, CritterArt, PetStageContext, Snooze } from "./pet-art";
 import { WaitingBars } from "./waiting";
 import { WindowScene } from "./window-scene";
+import { HangerArt, SkinSurface, skinPadding } from "./widget-skin";
+import { isPlainCard, materialColors, skinFor } from "../../lib/widget-skins";
 import { FridgeDoor, FridgeNoteCard, LetterMagnets, Magnet } from "../fridge-door";
 import { fridgeGrid, fridgePlace, hashOf, magnets, noteMagnet } from "../../lib/fridge";
 import { useFridgeNotes } from "../../lib/fridge-data";
@@ -120,12 +122,34 @@ export function widgetPalette(look: WidgetConfig["look"], color: string | undefi
 
 // A widget's text stays at its designed size whatever the text size setting
 // (CORE-068): it's laid out on the Hearth's grid, here and in its previews.
+// Anything it's hung up with (CORE-124) is drawn over it, reaching a
+// little outside its space.
 export function WidgetView(props: React.ComponentProps<typeof WidgetBody>) {
+  const hanger = skinFor(props.widget.kind, props.widget.skin).hanger;
   return (
     <FixedTextSize>
-      <WidgetBody {...props} />
+      {hanger === "none" ? (
+        <WidgetBody {...props} />
+      ) : (
+        <View style={{ width: props.width, height: props.height }}>
+          <WidgetBody {...props} />
+          <HangerArt hanger={hanger} color={props.color} width={props.width} height={props.height} />
+        </View>
+      )}
     </FixedTextSize>
   );
+}
+
+// A widget's colors when it's made of something (CORE-122).
+function materialPalette(colors: ReturnType<typeof materialColors>): Palette {
+  return {
+    text: colors.text,
+    muted: colors.muted,
+    accent: colors.accent,
+    faint: colors.faint,
+    panel: colors.panel,
+    deep: colors.dark ? shade(colors.base, -0.35) : colors.accent,
+  };
 }
 
 function WidgetBody({
@@ -139,6 +163,7 @@ function WidgetBody({
   onChange,
   corners,
   border,
+  lift,
   still = false,
   onHomePage = false,
 }: {
@@ -155,6 +180,8 @@ function WidgetBody({
   // Shape tweaks (CORE-042): how round the corners are, and a border.
   corners?: Corners;
   border?: boolean;
+  // Its shadow (CORE-042); a widget with cut edges draws its own.
+  lift?: Lift;
   // Hold animations still, e.g. while the Hearth is being edited.
   still?: boolean;
   // It's on the page shared with your Home (CORE-054): a Fridge door there
@@ -200,24 +227,46 @@ function WidgetBody({
   const soft = color ?? tilePalette[0];
   const deep = deepColor(soft);
   const look = widget.look;
-  const palette = widgetPalette(look, soft, themeText);
+  const skin = skinFor(widget.kind, widget.skin);
+  // Made of something, or cut into a shape: drawn by SkinSurface rather
+  // than as a plain card (CORE-122, 123).
+  const drawn = !isPlainCard(skin);
+  const cut = skin.edge !== "plain" && skin.edge !== "stitch";
+  const palette = skin.material === "plain" ? widgetPalette(look, soft, themeText) : materialPalette(materialColors(skin.material, color));
   const info = widgetKindInfo(widget.kind);
   const shape = widgetShape(width, height);
   const showTitle = widget.showTitle && shape !== "icon" && shape !== "strip";
+  const pad = skinPadding(skin.material, skin.edge);
 
   return (
     <View
       style={[
         styles.frame,
-        { width, height, borderRadius: radius },
+        { width, height, borderRadius: cut ? 0 : radius },
         shape === "icon" && { padding: 8 },
         shape === "strip" && { paddingVertical: 10, paddingHorizontal: 14 },
-        look === "bold" && { backgroundColor: deep, boxShadow: tileBevel },
-        look === "soft" && { backgroundColor: soft, boxShadow: tileBevel },
-        look === "outline" && { borderWidth: 2, borderColor: deep, backgroundColor: "transparent" },
-        border && look !== "outline" && { borderWidth: 2.5, borderColor: look === "bold" ? "rgba(255,255,255,0.6)" : deep },
+        pad ? { paddingHorizontal: (shape === "icon" ? 8 : 14) + pad, paddingVertical: (shape === "strip" ? 10 : shape === "icon" ? 8 : 14) + pad } : null,
+        !drawn && look === "bold" && { backgroundColor: deep, boxShadow: tileBevel },
+        !drawn && look === "soft" && { backgroundColor: soft, boxShadow: tileBevel },
+        !drawn && look === "outline" && { borderWidth: 2, borderColor: deep, backgroundColor: "transparent" },
+        !drawn && border && look !== "outline" && { borderWidth: 2.5, borderColor: look === "bold" ? "rgba(255,255,255,0.6)" : deep },
       ]}
     >
+      {drawn || skin.edge === "stitch" ? (
+        <SkinSurface
+          material={skin.material}
+          edge={skin.edge}
+          color={color}
+          fill={look === "bold" ? deep : soft}
+          outline={skin.material === "plain" && look === "outline" ? deep : undefined}
+          border={drawn && border}
+          width={width}
+          height={height}
+          radius={radius}
+          level={cut ? liftLevel(lift, false) : 0}
+          stitchOnly={!drawn}
+        />
+      ) : null}
       {showTitle ? (
         <View style={styles.titleRow}>
           <Icon name={icon ?? info.icon} size={14} color={palette.accent} />
@@ -1008,11 +1057,15 @@ function Note({ widget, palette, height, shape, icon }: BodyProps<"note">) {
   const scale = shape === "large" ? 1.2 : isBig(shape) ? 1.08 : 1;
   const fontSize = { small: 14, medium: 17, large: 22 }[textSize] * scale;
   const lineHeight = fontSize * 1.4;
-  const ruled = height >= 200 && widget.look !== "bold";
+  // Its own strip of tape and ruled lines are for a plain note; one made of
+  // something (CORE-122) or hung up some other way doesn't need them.
+  const skin = skinFor(widget.kind, widget.skin);
+  const taped = widget.look === "soft" && skin.material === "plain" && skin.hanger === "none";
+  const ruled = height >= 200 && widget.look !== "bold" && skin.material === "plain";
   return (
     <View style={{ flex: 1 }}>
       {/* A strip of tape holding the note up. */}
-      {widget.look === "soft" ? <View style={styles.tape} /> : null}
+      {taped ? <View style={styles.tape} /> : null}
       {ruled ? (
         <View style={[StyleSheet.absoluteFill, { top: 4 }]} pointerEvents="none">
           {Array.from({ length: Math.floor(height / lineHeight) }, (_, i) => (
@@ -1029,7 +1082,7 @@ function Note({ widget, palette, height, shape, icon }: BodyProps<"note">) {
           lineHeight,
           textAlign: align,
           fontWeight: textSize === "large" ? "700" : "500",
-          paddingTop: widget.look === "soft" && !widget.showTitle ? 6 : 0,
+          paddingTop: taped && !widget.showTitle ? 6 : 0,
         }}
       >
         {text || "Tap Edit to write something"}

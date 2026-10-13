@@ -13,6 +13,7 @@ export function ItemPreview({
   background,
   backdrop,
   interactive = false,
+  tilt = 0,
   children,
 }: {
   // Its real size on the Hearth.
@@ -26,10 +27,13 @@ export function ItemPreview({
   // A widget's preview can be tapped (e.g. ticking its checklist); tiles and
   // text can't.
   interactive?: boolean;
+  // A widget's lean (CORE-124), in degrees.
+  tilt?: number;
   children: ReactNode;
 }) {
   const [room, setRoom] = useState(0);
-  const PAD = 12;
+  // Room around it for anything hanging off it (CORE-124).
+  const PAD = 22;
   const scale = room ? Math.min(1, (room - PAD * 2) / width, maxHeight / height) : 1;
 
   return (
@@ -40,7 +44,9 @@ export function ItemPreview({
     >
       {backdrop}
       <View style={{ width: width * scale, height: height * scale }} pointerEvents={interactive ? "auto" : "none"}>
-        <View style={{ width, height, transform: [{ scale }], transformOrigin: "top left" }}>{children}</View>
+        <View style={{ width, height, transform: [{ scale }], transformOrigin: "top left" }}>
+          <View style={{ width, height, transform: tilt ? [{ rotate: `${tilt}deg` }] : undefined }}>{children}</View>
+        </View>
       </View>
     </View>
   );

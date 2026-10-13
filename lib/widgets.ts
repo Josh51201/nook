@@ -7,6 +7,7 @@ import { newTimer, type KitchenTimer } from "./kitchen-timer";
 import type { GratitudeLine } from "./gratitude";
 import type { WhoseTurn } from "./whose-turn";
 import type { Condition, Place, Unit, WindowFrame } from "./weather";
+import { naturalSkin, type WidgetSkin } from "./widget-skins";
 
 // Hearth widgets (CORE-018): standalone, fully customizable cards on the
 // Hearth. Pure data + defaults only (no React), so it's unit-testable. Each
@@ -163,6 +164,9 @@ export type WidgetConfig = {
     title: string;
     showTitle: boolean;
     look: WidgetLook;
+    // What it's made of, its edges, what hangs it up and its lean
+    // (CORE-122..125). Unset is a plain card, as widgets were before.
+    skin?: WidgetSkin;
     settings: WidgetSettings[K];
   };
 }[WidgetKind];
@@ -253,7 +257,8 @@ export function widgetKindInfo(kind: WidgetKind) {
 
 export function defaultWidget(kind: WidgetKind): WidgetConfig {
   const title = widgetKindInfo(kind).label;
-  const base = { title, showTitle: true, look: "soft" as WidgetLook };
+  // Each kind starts in its own natural look (CORE-125).
+  const base = { title, showTitle: true, look: "soft" as WidgetLook, skin: naturalSkin(kind) };
   switch (kind) {
     case "countdown":
       return { ...base, kind, settings: { source: "next", customTitle: "", display: "number" } };

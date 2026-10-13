@@ -143,7 +143,8 @@ export function LoadingScreen({ cards = 3 }: { cards?: number }) {
 
 // A gentle sway for things you can rearrange (Hearth edit mode) — small
 // and slow so the Hearth feels calm rather than jittery.
-export function useWiggle(active: boolean, seed = 0) {
+// `base` is a lean it always keeps, in degrees (a tilted widget, CORE-124).
+export function useWiggle(active: boolean, seed = 0, base = 0) {
   const rotation = useSharedValue(0);
   const reduceMotion = useReducedMotion();
   useEffect(() => {
@@ -158,5 +159,5 @@ export function useWiggle(active: boolean, seed = 0) {
       rotation.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.quad) });
     }
   }, [active, reduceMotion, rotation, seed]);
-  return useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }));
+  return useAnimatedStyle(() => ({ transform: [{ rotate: `${base + rotation.value}deg` }] }));
 }

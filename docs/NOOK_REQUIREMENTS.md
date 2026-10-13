@@ -2,7 +2,7 @@
 
 _Only what's open, or a rule for the whole app, lives here. Built requirements are archived — grep them by ID, don't read whole files: shell, Hearth and app-wide `CORE-` in `docs/archive/NOOK_HEARTH_BUILT.md`; every built Nook plus `PROF-` and `HOME-` in `docs/archive/NOOK_NOOKS_BUILT.md`; older fine print in `docs/archive/NOOK_REQUIREMENTS_FULL.md`; past decisions in `docs/NOOK_DECISION_LOG.md`. To change a built requirement, edit it in its archive file._
 
-_Last updated: 2026-10-12 (rev 71)_
+_Last updated: 2026-10-12 (rev 72)_
 
 ## 1. Rules for the whole app
 - **CORE-001** Nook is a phone app containing many mini-apps ("Nooks") under one account.
@@ -26,6 +26,17 @@ Everything else in CORE-006..116 that isn't listed here is built and archived in
 - **CORE-119** Kid's Hearth: a simple, locked Hearth for a kid in your Home, with big buttons and nothing they can delete by accident.
 - **CORE-120** Bedtime look: after a time you pick, the Hearth dims to warm, low-light colors.
 - **CORE-121** Widgets on the phone's own home screen (iPhone and Android), e.g. the countdown, This week and the Fridge door. Needs native code, so it waits for the real app build (CORE-021); it can't run in Expo Go.
+
+**Widget looks.** Josh asked for widgets that look more unique than a tan card. Claude brainstormed and Josh said "i like those changes" (2026-10-12). How each one looks is Claude's design and stays proposed until Josh tries it.
+- **CORE-122** **Made of:** a widget can be paper, kraft paper, notebook, graph paper, an index card, chalkboard, wood, cork, felt, linen or frosted glass. Its color tints the material. _Built 2026-10-12; text is tested to read clearly on every material in every color._
+- **CORE-123** **Edges:** smooth, torn, scalloped, stitched, stamp, ticket or wavy. _Built 2026-10-12; cut edges draw their own shadow in their shape._
+- **CORE-124** **Hung up with** washi tape, a pushpin, magnet, paperclip, clothespin, nail and twine, or a shelf, and a slight **tilt** either way. _Built 2026-10-12; tilt also applies to the photo frame, window, fridge and pet bed._
+- **CORE-125** **Natural look:** each kind of widget starts in its own look (the recipe on an index card, the menu on a chalkboard), so a new Hearth isn't all one card. **Surprise me** tries a hand-picked combination. _Built 2026-10-12 for new widgets; existing widgets keep their look until changed._
+- **CORE-126** The widget editor's "How it looks" has a **Simple** part (made of, color, hanger, tilt, Natural look, Surprise me) and a **More** part (edges, style, corners, shadow, border, icon). Josh: "I will let you decide." _Built 2026-10-12._
+- **CORE-127** **Faces:** different designs of the same widget, starting with Countdown (tear-off calendar, flip clock, paper chain), Quote (embroidery hoop, typewriter, fortune slip), Habit streak (candle, growing plant, marble jar), On the menu (felt letter board) and Greeting (bunting, wooden sign).
+- **CORE-128** **Prints, fonts and accents:** a wallpaper pattern (gingham, dots…) on a widget, its own font (handwritten, typewriter, storybook) and a small decoration like a corner sticker or a sprig of holly.
+- **CORE-129** **Look packs:** one tap styles a whole page, e.g. Farmhouse kitchen, Grandma's den, Scrapbook, Cabin. Goes with a look per page (CORE-117).
+- **CORE-130** **Little motion:** steam off a mug, a flickering candle, paper that flutters when the Hearth's ambience is rain or wind. Stays still when the phone asks for reduced motion.
 
 ## 2. Accounts, profile & Home
 - **AUTH-001** Users sign in with their email address, via a one-time code sent to their inbox (no passwords). See Decision Log, Q-015.
@@ -141,6 +152,8 @@ Lives in [NOOK_DECISION_LOG.md](NOOK_DECISION_LOG.md) (read only when you need t
 | A stack that flips to what needs you (CORE-114) | Smart stack | proposed |
 | The locked, simple Hearth for a kid (CORE-119) | Kid's Hearth | proposed |
 | The dimmed evening look (CORE-120) | Bedtime look | proposed |
+| How each kind of widget starts out (CORE-125) | Natural look | proposed |
+| One tap that styles a whole page (CORE-129) | Look pack | proposed |
 
 ## 8. Nook Backlog
 Josh's picks, in no particular order. Names and details are proposed until he confirms them; each gets requirement IDs when it's about to be built.
@@ -156,11 +169,11 @@ Earlier faint, very broad ideas (lower priority, may be dropped): Food tracker, 
 Other ideas Claude mentioned that Josh hasn't picked: Freezer & Pantry (Josh was curious, not yet picked), Hand-Me-Downs, Guest Book, Growth Marks, Kid Art, Gift Closet, Daily Question; Surprise Planner (plan a surprise with a hidden to-do list, hidden from the guest of honor), Keepsakes (letters sealed until a date, e.g. a kid's 18th birthday).
 
 ## 9. Up next
-0. **Hearth to-do** (CORE-105..121, section 1), built one at a time and committed after each. Phases *(proposed)*:
+0. **Hearth to-do** (CORE-105..130, section 1), built one at a time and committed after each. Phases *(proposed)*:
    - ~~**Phase 1, make what's there smarter:** badges (CORE-115), smart stacks (CORE-114), peek into a Hollow (CORE-116).~~ Built 2026-10-12, archived; Josh tries them.
    - ~~**Phase 2, widgets from Nooks you already have:** This week (CORE-105), Birthdays coming up (CORE-106), Getaway (CORE-108), New in Wishbooks (CORE-107).~~ Built 2026-10-12, archived; Josh tries them.
    - ~~**Phase 3, new stand-alone widgets:** Sky (CORE-112), Kitchen timer (CORE-109), Gratitude jar (CORE-113), Whose turn? (CORE-111).~~ Built 2026-10-12, archived; Josh tries them.
-   - **Phase 4, looks:** a look per page (CORE-117), Seasonal Trinkets (CORE-118), Bedtime look (CORE-120).
+   - **Phase 4, looks:** widget looks first, in three parts: ~~(a) made of, edges, hangers, tilt, natural looks and the Simple/More editor (CORE-122..126)~~ built 2026-10-12, Josh tries them; (b) faces (CORE-127); (c) prints, fonts, accents, look packs and motion (CORE-128..130). Then a look per page (CORE-117), Seasonal Trinkets (CORE-118), Bedtime look (CORE-120).
    - **Phase 5, kids:** Sticker chart (CORE-110) and Kid's Hearth (CORE-119), after Q-035.
    - **Phase 6, after the real app build:** home-screen widgets (CORE-121), see item 3.
 1. **Josh tries the Menu Board and Grocery List Nooks** and confirms or changes their proposed details (MENU-, GROC- in the Nooks archive). Then he picks the next Nook from the backlog (section 8).

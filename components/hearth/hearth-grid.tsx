@@ -19,6 +19,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { tap } from "../../lib/feedback";
 import { CUBBY_OUTSET } from "../../lib/cubbies";
 import { cornerRadius, liftLevel } from "../../lib/decor";
+import { skinFor } from "../../lib/widget-skins";
 import {
   canNudge,
   COLUMNS,
@@ -38,6 +39,7 @@ import {
   type HollowItem,
   type MovePlan,
   type Nudge,
+  type WidgetItem,
 } from "../../lib/hearth-layout";
 import { trinketAspect, trinketBounds } from "../../lib/trinkets";
 import { Icon } from "../icon";
@@ -524,10 +526,17 @@ function shadowShape(item: HearthItem, stride: number, size: { w: number; h: num
   };
 }
 
+function hasCutEdge(item: WidgetItem) {
+  const edge = skinFor(item.widget.kind, item.widget.skin).edge;
+  return edge !== "plain" && edge !== "stitch";
+}
+
 // Text labels and see-through (outline) widgets float flat on the Hearth;
 // everything solid gets a shadow. A Cubby draws its own, around its edge.
 function isRaised(item: HearthItem) {
   if (item.kind === "label" || item.kind === "trinket" || item.kind === "cubby") return false;
+  // Cut edges (CORE-123) draw their own shadow, in their own shape.
+  if (item.kind === "widget" && hasCutEdge(item)) return false;
   // A shadow you asked for is always drawn, even under an outline.
   if (item.lift) return true;
   if (item.kind === "widget") return item.widget.look !== "outline";
@@ -691,7 +700,8 @@ function GridItem({
   const fingerX = useSharedValue(-1);
   const fingerY = useSharedValue(-1);
   // A big box rocking about would be a lot, so Cubbies hold still.
-  const wiggle = useWiggle(editing && !active && !carries, seed);
+  // A widget can lean a little (CORE-124); the wiggle in Edit rocks around it.
+  const wiggle = useWiggle(editing && !active && !carries, seed, item.kind === "widget" ? skinFor(item.widget.kind, item.widget.skin).tilt : 0);
   // Edit mode as the gesture sees it (it must not be rebuilt when it changes).
   const editingNow = useSharedValue(editing);
   useEffect(() => {

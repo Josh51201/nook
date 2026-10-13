@@ -269,9 +269,14 @@ export const helpSections: HelpSection[] = [
           "A stack turns to whichever of its widgets has something new for you, like a dose that's OK again or a chore that's overdue, then goes back to the one you picked once you've seen it. Swipe it back yourself any time. Don't want it to? Tap Edit, tap the stack, open \"Copy & stack\" and turn off \"Flip to what needs you\".",
       },
       {
+        question: "Can I make a widget look like chalkboard, wood or paper?",
+        answer:
+          "Yes. Tap Edit, tap the widget, and open \"How it looks\". In Simple, pick what it's made of (paper, kraft, notebook, chalkboard, wood, cork, felt, glass and more), its color, what it's hung up with (tape, a pin, a magnet, a nail and twine…) and a little tilt. \"Surprise me\" tries a new combination each tap, and \"Natural look\" puts it back how it started. More has its edges (torn, scalloped, stitched, stamp, ticket, wavy), corners, shadow and border.",
+      },
+      {
         question: "Can I make several tiles look the same?",
         answer:
-          "Yes. Tap Edit, then tap the tile, widget or text whose look you like and choose \"Copy this look\". Now tap anything else on your Hearth to give it the same color, corners, shadow and style. Tap Done on the bar at the bottom when you're finished.",
+          "Yes. Tap Edit, then tap the tile, widget or text whose look you like and choose \"Copy this look\". Now tap anything else on your Hearth to give it the same color, corners, shadow and style. Widgets also pass on what they're made of, their edges, hanger and tilt to other widgets. Tap Done on the bar at the bottom when you're finished.",
       },
       {
         question: "How do I copy someone's Hearth, or share mine?",

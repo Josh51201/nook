@@ -10,10 +10,11 @@ import { SeasonPicker } from "../../components/hearth/season-picker";
 import { TagsEditor } from "../../components/hearth/tag-bar";
 import { allTags } from "../../lib/hearth-tags";
 import { GRID_GAP } from "../../components/hearth/hearth-grid";
-import { IconPicker } from "../../components/hearth/icon-picker";
 import { PlacePicker } from "../../components/hearth/place-picker";
 import { ItemPreview } from "../../components/hearth/item-preview";
 import { WidgetView } from "../../components/hearth/widgets";
+import { WidgetLookEditor } from "../../components/hearth/widget-look-editor";
+import { skinFor, skinSummary } from "../../lib/widget-skins";
 import { Icon } from "../../components/icon";
 import { LoadingScreen, Tap } from "../../components/motion";
 import { NookScroll } from "../../components/nook-scroll";
@@ -27,7 +28,6 @@ import { fullMessage, overflowing } from "../../lib/hearth-limits";
 import { homePhotoFolder } from "../../lib/home-hearth";
 import { bedStyles, critterForSpecies, critterInfo, critters } from "../../lib/hearth-pet";
 import { usePets } from "../../lib/pets-data";
-import { cornerChoices, liftChoices } from "../../lib/decor";
 import { tap } from "../../lib/feedback";
 import { conditions, windowFrames, type Place, type Unit } from "../../lib/weather";
 import { launchTargets, MAX_LAUNCH_TARGETS, MAX_OWN_QUOTES, parseQuotes, showInWords } from "../../lib/widget-extras";
@@ -78,7 +78,6 @@ import {
   widgetKinds,
   type WidgetConfig,
   type WidgetKind,
-  type WidgetLook,
   type WidgetOf,
 } from "../../lib/widgets";
 import { addToStack, MAX_STACK, setStackStill, stackMates, unstack } from "../../lib/hearth-stacks";
@@ -243,7 +242,8 @@ export default function WidgetEditor() {
   }
 
   // What's chosen, for the closed sections (CORE-074).
-  const looksSummary = lookSummary({ look: widget.look, corners: draft.corners, lift: draft.lift, border: draft.border });
+  const looksSummary =
+    skinSummary(widget.kind, widget.skin) || lookSummary({ look: widget.look, corners: draft.corners, lift: draft.lift, border: draft.border });
   const whereId = livesIn ?? home;
   const whereName = whereId ? hollowsOf(layout).find((h) => h.id === whereId)?.name ?? "A Hollow" : "The Hearth";
   const placeSummary = [sizeSummary(sizePresets.widget, draft.w, draft.h, draft.locked), hollowsOf(layout).length ? whereName : null]
@@ -262,6 +262,7 @@ export default function WidgetEditor() {
       maxHeight={screenHeight * 0.3}
       background={theme.background}
       interactive
+      tilt={skinFor(widget.kind, widget.skin).tilt}
     >
       <WidgetView
         widget={widget}
@@ -273,6 +274,7 @@ export default function WidgetEditor() {
         themeText={theme.text}
         corners={draft.corners}
         border={draft.border}
+        lift={draft.lift}
         onHomePage={sharedPage}
         onChange={(changed) => setWidget(changed)}
       />
@@ -323,74 +325,12 @@ export default function WidgetEditor() {
       </Collapsible>
 
       <Collapsible id="widget-looks" icon="palette" title="How it looks" summary={looksSummary}>
-        <Text style={ui.label}>Title</Text>
-        <View style={[ui.row, { gap: 10 }]}>
-          <TextInput
-            style={[ui.input, { flex: 1 }]}
-            value={widget.title}
-            onChangeText={(title) => setWidget({ title })}
-            placeholder={info.label}
-            placeholderTextColor={colors.muted}
-          />
-          <Switch value={widget.showTitle} onValueChange={(showTitle) => setWidget({ showTitle })} trackColor={{ true: colors.bark }} />
-        </View>
-
-        <Text style={ui.label}>Style</Text>
-        <View style={ui.chips}>
-          {(
-            [
-              ["soft", "Soft"],
-              ["bold", "Bold"],
-              ["outline", "Outline"],
-            ] as [WidgetLook, string][]
-          ).map(([look, label]) => (
-            <Chip key={look} selected={widget.look === look} onPress={() => setWidget({ look })}>
-              {label}
-            </Chip>
-          ))}
-        </View>
-        {widget.kind === "companion" ? <Text style={ui.muted}>Outline leaves out the card, so the bed sits right on your Hearth. The title switch shows or hides the pet's name.</Text> : null}
-        {widget.kind === "fridge" ? <Text style={ui.muted}>Soft is a pastel fridge in the color below, Bold a deep one, and Outline leaves just the notes on your Hearth. The title is printed on a label-maker strip.</Text> : null}
-
-        {widget.kind === "frame" || widget.kind === "window" ? null : (
-          <>
-            <Text style={ui.label}>Color</Text>
-            <ColorPicker value={draft.color} onChange={(color) => setDraft({ ...draft, color })} />
-          </>
-        )}
-
-        <Text style={ui.label}>Corners</Text>
-        <View style={ui.chips}>
-          {cornerChoices.map((c) => (
-            <Chip key={c.key} selected={(draft.corners ?? "soft") === c.key} onPress={() => setDraft({ ...draft, corners: c.key })}>
-              {c.label}
-            </Chip>
-          ))}
-        </View>
-        <Text style={ui.label}>Shadow</Text>
-        <View style={ui.chips}>
-          {liftChoices.map((c) => (
-            <Chip key={c.key} selected={(draft.lift ?? "soft") === c.key} onPress={() => setDraft({ ...draft, lift: c.key })}>
-              {c.label}
-            </Chip>
-          ))}
-        </View>
-        {widget.kind === "frame" || widget.kind === "window" ? null : (
-          <>
-            <Text style={ui.label}>Border</Text>
-            <View style={ui.chips}>
-              <Chip selected={!draft.border} onPress={() => setDraft({ ...draft, border: false })}>
-                None
-              </Chip>
-              <Chip selected={Boolean(draft.border)} onPress={() => setDraft({ ...draft, border: true })}>
-                Outlined
-              </Chip>
-            </View>
-          </>
-        )}
-
-        <Text style={ui.label}>Icon</Text>
-        <IconPicker value={draft.icon} fallback={info.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
+        <WidgetLookEditor
+          widget={widget}
+          item={draft}
+          onWidget={setWidget}
+          onItem={(changes) => setDraft((prev) => (prev ? { ...prev, ...changes } : prev))}
+        />
       </Collapsible>
 
       <Collapsible id="widget-size" icon="resize" title="Size & place" summary={placeSummary}>
@@ -507,7 +447,10 @@ export default function WidgetEditor() {
         onPress={() => saveWidget(undefined, undefined, false, true)}
         style={{ marginTop: 8 }}
       />
-      <Text style={ui.muted}>Saves this, then lets you tap other tiles and widgets on your Hearth to give them the same color, corners, shadow and style.</Text>
+      <Text style={ui.muted}>
+        Saves this, then lets you tap other tiles and widgets on your Hearth to give them the same look. Other widgets also take what it's made of, its edges, hanger
+        and tilt.
+      </Text>
       <Button title="Save" icon="check" onPress={() => saveWidget()} loading={isSaving} style={{ marginTop: 8 }} />
       <Button title="Remove widget" icon="trash" variant="danger" onPress={confirmRemove} />
     </NookScroll>

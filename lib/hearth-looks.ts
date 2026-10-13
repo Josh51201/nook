@@ -1,11 +1,14 @@
 import type { Corners, Lift, TileShape } from "./decor";
 import type { HearthItem, LabelItem } from "./hearth-layout";
 import type { WidgetConfig, WidgetLook } from "./widgets";
+import type { WidgetSkin } from "./widget-skins";
 
 // Copy a look, paste it on other things (CORE-097). Pure helpers, no React.
 //
 // A tile or widget's look is its color, corners, shadow, outline and style
-// (soft, bold or outline), and a Nook tile's shape. Text's look is how it's
+// (soft, bold or outline), and a Nook tile's shape; a widget's also what
+// it's made of, its edges, its hanger and its lean (CORE-122..124), which
+// only other widgets take. Text's look is how it's
 // written. Things of a kind share all of it; a Hollow just takes the color;
 // text only takes text's look, since a tile's soft color would be too pale
 // to read as words. Boxes and Trinkets keep their own looks.
@@ -24,6 +27,8 @@ export type Look =
       style?: WidgetLook;
       // Only when it came from a Nook tile; other things leave a tile's shape be.
       shape?: TileShape | null;
+      // Only when it came from a widget; set (even to undefined) means "paste it".
+      skin?: WidgetSkin;
     }
   | ({ kind: "text"; color?: string } & Pick<LabelItem, TextKey>)
   | { kind: "color"; color?: string };
@@ -31,7 +36,7 @@ export type Look =
 // The look of something, or null if it doesn't have one to share.
 export function lookOf(item: HearthItem): Look | null {
   if (item.kind === "widget") {
-    return { kind: "tile", color: item.color, corners: item.corners, lift: item.lift, border: item.border, style: item.widget.look };
+    return { kind: "tile", color: item.color, corners: item.corners, lift: item.lift, border: item.border, style: item.widget.look, skin: item.widget.skin };
   }
   if (item.kind === "nook") {
     return { kind: "tile", color: item.color, corners: item.corners, lift: item.lift, border: item.border, style: item.look ?? "soft", shape: item.shape ?? null };
@@ -48,7 +53,7 @@ export function lookOf(item: HearthItem): Look | null {
 // What pasting `look` makes of `item`, or null if this kind doesn't take it.
 export function paintItem(item: HearthItem, look: Look): HearthItem | null {
   if (item.kind === "widget" && look.kind === "tile") {
-    const widget = { ...item.widget, look: look.style ?? item.widget.look } as WidgetConfig;
+    const widget = { ...item.widget, look: look.style ?? item.widget.look, skin: "skin" in look ? look.skin : item.widget.skin } as WidgetConfig;
     return { ...item, color: look.color, corners: look.corners, lift: look.lift, border: look.border, widget };
   }
   if (item.kind === "nook" && look.kind === "tile") {

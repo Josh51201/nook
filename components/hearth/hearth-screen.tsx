@@ -1709,6 +1709,7 @@ function HearthScreenBody({ scope, reveal }: { scope: Scope; reveal?: string }) 
           themeText={theme.text}
           corners={item.corners}
           border={item.border}
+          lift={item.lift}
           still={editing}
           onHomePage={onHomePageNow}
           onChange={editing ? undefined : (widget) => changeWidget(item, widget)}
