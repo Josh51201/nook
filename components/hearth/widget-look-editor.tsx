@@ -12,7 +12,6 @@ import {
   prints,
   widgetFonts,
   naturalSkin,
-  sameSkin,
   skinFor,
   surpriseSkin,
   takesMaterial,
@@ -38,6 +37,10 @@ import { SkinSurface } from "./widget-skin";
 // "Surprise me". More has the fine print: lettering, a print, edges, style,
 // corners, shadow, border and icon. Which part you were in is remembered
 // while the app is open.
+//
+// Nothing here comes and goes as choices change: a section that doesn't
+// apply right now (what an embroidery hoop is made of) is greyed out
+// instead, so tapping "Surprise me" never makes the page jump.
 
 type Part = "simple" | "more";
 let rememberedPart: Part = "simple";
@@ -62,7 +65,12 @@ export function WidgetLookEditor({
   const framed = ownFrame(widget);
   const worn = skinFor(widget.kind, widget.skin);
   const skin = framed ? { ...worn, material: "plain" as const, edge: "plain" as const } : worn;
-  const material = takesMaterial(widget.kind) && !framed;
+  // Kinds that can be made of something; greyed out while a face is its own frame.
+  const material = takesMaterial(widget.kind);
+  const frameNote = framed ? `Not for the ${faceLabel(widget).toLowerCase()}` : null;
+  // Why Style or Corners can't be changed right now, if they can't.
+  const styleOff = frameNote ?? (skin.material !== "plain" ? "Only for plain cards" : null);
+  const cornersOff = frameNote ?? (skin.edge !== "plain" && skin.edge !== "stitch" ? "Not with cut edges" : null);
   const colored = widget.kind !== "frame" && widget.kind !== "window";
 
   function setSkin(changes: WidgetSkin) {
@@ -97,6 +105,31 @@ export function WidgetLookEditor({
 
       {part === "simple" ? (
         <>
+          <View style={[ui.row, { gap: 10 }]}>
+            <Button
+              title="Natural look"
+              icon="leaf"
+              variant="secondary"
+              style={{ flex: 1 }}
+              onPress={() => {
+                const natural = naturalSkin(widget.kind);
+                onWidget({ skin: natural, face: naturalFace(widget.kind) });
+                // Its material's own color, not one picked for a plain card.
+                if (natural.material) onItem({ color: undefined });
+              }}
+            />
+            <Button
+              title="Surprise me"
+              icon="sparkles"
+              variant="secondary"
+              style={{ flex: 1 }}
+              onPress={() =>
+                onWidget({ skin: surpriseSkin(widget.kind, widget.skin, Math.random()), face: surpriseFace(widget, Math.random()) })
+              }
+            />
+          </View>
+          <Text style={ui.muted}>Natural look is how this kind of widget starts out. Surprise me tries a new combination each tap.</Text>
+
           {faces.length ? (
             <>
               <Text style={ui.label}>Design</Text>
@@ -107,7 +140,6 @@ export function WidgetLookEditor({
                   </Chip>
                 ))}
               </View>
-              {framed ? <Text style={ui.muted}>{`The ${faceLabel(widget).toLowerCase()} is its own frame, so it isn't made of anything else.`}</Text> : null}
             </>
           ) : null}
 
@@ -125,8 +157,8 @@ export function WidgetLookEditor({
 
           {material ? (
             <>
-              <Text style={ui.label}>Made of</Text>
-              <View style={styles.swatches}>
+              <Text style={ui.label}>{frameNote ? `Made of · ${frameNote}` : "Made of"}</Text>
+              <View style={[styles.swatches, framed && styles.off]} pointerEvents={framed ? "none" : "auto"}>
                 {materials.map((m) => (
                   <SkinSwatch
                     key={m.key}
@@ -145,19 +177,15 @@ export function WidgetLookEditor({
           {colored ? (
             <>
               <Text style={ui.label}>Color</Text>
-              {skin.material !== "plain" ? (
-                <View style={ui.chips}>
-                  <Chip selected={!item.color} onPress={() => onItem({ color: undefined })}>
-                    {`Natural ${materials.find((m) => m.key === skin.material)!.label.toLowerCase()}`}
-                  </Chip>
-                </View>
-              ) : null}
-              <ColorPicker
-                value={item.color}
-                fallback={skin.material === "plain" ? undefined : ""}
-                onChange={(color) => onItem({ color })}
-              />
-              {skin.material !== "plain" ? <Text style={ui.muted}>A color tints what it's made of: the stain on wood, the color of felt.</Text> : null}
+              <View style={ui.chips}>
+                <Chip selected={!item.color} onPress={() => onItem({ color: undefined })}>
+                  {skin.material === "plain"
+                    ? "Usual color"
+                    : `Natural ${materials.find((m) => m.key === skin.material)!.label.toLowerCase()}`}
+                </Chip>
+              </View>
+              <ColorPicker value={item.color} fallback="" onChange={(color) => onItem({ color })} />
+              {material ? <Text style={ui.muted}>A color tints what it's made of: the stain on wood, the color of felt.</Text> : null}
             </>
           ) : null}
 
@@ -187,39 +215,12 @@ export function WidgetLookEditor({
               </Chip>
             ))}
           </View>
-
-          <View style={[ui.row, { gap: 10, marginTop: 4 }]}>
-            <Button
-              title="Natural look"
-              icon="leaf"
-              variant="secondary"
-              style={{ flex: 1 }}
-              onPress={() => {
-                const natural = naturalSkin(widget.kind);
-                onWidget({ skin: natural, face: naturalFace(widget.kind) });
-                // Its material's own color, not one picked for a plain card.
-                if (natural.material) onItem({ color: undefined });
-              }}
-            />
-            <Button
-              title="Surprise me"
-              icon="sparkles"
-              variant="secondary"
-              style={{ flex: 1 }}
-              onPress={() => onWidget({ skin: surpriseSkin(widget.kind, widget.skin, Math.random()), face: surpriseFace(widget, Math.random()) })}
-            />
-          </View>
-          <Text style={ui.muted}>
-            {sameSkin(widget.skin, naturalSkin(widget.kind)) && faceOf(widget) === faceOf({ kind: widget.kind, face: naturalFace(widget.kind) })
-              ? `This is how a ${info.label.toLowerCase()} widget starts out.`
-              : "Natural look puts it back how this kind of widget starts out. Surprise me tries a different combination each tap."}
-          </Text>
         </>
       ) : (
         <>
           {material ? (
-            <>
-              <Text style={ui.label}>Lettering</Text>
+            <View style={[{ gap: 14 }, framed && styles.off]} pointerEvents={framed ? "none" : "auto"}>
+              <Text style={ui.label}>{frameNote ? `Lettering · ${frameNote}` : "Lettering"}</Text>
               <View style={ui.chips}>
                 {widgetFonts.map((f) => (
                   <Chip key={f.key} selected={skin.font === f.key} onPress={() => setSkin({ font: f.key })}>
@@ -251,49 +252,45 @@ export function WidgetLookEditor({
                   />
                 ))}
               </View>
-            </>
+            </View>
           ) : null}
 
-          {skin.material === "plain" && !framed ? (
-            <>
-              <Text style={ui.label}>Style</Text>
-              <View style={ui.chips}>
-                {(
-                  [
-                    ["soft", "Soft"],
-                    ["bold", "Bold"],
-                    ["outline", "Outline"],
-                  ] as [WidgetLook, string][]
-                ).map(([look, label]) => (
-                  <Chip key={look} selected={widget.look === look} onPress={() => onWidget({ look })}>
-                    {label}
-                  </Chip>
-                ))}
-              </View>
-              {widget.kind === "companion" ? (
-                <Text style={ui.muted}>Outline leaves out the card, so the bed sits right on your Hearth. The title switch shows or hides the pet's name.</Text>
-              ) : null}
-              {widget.kind === "fridge" ? (
-                <Text style={ui.muted}>
-                  Soft is a pastel fridge in the color you pick, Bold a deep one, and Outline leaves just the notes on your Hearth. The title is printed on a label-maker
-                  strip.
-                </Text>
-              ) : null}
-            </>
-          ) : null}
+          <Text style={ui.label}>{styleOff ? `Style · ${styleOff}` : "Style"}</Text>
+          <View style={[{ gap: 14 }, styleOff && styles.off]} pointerEvents={styleOff ? "none" : "auto"}>
+            <View style={ui.chips}>
+              {(
+                [
+                  ["soft", "Soft"],
+                  ["bold", "Bold"],
+                  ["outline", "Outline"],
+                ] as [WidgetLook, string][]
+              ).map(([look, label]) => (
+                <Chip key={look} selected={widget.look === look} onPress={() => onWidget({ look })}>
+                  {label}
+                </Chip>
+              ))}
+            </View>
+            {widget.kind === "companion" ? (
+              <Text style={ui.muted}>
+                Outline leaves out the card, so the bed sits right on your Hearth. The title switch shows or hides the pet's name.
+              </Text>
+            ) : null}
+            {widget.kind === "fridge" ? (
+              <Text style={ui.muted}>
+                Soft is a pastel fridge in the color you pick, Bold a deep one, and Outline leaves just the notes on your Hearth. The title
+                is printed on a label-maker strip.
+              </Text>
+            ) : null}
+          </View>
 
-          {(skin.edge === "plain" || skin.edge === "stitch") && faceOf(widget) !== "hoop" ? (
-            <>
-              <Text style={ui.label}>Corners</Text>
-              <View style={ui.chips}>
-                {cornerChoices.map((c) => (
-                  <Chip key={c.key} selected={(item.corners ?? "soft") === c.key} onPress={() => onItem({ corners: c.key })}>
-                    {c.label}
-                  </Chip>
-                ))}
-              </View>
-            </>
-          ) : null}
+          <Text style={ui.label}>{cornersOff ? `Corners · ${cornersOff}` : "Corners"}</Text>
+          <View style={[ui.chips, cornersOff && styles.off]} pointerEvents={cornersOff ? "none" : "auto"}>
+            {cornerChoices.map((c) => (
+              <Chip key={c.key} selected={(item.corners ?? "soft") === c.key} onPress={() => onItem({ corners: c.key })}>
+                {c.label}
+              </Chip>
+            ))}
+          </View>
 
           <Text style={ui.label}>Shadow</Text>
           <View style={ui.chips}>
@@ -304,10 +301,10 @@ export function WidgetLookEditor({
             ))}
           </View>
 
-          {colored && !framed ? (
+          {colored ? (
             <>
-              <Text style={ui.label}>Border</Text>
-              <View style={ui.chips}>
+              <Text style={ui.label}>{frameNote ? `Border · ${frameNote}` : "Border"}</Text>
+              <View style={[ui.chips, framed && styles.off]} pointerEvents={framed ? "none" : "auto"}>
                 <Chip selected={!item.border} onPress={() => onItem({ border: false })}>
                   None
                 </Chip>
@@ -356,7 +353,16 @@ function SkinSwatch({
     >
       <View style={[styles.sample, selected && styles.sampleOn]}>
         <View style={{ width: SAMPLE_W, height: SAMPLE_H }}>
-          <SkinSurface material={material} edge={edge} color={color} fill={color ?? "#f3e7d3"} width={SAMPLE_W} height={SAMPLE_H} radius={10} level={1} />
+          <SkinSurface
+            material={material}
+            edge={edge}
+            color={color}
+            fill={color ?? "#f3e7d3"}
+            width={SAMPLE_W}
+            height={SAMPLE_H}
+            radius={10}
+            level={1}
+          />
         </View>
         {selected ? (
           <View style={styles.check}>
@@ -397,5 +403,7 @@ const styles = themed(() =>
       justifyContent: "center",
     },
     swatchText: { fontSize: 12, color: colors.text, textAlign: "center" },
-  })
+    // Greyed out: doesn't apply right now, but stays in place.
+    off: { opacity: 0.35 },
+  }),
 );
